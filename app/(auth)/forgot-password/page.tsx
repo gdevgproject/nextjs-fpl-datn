@@ -11,19 +11,14 @@ import {
 import { ErrorMessage } from '@/components/ui/error-message'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { toast } from '@/components/ui/use-toast'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
-export default function RegisterPage() {
-  const router = useRouter()
-  const supabase = createClientComponentClient()
-
-  const [name, setName] = useState('')
+export default function ForgotPasswordPage() {
+  const supabase = createClientComponentClient() // Khởi tạo client Supabase
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -32,45 +27,35 @@ export default function RegisterPage() {
     setIsLoading(true)
     setError(null)
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match')
+    try {
+      // Gọi Supabase API để gửi email reset mật khẩu
+      const { error } = await supabase.auth.resetPasswordForEmail(email)
+
+      if (error) {
+        setError(error.message)
+      } else {
+        toast({
+          title: 'Password reset email sent',
+          description: 'Check your email for further instructions.'
+        })
+        setEmail('')
+      }
+    } catch (err) {
+      setError('Password reset failed. Please try again.')
+    } finally {
       setIsLoading(false)
-      return
     }
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: name } }
-    })
-
-    if (error) {
-      setError(error.message)
-    } else {
-      router.push('/login?registered=true')
-    }
-
-    setIsLoading(false)
   }
 
   return (
     <div className='flex items-center justify-center min-h-screen bg-gray-100'>
       <Card className='w-[350px]'>
         <CardHeader>
-          <CardTitle>Register for Perfume Paradise</CardTitle>
+          <CardTitle>Forgot Password</CardTitle>
         </CardHeader>
         <CardContent>
           {error && <ErrorMessage message={error} />}
           <form onSubmit={handleSubmit} className='space-y-4'>
-            <div>
-              <Label htmlFor='name'>Name</Label>
-              <Input
-                id='name'
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
             <div>
               <Label htmlFor='email'>Email</Label>
               <Input
@@ -81,34 +66,14 @@ export default function RegisterPage() {
                 required
               />
             </div>
-            <div>
-              <Label htmlFor='password'>Password</Label>
-              <Input
-                id='password'
-                type='password'
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor='confirmPassword'>Confirm Password</Label>
-              <Input
-                id='confirmPassword'
-                type='password'
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-              />
-            </div>
             <Button type='submit' className='w-full' disabled={isLoading}>
-              {isLoading ? 'Registering...' : 'Register'}
+              {isLoading ? 'Sending...' : 'Reset Password'}
             </Button>
           </form>
         </CardContent>
         <CardFooter>
           <p className='text-sm text-center w-full'>
-            Already have an account?{' '}
+            Remember your password?{' '}
             <Link href='/login' className='text-blue-500 hover:underline'>
               Login
             </Link>
@@ -118,3 +83,7 @@ export default function RegisterPage() {
     </div>
   )
 }
+
+// export const metadata = {
+//   title: 'Forgot Password'
+// }

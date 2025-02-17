@@ -41,8 +41,15 @@
     "@radix-ui/react-toggle": "^1.1.1",
     "@radix-ui/react-toggle-group": "^1.1.1",
     "@radix-ui/react-tooltip": "^1.1.6",
+<<<<<<< HEAD:frontend/package.json
     "@supabase/supabase-js": "latest",
     "@types/react-beautiful-dnd": "^13.1.8",
+=======
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/auth-ui-react": "^0.4.7",
+    "@supabase/auth-ui-shared": "^0.1.8",
+    "@supabase/supabase-js": "^2.48.1",
+>>>>>>> d43c905 (feat: action, config, register with email):package.json
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
