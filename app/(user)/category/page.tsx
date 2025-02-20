@@ -1,9 +1,9 @@
-import React from 'react';
+import React from "react";
 
 const HelloWorldPage = () => {
   return (
     <div>
-      <h1>Hello World àdasdfasdfc</h1>
+      <h1>Hello World vo dich</h1>
     </div>
   );
 };
