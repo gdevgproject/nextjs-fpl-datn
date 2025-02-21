@@ -111,7 +111,7 @@ export default function Header({ categories, brands }: HeaderProps) {
       {/* Main navigation */}
       <nav className="bg-gray-100 shadow-md">
         <div className="container mx-auto px-4">
-          <ul className="flex items-center space-x-6 py-3">
+          <ul className="justify-center flex items-center space-x-8 py-3">
             <li>
               <Link href="/" className="hover:text-primary">
                 Trang chủ
@@ -119,15 +119,12 @@ export default function Header({ categories, brands }: HeaderProps) {
             </li>
             {/* Categories dropdown */}
             <li className="relative group">
-              <button className="hover:text-primary">
-                Danh mục
-                <span className="ml-1">▼</span>
-              </button>
-              <ul className="absolute hidden group-hover:block bg-white shadow-lg p-4 w-48">
+              <button className="hover:text-primary">Danh mục</button>
+              <ul className="absolute hidden group-hover:block bg-white shadow-lg p-4 w-48 z-50">
                 {categories.map((category) => (
                   <li key={category.id}>
                     <Link
-                      href={`/category/${category.id}`}
+                      href={`/product-listing?category=${category.id}`}
                       className="block py-2 hover:text-primary"
                     >
                       {category.name}
@@ -138,10 +135,7 @@ export default function Header({ categories, brands }: HeaderProps) {
             </li>
             {/* Brands dropdown */}
             <li className="relative group">
-              <button className="hover:text-primary">
-                Thương hiệu
-                <span className="ml-1">▼</span>
-              </button>
+              <button className="hover:text-primary">Thương hiệu</button>
               <ul className="absolute hidden group-hover:block bg-white shadow-lg p-4 w-48">
                 {brands.map((brand) => (
                   <li key={brand.id}>
