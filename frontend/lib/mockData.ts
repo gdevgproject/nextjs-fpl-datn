@@ -1,5 +1,7 @@
 import { v4 as uuidv4 } from 'uuid'
 
+// Interfaces (Giữ nguyên, có chỉnh sửa)
+
 export interface Address {
   id: string
   street: string
@@ -58,14 +60,13 @@ export interface Order {
   updated_at: string
 }
 
-// Thêm OrderHistory
 export interface OrderHistory {
   id: string
-  order_id: string // ID của đơn hàng
-  status: Order['status'] // Trạng thái mới
-  updated_by: string // ID của người cập nhật (admin/user)
+  order_id: string
+  status: Order['status']
+  updated_by: string
   updated_at: string
-  note?: string // Ghi chú (tùy chọn)
+  note?: string
 }
 
 export interface User {
@@ -73,12 +74,12 @@ export interface User {
   user_code: string
   name: string
   email: string
-  password?: string // Optional, chỉ dùng khi cần thiết (login, register)
+  password?: string // Optional
   role: 'admin' | 'user'
   status: 'active' | 'inactive' | 'blocked'
   phone: string
   registered_at: string
-  defaultAddressId?: string // ID của địa chỉ mặc định
+  defaultAddressId?: string
   addresses: Address[]
   totalOrders: number
   totalSpent: number
@@ -93,7 +94,7 @@ export interface Category {
   id: string
   name: string
   parentId: string | null
-  level: number // Cấp độ của danh mục
+  level: number
   created_at: string
   updated_at: string
 }
@@ -138,32 +139,36 @@ export interface PerfumeGallery {
 export interface Discount {
   id: string
   discount_code: string
-  permanent: boolean | null // Đổi thành boolean | null
+  permanent: boolean | null
   percent: number
   minimum_spend: number | null
   maximum_spend: number | null
   limit: number
-  product_ids: string // Có thể để dạng chuỗi, hoặc tạo mảng discount_products
+  product_ids: string
   created_at: string
   updated_at: string
 }
 
-// Thêm interface cho discount_products (nếu muốn)
 export interface DiscountProduct {
   id: string
   discount_id: string
   product_id: string
 }
 
+// Sửa đổi Review Interface
 export interface Review {
   id: string
   star: number
   content: string
   user_id: string
   product_id: string
-  order_id: string // Đổi thành order_id, bỏ order_detail_id
+  order_id?: string // Optional, có thể không liên kết với order
   created_at: string
   updated_at: string
+  admin_read: boolean // Thêm trường này
+  admin_reply?: string // Thêm trường này
+  admin_reply_at?: string // Thêm trường này
+  likes: number // Thêm trường này
 }
 
 export interface FavoriteProduct {
@@ -172,11 +177,10 @@ export interface FavoriteProduct {
   product_id: string
 }
 
-// Mock data
+// Mock Data (Giữ nguyên, có chỉnh sửa)
 
 const now = new Date().toISOString()
 
-// Thêm dữ liệu mẫu cho các mảng
 const sampleFragranceCategories = [
   'Fresh',
   'Floral',
@@ -233,8 +237,6 @@ const sampleBaseNotes = [
   'Amber',
   'Benzoin'
 ]
-
-// Tạo nhiều sản phẩm hơn
 export const products: Product[] = Array.from({ length: 20 }, (_, i) => ({
   id: uuidv4(),
   perfume_code: `PERFUME${i + 1}`,
@@ -290,6 +292,8 @@ export const products: Product[] = Array.from({ length: 20 }, (_, i) => ({
   view: Math.floor(Math.random() * 1000),
   is_hot: i % 3 === 0 ? 'yes' : 'no'
 }))
+
+// Tạo nhiều đơn hàng
 // Đảm bảo tạo users trước
 export const users: User[] = [
   {
@@ -632,27 +636,33 @@ export const discount_products: DiscountProduct[] = [
   //   },
 ]
 
-// Mock data Reviews
+// Mock data Reviews (Thêm trường mới)
 export const reviews: Review[] = [
   {
     id: uuidv4(),
     star: 5,
     content: 'Great fragrance, love it!',
-    user_id: users[1].id,
+    user_id: 'user2', // Sử dụng ID của user
     product_id: products[0].id,
     order_id: orders[0].id, // Liên kết với order
     created_at: now,
-    updated_at: now
+    updated_at: now,
+    admin_read: false, // Mới tạo, chưa đọc
+    likes: 0
   },
   {
     id: uuidv4(),
     star: 4,
     content: "Nice scent, but it doesn't last very long.",
-    user_id: users[1].id, // Cùng một user
+    user_id: 'user2', // Sử dụng ID của user
     product_id: products[1].id,
-    order_id: orders[0].id, // Liên kết với order
+    order_id: orders[0].id,
     created_at: now,
-    updated_at: now
+    updated_at: now,
+    admin_read: true, // Đã đọc
+    admin_reply: 'Thank you for your feedback!',
+    admin_reply_at: new Date().toISOString(),
+    likes: 3
   }
 ]
 
@@ -781,30 +791,29 @@ export async function fetchUsers(): Promise<Omit<User, 'password'>[]> {
 
 export async function fetchUser(
   id: string
-): Promise<Omit<User, 'password'> | null> {
+): Promise<Omit<User, 'password'> | undefined> {
   await delay(DELAY_SHORT)
   const user = users.find((u) => u.id === id)
   if (user) {
     const { password, ...userWithoutPassword } = user
     return userWithoutPassword
   }
-  return null
+  return undefined
 }
 
 export async function updateUser(
   id: string,
   updates: Partial<Omit<User, 'id' | 'password'>>
-): Promise<Omit<User, 'password'> | null> {
+): Promise<Omit<User, 'password'> | undefined> {
   await delay(DELAY_LONG)
   const user = users.find((u) => u.id === id)
   if (user) {
-    // Cập nhật updated_at
     updates.updated_at = new Date().toISOString()
     Object.assign(user, updates)
     const { password, ...userWithoutPassword } = user
     return userWithoutPassword
   }
-  return null
+  return undefined
 }
 
 export async function deleteUser(id: string): Promise<void> {
@@ -821,7 +830,14 @@ export async function login(
 ): Promise<User | null> {
   await delay(DELAY_LONG)
   const user = users.find((u) => u.email === email && u.password === password)
-  return user || null
+
+  if (!user) {
+    return null // Hoặc có thể throw new Error('Invalid credentials');
+  }
+
+  // Loại bỏ trường password trước khi trả về
+  const { password: userPassword, ...userWithoutPassword } = user
+  return userWithoutPassword
 }
 
 export async function register(
@@ -891,7 +907,6 @@ export async function fetchCategories(): Promise<Category[]> {
   await delay(DELAY_MEDIUM)
   return categories
 }
-
 export async function fetchCategory(id: string): Promise<Category | undefined> {
   await delay(DELAY_SHORT)
   return categories.find((c) => c.id === id)
@@ -901,7 +916,7 @@ export async function createCategory(
   category: Omit<Category, 'id' | 'created_at' | 'updated_at'>
 ): Promise<Category> {
   await delay(DELAY_LONG)
-  const newCategory = {
+  const newCategory: Category = {
     ...category,
     id: uuidv4(),
     created_at: new Date().toISOString(),
@@ -918,7 +933,6 @@ export async function updateCategory(
   await delay(DELAY_LONG)
   const category = categories.find((c) => c.id === id)
   if (!category) throw new Error('Category not found')
-  // Cập nhật updated_at
   updates.updated_at = new Date().toISOString()
   Object.assign(category, updates)
   return category
@@ -966,6 +980,7 @@ export async function updateBrand(
   brands[index] = { ...brands[index], ...updates }
   return brands[index]
 }
+
 export async function deleteBrand(id: string): Promise<void> {
   await delay(DELAY_MEDIUM)
   const index = brands.findIndex((b) => b.id === id)
@@ -973,16 +988,17 @@ export async function deleteBrand(id: string): Promise<void> {
   brands.splice(index, 1)
 }
 
-// Slides
+// Slides API
 export async function fetchSlides(): Promise<Slide[]> {
   await delay(DELAY_MEDIUM)
   return slides
 }
+
 export async function createSlide(
   slide: Omit<Slide, 'id' | 'created_at' | 'updated_at'>
 ): Promise<Slide> {
   await delay(DELAY_LONG)
-  const newSlide = {
+  const newSlide: Slide = {
     ...slide,
     id: uuidv4(),
     created_at: new Date().toISOString(),
@@ -991,6 +1007,7 @@ export async function createSlide(
   slides.push(newSlide)
   return newSlide
 }
+
 export async function updateSlide(
   id: string,
   updates: Partial<Slide>
@@ -1002,6 +1019,7 @@ export async function updateSlide(
   Object.assign(slide, updates)
   return slide
 }
+
 export async function deleteSlide(id: string): Promise<void> {
   await delay(DELAY_MEDIUM)
   const index = slides.findIndex((s) => s.id === id)
@@ -1009,7 +1027,7 @@ export async function deleteSlide(id: string): Promise<void> {
   slides.splice(index, 1)
 }
 
-// Slide Galleries
+// Slide Galleries API
 export async function fetchSlideGalleries(): Promise<SlideGallery[]> {
   await delay(DELAY_MEDIUM)
   return slide_galleries
@@ -1042,7 +1060,7 @@ export async function deleteSlideGallery(id: string): Promise<void> {
   slide_galleries.splice(index, 1)
 }
 
-// Perfume Galleries (tương tự Slide Galleries)
+// Perfume Galleries API
 export async function fetchPerfumeGalleries(): Promise<PerfumeGallery[]> {
   await delay(DELAY_MEDIUM)
   return perfume_galleries
@@ -1073,8 +1091,7 @@ export async function deletePerfumeGallery(id: string): Promise<void> {
   if (index === -1) throw new Error('Perfume Gallery not found')
   perfume_galleries.splice(index, 1)
 }
-
-// Discounts
+// Discounts API
 export async function fetchDiscounts(): Promise<Discount[]> {
   await delay(DELAY_MEDIUM)
   return discounts
@@ -1084,7 +1101,7 @@ export async function createDiscount(
   discount: Omit<Discount, 'id' | 'created_at' | 'updated_at'>
 ): Promise<Discount> {
   await delay(DELAY_LONG)
-  const newDiscount = {
+  const newDiscount: Discount = {
     ...discount,
     id: uuidv4(),
     created_at: now,
@@ -1113,33 +1130,52 @@ export async function deleteDiscount(id: string): Promise<void> {
   discounts.splice(index, 1)
 }
 
-// Reviews
+// Reviews API (Thêm các hàm mới)
 export async function fetchReviews(): Promise<Review[]> {
   await delay(DELAY_MEDIUM)
   return reviews
 }
 export async function createReview(
-  review: Omit<Review, 'id' | 'created_at' | 'updated_at'>
+  review: Omit<
+    Review,
+    'id' | 'created_at' | 'updated_at' | 'admin_read' | 'likes'
+  >
 ): Promise<Review> {
   await delay(DELAY_LONG)
-  const newReview = {
+  const newReview: Review = {
     ...review,
     id: uuidv4(),
     created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    admin_read: false, // Mặc định là chưa đọc
+    likes: 0
   }
   reviews.push(newReview)
   return newReview
 }
+
+// Cập nhật review (chỉ dùng cho admin_reply, không cho sửa nội dung review)
 export async function updateReview(
   id: string,
-  updates: Partial<Review>
+  updates: Partial<Omit<Review, 'id' | 'user_id' | 'product_id' | 'created_at'>> // Không cho sửa các trường này
 ): Promise<Review> {
   await delay(DELAY_LONG)
   const review = reviews.find((r) => r.id === id)
   if (!review) throw new Error('Review not found')
-  updates.updated_at = new Date().toISOString()
-  Object.assign(review, updates)
+
+  // Chỉ cập nhật các trường cho phép
+  if (updates.admin_reply !== undefined) {
+    review.admin_reply = updates.admin_reply
+    review.admin_reply_at = new Date().toISOString()
+  }
+  if (updates.admin_read !== undefined) {
+    review.admin_read = updates.admin_read
+  }
+  if (updates.likes !== undefined) {
+    review.likes = updates.likes
+  }
+
+  review.updated_at = new Date().toISOString()
   return review
 }
 
@@ -1150,7 +1186,39 @@ export async function deleteReview(id: string): Promise<void> {
   reviews.splice(index, 1)
 }
 
-// Favorites
+// Đánh dấu đã đọc
+export async function markReviewAsRead(id: string): Promise<void> {
+  await delay(DELAY_SHORT)
+  const review = reviews.find((r) => r.id === id)
+  if (!review) throw new Error('Review not found')
+  review.admin_read = true
+  review.updated_at = new Date().toISOString()
+}
+
+// Trả lời review
+export async function replyToReview(id: string, reply: string): Promise<void> {
+  await delay(DELAY_MEDIUM)
+  const review = reviews.find((r) => r.id === id)
+  if (!review) throw new Error('Review not found')
+  review.admin_reply = reply
+  review.admin_reply_at = new Date().toISOString()
+  review.updated_at = new Date().toISOString()
+}
+
+// Thích/bỏ thích review
+export async function likeReview(id: string, like: boolean): Promise<void> {
+  await delay(DELAY_SHORT)
+  const review = reviews.find((r) => r.id === id)
+  if (!review) throw new Error('Review not found')
+  if (like) {
+    review.likes += 1
+  } else {
+    review.likes -= 1 // Cho phép unlike (giảm số like)
+  }
+  review.updated_at = new Date().toISOString()
+}
+
+// Favorites API
 export async function fetchFavorites(): Promise<FavoriteProduct[]> {
   await delay(DELAY_MEDIUM)
   return favorite_products
@@ -1160,7 +1228,7 @@ export async function createFavorite(
   favorite: Omit<FavoriteProduct, 'id'>
 ): Promise<FavoriteProduct> {
   await delay(DELAY_LONG)
-  const newFavorite = { ...favorite, id: uuidv4() }
+  const newFavorite: FavoriteProduct = { ...favorite, id: uuidv4() }
   favorite_products.push(newFavorite)
   return newFavorite
 }
@@ -1185,6 +1253,7 @@ export const settings = {
     passwordReset: 'Click here to reset your password: {{resetLink}}'
   }
 }
+
 export async function fetchSettings(): Promise<typeof settings> {
   await delay(DELAY_MEDIUM)
   return settings
@@ -1210,7 +1279,7 @@ export async function fetchOrdersInDateRange(
   })
 }
 
-// Discount Products (nếu bạn muốn)
+// Discount Products
 export async function fetchDiscountProducts(): Promise<DiscountProduct[]> {
   await delay(DELAY_MEDIUM)
   return discount_products
@@ -1241,3 +1310,4 @@ export async function deleteDiscountProduct(id: string): Promise<void> {
   if (index === -1) throw new Error('Discount product not found')
   discount_products.splice(index, 1)
 }
+
