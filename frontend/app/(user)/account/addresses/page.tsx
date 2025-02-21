@@ -1,4 +1,4 @@
-export default function AddressesPage() {
-  return <div>Addresses Management Page</div>
+export default function AccountAddressesPage() {
+  return <div>Account Addresses Page</div>
 }
 

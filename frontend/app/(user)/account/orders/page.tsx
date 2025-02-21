@@ -1,4 +1,4 @@
-export default function OrderHistoryPage() {
-  return <div>Order History Page</div>
+export default function AccountOrdersPage() {
+  return <div>Account Orders Page</div>
 }
 

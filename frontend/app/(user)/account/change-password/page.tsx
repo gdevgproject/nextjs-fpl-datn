@@ -1,4 +1,4 @@
-export default function ChangePasswordPage() {
-  return <div>Change Password Page</div>
+export default function AccountChangePasswordPage() {
+  return <div>Account Change Password Page</div>
 }
 

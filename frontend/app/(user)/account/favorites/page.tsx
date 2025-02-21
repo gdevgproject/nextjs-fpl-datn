@@ -1,4 +1,4 @@
-export default function FavoritesPage() {
-  return <div>Favorites Page</div>
+export default function AccountFavoritesPage() {
+  return <div>Account Favorites Page</div>
 }
 

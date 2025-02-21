@@ -1,4 +1,6 @@
-export default function AccountDashboardPage() {
-  return <div>Account Dashboard Page</div>
+import { redirect } from "next/navigation"
+
+export default function AccountPage() {
+  redirect("/account/dashboard")
 }
 
