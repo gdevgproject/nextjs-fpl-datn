@@ -15,29 +15,30 @@ export default function Navigation() {
   return (
     <nav className="border-b bg-white">
       <div className="container mx-auto px-4 flex justify-center">
-        <NavigationMenu className="w-full">
-          <NavigationMenuList className="w-full flex justify-center gap-6">
+        <NavigationMenu>
+          <NavigationMenuList className="flex gap-6">
             <NavigationMenuItem>
-              <Link href="/" legacyBehavior passHref>
-                <NavigationMenuLink className="font-medium">
-                  Home
-                </NavigationMenuLink>
-              </Link>
+              <NavigationMenuLink asChild>
+                <Link href="/" className="font-medium">
+                  Trang chủ
+                </Link>
+              </NavigationMenuLink>
             </NavigationMenuItem>
+
             <NavigationMenuItem>
-              <NavigationMenuTrigger>Categories</NavigationMenuTrigger>
+              <NavigationMenuTrigger>Danh mục</NavigationMenuTrigger>
               <NavigationMenuContent>
                 <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2">
                   {categories.map((category) => (
                     <li key={category.id}>
-                      <Link
-                        href={`/category/${category.id}`}
-                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                      >
-                        <div className="text-sm font-medium leading-none">
+                      <NavigationMenuLink asChild>
+                        <Link
+                          href={`/categories/${category.id}`}
+                          className="block select-none rounded-md p-3 hover:bg-accent"
+                        >
                           {category.name}
-                        </div>
-                      </Link>
+                        </Link>
+                      </NavigationMenuLink>
                     </li>
                   ))}
                 </ul>
@@ -45,22 +46,22 @@ export default function Navigation() {
             </NavigationMenuItem>
 
             <NavigationMenuItem>
-              <NavigationMenuTrigger>Brands</NavigationMenuTrigger>
+              <NavigationMenuTrigger>Thương hiệu</NavigationMenuTrigger>
               <NavigationMenuContent>
                 <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2">
                   {brands.map((brand) => (
                     <li key={brand.id}>
-                      <Link
-                        href={`/brand/${brand.id}`}
-                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                      >
-                        <div className="text-sm font-medium leading-none">
-                          {brand.name}
-                        </div>
-                        <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                          {brand.description}
-                        </p>
-                      </Link>
+                      <NavigationMenuLink asChild>
+                        <Link
+                          href={`/brands/${brand.id}`}
+                          className="block select-none rounded-md p-3 hover:bg-accent"
+                        >
+                          <div className="font-medium">{brand.name}</div>
+                          <p className="text-sm text-muted-foreground">
+                            {brand.description}
+                          </p>
+                        </Link>
+                      </NavigationMenuLink>
                     </li>
                   ))}
                 </ul>
@@ -68,19 +69,11 @@ export default function Navigation() {
             </NavigationMenuItem>
 
             <NavigationMenuItem>
-              <Link href="/new-arrivals" legacyBehavior passHref>
-                <NavigationMenuLink className="font-medium">
-                  New Arrivals
-                </NavigationMenuLink>
-              </Link>
-            </NavigationMenuItem>
-
-            <NavigationMenuItem>
-              <Link href="/deals" legacyBehavior passHref>
-                <NavigationMenuLink className="font-medium">
-                  Deals
-                </NavigationMenuLink>
-              </Link>
+              <NavigationMenuLink asChild>
+                <Link href="/deals" className="font-medium">
+                  Khuyến mãi
+                </Link>
+              </NavigationMenuLink>
             </NavigationMenuItem>
           </NavigationMenuList>
         </NavigationMenu>
