@@ -1,37 +1,50 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { ShoppingCart, User, Menu, Heart, Search } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import type { Category, Brand } from "@/lib/mockData"
+import { useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { ShoppingCart, User, Menu, Heart, Search } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import type { Category, Brand } from "@/lib/mockData";
+import Navigation from "./Navigation";
 
 interface HeaderProps {
-  categories: Category[]
-  brands: Brand[]
+  categories: Category[];
+  brands: Brand[];
 }
 
 export default function Header({ categories, brands }: HeaderProps) {
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchTerm, setSearchTerm] = useState("");
 
   const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     // Implement search functionality
-    console.log("Searching for:", searchTerm)
-  }
+    console.log("Searching for:", searchTerm);
+  };
 
   return (
     <header className="bg-white shadow-md sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <Link href="/" className="flex items-center">
-          <Image src="/logo.svg" alt="Perfume Paradise" width={40} height={40} />
-          <span className="ml-2 text-2xl font-bold text-primary hidden md:inline">Perfume Paradise</span>
+          <Image
+            src="/logo.svg"
+            alt="Perfume Paradise"
+            width={40}
+            height={40}
+          />
+          <span className="ml-2 text-2xl font-bold text-primary hidden md:inline">
+            Perfume Paradise
+          </span>
         </Link>
 
         <form onSubmit={handleSearch} className="flex-1 max-w-md mx-4 relative">
@@ -42,7 +55,10 @@ export default function Header({ categories, brands }: HeaderProps) {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10"
           />
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+          <Search
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+            size={20}
+          />
         </form>
 
         <div className="flex items-center space-x-4">
@@ -93,7 +109,7 @@ export default function Header({ categories, brands }: HeaderProps) {
           </Sheet>
         </div>
       </div>
+      <Navigation />
     </header>
-  )
+  );
 }
-
