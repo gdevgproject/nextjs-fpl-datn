@@ -12,6 +12,14 @@ import {
 import { categories, brands } from "@/lib/mockData";
 
 export default function Navigation() {
+  // Lọc danh mục cha (parentId === null)
+  const parentCategories = categories.filter((cat) => cat.parentId === null);
+
+  // Hàm lấy danh mục con của một danh mục cha
+  const getChildCategories = (parentId: string) => {
+    return categories.filter((cat) => cat.parentId === parentId);
+  };
+
   return (
     <nav className="border-b bg-white">
       <div className="container mx-auto px-4 flex justify-center">
@@ -28,20 +36,32 @@ export default function Navigation() {
             <NavigationMenuItem>
               <NavigationMenuTrigger>Danh mục</NavigationMenuTrigger>
               <NavigationMenuContent>
-                <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2">
-                  {categories.map((category) => (
-                    <li key={category.id}>
+                <div className="w-[500px] p-4">
+                  {parentCategories.map((parent) => (
+                    <div key={parent.id} className="mb-4">
                       <NavigationMenuLink asChild>
                         <Link
-                          href={`/categories/${category.id}`}
-                          className="block select-none rounded-md p-3 hover:bg-accent"
+                          href={`/categories/${parent.id}`}
+                          className="block text-lg font-medium text-primary mb-2 hover:text-primary/80"
                         >
-                          {category.name}
+                          {parent.name}
                         </Link>
                       </NavigationMenuLink>
-                    </li>
+                      <div className="grid grid-cols-2 gap-2 pl-4">
+                        {getChildCategories(parent.id).map((child) => (
+                          <NavigationMenuLink key={child.id} asChild>
+                            <Link
+                              href={`/categories/${child.id}`}
+                              className="block text-sm text-muted-foreground hover:text-primary p-2 rounded-md hover:bg-accent"
+                            >
+                              {child.name}
+                            </Link>
+                          </NavigationMenuLink>
+                        ))}
+                      </div>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </NavigationMenuContent>
             </NavigationMenuItem>
 
