@@ -5,14 +5,14 @@ import type React from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import Error from "./error";
 import "./globals.css";
-import Navigation from "@/components/Navigation";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Admin Dashboard",
-  description: "Admin dashboard for e-commerce platform",
-  generator: "v0.dev",
+  title: "Perfume Paradise",
+  description: "Your destination for luxury fragrances",
 };
 
 export default function RootLayout({
@@ -22,14 +22,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${inter.className} min-h-screen flex flex-col`}>
         <ErrorBoundary FallbackComponent={Error}>
-          {children}
+          <Header categories={[]} brands={[]} />
+          <main className="flex-1">{children}</main>
+          <Footer />
           <Toaster />
         </ErrorBoundary>
       </body>
     </html>
   );
 }
-
-import "./globals.css";
