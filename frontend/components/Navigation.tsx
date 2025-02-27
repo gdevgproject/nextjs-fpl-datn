@@ -34,6 +34,14 @@ export default function Navigation() {
             </NavigationMenuItem>
 
             <NavigationMenuItem>
+              <NavigationMenuLink asChild>
+                <Link href="/products" className="font-medium">
+                  Sản phẩm
+                </Link>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+
+            <NavigationMenuItem>
               <NavigationMenuTrigger>Danh mục</NavigationMenuTrigger>
               <NavigationMenuContent>
                 <div className="w-[500px] p-4">
