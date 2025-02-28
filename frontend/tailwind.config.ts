@@ -84,10 +84,24 @@ const config: Config = {
             height: "0",
           },
         },
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "50%": { opacity: "0.3" }, // thêm bước chuyển tiếp
+          "75%": { opacity: "0.7" }, // thêm bước chuyển tiếp
+          "100%": { opacity: "1" },
+        },
+        "slide-up": {
+          "0%": { transform: "translateY(50px)", opacity: "0" }, // tăng khoảng cách trượt
+          "50%": { transform: "translateY(25px)", opacity: "0.3" }, // thêm bước chuyển tiếp
+          "75%": { transform: "translateY(10px)", opacity: "0.7" }, // thêm bước chuyển tiếp
+          "100%": { transform: "translateY(0)", opacity: "1" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "fade-in": "fade-in 1.5s ease-in-out",
+        "slide-up": "slide-up 2s ease-in-out",
       },
     },
   },

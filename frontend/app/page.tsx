@@ -77,7 +77,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      {/* <Header categories={categories} brands={brands} /> */}
+      <Header categories={categories} brands={brands} />
       <main className="flex-grow">
         <HeroSection slides={slides} slideGalleries={slideGalleries} />
         <ScentStory categories={categories} />
@@ -85,7 +85,7 @@ export default function HomePage() {
         <HotPicks products={products} brands={brands} />
         <DealsOffers discounts={discounts} />
       </main>
-      {/* <Footer /> */}
+      <Footer />
     </div>
   );
 }

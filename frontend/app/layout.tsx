@@ -5,15 +5,13 @@ import type React from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import Error from "./error";
 import "./globals.css";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-import { CartProvider } from "@/context/CartContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Perfume Paradise",
-  description: "Your destination for luxury fragrances",
+  title: "Admin Dashboard",
+  description: "Admin dashboard for e-commerce platform",
+  generator: "v0.dev",
 };
 
 export default function RootLayout({
@@ -23,16 +21,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} min-h-screen flex flex-col`}>
+      <body className={inter.className}>
         <ErrorBoundary FallbackComponent={Error}>
-          <Header categories={[]} brands={[]} />
-          <main className="flex-1">
-            <CartProvider>{children}</CartProvider>
-          </main>
-          <Footer />
+          {children}
           <Toaster />
         </ErrorBoundary>
       </body>
     </html>
   );
 }
+
+import "./globals.css";
