@@ -262,7 +262,7 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* <button
+          {/* <button 
             className="w-full bg-red-600 text-white py-4 rounded-lg font-semibold hover:bg-red-700 transition-colors"
             onClick={() => {
               // Handle order submission

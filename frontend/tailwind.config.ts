@@ -100,8 +100,8 @@ const config: Config = {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 1.5s ease-in-out",
-        "slide-up": "slide-up 2s ease-in-out",
+        "fade-in": "fade-in 1.5s ease-in-out", // tăng thời gian và đổi timing function
+        "slide-up": "slide-up 2s ease-in-out", // tăng thời gian và đổi timing function
       },
     },
   },
