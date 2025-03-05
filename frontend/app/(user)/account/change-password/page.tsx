@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { AccountSidebar } from "@/components/account/sidebar";
+import { fetchUser } from "@/lib/mockData";
+import { User } from "@/lib/mockData";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
 import { toast } from "react-hot-toast";
@@ -15,6 +18,7 @@ interface ChangePasswordFormData {
 
 export default function ChangePasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const {
     register,
     handleSubmit,
@@ -30,6 +34,14 @@ export default function ChangePasswordPage() {
     new: false,
     confirm: false,
   });
+
+  useEffect(() => {
+    const loadUser = async () => {
+      const userData = await fetchUser("user2");
+      setUser(userData as User);
+    };
+    loadUser();
+  }, []);
 
   const onSubmit = async (data: ChangePasswordFormData) => {
     try {
@@ -56,30 +68,18 @@ export default function ChangePasswordPage() {
     }));
   };
 
+  if (!user) return null;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="container mx-auto px-4 py-8"
     >
-      {/* Breadcrumb */}
-      <div className="text-sm breadcrumbs mb-6">
-        <ul>
-          <li>
-            <Link href="/">Trang chủ</Link>
-          </li>
-          <li>
-            <Link href="/account/dashboard">Tài khoản</Link>
-          </li>
-          <li>Đổi mật khẩu</li>
-        </ul>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Sidebar - Copy từ dashboard page */}
-        {/* ... */}
+        <AccountSidebar user={user} />
 
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-3 ">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -137,6 +137,13 @@ export default function ChangePasswordPage() {
                   </motion.p>
                 )}
               </div>
+              {/* Thêm link Quên mật khẩu */}
+              <Link
+                href="/account/forgot-password"
+                className="text-sm text-red-600 hover:text-red-700 transition-colors inline-block mt-2"
+              >
+                Bạn đã quên mật khẩu?
+              </Link>
 
               {/* Password Requirements */}
               <div className="bg-gray-50 p-4 rounded-lg">

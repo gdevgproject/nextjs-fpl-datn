@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
-import Link from "next/link";
 import { User } from "@/lib/mockData";
 import { fetchUser } from "@/lib/mockData";
+import { AccountSidebar } from "@/components/account/sidebar";
+import Link from "next/link";
 
 export default function AccountDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -14,20 +14,6 @@ export default function AccountDashboardPage() {
     const loadUser = async () => {
       try {
         setLoading(true);
-        // // Lấy userId từ localStorage hoặc session
-        // const userId = localStorage.getItem('userId');
-
-        // if (!userId) {
-        //   // Nếu chưa đăng nhập, chuyển về trang login
-        //   router.push('/login');
-        //   return;
-        // }
-
-        // // Fetch user data dựa trên userId
-        // const userData = await fetchUser(userId);
-        // if (!userData) {
-        //   throw new Error('User not found');
-        // }
         const userData = await fetchUser("user2"); // Lấy user mẫu từ mockData
         setUser(userData as User);
       } catch (error) {
@@ -52,72 +38,8 @@ export default function AccountDashboardPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Breadcrumb */}
-      <div className="text-sm breadcrumbs mb-6">
-        <ul>
-          <li>
-            <Link href="/">Trang chủ</Link>
-          </li>
-          <li>Tài khoản</li>
-        </ul>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Sidebar */}
-        <div className="lg:col-span-1">
-          <div className="bg-white p-6 rounded-lg shadow space-y-4">
-            <div className="text-center">
-              <div className="w-24 h-24 mx-auto relative mb-4">
-                <Image
-                  src="/avatar-placeholder.png"
-                  alt="Avatar"
-                  fill
-                  className="rounded-full object-cover"
-                />
-              </div>
-              <h2 className="text-xl font-semibold">{user.name}</h2>
-              <p className="text-gray-600 text-sm">{user.email}</p>
-            </div>
-            <nav className="mt-6 space-y-2">
-              <Link
-                href="/account/dashboard"
-                className="block w-full p-3 rounded-md bg-red-50 text-red-600 font-medium"
-              >
-                Tổng quan
-              </Link>
-              <Link
-                href="/account/orders"
-                className="block w-full p-3 rounded-md hover:bg-gray-50 transition-colors"
-              >
-                Đơn hàng của tôi
-              </Link>
-              <Link
-                href="/account/profile"
-                className="block w-full p-3 rounded-md hover:bg-gray-50 transition-colors"
-              >
-                Thông tin cá nhân
-              </Link>
-              <Link
-                href="/account/addresses"
-                className="block w-full p-3 rounded-md hover:bg-gray-50 transition-colors"
-              >
-                Sổ địa chỉ
-              </Link>
-              <Link
-                href="/account/favorites"
-                className="block w-full p-3 rounded-md hover:bg-gray-50 transition-colors"
-              >
-                Sản phẩm yêu thích
-              </Link>
-              <Link
-                href="/account/change-password"
-                className="block w-full p-3 rounded-md hover:bg-gray-50 transition-colors"
-              >
-                Đổi mật khẩu
-              </Link>
-            </nav>
-          </div>
-        </div>
+        <AccountSidebar user={user} />
 
         {/* Main Content */}
         <div className="lg:col-span-3 space-y-6">
