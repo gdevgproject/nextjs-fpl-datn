@@ -82,10 +82,15 @@ export default function AccountAddressesPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <PenSquare size={16} />
-                        Sửa
-                      </Button>
+                      <Link
+                        href="/account/addresses/[id]/edit"
+                        as={`/account/addresses/${address.id}/edit`}
+                      >
+                        <Button variant="outline" size="sm" className="gap-2">
+                          <PenSquare size={16} />
+                          Sửa
+                        </Button>
+                      </Link>
                       {user.defaultAddressId !== address.id && (
                         <>
                           <Button
