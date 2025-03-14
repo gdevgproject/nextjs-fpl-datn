@@ -1,0 +1,164 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS Variables - Defined outside of @layer base */
+:root {
+  /* Grayscale */
+  --grayscale-0: #fcfcfd;
+  --grayscale-5: #f9fafb;
+  --grayscale-10: #f2f4f7;
+  --grayscale-20: #eaecf0;
+  --grayscale-30: #d0d5dd;
+  --grayscale-40: #98a2b3;
+  --grayscale-50: #667085;
+  --grayscale-60: #475467;
+  --grayscale-70: #344054;
+  --grayscale-80: #1d2939;
+  --grayscale-90: #101828;
+  --grayscale-100: #0c111d;
+
+  /* Primary Colors */
+  --primary-5: #1250dc;
+  --primary-10: #1a5be1;
+  --primary-20: #2368e5;
+  --primary-30: #2c75ea;
+  --primary-40: #3582ee;
+  --primary-50: #4990f1;
+  --primary-60: #5d9df5;
+  --primary-70: #71abf8;
+  --primary-80: #85b8fc;
+  --primary-90: #99c6ff;
+  --primary-100: #add3ff;
+
+  /* Error Colors */
+  --error-5: #ff0000;
+  --error-10: #ff1a1a;
+  --error-20: #ff3333;
+  --error-30: #ff4d4d;
+  --error-40: #ff6666;
+  --error-50: #ff8080;
+  --error-60: #ff9999;
+  --error-70: #ffb3b3;
+  --error-80: #ffcccc;
+  --error-90: #ffe6e6;
+  --error-100: #ffffff;
+
+  /* Info Colors */
+  --info-5: #2897ff;
+  --info-10: #3ea1ff;
+  --info-20: #54acff;
+  --info-30: #6ab7ff;
+  --info-40: #80c2ff;
+  --info-50: #96cdff;
+  --info-60: #acd8ff;
+  --info-70: #c2e3ff;
+  --info-80: #d8eeff;
+  --info-90: #eef9ff;
+  --info-100: #ffffff;
+
+  /* Success Colors */
+  --success-5: #38cb1c;
+  --success-10: #4cd033;
+  --success-20: #60d54a;
+  --success-30: #74da61;
+  --success-40: #88df78;
+  --success-50: #9ce48f;
+  --success-60: #b0e9a6;
+  --success-70: #c4eebd;
+  --success-80: #d8f3d4;
+  --success-90: #ecf8eb;
+  --success-100: #ffffff;
+
+  /* Warning Colors */
+  --warning-5: #ffe200;
+  --warning-10: #ffe51a;
+  --warning-20: #ffe833;
+  --warning-30: #ffeb4d;
+  --warning-40: #ffee66;
+  --warning-50: #fff180;
+  --warning-60: #fff499;
+  --warning-70: #fff7b3;
+  --warning-80: #fffacc;
+  --warning-90: #fffce6;
+  --warning-100: #ffffff;
+
+  /* Link Colors */
+  --link-5: #0e55ff;
+  --link-10: #2767ff;
+  --link-20: #4079ff;
+  --link-30: #598bff;
+  --link-40: #739dff;
+  --link-50: #8cafff;
+  --link-60: #a6c1ff;
+  --link-70: #bfd3ff;
+  --link-80: #d9e5ff;
+  --link-90: #f2f7ff;
+  --link-100: #ffffff;
+
+  /* Background */
+  --background: #f1f4fd;
+
+  /* Shadow Variables */
+  --shadow-dark-00: #12121200;
+  --shadow-dark-08: #12121224;
+  --shadow-dark-12: #12121233;
+  --shadow-dark-16: #12121242;
+  --shadow-dark-24: #12121266;
+
+  --shadow-light-00: #00000033;
+  --shadow-light-08: #00000033;
+  --shadow-light-12: #00000033;
+  --shadow-light-16: #00000033;
+  --shadow-light-24: #00000033;
+
+  /* Effects Shadows */
+  --shadow-01: 0 1px 1px 0 #00000024;
+  --shadow-02: 0 2px 2px 0 #00000024;
+  --shadow-04: 0 4px 4px 0 #00000024;
+  --shadow-08: 0 8px 8px 0 #00000024;
+  --shadow-12: 0 12px 12px 0 #00000024;
+  --shadow-16: 0 16px 16px 0 #00000024;
+  --shadow-24: 0 24px 24px 0 #00000024;
+}
+
+/* Dark Mode Variables */
+.dark {
+  --background: #121212;
+  /* Add other dark mode specific variables here as needed */
+  --foreground: #ffffff;
+}
+
+/* Base styles - Only for HTML elements */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 0 0% 100%;
+  }
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-semibold text-grayscale-100;
+  }
+  a {
+    @apply text-link hover:underline;
+  }
+}
+
+/* Import fonts if needed */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
