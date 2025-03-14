@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
-import { Star } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/Button"
 import { useReviews } from "@/features/product/hooks/useReviews"
-import { CommentList } from "./shared/CommentList"
 import { cn } from "@/utils/helpers"
+import { Star } from "lucide-react"
+import { useState } from "react"
+import { CommentList } from "./shared/CommentList"
 
 interface ProductReviewsProps {
   productId: string
@@ -18,7 +18,9 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
 
   const totalReviews = reviews.length
   const averageRating =
-    reviews.length > 0 ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length : 0
+    reviews.length > 0
+      ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length
+      : 0
 
   // Calculate rating distribution
   const ratingCounts = Array.from({ length: 5 }, (_, i) => {
@@ -26,7 +28,9 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
     return reviews.filter((review) => review.rating === rating).length
   })
 
-  const filteredReviews = selectedFilter ? reviews.filter((review) => review.rating === selectedFilter) : reviews
+  const filteredReviews = selectedFilter
+    ? reviews.filter((review) => review.rating === selectedFilter)
+    : reviews
 
   return (
     <div className="space-y-8">
@@ -62,14 +66,19 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
                         key={idx}
                         className={cn(
                           "h-4 w-4",
-                          idx < rating ? "fill-warning-5 text-warning-5" : "fill-gray-200 text-gray-200",
+                          idx < rating
+                            ? "fill-warning-5 text-warning-5"
+                            : "fill-gray-200 text-gray-200"
                         )}
                       />
                     ))}
                   </div>
                 </div>
                 <div className="flex-1 h-2 bg-gray-100 rounded-full">
-                  <div className="h-full bg-warning-5 rounded-full" style={{ width: `${percentage}%` }} />
+                  <div
+                    className="h-full bg-warning-5 rounded-full"
+                    style={{ width: `${percentage}%` }}
+                  />
                 </div>
                 <span className="w-8 text-right text-sm text-gray-500">{count}</span>
               </div>
@@ -90,7 +99,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
                 "px-4 py-1.5 rounded-full text-sm transition-colors",
                 selectedFilter === stars
                   ? "bg-primary-5 text-white"
-                  : "bg-white text-gray-600 border border-gray-200 hover:border-primary-5",
+                  : "bg-white text-gray-600 border border-gray-200 hover:border-primary-5"
               )}
             >
               {stars} sao
@@ -104,4 +113,3 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
     </div>
   )
 }
-

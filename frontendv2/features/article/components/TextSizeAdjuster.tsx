@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/Button"
+import { useEffect, useState } from "react"
 
 type TextSize = "default" | "large"
 
@@ -74,4 +74,3 @@ export default function TextSizeAdjuster({ className = "" }: TextSizeAdjusterPro
     </div>
   )
 }
-

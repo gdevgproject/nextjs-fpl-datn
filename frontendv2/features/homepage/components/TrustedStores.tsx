@@ -1,10 +1,10 @@
 "use client"
 
-import Image from "next/image"
-import { Swiper, SwiperSlide } from "swiper/react"
-import { Navigation } from "swiper/modules"
-import { Star, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/Button"
+import { ChevronRight, Star } from "lucide-react"
+import Image from "next/image"
+import { Navigation } from "swiper/modules"
+import { Swiper, SwiperSlide } from "swiper/react"
 
 // Import Swiper styles
 import "swiper/css"
@@ -72,7 +72,10 @@ export default function TrustedStores() {
   return (
     <div className="space-y-4 sm:space-y-6 md:space-y-8">
       {/* Trusted Stores Section */}
-      <section className="rounded-lg bg-primary-5 p-3 sm:p-4 md:p-6" aria-labelledby="trusted-stores-heading">
+      <section
+        className="rounded-lg bg-primary-5 p-3 sm:p-4 md:p-6"
+        aria-labelledby="trusted-stores-heading"
+      >
         <header className="mb-3 sm:mb-4 md:mb-6">
           <div className="mb-2 sm:mb-3 md:mb-4 flex items-center justify-between">
             <h2 id="trusted-stores-heading" className="text-lg sm:text-xl font-bold text-white">
@@ -134,11 +137,20 @@ export default function TrustedStores() {
                   aria-hidden="true"
                 />
                 <div>
-                  <h3 className="text-sm sm:text-base font-medium text-grayscale-90">{store.name}</h3>
+                  <h3 className="text-sm sm:text-base font-medium text-grayscale-90">
+                    {store.name}
+                  </h3>
                   <div className="flex items-center gap-1">
-                    <Star className="h-3 w-3 sm:h-4 sm:w-4 fill-warning-5 text-warning-5" aria-hidden="true" />
-                    <span className="text-xs sm:text-sm font-medium text-grayscale-90">{store.rating}</span>
-                    <span className="text-[10px] sm:text-sm text-grayscale-50">({store.reviews} đánh giá)</span>
+                    <Star
+                      className="h-3 w-3 sm:h-4 sm:w-4 fill-warning-5 text-warning-5"
+                      aria-hidden="true"
+                    />
+                    <span className="text-xs sm:text-sm font-medium text-grayscale-90">
+                      {store.rating}
+                    </span>
+                    <span className="text-[10px] sm:text-sm text-grayscale-50">
+                      ({store.reviews} đánh giá)
+                    </span>
                   </div>
                 </div>
               </article>
@@ -166,8 +178,12 @@ export default function TrustedStores() {
                 />
               </div>
               <div>
-                <h3 className="text-xs sm:text-sm md:text-base font-medium text-grayscale-90">{benefit.title}</h3>
-                <p className="text-[10px] sm:text-xs md:text-sm text-grayscale-50">{benefit.description}</p>
+                <h3 className="text-xs sm:text-sm md:text-base font-medium text-grayscale-90">
+                  {benefit.title}
+                </h3>
+                <p className="text-[10px] sm:text-xs md:text-sm text-grayscale-50">
+                  {benefit.description}
+                </p>
               </div>
             </li>
           ))}
@@ -176,4 +192,3 @@ export default function TrustedStores() {
     </div>
   )
 }
-

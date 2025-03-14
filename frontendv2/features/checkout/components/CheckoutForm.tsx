@@ -1,16 +1,29 @@
 "use client"
 
+import { Button } from "@/components/ui/Button"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/Input"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import type { CheckoutFormData } from "../types/checkoutTypes"
 
 const formSchema = z.object({
@@ -265,7 +278,10 @@ export function CheckoutForm({ onSubmit, isLoading }: CheckoutFormProps) {
                   <FormItem>
                     <FormLabel>Ghi chú (không bắt buộc)</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="VD: Hãy gọi cho tôi 15 phút trước khi giao hàng" {...field} />
+                      <Textarea
+                        placeholder="VD: Hãy gọi cho tôi 15 phút trước khi giao hàng"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -298,13 +314,19 @@ export function CheckoutForm({ onSubmit, isLoading }: CheckoutFormProps) {
             control={form.control}
             name="paymentMethod"
             render={({ field }) => (
-              <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="space-y-4">
+              <RadioGroup
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+                className="space-y-4"
+              >
                 <FormItem>
                   <FormControl>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="cod" id="cod" />
                       <label htmlFor="cod" className="flex items-center gap-2">
-                        <span className="w-8 h-8 flex items-center justify-center bg-blue-100 rounded">💵</span>
+                        <span className="w-8 h-8 flex items-center justify-center bg-blue-100 rounded">
+                          💵
+                        </span>
                         <span>Thanh toán tiền mặt khi nhận hàng</span>
                       </label>
                     </div>
@@ -315,7 +337,9 @@ export function CheckoutForm({ onSubmit, isLoading }: CheckoutFormProps) {
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="qr" id="qr" />
                       <label htmlFor="qr" className="flex items-center gap-2">
-                        <span className="w-8 h-8 flex items-center justify-center bg-blue-100 rounded">📱</span>
+                        <span className="w-8 h-8 flex items-center justify-center bg-blue-100 rounded">
+                          📱
+                        </span>
                         <span>Thanh toán bằng chuyển khoản (QR Code)</span>
                       </label>
                     </div>
@@ -326,7 +350,9 @@ export function CheckoutForm({ onSubmit, isLoading }: CheckoutFormProps) {
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="bank" id="bank" />
                       <label htmlFor="bank" className="flex items-center gap-2">
-                        <span className="w-8 h-8 flex items-center justify-center bg-blue-100 rounded">🏦</span>
+                        <span className="w-8 h-8 flex items-center justify-center bg-blue-100 rounded">
+                          🏦
+                        </span>
                         <span>Thanh toán qua ngân hàng</span>
                       </label>
                     </div>
@@ -337,7 +363,9 @@ export function CheckoutForm({ onSubmit, isLoading }: CheckoutFormProps) {
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="card" id="card" />
                       <label htmlFor="card" className="flex items-center gap-2">
-                        <span className="w-8 h-8 flex items-center justify-center bg-blue-100 rounded">💳</span>
+                        <span className="w-8 h-8 flex items-center justify-center bg-blue-100 rounded">
+                          💳
+                        </span>
                         <span>Thanh toán bằng thẻ</span>
                       </label>
                     </div>
@@ -388,4 +416,3 @@ export function CheckoutForm({ onSubmit, isLoading }: CheckoutFormProps) {
     </Form>
   )
 }
-

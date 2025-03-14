@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { ChevronRight, HelpCircle, Coins } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/Button"
 import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { formatPrice } from "@/utils/format"
-import { PromotionModal } from "./PromotionModal"
+import { ChevronRight, Coins, HelpCircle } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { calculateVoucherDiscount, validateVoucher } from "../mocks/voucherMockData"
 import type { CartItem } from "../types"
-import { validateVoucher, calculateVoucherDiscount } from "../mocks/voucherMockData"
+import { PromotionModal } from "./PromotionModal"
 
 interface CartSummaryProps {
   items: CartItem[]
@@ -151,19 +151,28 @@ export function CartSummary({ items, selectedItems }: CartSummaryProps) {
           <span>Điểm thưởng</span>
           <span className="text-yellow-500">{summary.rewardPoints} điểm</span>
         </div>
-        <div className="text-sm text-orange-500">Tiết kiệm được {formatPrice(summary.savedAmount)}</div>
+        <div className="text-sm text-orange-500">
+          Tiết kiệm được {formatPrice(summary.savedAmount)}
+        </div>
       </div>
 
       <div className="pt-2 border-t">
         <div className="flex justify-between items-center mb-4">
           <span>Thành tiền</span>
           <div className="text-right">
-            <span className="text-gray-500 line-through text-sm">{formatPrice(summary.subtotal)}</span>
+            <span className="text-gray-500 line-through text-sm">
+              {formatPrice(summary.subtotal)}
+            </span>
             <div className="text-blue-600 text-xl font-bold">{formatPrice(summary.total)}</div>
           </div>
         </div>
 
-        <Button className="w-full" size="lg" onClick={handleCheckout} disabled={selectedItems.length === 0}>
+        <Button
+          className="w-full"
+          size="lg"
+          onClick={handleCheckout}
+          disabled={selectedItems.length === 0}
+        >
           Mua hàng
         </Button>
 
@@ -188,4 +197,3 @@ export function CartSummary({ items, selectedItems }: CartSummaryProps) {
     </div>
   )
 }
-

@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
-import { Minus, Plus, Share2, Gift, Star, Percent, RotateCcw, Truck, Pill } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { useCart } from "@/features/cart/hooks/useCart"
-import { cn } from "@/utils/helpers"
 import type { Product, ProductVariant } from "@/features/product/types/productTypes"
+import { cn } from "@/utils/helpers"
+import { Gift, Minus, Percent, Pill, Plus, RotateCcw, Share2, Star, Truck } from "lucide-react"
+import { useState } from "react"
 
 interface ProductInfoProps {
   product: Product
@@ -13,7 +13,9 @@ interface ProductInfoProps {
 
 export default function ProductInfo({ product }: ProductInfoProps) {
   const [quantity, setQuantity] = useState(1)
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant>(product.currentVariant || product.variants[0])
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant>(
+    product.currentVariant || product.variants[0]
+  )
   const { addItem, isLoading } = useCart()
 
   const handleQuantityChange = (value: number) => {
@@ -72,11 +74,15 @@ export default function ProductInfo({ product }: ProductInfoProps) {
       {/* Price */}
       <div className="flex items-baseline gap-3">
         <div className="flex items-baseline gap-2">
-          <span className="text-[28px] font-bold text-[#0D6EFD]">{selectedVariant.price.toLocaleString()}đ</span>
+          <span className="text-[28px] font-bold text-[#0D6EFD]">
+            {selectedVariant.price.toLocaleString()}đ
+          </span>
           <span className="text-sm text-[#6B7280]">/ {selectedVariant.name}</span>
         </div>
         {selectedVariant.originalPrice && (
-          <span className="text-sm text-[#9CA3AF] line-through">{selectedVariant.originalPrice.toLocaleString()}đ</span>
+          <span className="text-sm text-[#9CA3AF] line-through">
+            {selectedVariant.originalPrice.toLocaleString()}đ
+          </span>
         )}
       </div>
 
@@ -92,7 +98,7 @@ export default function ProductInfo({ product }: ProductInfoProps) {
                 "h-9 rounded-full px-6 text-sm font-medium transition-all",
                 selectedVariant.id === variant.id
                   ? "bg-[#0D6EFD] text-white"
-                  : "border border-[#E5E7EB] bg-white text-[#6B7280] hover:border-[#0D6EFD]",
+                  : "border border-[#E5E7EB] bg-white text-[#6B7280] hover:border-[#0D6EFD]"
               )}
             >
               {variant.name}
@@ -234,4 +240,3 @@ export default function ProductInfo({ product }: ProductInfoProps) {
     </div>
   )
 }
-

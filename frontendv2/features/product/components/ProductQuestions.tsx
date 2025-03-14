@@ -2,10 +2,10 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { ChevronDown, MessageCircle, Plus } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { cn } from "@/utils/helpers"
+import { ChevronDown, MessageCircle, Plus } from "lucide-react"
+import { useState } from "react"
 import { useProductQuestions } from "../hooks/useProductQuestions"
 
 interface ProductQuestionsProps {
@@ -60,7 +60,10 @@ export default function ProductQuestions({ productId }: ProductQuestionsProps) {
         {showAskForm && (
           <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-lg bg-grayscale-5 p-4">
             <div>
-              <label htmlFor="question" className="mb-1 block text-sm font-medium text-grayscale-90">
+              <label
+                htmlFor="question"
+                className="mb-1 block text-sm font-medium text-grayscale-90"
+              >
                 Câu hỏi của bạn <span className="text-error-5">*</span>
               </label>
               <textarea
@@ -114,7 +117,11 @@ export default function ProductQuestions({ productId }: ProductQuestionsProps) {
               >
                 Hủy
               </Button>
-              <Button type="submit" disabled={isSubmitting} className="bg-primary-5 text-white hover:bg-primary-20">
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-primary-5 text-white hover:bg-primary-20"
+              >
                 {isSubmitting ? "Đang gửi..." : "Gửi câu hỏi"}
               </Button>
             </div>
@@ -135,14 +142,15 @@ export default function ProductQuestions({ productId }: ProductQuestionsProps) {
                   <div>
                     <p className="font-medium text-grayscale-90">{question.question}</p>
                     <p className="mt-1 text-sm text-grayscale-50">
-                      Hỏi bởi: {question.author.name} • {new Date(question.createdAt).toLocaleDateString("vi-VN")}
+                      Hỏi bởi: {question.author.name} •{" "}
+                      {new Date(question.createdAt).toLocaleDateString("vi-VN")}
                     </p>
                   </div>
                 </div>
                 <ChevronDown
                   className={cn(
                     "h-5 w-5 flex-shrink-0 text-grayscale-40 transition-transform",
-                    openId === question.id && "rotate-180",
+                    openId === question.id && "rotate-180"
                   )}
                 />
               </button>
@@ -150,7 +158,8 @@ export default function ProductQuestions({ productId }: ProductQuestionsProps) {
                 <div className="mt-4 ml-8 rounded-lg bg-grayscale-5 p-4">
                   <p className="text-sm text-grayscale-90">{question.answer}</p>
                   <p className="mt-2 text-xs text-grayscale-50">
-                    Trả lời bởi: Dược sĩ Elena • {new Date(question.createdAt).toLocaleDateString("vi-VN")}
+                    Trả lời bởi: Dược sĩ Elena •{" "}
+                    {new Date(question.createdAt).toLocaleDateString("vi-VN")}
                   </p>
                 </div>
               )}
@@ -166,4 +175,3 @@ export default function ProductQuestions({ productId }: ProductQuestionsProps) {
     </div>
   )
 }
-

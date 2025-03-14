@@ -1,11 +1,11 @@
 "use client"
 
-import Image from "next/image"
-import Link from "next/link"
-import { Star, ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { useCart } from "@/features/cart/hooks/useCart"
 import type { Product } from "@/features/product/types/productTypes"
+import { ShoppingCart, Star } from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
 
 interface ProductCardProps {
   product: Product
@@ -71,14 +71,22 @@ export default function ProductCard({ product }: ProductCardProps) {
         {/* Price */}
         <div className="flex items-baseline gap-1">
           <span className="text-base font-bold text-primary-5">{price?.toLocaleString()}đ</span>
-          <span className="text-xs text-grayscale-50">/{product.currentVariant?.name || product.unit || "Hộp"}</span>
+          <span className="text-xs text-grayscale-50">
+            /{product.currentVariant?.name || product.unit || "Hộp"}
+          </span>
         </div>
         {originalPrice && price < originalPrice && (
-          <div className="text-xs text-grayscale-40 line-through">{originalPrice.toLocaleString()}đ</div>
+          <div className="text-xs text-grayscale-40 line-through">
+            {originalPrice.toLocaleString()}đ
+          </div>
         )}
 
         {/* Add to Cart Button */}
-        <Button onClick={handleAddToCart} className="mt-2 w-full bg-primary-5 text-white hover:bg-primary-20" size="sm">
+        <Button
+          onClick={handleAddToCart}
+          className="mt-2 w-full bg-primary-5 text-white hover:bg-primary-20"
+          size="sm"
+        >
           <ShoppingCart className="mr-1 h-4 w-4" />
           Thêm vào giỏ
         </Button>
@@ -86,4 +94,3 @@ export default function ProductCard({ product }: ProductCardProps) {
     </div>
   )
 }
-

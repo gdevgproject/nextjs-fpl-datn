@@ -2,9 +2,9 @@
 
 import type React from "react"
 
-import { useState } from "react"
 import { Button } from "@/components/ui/Button"
 import { Check } from "lucide-react"
+import { useState } from "react"
 
 interface ArticleCommentProps {
   articleId: string
@@ -45,9 +45,13 @@ export default function ArticleComment({ articleId }: ArticleCommentProps) {
           </div>
           <h3 className="mb-2 text-lg font-semibold text-grayscale-90">Đã kiểm duyệt nội dung</h3>
           <p className="text-grayscale-60">
-            Cảm ơn bạn đã để lại bình luận. Bình luận của bạn sẽ được hiển thị sau khi được kiểm duyệt.
+            Cảm ơn bạn đã để lại bình luận. Bình luận của bạn sẽ được hiển thị sau khi được kiểm
+            duyệt.
           </p>
-          <Button onClick={() => setIsSubmitted(false)} className="mt-4 bg-primary-5 text-white hover:bg-primary-20">
+          <Button
+            onClick={() => setIsSubmitted(false)}
+            className="mt-4 bg-primary-5 text-white hover:bg-primary-20"
+          >
             Thêm bình luận khác
           </Button>
         </div>
@@ -99,7 +103,11 @@ export default function ArticleComment({ articleId }: ArticleCommentProps) {
             />
           </div>
 
-          <Button type="submit" disabled={isSubmitting} className="bg-primary-5 text-white hover:bg-primary-20">
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="bg-primary-5 text-white hover:bg-primary-20"
+          >
             {isSubmitting ? "Đang gửi..." : "Gửi bình luận"}
           </Button>
         </form>
@@ -117,9 +125,10 @@ export default function ArticleComment({ articleId }: ArticleCommentProps) {
           </div>
         </div>
 
-        <p className="py-4 text-center text-grayscale-60">Chưa có bình luận nào. Hãy là người đầu tiên bình luận!</p>
+        <p className="py-4 text-center text-grayscale-60">
+          Chưa có bình luận nào. Hãy là người đầu tiên bình luận!
+        </p>
       </div>
     </div>
   )
 }
-

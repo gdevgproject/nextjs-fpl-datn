@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { Button } from "@/components/ui/Button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Input } from "@/components/ui/Input"
 import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Clock } from "lucide-react"
+import { useState } from "react"
 import { vouchers } from "../mocks/voucherMockData"
 
 interface PromotionModalProps {
@@ -28,7 +28,9 @@ export function PromotionModal({ isOpen, onClose, onApply }: PromotionModalProps
   }
 
   const formatTimeLeft = (expiryDate: string) => {
-    const hours = Math.floor((new Date(expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60))
+    const hours = Math.floor(
+      (new Date(expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60)
+    )
     if (hours < 24) {
       return `${hours}h`
     }
@@ -40,7 +42,9 @@ export function PromotionModal({ isOpen, onClose, onApply }: PromotionModalProps
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="text-center text-lg font-semibold">Ưu đãi dành cho bạn</DialogTitle>
+          <DialogTitle className="text-center text-lg font-semibold">
+            Ưu đãi dành cho bạn
+          </DialogTitle>
         </DialogHeader>
 
         <div className="mt-4">
@@ -102,7 +106,9 @@ export function PromotionModal({ isOpen, onClose, onApply }: PromotionModalProps
                 </svg>
               </div>
               <p className="text-gray-600">Bạn hiện tại chưa có mã ưu đãi nào</p>
-              <p className="text-sm text-gray-500 mt-1">Nhập mã giảm giá để được áp dụng những ưu đãi</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Nhập mã giảm giá để được áp dụng những ưu đãi
+              </p>
             </div>
           )}
         </div>
@@ -110,4 +116,3 @@ export function PromotionModal({ isOpen, onClose, onApply }: PromotionModalProps
     </Dialog>
   )
 }
-

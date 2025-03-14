@@ -1,6 +1,6 @@
-import Image from "next/image"
-import { ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/Button"
+import { ChevronRight } from "lucide-react"
+import Image from "next/image"
 
 const coaches = [
   {
@@ -39,7 +39,10 @@ export default function CoachExperts() {
         <p className="mb-3 sm:mb-4 text-sm sm:text-base text-white/90">
           Danh sách các Coach tư vấn chăm sóc sức khỏe của Elela
         </p>
-        <Button variant="secondary" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-1 sm:py-2 h-auto">
+        <Button
+          variant="secondary"
+          className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-1 sm:py-2 h-auto"
+        >
           Tìm hiểu thêm
           <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" aria-hidden="true" />
         </Button>
@@ -58,8 +61,12 @@ export default function CoachExperts() {
               />
               <div>
                 <p className="text-[10px] sm:text-xs md:text-sm text-grayscale-60">{coach.title}</p>
-                <h3 className="text-sm sm:text-base md:text-lg font-semibold text-grayscale-90">{coach.name}</h3>
-                <p className="text-[10px] sm:text-xs md:text-sm text-grayscale-50">{coach.experience}</p>
+                <h3 className="text-sm sm:text-base md:text-lg font-semibold text-grayscale-90">
+                  {coach.name}
+                </h3>
+                <p className="text-[10px] sm:text-xs md:text-sm text-grayscale-50">
+                  {coach.experience}
+                </p>
               </div>
             </article>
           </li>
@@ -68,4 +75,3 @@ export default function CoachExperts() {
     </section>
   )
 }
-

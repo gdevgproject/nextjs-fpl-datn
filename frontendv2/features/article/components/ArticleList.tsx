@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import ArticleCard from "./ArticleCard"
 import { Button } from "@/components/ui/Button"
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import { useState } from "react"
 import type { Article } from "../types/articleTypes"
+import ArticleCard from "./ArticleCard"
 
 interface ArticleListProps {
   articles: Article[]
@@ -13,7 +13,12 @@ interface ArticleListProps {
   onPageChange?: (page: number) => void
 }
 
-export default function ArticleList({ articles, totalPages = 1, currentPage = 1, onPageChange }: ArticleListProps) {
+export default function ArticleList({
+  articles,
+  totalPages = 1,
+  currentPage = 1,
+  onPageChange,
+}: ArticleListProps) {
   const [page, setPage] = useState(currentPage)
 
   const handlePageChange = (newPage: number) => {
@@ -84,4 +89,3 @@ export default function ArticleList({ articles, totalPages = 1, currentPage = 1,
     </div>
   )
 }
-

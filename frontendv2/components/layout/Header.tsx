@@ -1,15 +1,15 @@
 "use client"
 
-import Link from "next/link"
-import Image from "next/image"
-import { ShoppingCart, Phone, Download, User, Menu, X, Search } from "lucide-react"
 import { Button } from "@/components/ui/Button"
-import SearchBar from "@/features/search/components/SearchBar"
-import MegaMenu from "@/features/menu/components/MegaMenu"
 import { CartDropdown } from "@/features/cart/components/CartDropdown"
-import { useState, useEffect } from "react"
-import { useMediaQuery } from "@/hooks/useMediaQuery"
 import { useCart } from "@/features/cart/hooks/useCart"
+import MegaMenu from "@/features/menu/components/MegaMenu"
+import SearchBar from "@/features/search/components/SearchBar"
+import { useMediaQuery } from "@/hooks/useMediaQuery"
+import { Download, Menu, Phone, Search, ShoppingCart, User, X } from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
+import { useEffect, useState } from "react"
 
 const popularKeywords = [
   { label: "Thuốc nhỏ mắt", href: "#" },
@@ -211,4 +211,3 @@ export function Header() {
     </header>
   )
 }
-

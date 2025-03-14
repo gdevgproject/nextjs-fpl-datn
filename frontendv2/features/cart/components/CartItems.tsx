@@ -1,14 +1,20 @@
 "use client"
 
-import Image from "next/image"
-import { Minus, Plus, Trash2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/Button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { formatPrice } from "@/utils/format"
-import { DeleteConfirmDialog } from "./DeleteConfirmDialog"
+import { Minus, Plus, Trash2 } from "lucide-react"
+import Image from "next/image"
 import { useState } from "react"
 import type { CartItem } from "../types"
+import { DeleteConfirmDialog } from "./DeleteConfirmDialog"
 
 interface CartItemsProps {
   items: CartItem[]
@@ -87,9 +93,13 @@ export function CartItems({
             <div className="flex-1">
               <h3 className="font-medium">{item.name}</h3>
               <div className="mt-2 flex items-center gap-2">
-                <span className="text-lg font-semibold text-blue-600">{formatPrice(item.price)}</span>
+                <span className="text-lg font-semibold text-blue-600">
+                  {formatPrice(item.price)}
+                </span>
                 {item.originalPrice && item.originalPrice > item.price && (
-                  <span className="text-sm text-gray-500 line-through">{formatPrice(item.originalPrice)}</span>
+                  <span className="text-sm text-gray-500 line-through">
+                    {formatPrice(item.originalPrice)}
+                  </span>
                 )}
               </div>
 
@@ -176,4 +186,3 @@ export function CartItems({
     </div>
   )
 }
-

@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
-import Image from "next/image"
-import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { cn } from "@/utils/helpers"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import dynamic from "next/dynamic"
+import Image from "next/image"
+import { useState } from "react"
 
 // Dynamically import the modal to avoid SSR issues
 const ImageGalleryModal = dynamic(() => import("./ImageGalleryModal"), {
@@ -85,7 +85,7 @@ export default function ProductGallery({ images }: ProductGalleryProps) {
               onClick={() => setCurrentImage(index)}
               className={cn(
                 "relative aspect-square rounded-lg overflow-hidden",
-                index === currentImage ? "ring-2 ring-primary-5" : "ring-1 ring-grayscale-20",
+                index === currentImage ? "ring-2 ring-primary-5" : "ring-1 ring-grayscale-20"
               )}
             >
               <Image
@@ -129,4 +129,3 @@ export default function ProductGallery({ images }: ProductGalleryProps) {
     </>
   )
 }
-

@@ -1,10 +1,10 @@
 "use client"
 
-import Image from "next/image"
-import Link from "next/link"
-import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { useCart } from "@/features/cart/hooks/useCart"
+import { Trash2 } from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
 
 export function CartDropdown() {
   const { items, removeItem, totalItems } = useCart()
@@ -22,12 +22,21 @@ export function CartDropdown() {
               {items.map((item) => (
                 <li key={item.id} className="p-4 flex gap-3 items-center">
                   <div className="relative h-16 w-16 flex-shrink-0 rounded-md overflow-hidden">
-                    <Image src={item.image || "/placeholder.svg"} alt={item.name} fill className="object-contain" />
+                    <Image
+                      src={item.image || "/placeholder.svg"}
+                      alt={item.name}
+                      fill
+                      className="object-contain"
+                    />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-medium text-grayscale-90 line-clamp-2">{item.name}</h4>
+                    <h4 className="text-sm font-medium text-grayscale-90 line-clamp-2">
+                      {item.name}
+                    </h4>
                     <div className="mt-1 flex items-baseline gap-2">
-                      <span className="text-sm font-semibold text-[#0D6EFD]">{item.price.toLocaleString()}đ</span>
+                      <span className="text-sm font-semibold text-[#0D6EFD]">
+                        {item.price.toLocaleString()}đ
+                      </span>
                       {item.originalPrice && (
                         <span className="text-xs text-grayscale-50 line-through">
                           {item.originalPrice.toLocaleString()}đ
@@ -54,7 +63,9 @@ export function CartDropdown() {
             <div className="flex justify-between items-center">
               <span className="text-sm text-grayscale-60">{totalItems} sản phẩm</span>
               <Link href="/cart">
-                <Button className="bg-[#0D6EFD] hover:bg-[#0D6EFD]/90 rounded-[100px] px-8">Xem giỏ hàng</Button>
+                <Button className="bg-[#0D6EFD] hover:bg-[#0D6EFD]/90 rounded-[100px] px-8">
+                  Xem giỏ hàng
+                </Button>
               </Link>
             </div>
           </div>
@@ -62,7 +73,12 @@ export function CartDropdown() {
       ) : (
         <div className="p-8 text-center">
           <div className="mx-auto w-16 h-16 text-grayscale-30 mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -73,11 +89,12 @@ export function CartDropdown() {
           </div>
           <p className="text-grayscale-50 mb-4">Giỏ hàng của bạn đang trống</p>
           <Link href="/products">
-            <Button className="bg-[#0D6EFD] hover:bg-[#0D6EFD]/90 rounded-[100px]">Mua sắm ngay</Button>
+            <Button className="bg-[#0D6EFD] hover:bg-[#0D6EFD]/90 rounded-[100px]">
+              Mua sắm ngay
+            </Button>
           </Link>
         </div>
       )}
     </div>
   )
 }
-

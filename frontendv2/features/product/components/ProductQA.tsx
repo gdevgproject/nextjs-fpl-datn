@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { CommentList, type Comment } from "./shared/CommentList"
+import { Button } from "@/components/ui/Button"
 import { cn } from "@/utils/helpers"
+import { useState } from "react"
+import { CommentList, type Comment } from "./shared/CommentList"
 
 interface ProductQAProps {
   productId: string
@@ -88,7 +88,7 @@ export default function ProductQA({ productId }: ProductQAProps) {
                 "px-4 py-1.5 rounded-full text-sm transition-colors",
                 selectedFilter === filter.id
                   ? "bg-primary-5 text-white"
-                  : "bg-white text-gray-600 border border-gray-200 hover:border-primary-5",
+                  : "bg-white text-gray-600 border border-gray-200 hover:border-primary-5"
               )}
             >
               {filter.label}
@@ -102,4 +102,3 @@ export default function ProductQA({ productId }: ProductQAProps) {
     </div>
   )
 }
-

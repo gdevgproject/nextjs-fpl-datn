@@ -1,19 +1,23 @@
+import { Breadcrumb } from "@/components/ui/Breadcrumb"
+import { Button } from "@/components/ui/Button"
+import LoadingSpinner from "@/components/ui/LoadingSpinner"
+import ArticleContent from "@/features/article/components/ArticleContent"
+import RelatedArticles from "@/features/article/components/RelatedArticles"
+import TextSizeAdjuster from "@/features/article/components/TextSizeAdjuster"
+import { articleService } from "@/features/article/services/articleServiceFactory"
+import { formatDate } from "@/utils/format"
+import { generateMetadata as generateSeoMetadata } from "@/utils/seo"
+import { Check, Facebook, Quote } from "lucide-react"
 import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
 import { Suspense } from "react"
-import { Facebook, Check, Quote } from "lucide-react"
-import { Breadcrumb } from "@/components/ui/Breadcrumb"
-import LoadingSpinner from "@/components/ui/LoadingSpinner"
-import { articleService } from "@/features/article/services/articleServiceFactory"
-import { formatDate } from "@/utils/format"
-import { Button } from "@/components/ui/Button"
-import RelatedArticles from "@/features/article/components/RelatedArticles"
-import { generateMetadata as generateSeoMetadata } from "@/utils/seo"
-import TextSizeAdjuster from "@/features/article/components/TextSizeAdjuster"
-import ArticleContent from "@/features/article/components/ArticleContent"
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug: string }
+}): Promise<Metadata> {
   let seoData = {
     title: "Bài Viết - Góc Sức Khỏe",
     description: "Bài viết về sức khỏe và dinh dưỡng từ Elena Pharmacy",
@@ -64,7 +68,10 @@ export default async function ArticleDetailPage({ params }: { params: { slug: st
           <article itemScope itemType="http://schema.org/Article">
             {/* Row 1: Article Title */}
             <header className="mb-6 mt-6">
-              <h1 itemProp="headline" className="text-2xl sm:text-3xl font-bold text-grayscale-90 leading-tight">
+              <h1
+                itemProp="headline"
+                className="text-2xl sm:text-3xl font-bold text-grayscale-90 leading-tight"
+              >
                 {article.title}
               </h1>
               <meta itemProp="author" content={article.author.name} />
@@ -138,7 +145,9 @@ export default async function ArticleDetailPage({ params }: { params: { slug: st
                 />
                 <div>
                   <h3 className="font-medium text-grayscale-90">{article.author.name}</h3>
-                  <p className="text-sm text-grayscale-60">{article.author.role || "Biên tập viên"}</p>
+                  <p className="text-sm text-grayscale-60">
+                    {article.author.role || "Biên tập viên"}
+                  </p>
                 </div>
               </div>
 
@@ -148,7 +157,8 @@ export default async function ArticleDetailPage({ params }: { params: { slug: st
                   <span className="text-success-5">Đã kiểm duyệt nội dung</span>
                 </div>
                 <p className="text-sm text-grayscale-60">
-                  {article.author.experience || "Hơn 5 năm kinh nghiệm trong lĩnh vực quản lý nội dung số."}
+                  {article.author.experience ||
+                    "Hơn 5 năm kinh nghiệm trong lĩnh vực quản lý nội dung số."}
                 </p>
               </div>
             </footer>
@@ -186,4 +196,3 @@ export default async function ArticleDetailPage({ params }: { params: { slug: st
     </div>
   )
 }
-

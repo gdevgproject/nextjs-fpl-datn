@@ -1,5 +1,5 @@
-import Image from "next/image"
 import { Button } from "@/components/ui/Button"
+import Image from "next/image"
 
 const trustedShops = [
   {
@@ -62,4 +62,3 @@ export default function TrustedShopsShowcase() {
     </section>
   )
 }
-

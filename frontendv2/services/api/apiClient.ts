@@ -1,12 +1,21 @@
 import axios, { type AxiosInstance } from "axios"
 
-// Thay thế các giá trị hardcode bằng biến môi trường
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.trixgo.com"
-const DEFAULT_TIMEOUT = Number.parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || "30000") // 30 giây
-const CLOUDFRONT_URL = process.env.NEXT_PUBLIC_CLOUDFRONT_URL || "https://dntdurzwr12tp.cloudfront.net"
+// Sử dụng giá trị mặc định an toàn hoặc để trống
+const API_URL = process.env.NEXT_PUBLIC_API_URL || ""
+const DEFAULT_TIMEOUT = Number.parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || "30000") // 30 giây là giá trị kỹ thuật thông thường
+const CLOUDFRONT_URL = process.env.NEXT_PUBLIC_CLOUDFRONT_URL || ""
 
 // Token mặc định cho các request không cần xác thực
-const DEFAULT_TOKEN = process.env.NEXT_PUBLIC_DEFAULT_TOKEN || "" // Không nên có token mặc định trong code
+const DEFAULT_TOKEN = process.env.NEXT_PUBLIC_DEFAULT_TOKEN || ""
+
+// Kiểm tra và cảnh báo khi thiếu biến môi trường quan trọng
+if (!process.env.NEXT_PUBLIC_API_URL) {
+  console.warn("Missing NEXT_PUBLIC_API_URL environment variable. API calls may fail.")
+}
+
+if (!process.env.NEXT_PUBLIC_CLOUDFRONT_URL) {
+  console.warn("Missing NEXT_PUBLIC_CLOUDFRONT_URL environment variable. Media files may not load correctly.")
+}
 
 // Tham số chung
 export const DEFAULT_OPTION_SELLER = 1
@@ -68,6 +77,15 @@ class ApiClient {
         return Promise.reject(error)
       },
     )
+  }
+
+  // Kiểm tra URL hợp lệ trước khi sử dụng
+  private validateUrl(url: string | undefined): string {
+    if (!url || url.trim() === "") {
+      console.error("Invalid URL: URL is empty or undefined")
+      throw new Error("API URL is not configured properly")
+    }
+    return url
   }
 
   // Thiết lập token sau khi đăng nhập
@@ -168,9 +186,13 @@ class ApiClient {
     }
   }
 
-  // Helper cho URL file - Sử dụng biến môi trường CLOUDFRONT_URL
+  // Helper cho URL file - Kiểm tra URL hợp lệ trước khi sử dụng
   public getFileUrl(path: string): string {
     if (!path) return ""
+    if (!CLOUDFRONT_URL) {
+      console.warn("CLOUDFRONT_URL is not configured. Media files may not load correctly.")
+      return path
+    }
     return `${CLOUDFRONT_URL}${path}`
   }
 }
