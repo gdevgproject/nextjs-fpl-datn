@@ -35,9 +35,9 @@ export function Header() {
   }, [isMobile, mobileMenuOpen])
 
   return (
-    <header className="w-full bg-gradient-to-r from-primary-5 to-primary-40">
+    <header className="w-full bg-gradient-to-r from-primary-5 to-primary-40 ">
       {/* Actions Row */}
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-4 mt-8">
         <div className="flex gap-4 flex-col md:flex-row">
           {/* Main Content Column */}
           <div className="flex-1">
@@ -101,9 +101,9 @@ export function Header() {
                 <div className="hidden sm:block">
                   <Button
                     variant="secondary"
-                    className="flex items-center gap-2 rounded-full bg-white px-3 sm:px-6 text-blue-600 hover:bg-white/90"
+                    className="flex items-center gap-2 rounded-full bg-[#4173E3] px-3 sm:px-6 text-blue-600 hover:bg-white/90"
                   >
-                    <User className="h-5 w-5 text-blue-600" />
+                    <User className="h-5 w-5 bg-[#4173E3]" />
                     <span className="font-medium hidden sm:inline">Đăng Nhập</span>
                   </Button>
                 </div>
@@ -112,7 +112,7 @@ export function Header() {
                 <div className="relative group">
                   <Link
                     href="/cart"
-                    className="flex items-center gap-2 rounded-full bg-blue-600 px-3 sm:px-6 py-2 text-white hover:bg-blue-700 relative"
+                    className="flex items-center gap-2 rounded-full bg-[#4173E3] px-3 sm:px-6 py-2 text-white hover:bg-blue-700 relative"
                   >
                     <ShoppingCart className="h-5 w-5 text-white" />
                     <span className="font-medium hidden sm:inline">Giỏ Hàng</span>
@@ -152,17 +152,17 @@ export function Header() {
           </div>
 
           {/* QR Code Column - Hide on Mobile */}
-          <div className="hidden md:flex w-[220px] flex-shrink-0 flex-col items-center justify-center rounded-lg bg-error-30 px-4 py-3">
-            <div className="text-center text-white">
-              <div className="text-sm font-medium">- Quét Mã QR -</div>
-              <div className="text-base font-bold">Tặng Voucher 1tr</div>
+          <div className="hidden md:flex w-32 flex-shrink-0 flex-col items-center justify-center rounded-xl  bg-[#F37021] px-2 py-2 ">
+            <div className="text-center text-white ">
+              <div className="text-xs font-medium">- Quét Mã QR -</div>
+              <div className="text-xs font-bold">Tặng Voucher 1tr</div>
             </div>
-            <div className="mt-2 overflow-hidden rounded-lg bg-white p-2">
+            <div className="mt-2 flex flex-col items-center justify-center overflow-hidden rounded-lg bg-white p-[10px] gap-[10px]">
               <Image
-                src="/placeholder.svg?height=100&width=100"
+                src="/placeholder.svg?height=80&width=80"
                 alt="QR Code"
-                width={100}
-                height={100}
+                width={80}
+                height={80}
                 className="h-auto w-full"
               />
             </div>
