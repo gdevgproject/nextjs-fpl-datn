@@ -15,7 +15,11 @@ const FeatureShortcuts = dynamic(() => import("@/features/homepage/components/Fe
 
 const DealSlider = dynamic(() => import("@/features/homepage/components/DealSlider"), {
   ssr: true,
-  loading: () => <LoadingSpinner />,
+  loading: () => (
+    <div className="rounded-xl overflow-hidden bg-gradient-1 p-4 min-h-[200px] flex items-center justify-center">
+      <LoadingSpinner />
+    </div>
+  ),
 })
 
 const TrustedStores = dynamic(() => import("@/features/homepage/components/TrustedStores"), {
@@ -74,7 +78,13 @@ export default function HomePage() {
         <h2 id="deals-heading" className="sr-only">
           Ưu đãi hấp dẫn
         </h2>
-        <Suspense fallback={<LoadingSpinner />}>
+        <Suspense
+          fallback={
+            <div className="rounded-xl overflow-hidden bg-gradient-1 p-4 min-h-[200px] flex items-center justify-center">
+              <LoadingSpinner />
+            </div>
+          }
+        >
           <DealSlider />
         </Suspense>
       </section>
