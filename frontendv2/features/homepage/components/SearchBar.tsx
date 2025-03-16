@@ -1,10 +1,10 @@
 "use client"
 
-import { Button } from "@/components/ui/Button"
-import { useSearch } from "@/features/search/hooks/useSearch"
+import { useState, useRef, useEffect } from "react"
 import { Search, X } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
 import SearchSuggestions from "./SearchSuggestions"
+import { useSearch } from "@/features/search/hooks/useSearch"
+import { Button } from "@/components/ui/button"
 
 export default function SearchBar() {
   const [isFocused, setIsFocused] = useState(false)
@@ -63,3 +63,4 @@ export default function SearchBar() {
     </div>
   )
 }
+
