@@ -1,7 +1,7 @@
-import { Button } from "@/components/ui/Button"
-import { ChevronLeft } from "lucide-react"
-import Image from "next/image"
 import Link from "next/link"
+import Image from "next/image"
+import { ChevronLeft } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export function EmptyCart() {
   return (
@@ -38,3 +38,4 @@ export function EmptyCart() {
     </div>
   )
 }
+
