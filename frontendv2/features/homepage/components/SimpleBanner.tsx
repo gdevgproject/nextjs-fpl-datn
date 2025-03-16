@@ -2,20 +2,31 @@ import Image from "next/image"
 
 export default function SimpleBanner() {
   return (
-    <section className="relative w-full">
-      <div className="relative aspect-[16/5] sm:aspect-[16/5] w-full">
+    <section className="w-full bg-background">
+      {/* Desktop Banner */}
+      <div className="hidden md:block w-full">
         <Image
-          src="/placeholder.svg?height=400&width=1200"
-          alt="Chính bạn TOA SÁNG tặng quà ĐÓN TẾT"
-          fill
-          className="object-cover"
+          src="https://cdn.nhathuoclongchau.com.vn/unsafe/828x0/filters:quality(90)/https://cms-prod.s3-sgn09.fptcloud.com/1610x492_Banner_WEB_f660825f26.png"
+          alt="Hero Banner"
+          width={1200}
+          height={400}
+          className="w-full object-cover"
           priority
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 1200px"
-          aria-labelledby="banner-heading"
+          sizes="(max-width: 1024px) 90vw, 1200px"
         />
-        <h2 id="banner-heading" className="sr-only">
-          Khuyến mãi đặc biệt Tết
-        </h2>
+      </div>
+
+      {/* Mobile Banner - You can add a mobile-specific banner here if needed */}
+      <div className="md:hidden w-full">
+        <Image
+          src="https://cdn.nhathuoclongchau.com.vn/unsafe/828x0/filters:quality(90)/https://cms-prod.s3-sgn09.fptcloud.com/1610x492_Banner_WEB_f660825f26.png"
+          alt="Hero Banner"
+          width={600}
+          height={300}
+          className="w-full object-cover"
+          priority
+          sizes="100vw"
+        />
       </div>
     </section>
   )
