@@ -23,8 +23,8 @@ export default function MegaMenuItem({ label, href, hasDropdown, isActive, child
       <Link
         href={href}
         className={cn(
-          "flex items-center gap-1 text-[15px] font-medium text-white hover:text-white/90",
-          isActive && "text-white/90",
+          "flex items-center gap-1 text-xl font-medium text-black hover:text-primary-40",
+          isActive && "text-primary-40",
         )}
       >
         {label}
@@ -32,7 +32,9 @@ export default function MegaMenuItem({ label, href, hasDropdown, isActive, child
       </Link>
 
       {hasDropdown && isHovered && (
-        <div className="absolute left-0 top-full z-50 min-w-[800px] rounded-lg bg-white p-6 shadow-lg">{children}</div>
+        <div className="absolute left-0 top-full z-50 min-w-[1000px] rounded-bl-xl rounded-br-xl bg-white p-6 shadow-lg">
+          {children}
+        </div>
       )}
     </div>
   )
