@@ -31,7 +31,7 @@ export function DebugInfo() {
     const newMode = apiMode === "mock" ? "real" : "mock"
     setApiMode(newMode)
     localStorage.setItem("API_MODE", newMode)
-    window.location.reload() // Reload để áp dụng thay đổi
+    window.location.reload() // Reload để áp d���ng thay đổi
   }
 
   if (!isVisible) return null
