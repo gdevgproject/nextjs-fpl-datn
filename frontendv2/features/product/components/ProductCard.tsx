@@ -1,96 +1,166 @@
 "use client"
 
-import { Button } from "@/components/ui/Button"
-import { useCart } from "@/features/cart/hooks/useCart"
-import type { Product } from "@/features/product/types/productTypes"
-import { ShoppingCart, Star } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { useState } from "react"
+import { useCart } from "@/features/cart/hooks/useCart"
+import { cn } from "@/lib/utils"
 
-interface ProductCardProps {
-  product: Product
+export interface ProductUnit {
+  label: string
+  value: string
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+export interface ProductCardProps {
+  product: {
+    id: number | string
+    slug: string
+    image?: string
+    name: string
+    price: string | number
+    originalPrice?: string | number
+    unit?: string
+    packageInfo?: string
+    discount?: string | number
+    units?: ProductUnit[]
+  }
+  variant?: "default" | "simple"
+  className?: string
+}
+
+export default function ProductCard({ product, variant = "default", className }: ProductCardProps) {
   const { addItem } = useCart()
+  const [selectedUnit, setSelectedUnit] = useState(product.units?.[0]?.value || "hop")
 
   const handleAddToCart = () => {
-    // Use the current variant or first variant if available
-    const variant = product.currentVariant || product.variants?.[0]
+    if (!product) return
+
+    const priceAsNumber =
+      typeof product.price === "string" ? Number.parseFloat(product.price.replace(/[^\d]/g, "")) : product.price
+
+    const originalPriceAsNumber = product.originalPrice
+      ? typeof product.originalPrice === "string"
+        ? Number.parseFloat(product.originalPrice.replace(/[^\d]/g, ""))
+        : product.originalPrice
+      : undefined
 
     addItem({
-      id: `${product.id}-${variant?.id || "default"}`,
+      id: `${product.id}-${selectedUnit}`,
       name: product.name,
-      price: variant?.price || product.price,
-      originalPrice: variant?.originalPrice || product.originalPrice,
+      price: priceAsNumber || 0,
+      originalPrice: originalPriceAsNumber,
       quantity: 1,
-      unit: variant?.name || product.unit || "Hộp",
-      image: product.images?.[0]?.url,
+      unit: product.unit || "Hộp",
+      image: product.image,
     })
   }
 
-  // Get price and originalPrice from current variant or product
-  const price = product.currentVariant?.price || product.price
-  const originalPrice = product.currentVariant?.originalPrice || product.originalPrice
+  if (!product) return null
+
+  const formatPrice = (price: string | number | undefined) => {
+    if (price === undefined) return "0đ"
+
+    if (typeof price === "number") {
+      return `${price.toLocaleString()}đ`
+    }
+
+    if (typeof price === "string" && price.includes("đ")) return price
+
+    const numericPrice = typeof price === "string" ? Number.parseFloat(price.replace(/[^\d]/g, "")) : price
+    return isNaN(numericPrice) ? "0đ" : `${numericPrice.toLocaleString()}đ`
+  }
+
+  const discountText = product.discount
+    ? typeof product.discount === "string" && product.discount.includes("%")
+      ? product.discount
+      : `-${product.discount}%`
+    : undefined
 
   return (
-    <div className="group rounded-lg border border-grayscale-20 bg-white p-4 transition-shadow hover:shadow-md">
+    <div
+      className={cn(
+        "relative rounded-xl border border-grayscale-20 bg-white p-3 sm:p-4 shadow-sm h-full flex flex-col",
+        className,
+      )}
+    >
+      {/* Discount Badge */}
+      {discountText && (
+        <span className="absolute top-0 left-0 z-10">
+          <div className="bg-gradient-5 text-white text-xs font-medium px-2 py-1 rounded-tl-xl rounded-br-xl">
+            {discountText}
+          </div>
+        </span>
+      )}
+
       {/* Product Image */}
-      <Link href={`/product/${product.slug}`} className="block">
-        <div className="relative mb-4 aspect-square overflow-hidden rounded-lg">
+      <Link href={`/product/${product.slug}`} className="block mb-3 hover:no-underline">
+        <div className="relative mb-1 aspect-square">
           <Image
-            src={product.images[0]?.url || "/placeholder.svg"}
-            alt={product.name}
             fill
-            className="object-contain transition-transform duration-300 group-hover:scale-105"
+            alt={product.name}
+            className="object-contain"
+            src={product.image || "/placeholder.svg?height=200&width=200"}
           />
-          {originalPrice && price < originalPrice && (
-            <div className="absolute left-2 top-2 rounded bg-error-5 px-2 py-1 text-xs font-bold text-white">
-              -{Math.round(((originalPrice - price) / originalPrice) * 100)}%
-            </div>
-          )}
         </div>
+
+        {/* Product Name */}
+        <h3 className="mb-2 line-clamp-2 min-h-[2.5rem] text-sm font-medium text-grayscale-90">{product.name}</h3>
       </Link>
 
-      {/* Product Info */}
-      <div className="space-y-2">
-        {/* Rating */}
-        <div className="flex items-center gap-1">
-          <Star className="h-4 w-4 fill-warning-5 text-warning-5" />
-          <span className="text-xs font-medium text-grayscale-90">{product.rating}</span>
-          <span className="text-xs text-grayscale-50">({product.reviewCount})</span>
-        </div>
-
-        {/* Title */}
-        <Link href={`/product/${product.slug}`} className="block">
-          <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-medium text-grayscale-90 group-hover:text-primary-40">
-            {product.name}
-          </h3>
-        </Link>
-
-        {/* Price */}
-        <div className="flex items-baseline gap-1">
-          <span className="text-base font-bold text-primary-5">{price?.toLocaleString()}đ</span>
-          <span className="text-xs text-grayscale-50">
-            /{product.currentVariant?.name || product.unit || "Hộp"}
-          </span>
-        </div>
-        {originalPrice && price < originalPrice && (
-          <div className="text-xs text-grayscale-40 line-through">
-            {originalPrice.toLocaleString()}đ
+      {/* Unit Selection */}
+      {product.units && product.units.length > 0 && (
+        <div className="mb-3">
+          <div className="flex w-full rounded-lg border border-grayscale-20 overflow-hidden">
+            {product.units.map((unit) => (
+              <button
+                key={unit.value}
+                className={`flex-1 py-1 text-xs sm:text-sm ${
+                  selectedUnit === unit.value
+                    ? "bg-primary text-white"
+                    : "bg-white text-grayscale-60 hover:bg-grayscale-5"
+                }`}
+                onClick={() => setSelectedUnit(unit.value)}
+              >
+                {unit.label}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Add to Cart Button */}
-        <Button
-          onClick={handleAddToCart}
-          className="mt-2 w-full bg-primary-5 text-white hover:bg-primary-20"
-          size="sm"
-        >
-          <ShoppingCart className="mr-1 h-4 w-4" />
-          Thêm vào giỏ
-        </Button>
+      {/* Price */}
+      <div className="mb-2">
+        <div className="flex items-baseline gap-2">
+          <span className="text-base sm:text-lg font-bold text-primary">{formatPrice(product.price)}</span>
+          {product.unit && <span className="text-xs sm:text-sm text-grayscale-50">/ {product.unit}</span>}
+        </div>
+        {product.originalPrice && (
+          <span className="text-xs sm:text-sm text-grayscale-40 line-through">
+            {formatPrice(product.originalPrice)}
+          </span>
+        )}
       </div>
+
+      {/* Package Info */}
+      {product.packageInfo && <p className="mb-3 text-[10px] sm:text-xs text-grayscale-50">{product.packageInfo}</p>}
+
+      {/* Buy Button */}
+      {variant === "default" ? (
+        <button
+          onClick={handleAddToCart}
+          className="mt-auto w-full rounded-full bg-primary hover:bg-primary-60 text-white py-2 px-4 text-center text-sm sm:text-base font-medium transition-colors"
+        >
+          Thêm vào giỏ
+        </button>
+      ) : (
+        <Link
+          href={`/product/${product.slug}`}
+          className="mt-auto w-full rounded-full bg-primary hover:bg-primary-60 text-white py-2 px-4 text-center text-sm sm:text-base font-medium transition-colors no-underline"
+        >
+          Chọn Mua
+        </Link>
+      )}
     </div>
   )
 }
+
