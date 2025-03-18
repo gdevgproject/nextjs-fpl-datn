@@ -1,145 +1,73 @@
 "use client"
 
 import Image from "next/image"
+import Link from "next/link"
 import { useState } from "react"
-import { useCart } from "@/features/cart/hooks/useCart"
 
-interface ProductUnit {
-  label: string
-  value: string
-}
-
-interface ProductCardSimpleProps {
-  product: {
-    id: number | string
-    image?: string
-    name: string
-    price: string | number
-    originalPrice?: string | number
-    unit?: string
-    packageInfo?: string
-    discount?: string | number
-    units?: ProductUnit[]
-  }
-}
-
-export default function ProductCardSimple({ product }: ProductCardSimpleProps) {
-  const { addItem } = useCart()
-  const [selectedUnit, setSelectedUnit] = useState(product.units?.[0]?.value || "hop")
-
-  const handleAddToCart = () => {
-    if (!product) return
-
-    const priceAsNumber =
-      typeof product.price === "string" ? Number.parseFloat(product.price.replace(/[^\d]/g, "")) : product.price
-
-    const originalPriceAsNumber = product.originalPrice
-      ? typeof product.originalPrice === "string"
-        ? Number.parseFloat(product.originalPrice.replace(/[^\d]/g, ""))
-        : product.originalPrice
-      : undefined
-
-    addItem({
-      id: `${product.id}-${selectedUnit}`,
-      name: product.name,
-      price: priceAsNumber || 0,
-      originalPrice: originalPriceAsNumber,
-      quantity: 1,
-      unit: product.unit || "Hộp",
-      image: product.image,
-    })
-  }
-
-  if (!product) return null
-
-  const formatPrice = (price: string | number | undefined) => {
-    if (price === undefined) return "0đ"
-
-    if (typeof price === "number") {
-      return `${price.toLocaleString()}đ`
-    }
-
-    if (price.includes("đ")) return price
-
-    const numericPrice = Number.parseFloat(price.replace(/[^\d]/g, ""))
-    return isNaN(numericPrice) ? "0đ" : `${numericPrice.toLocaleString()}đ`
-  }
-
-  const discountText = product.discount
-    ? typeof product.discount === "string" && product.discount.includes("%")
-      ? product.discount
-      : `-${product.discount}%`
-    : undefined
+export default function ProductCardSimple({ product }) {
+  const [selectedUnit, setSelectedUnit] = useState(product.units[0].value)
 
   return (
-    // Thay đổi từ li thành div để tránh list-style mặc định
-    <div className="rounded-lg border border-gray-100 bg-white p-2 shadow-sm">
-      {/* Product Image */}
-      <figure className="relative mb-3 aspect-square overflow-hidden">
-        <Image
-          src={product.image || "/placeholder.svg?height=200&width=200"}
-          alt={product.name}
-          fill
-          className="object-contain"
-        />
-        {discountText && (
-          <span className="absolute left-2 top-2 rounded bg-error-5 px-1.5 py-0.5 text-xs font-bold text-white">
-            {discountText}
-          </span>
-        )}
-      </figure>
+    <div className="relative rounded-xl border border-grayscale-20 bg-white p-3 sm:p-4 shadow-sm h-full flex flex-col">
+      {/* Discount Badge */}
+      {product.discount && (
+        <span className="absolute top-0 left-0 z-10">
+          <div className="bg-gradient-5 text-white text-xs font-medium px-2 py-1 rounded-tl-xl rounded-br-xl">
+            {product.discount}
+          </div>
+        </span>
+      )}
 
-      {/* Product Info */}
-      <h3 className="mb-2 min-h-[2.5rem] text-sm font-medium text-gray-900 line-clamp-2">{product.name}</h3>
+      {/* Product Image */}
+      <Link href={`/product/${product.slug}`} className="block mb-3 hover:no-underline">
+        <div className="relative mb-1 aspect-square">
+          <Image fill alt={product.name} className="object-contain" src={product.image || "/placeholder.svg"} />
+        </div>
+
+        {/* Product Name */}
+        <h3 className="mb-2 line-clamp-2 min-h-[2.5rem] text-sm font-medium text-grayscale-90">{product.name}</h3>
+      </Link>
 
       {/* Unit Selection */}
-      {product.units && product.units.length > 0 && (
-        <div
-          className="mb-2 flex w-full gap-1 rounded-md bg-gray-50 p-1"
-          role="radiogroup"
-          aria-label="Đơn vị sản phẩm"
-        >
+      <div className="mb-3">
+        <div className="flex w-full rounded-lg border border-grayscale-20 overflow-hidden">
           {product.units.map((unit) => (
             <button
               key={unit.value}
-              onClick={() => setSelectedUnit(unit.value)}
-              className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium capitalize transition-colors ${
-                selectedUnit === unit.value ? "border border-primary text-primary" : "text-gray-600 hover:bg-gray-100"
+              className={`flex-1 py-1 text-xs sm:text-sm ${
+                selectedUnit === unit.value
+                  ? "bg-primary text-white"
+                  : "bg-white text-grayscale-60 hover:bg-grayscale-5"
               }`}
-              role="radio"
-              aria-checked={selectedUnit === unit.value}
+              onClick={() => setSelectedUnit(unit.value)}
             >
               {unit.label}
             </button>
           ))}
         </div>
-      )}
+      </div>
 
       {/* Price */}
       <div className="mb-2">
-        <div className="flex items-baseline gap-1">
-          <span className="text-base font-semibold text-primary">{formatPrice(product.price)}</span>
-          {product.unit && <span className="text-xs text-gray-500">/ {product.unit}</span>}
+        <div className="flex items-baseline gap-2">
+          <span className="text-base sm:text-lg font-bold text-primary">{product.price}</span>
+          <span className="text-xs sm:text-sm text-grayscale-50">/ {product.unit}</span>
         </div>
         {product.originalPrice && (
-          <span className="text-xs text-gray-400 line-through">{formatPrice(product.originalPrice)}</span>
+          <span className="text-xs sm:text-sm text-grayscale-40 line-through">{product.originalPrice}</span>
         )}
       </div>
 
       {/* Package Info */}
-      {product.packageInfo && (
-        <div className="mb-3 rounded-md bg-gray-50 px-2 py-1">
-          <p className="text-xs text-gray-600">{product.packageInfo}</p>
-        </div>
-      )}
+      <p className="mb-3 text-[10px] sm:text-xs text-grayscale-50">{product.packageInfo}</p>
 
       {/* Buy Button */}
-      <button
-        onClick={handleAddToCart}
-        className="w-full rounded-full border border-primary bg-primary py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+      <Link
+        href={`/product/${product.slug}`}
+        className="mt-auto w-full rounded-full bg-primary hover:bg-primary-60 text-white py-2 px-4 text-center text-sm sm:text-base font-medium transition-colors no-underline"
       >
         Chọn Mua
-      </button>
+      </Link>
     </div>
   )
 }
