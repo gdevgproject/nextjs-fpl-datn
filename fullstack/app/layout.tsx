@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   },
   description: "Cửa hàng nước hoa chính hãng với đa dạng thương hiệu và mùi hương",
   keywords: ["nước hoa", "perfume", "mybeauty", "nước hoa chính hãng", "nước hoa việt nam"],
-    generator: 'v0.dev'
+  generator: "v0.dev",
 }
 
 export default function RootLayout({
@@ -42,6 +42,8 @@ export default function RootLayout({
     </html>
   )
 }
+
+import "./globals.css"
 
 
 
