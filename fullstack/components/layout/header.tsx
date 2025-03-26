@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { AuthStatus } from "@/components/auth/auth-status"
-import { ShoppingCart, Menu, X } from "lucide-react"
+import { ShoppingCart, Menu, X, User, Package, Heart, Star, MapPin } from "lucide-react"
 import { useState } from "react"
 import { useAuth } from "@/lib/hooks/use-auth"
 
@@ -95,17 +95,43 @@ export function Header() {
                 <>
                   <Link
                     href="/tai-khoan/thong-tin"
-                    className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+                    className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary flex items-center"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    Tài khoản
+                    <User className="mr-2 h-4 w-4" />
+                    Thông tin tài khoản
+                  </Link>
+                  <Link
+                    href="/tai-khoan/dia-chi"
+                    className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary flex items-center"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <MapPin className="mr-2 h-4 w-4" />
+                    Địa chỉ của tôi
                   </Link>
                   <Link
                     href="/tai-khoan/don-hang"
-                    className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+                    className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary flex items-center"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    Đơn hàng
+                    <Package className="mr-2 h-4 w-4" />
+                    Đơn hàng của tôi
+                  </Link>
+                  <Link
+                    href="/tai-khoan/yeu-thich"
+                    className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary flex items-center"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Heart className="mr-2 h-4 w-4" />
+                    Danh sách yêu thích
+                  </Link>
+                  <Link
+                    href="/tai-khoan/danh-gia"
+                    className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary flex items-center"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Star className="mr-2 h-4 w-4" />
+                    Đánh giá của tôi
                   </Link>
                 </>
               )}

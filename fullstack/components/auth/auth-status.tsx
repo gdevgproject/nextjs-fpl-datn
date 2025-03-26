@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { LogoutButton } from "@/components/auth/logout-button"
-import { User, Package, Heart, Star, Settings, ShoppingCart, LogIn } from "lucide-react"
+import { User, Package, Heart, Star, Settings, ShoppingCart, LogIn, MapPin } from "lucide-react"
 
 export function AuthStatus() {
   const { user, profile, isAdmin, isStaff } = useAuth()
@@ -62,6 +62,12 @@ export function AuthStatus() {
             <Link href="/tai-khoan/thong-tin">
               <User className="mr-2 h-4 w-4" />
               <span>Thông tin tài khoản</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/tai-khoan/dia-chi">
+              <MapPin className="mr-2 h-4 w-4" />
+              <span>Địa chỉ của tôi</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
