@@ -306,31 +306,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Cập nhật hàm signOut trong useAuth để xử lý đăng xuất tốt hơn
+  // Tìm hàm signOut trong file và thay thế bằng đoạn code sau
+
   const signOut = async () => {
     try {
       setIsLoading(true)
-      await supabase.auth.signOut()
 
-      // Clear any auth-related local storage
-      localStorage.removeItem("supabase.auth.token")
+      // Lưu trữ state hiện tại để khôi phục nếu cần
+      const currentUser = user
+      const currentProfile = profile
 
-      // Show success toast
+      // Đăng xuất khỏi Supabase
+      const { error } = await supabase.auth.signOut()
+
+      if (error) {
+        console.error("Supabase signOut error:", error)
+        throw error
+      }
+
+      // Xóa dữ liệu người dùng khỏi state ngay lập tức
+      setUser(null)
+      setProfile(null)
+      setSession(null)
+      setIsAdmin(false)
+      setIsStaff(false)
+
+      // Xóa dữ liệu liên quan đến auth khỏi localStorage
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("supabase.auth.token")
+        localStorage.removeItem("pendingConfirmationEmail")
+      }
+
+      // Hiển thị thông báo thành công
       toast({
         title: "Đăng xuất thành công",
         description: "Bạn đã đăng xuất khỏi tài khoản",
         variant: "default",
       })
-
-      // Redirect to home page
-      router.push("/")
-      router.refresh()
     } catch (error) {
       console.error("Error signing out:", error)
+
+      // Hiển thị thông báo lỗi
       toast({
         title: "Lỗi đăng xuất",
         description: "Đã xảy ra lỗi khi đăng xuất. Vui lòng thử lại.",
         variant: "destructive",
       })
+
+      throw error
     } finally {
       setIsLoading(false)
     }
