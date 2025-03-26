@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/lib/hooks/use-auth"
 import { SessionExpiryHandler } from "@/components/auth/session-expiry-handler"
+import { Header } from "@/components/layout/header"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -29,7 +30,10 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <AuthProvider>
-            {children}
+            <div className="flex min-h-screen flex-col">
+              <Header />
+              <main className="flex-1">{children}</main>
+            </div>
             <SessionExpiryHandler />
             <Toaster />
           </AuthProvider>
