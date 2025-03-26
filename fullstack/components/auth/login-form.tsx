@@ -1,26 +1,20 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/components/ui/use-toast";
-import { useAuth } from "@/lib/hooks/use-auth";
-import { getErrorMessage } from "@/lib/auth/auth-utils";
-import { Loader2, Eye, EyeOff } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
+import { Button } from "@/components/ui/button"
+import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
+import { useToast } from "@/components/ui/use-toast"
+import { useAuth } from "@/lib/hooks/use-auth"
+import { getErrorMessage } from "@/lib/auth/auth-utils"
+import { Loader2, Eye, EyeOff } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 const loginFormSchema = z.object({
   email: z.string().email({
@@ -30,50 +24,47 @@ const loginFormSchema = z.object({
     message: "Vui lòng nhập mật khẩu",
   }),
   rememberMe: z.boolean().default(false),
-});
+})
 
-type LoginFormValues = z.infer<typeof loginFormSchema>;
+type LoginFormValues = z.infer<typeof loginFormSchema>
 
 export function LoginForm() {
-  const { signIn } = useAuth();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/";
-  const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
+  const { signIn } = useAuth()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const callbackUrl = searchParams.get("callbackUrl") || "/"
+  const { toast } = useToast()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [loginError, setLoginError] = useState<string | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
 
   // Kiểm tra lỗi từ URL (ví dụ: tài khoản bị xóa)
-  const error = searchParams.get("error");
-  const errorCode = searchParams.get("error_code");
-  const errorDescription = searchParams.get("error_description");
+  const error = searchParams.get("error")
+  const errorCode = searchParams.get("error_code")
+  const errorDescription = searchParams.get("error_description")
 
   // Cập nhật hiển thị thông báo lỗi trong form đăng nhập
   // Hiển thị thông báo lỗi cụ thể cho trường hợp tài khoản bị xóa
   useEffect(() => {
     if (error === "account_deleted") {
       setLoginError(
-        "Tài khoản của bạn không còn tồn tại hoặc đã bị vô hiệu hóa. Vui lòng liên hệ hỗ trợ nếu bạn cần trợ giúp."
-      );
+        "Tài khoản của bạn không còn tồn tại hoặc đã bị vô hiệu hóa. Vui lòng liên hệ hỗ trợ nếu bạn cần trợ giúp.",
+      )
       toast({
         title: "Tài khoản không tồn tại",
         description:
           "Tài khoản của bạn không còn tồn tại hoặc đã bị vô hiệu hóa. Vui lòng liên hệ hỗ trợ nếu bạn cần trợ giúp.",
         variant: "destructive",
-      });
+      })
     } else if (error === "session_invalid") {
-      setLoginError(
-        "Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại."
-      );
+      setLoginError("Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại.")
       toast({
         title: "Phiên đăng nhập đã hết hạn",
-        description:
-          "Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại.",
+        description: "Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại.",
         variant: "destructive",
-      });
+      })
     }
-  }, [error, toast]);
+  }, [error, toast])
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
@@ -82,45 +73,45 @@ export function LoginForm() {
       password: "",
       rememberMe: false,
     },
-  });
+  })
 
   // Cập nhật hiển thị lỗi trong form đăng nhập để hiển thị rõ ràng hơn
   async function onSubmit(values: LoginFormValues) {
     try {
-      setIsSubmitting(true);
-      setLoginError(null);
+      setIsSubmitting(true)
+      setLoginError(null)
 
-      const { success, error } = await signIn(values.email, values.password);
+      const { success, error } = await signIn(values.email, values.password)
 
       if (!success) {
-        const errorMessage = getErrorMessage(new Error(error));
-        setLoginError(errorMessage);
+        const errorMessage = getErrorMessage(new Error(error))
+        setLoginError(errorMessage)
         toast({
           title: "Đăng nhập thất bại",
           description: errorMessage,
           variant: "destructive",
-        });
-        return;
+        })
+        return
       }
 
       toast({
         title: "Đăng nhập thành công",
         description: "Chào mừng bạn quay trở lại",
-      });
+      })
 
-      router.push(callbackUrl);
-      router.refresh();
+      router.push(callbackUrl)
+      router.refresh()
     } catch (error) {
-      console.error("Login error:", error);
-      const errorMessage = getErrorMessage(error);
-      setLoginError(errorMessage);
+      console.error("Login error:", error)
+      const errorMessage = getErrorMessage(error)
+      setLoginError(errorMessage)
       toast({
         title: "Đăng nhập thất bại",
         description: errorMessage,
         variant: "destructive",
-      });
+      })
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
   }
 
@@ -164,20 +155,12 @@ export function LoginForm() {
             <FormItem>
               <div className="flex items-center justify-between">
                 <FormLabel>Mật khẩu</FormLabel>
-                <Link
-                  href="/quen-mat-khau"
-                  className="text-sm font-medium text-primary hover:underline"
-                >
+                <Link href="/quen-mat-khau" className="text-sm font-medium text-primary hover:underline">
                   Quên mật khẩu?
                 </Link>
               </div>
               <div className="relative">
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  {...field}
-                  className="pr-10"
-                />
+                <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} className="pr-10" />
                 <Button
                   type="button"
                   variant="ghost"
@@ -187,19 +170,11 @@ export function LoginForm() {
                   tabIndex={-1}
                 >
                   {showPassword ? (
-                    <EyeOff
-                      className="h-4 w-4 text-muted-foreground"
-                      aria-hidden="true"
-                    />
+                    <EyeOff className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   ) : (
-                    <Eye
-                      className="h-4 w-4 text-muted-foreground"
-                      aria-hidden="true"
-                    />
+                    <Eye className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   )}
-                  <span className="sr-only">
-                    {showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-                  </span>
+                  <span className="sr-only">{showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}</span>
                 </Button>
               </div>
               <FormMessage />
@@ -213,15 +188,8 @@ export function LoginForm() {
           render={({ field }) => (
             <FormItem className="flex flex-row items-center space-x-2 space-y-0">
               <div className="flex items-center space-x-2">
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  id="rememberMe"
-                />
-                <FormLabel
-                  htmlFor="rememberMe"
-                  className="text-sm font-normal cursor-pointer"
-                >
+                <Checkbox checked={field.value} onCheckedChange={field.onChange} id="rememberMe" />
+                <FormLabel htmlFor="rememberMe" className="text-sm font-normal cursor-pointer">
                   Ghi nhớ đăng nhập
                 </FormLabel>
               </div>
@@ -241,5 +209,6 @@ export function LoginForm() {
         </Button>
       </form>
     </Form>
-  );
+  )
 }
+
