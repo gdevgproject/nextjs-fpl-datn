@@ -1,6 +1,7 @@
 import { createBrowserClient } from "@supabase/ssr"
 import type { Database } from "@/types/supabase"
 
+// Singleton pattern để đảm bảo chỉ có một instance của Supabase client
 let supabaseClient: ReturnType<typeof createBrowserClient<Database>> | null = null
 
 export function createClientSupabaseClient() {
