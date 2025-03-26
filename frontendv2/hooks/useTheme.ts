@@ -1,13 +1,21 @@
 "use client"
 
-import { useContext } from "react"
-import { ThemeContext } from "@/contexts/ThemeContext"
+import { useTheme as useNextTheme } from "next-themes"
 
 export function useTheme() {
-  const context = useContext(ThemeContext)
-  if (context === undefined) {
-    throw new Error("useTheme must be used within a ThemeProvider")
+  const { theme, setTheme, resolvedTheme, themes, systemTheme } = useNextTheme()
+
+  const toggleTheme = () => {
+    setTheme(resolvedTheme === "dark" ? "light" : "dark")
   }
-  return context
+
+  return {
+    theme,
+    setTheme,
+    resolvedTheme,
+    toggleTheme,
+    themes,
+    systemTheme,
+  }
 }
 

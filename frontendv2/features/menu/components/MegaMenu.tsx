@@ -56,7 +56,7 @@ export default function MegaMenu() {
   // Desktop menu
   if (!isMobile) {
     return (
-      <nav className="border-t border-white/10">
+      <nav className="border-t border-white/10 bg-white">
         <div className="container mx-auto px-4">
           <ul className="flex space-x-8 py-4">
             <li>
@@ -107,7 +107,7 @@ export default function MegaMenu() {
 
   // Mobile menu
   return (
-    <div ref={menuRef} className="border-t border-white/10">
+    <div ref={menuRef} className="border-t border-white/10 bg-white">
       <div className="container mx-auto px-4">
         <ul className="py-2 divide-y divide-white/10">
           {/* Products with submenu */}

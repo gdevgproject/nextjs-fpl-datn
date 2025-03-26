@@ -85,7 +85,7 @@ export const mockProduct: Product = {
 <li>Trẻ em từ 6-12 tuổi: Uống 1 ống/ngày</li>
 <li>Lắc đều trước khi sử dụng</li>
 </ul>`,
-  storage: "Bảo quản nơi khô ráo, nhiệt độ dưới 30°C, tránh ánh nắng trực tiếp",
+  storage: "Bảo quản nơi khô ráo, nhiệt độ dưới 30°C, tránh ánh sáng trực tiếp",
   rating: 5.0,
   reviewCount: 80,
   commentCount: 100,
@@ -102,6 +102,8 @@ export const mockProduct: Product = {
       validUntil: "2024-03-31",
     },
   ],
+  unit: "Hộp",
+  packageInfo: "Hộp 2 Vỉ x 10 Ống",
 }
 
 // Mock reviews data
@@ -408,171 +410,30 @@ export const mockRelatedProducts: Product[] = [
     unit: "Hộp",
     packageInfo: "Hộp 10 ống x 5ml",
   },
-  {
-    id: "enterogermina-forte",
-    slug: "enterogermina-forte",
-    name: "Enterogermina Forte",
-    shortDescription: "Enterogermina Forte với nồng độ cao hơn, dành cho người lớn",
-    description: "Enterogermina Forte chứa nồng độ cao hơn các chủng lợi khuẩn, phù hợp cho người lớn",
-    images: [
-      {
-        id: "1",
-        url: "https://v0.dev/placeholder.svg?height=200&width=200",
-        alt: "Enterogermina Forte",
-      },
-    ],
-    code: "00047406",
-    registrationNumber: "2089/2024/ĐKSP",
-    variants: [
-      {
-        id: "hop",
-        name: "Hộp",
-        price: 190000,
-        originalPrice: 210000,
-        inStock: true,
-        specification: "Hộp 10 viên",
-      },
-      {
-        id: "vi",
-        name: "Vỉ",
-        price: 95000,
-        originalPrice: 105000,
-        inStock: true,
-        specification: "Vỉ 5 viên",
-      },
-      {
-        id: "vien",
-        name: "Viên",
-        price: 20000,
-        inStock: true,
-        specification: "1 Viên",
-      },
-    ],
-    currentVariant: {
-      id: "hop",
-      name: "Hộp",
-      price: 190000,
-      originalPrice: 210000,
-      inStock: true,
-      specification: "Hộp 10 viên",
-    },
-    brand: "Sanofi",
-    origin: "Pháp",
-    manufacturer: "Sanofi-Aventis",
-    manufacturingCountry: "Ý",
-    dosageForm: "Viên nang",
-    specification: "Hộp 10 viên",
-    categoryId: "men-vi-sinh",
-    category: {
-      id: "men-vi-sinh",
-      name: "Men vi sinh",
-      slug: "men-vi-sinh",
-    },
-    ingredients: "Bacillus clausii, Lactobacillus acidophilus, Bifidobacterium",
-    ingredientsDescription: "Kết hợp nhiều chủng lợi khuẩn với nồng độ cao",
-    usage: "Người lớn: uống 1 viên mỗi ngày sau bữa ăn",
-    storage: "Bảo quản nơi khô ráo, nhiệt độ dưới 30°C",
-    rating: 4.6,
-    reviewCount: 55,
-    commentCount: 60,
-    rewardPoints: 12,
-    inStock: true,
-    tags: ["men vi sinh", "tiêu hóa", "đường ruột", "miễn dịch"],
-    promotions: [
-      {
-        id: "promo-1",
-        type: "discount",
-        title: "Giảm 10%",
-        description: "Đến hết tháng 3",
-        discountPercent: 10,
-        validUntil: "2024-03-31",
-      },
-    ],
-    unit: "Hộp",
-    packageInfo: "Hộp 10 viên nang",
-  },
-  {
-    id: "enterogermina-daily",
-    slug: "enterogermina-daily",
-    name: "Enterogermina Daily",
-    shortDescription: "Enterogermina Daily sử dụng hàng ngày, duy trì sức khỏe đường ruột",
-    description: "Enterogermina Daily với công thức cân bằng, phù hợp sử dụng hàng ngày để duy trì sức khỏe đường ruột",
-    images: [
-      {
-        id: "1",
-        url: "https://v0.dev/placeholder.svg?height=200&width=200",
-        alt: "Enterogermina Daily",
-      },
-    ],
-    code: "00047407",
-    registrationNumber: "2090/2024/ĐKSP",
-    variants: [
-      {
-        id: "hop",
-        name: "Hộp",
-        price: 250000,
-        originalPrice: 280000,
-        inStock: true,
-        specification: "Hộp 30 viên",
-      },
-      {
-        id: "vi",
-        name: "Vỉ",
-        price: 85000,
-        originalPrice: 95000,
-        inStock: true,
-        specification: "Vỉ 10 viên",
-      },
-      {
-        id: "vien",
-        name: "Viên",
-        price: 9000,
-        inStock: true,
-        specification: "1 Viên",
-      },
-    ],
-    currentVariant: {
-      id: "hop",
-      name: "Hộp",
-      price: 250000,
-      originalPrice: 280000,
-      inStock: true,
-      specification: "Hộp 30 viên",
-    },
-    brand: "Sanofi",
-    origin: "Pháp",
-    manufacturer: "Sanofi-Aventis",
-    manufacturingCountry: "Ý",
-    dosageForm: "Viên nang",
-    specification: "Hộp 30 viên",
-    categoryId: "men-vi-sinh",
-    category: {
-      id: "men-vi-sinh",
-      name: "Men vi sinh",
-      slug: "men-vi-sinh",
-    },
-    ingredients: "Bacillus clausii, Lactobacillus acidophilus, Bifidobacterium, Prebiotic",
-    ingredientsDescription: "Kết hợp lợi khuẩn và prebiotic giúp nuôi dưỡng hệ vi sinh đường ruột",
-    usage: "Người lớn: uống 1 viên mỗi ngày sau bữa ăn",
-    storage: "Bảo quản nơi khô ráo, nhiệt độ dưới 30°C",
-    rating: 4.7,
-    reviewCount: 90,
-    commentCount: 95,
-    rewardPoints: 15,
-    inStock: true,
-    tags: ["men vi sinh", "tiêu hóa", "đường ruột", "miễn dịch", "hàng ngày"],
-    promotions: [
-      {
-        id: "promo-1",
-        type: "discount",
-        title: "Giảm 11%",
-        description: "Đến hết tháng 3",
-        discountPercent: 11,
-        validUntil: "2024-03-31",
-      },
-    ],
-    unit: "Hộp",
-    packageInfo: "Hộp 30 viên nang",
-  },
 ]
+
+class ProductMockService {
+  getProducts(): Product[] {
+    return [mockProduct, ...mockRelatedProducts]
+  }
+
+  getProduct(id: string): Product | undefined {
+    return this.getProducts().find((product) => product.id === id)
+  }
+
+  getRelatedProducts(): Product[] {
+    return mockRelatedProducts
+  }
+
+  getReviews(productId: string): ProductReview[] {
+    return mockReviews
+  }
+
+  getQuestions(productId: string): ProductQuestion[] {
+    return mockQuestions
+  }
+}
+
+// Export a singleton instance
+export const productMockService = new ProductMockService()
 

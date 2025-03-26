@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ["mybeauty.vn", "images.unsplash.com"],
+    domains: ["elela.vn", "images.unsplash.com"],
   },
   experimental: {
     serverActions: true,
