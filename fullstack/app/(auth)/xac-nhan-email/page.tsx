@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
-import Link from "next/link"
 import { EmailConfirmation } from "@/components/auth/email-confirmation"
+import { AuthHeader } from "@/components/auth/auth-header"
+import { MailCheck } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "Xác nhận email - MyBeauty",
@@ -10,16 +11,12 @@ export const metadata: Metadata = {
 export default function EmailConfirmationPage() {
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight">Xác nhận email</h1>
-      <p className="text-sm text-muted-foreground">Vui lòng xác nhận email của bạn để hoàn tất đăng ký</p>
-
+      <AuthHeader
+        title="Xác nhận email"
+        description="Vui lòng xác nhận địa chỉ email của bạn"
+        icon={<MailCheck className="h-10 w-10 text-primary" />}
+      />
       <EmailConfirmation />
-
-      <p className="px-8 text-center text-sm text-muted-foreground">
-        <Link href="/dang-nhap" className="underline underline-offset-4 hover:text-primary">
-          Quay lại đăng nhập
-        </Link>
-      </p>
     </>
   )
 }
