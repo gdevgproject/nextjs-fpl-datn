@@ -1,26 +1,27 @@
-import type { ReactNode } from "react"
-import { redirect } from "next/navigation"
-import { getSession } from "@/lib/supabase/supabase-server"
+import type React from "react"
 import { AccountSidebar } from "@/components/tai-khoan/account-sidebar"
+import { PageContainer } from "@/components/layout/page-container"
+import type { Metadata } from "next"
 
-export default async function AccountLayout({ children }: { children: ReactNode }) {
-  // Kiểm tra đăng nhập
-  const session = await getSession()
-  if (!session) {
-    redirect("/dang-nhap?callbackUrl=/tai-khoan/thong-tin")
-  }
+export const metadata: Metadata = {
+  title: "Tài khoản",
+  description: "Quản lý thông tin tài khoản, đơn hàng, địa chỉ và đánh giá của bạn",
+}
 
+export default function AccountLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <div className="container py-10">
+    <PageContainer className="py-8 md:py-12">
       <div className="flex flex-col gap-8 md:flex-row">
-        <div className="w-full md:w-64 shrink-0">
+        <aside className="md:w-64 lg:w-72 flex-shrink-0">
           <AccountSidebar />
-        </div>
-        <div className="flex-1">
-          <div className="rounded-lg border bg-card p-6 shadow-sm">{children}</div>
-        </div>
+        </aside>
+        <div className="flex-1">{children}</div>
       </div>
-    </div>
+    </PageContainer>
   )
 }
 
