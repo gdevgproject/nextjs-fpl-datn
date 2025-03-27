@@ -1,9 +1,13 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/hooks/use-auth"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { LogoutButton } from "@/components/auth/logout-button"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,25 +17,57 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LogoutButton } from "@/components/auth/logout-button"
-import { User, Package, Heart, Star, Settings, ShoppingCart, LogIn, MapPin } from "lucide-react"
+import { User, LogIn, UserPlus, Settings, ShoppingBag, Heart, Star, MapPin, ChevronDown } from "lucide-react"
 
 export function AuthStatus() {
-  const { user, profile, isAdmin, isStaff } = useAuth()
+  const { user, isLoading } = useAuth()
+  const router = useRouter()
+  const [mounted, setMounted] = useState(false)
 
-  if (!user) {
+  // Tránh hydration mismatch
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
     return (
-      <Button asChild variant="ghost" size="sm">
-        <Link href="/dang-nhap">
-          <LogIn className="h-4 w-4 mr-2" />
-          Đăng nhập
-        </Link>
-      </Button>
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-8 w-8 rounded-full" />
+        <Skeleton className="h-4 w-24" />
+      </div>
     )
   }
 
-  const initials = profile?.display_name
-    ? profile.display_name
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-8 w-8 rounded-full" />
+        <Skeleton className="h-4 w-24" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/dang-nhap">
+            <LogIn className="h-4 w-4 mr-2" />
+            Đăng nhập
+          </Link>
+        </Button>
+        <Button size="sm" asChild>
+          <Link href="/dang-ky">
+            <UserPlus className="h-4 w-4 mr-2" />
+            Đăng ký
+          </Link>
+        </Button>
+      </div>
+    )
+  }
+
+  const initials = user.displayName
+    ? user.displayName
         .split(" ")
         .map((n) => n[0])
         .join("")
@@ -42,76 +78,62 @@ export function AuthStatus() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+        <Button variant="ghost" size="sm" className="flex items-center gap-2 px-2">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={profile?.avatar_url || ""} alt={profile?.display_name || ""} />
-            <AvatarFallback>{initials}</AvatarFallback>
+            <AvatarImage src={user.avatarUrl || ""} alt={user.displayName || user.email || "User"} />
+            <AvatarFallback className="bg-primary text-primary-foreground">{initials}</AvatarFallback>
           </Avatar>
+          <div className="flex flex-col items-start text-left">
+            <span className="text-sm font-medium line-clamp-1">
+              {user.displayName || user.email?.split("@")[0] || "Người dùng"}
+            </span>
+          </div>
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel>
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{profile?.display_name || "Người dùng"}</p>
+            <p className="text-sm font-medium leading-none">{user.displayName || "Người dùng"}</p>
             <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <Link href="/tai-khoan/thong-tin">
-              <User className="mr-2 h-4 w-4" />
-              <span>Thông tin tài khoản</span>
-            </Link>
+          <DropdownMenuItem onClick={() => router.push("/tai-khoan/thong-tin")}>
+            <User className="mr-2 h-4 w-4" />
+            <span>Thông tin tài khoản</span>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/tai-khoan/dia-chi">
-              <MapPin className="mr-2 h-4 w-4" />
-              <span>Địa chỉ của tôi</span>
-            </Link>
+          <DropdownMenuItem onClick={() => router.push("/tai-khoan/don-hang")}>
+            <ShoppingBag className="mr-2 h-4 w-4" />
+            <span>Đơn hàng của tôi</span>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/tai-khoan/don-hang">
-              <Package className="mr-2 h-4 w-4" />
-              <span>Đơn hàng của tôi</span>
-            </Link>
+          <DropdownMenuItem onClick={() => router.push("/tai-khoan/dia-chi")}>
+            <MapPin className="mr-2 h-4 w-4" />
+            <span>Địa chỉ</span>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/tai-khoan/yeu-thich">
-              <Heart className="mr-2 h-4 w-4" />
-              <span>Danh sách yêu thích</span>
-            </Link>
+          <DropdownMenuItem onClick={() => router.push("/tai-khoan/yeu-thich")}>
+            <Heart className="mr-2 h-4 w-4" />
+            <span>Danh sách yêu thích</span>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/tai-khoan/danh-gia">
-              <Star className="mr-2 h-4 w-4" />
-              <span>Đánh giá của tôi</span>
-            </Link>
+          <DropdownMenuItem onClick={() => router.push("/tai-khoan/danh-gia")}>
+            <Star className="mr-2 h-4 w-4" />
+            <span>Đánh giá của tôi</span>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/gio-hang">
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              <span>Giỏ hàng</span>
-            </Link>
-          </DropdownMenuItem>
+          {user.isAdmin && (
+            <DropdownMenuItem onClick={() => router.push("/admin")}>
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Quản trị viên</span>
+            </DropdownMenuItem>
+          )}
         </DropdownMenuGroup>
-
-        {(isAdmin || isStaff) && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem asChild>
-                <Link href="/admin">
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Quản trị</span>
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-          </>
-        )}
-
         <DropdownMenuSeparator />
-        <LogoutButton className="w-full justify-start" />
+        <LogoutButton
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start px-2 font-normal"
+          showConfirmDialog={true}
+        />
       </DropdownMenuContent>
     </DropdownMenu>
   )
