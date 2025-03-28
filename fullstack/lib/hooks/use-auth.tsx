@@ -306,9 +306,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Cập nhật hàm signOut trong useAuth để xử lý đăng xuất tốt hơn
-  // Tìm hàm signOut trong file và thay thế bằng đoạn code sau
-
   const signOut = async () => {
     try {
       setIsLoading(true)

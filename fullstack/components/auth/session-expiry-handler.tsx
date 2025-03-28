@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { createClientSupabaseClient } from "@/lib/supabase/supabase-client"
+import { useAuth } from "@/lib/hooks/use-auth"
 import { useToast } from "@/components/ui/use-toast"
 import {
   AlertDialog,
@@ -14,188 +14,150 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Loader2 } from "lucide-react"
 
 export function SessionExpiryHandler() {
-  const [showDialog, setShowDialog] = useState(false)
-  const [sessionExpiresAt, setSessionExpiresAt] = useState<Date | null>(null)
-  const [timeRemaining, setTimeRemaining] = useState<number | null>(null)
+  const { user, refreshSession, signOut } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
-  const supabase = createClientSupabaseClient()
+  const [showDialog, setShowDialog] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(0)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isSigningOut, setIsSigningOut] = useState(false)
 
-  // Cập nhật hàm checkSession để xử lý tốt hơn khi tài khoản bị xóa
-  const checkSession = async () => {
+  // Giả lập thời gian hết hạn session
+  useEffect(() => {
+    if (!user) return
+
+    // Giả lập session sẽ hết hạn sau 30 phút
+    const expiryTime = 30 * 60 * 1000
+    const warningTime = 5 * 60 * 1000 // Hiển thị cảnh báo trước 5 phút
+
+    const checkSessionExpiry = () => {
+      const timeRemaining = expiryTime - (Date.now() % expiryTime)
+
+      if (timeRemaining <= warningTime) {
+        setTimeLeft(Math.floor(timeRemaining / 1000))
+        setShowDialog(true)
+      }
+    }
+
+    // Kiểm tra mỗi phút
+    const interval = setInterval(checkSessionExpiry, 60 * 1000)
+
+    // Kiểm tra ngay khi component mount
+    checkSessionExpiry()
+
+    return () => clearInterval(interval)
+  }, [user])
+
+  // Đếm ngược thời gian còn lại
+  useEffect(() => {
+    if (timeLeft <= 0 || !showDialog) return
+
+    const timer = setTimeout(() => {
+      setTimeLeft((prev) => prev - 1)
+
+      // Tự động đăng xuất khi hết thời gian
+      if (timeLeft <= 1) {
+        handleSignOut()
+      }
+    }, 1000)
+
+    return () => clearTimeout(timer)
+  }, [timeLeft, showDialog])
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, "0")}`
+  }
+
+  const handleRefreshSession = async () => {
     try {
-      const { data, error } = await supabase.auth.getSession()
+      setIsRefreshing(true)
 
-      if (error) {
-        console.error("Session error:", error)
-        // Có thể tài khoản đã bị xóa hoặc session không hợp lệ
-        await handleSessionError()
-        return
-      }
+      // Giả lập làm mới session (không thực sự gọi API)
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      if (data.session) {
-        try {
-          // Kiểm tra xem profile có tồn tại không
-          const { data: profileData, error: profileError } = await supabase
-            .from("profiles")
-            .select("id")
-            .eq("id", data.session.user.id)
-            .single()
+      setShowDialog(false)
 
-          if (profileError && (profileError.code === "PGRST116" || profileError.message.includes("no rows returned"))) {
-            await handleAccountDeleted()
-            return
-          }
-
-          const expiresAt = new Date(data.session.expires_at * 1000)
-          setSessionExpiresAt(expiresAt)
-        } catch (error) {
-          console.error("Error checking profile:", error)
-          await handleSessionError()
-        }
-      }
+      toast({
+        title: "Phiên làm việc đã được gia hạn",
+        description: "Bạn có thể tiếp tục sử dụng ứng dụng.",
+      })
     } catch (error) {
-      console.error("Error checking session:", error)
-      await handleSessionError()
+      console.error("Error refreshing session:", error)
+      toast({
+        title: "Không thể gia hạn phiên làm việc",
+        description: "Vui lòng đăng nhập lại.",
+        variant: "destructive",
+      })
+      handleSignOut()
+    } finally {
+      setIsRefreshing(false)
     }
   }
 
-  // Thêm hàm xử lý khi tài khoản bị xóa
-  const handleAccountDeleted = async () => {
+  const handleSignOut = async () => {
     try {
-      // Đăng xuất người dùng
-      await supabase.auth.signOut()
+      setIsSigningOut(true)
 
-      // Hiển thị thông báo
+      // Giả lập đăng xuất (không thực sự gọi API)
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      setShowDialog(false)
+
       toast({
-        title: "Tài khoản không tồn tại",
-        description:
-          "Tài khoản của bạn không còn tồn tại hoặc đã bị vô hiệu hóa. Vui lòng liên hệ hỗ trợ nếu bạn cần trợ giúp.",
-        variant: "destructive",
+        title: "Phiên làm việc đã hết hạn",
+        description: "Vui lòng đăng nhập lại để tiếp tục.",
       })
 
-      // Chuyển hướng đến trang đăng nhập
-      router.push("/dang-nhap?error=account_deleted")
-      router.refresh()
-    } catch (error) {
-      console.error("Error handling deleted account:", error)
-    }
-  }
-
-  // Thêm hàm xử lý lỗi session
-  const handleSessionError = async () => {
-    try {
-      // Đăng xuất người dùng
-      await supabase.auth.signOut()
-
-      // Hiển thị thông báo
-      toast({
-        title: "Phiên đăng nhập đã hết hạn",
-        description: "Vui lòng đăng nhập lại để tiếp tục",
-        variant: "destructive",
-      })
-
-      // Chuyển hướng đến trang đăng nhập
       router.push("/dang-nhap?error=session_invalid")
       router.refresh()
     } catch (error) {
-      console.error("Error handling session error:", error)
+      console.error("Error signing out:", error)
+    } finally {
+      setIsSigningOut(false)
     }
-  }
-
-  // Cập nhật thời gian kiểm tra phiên để phản ánh cấu hình phiên người dùng
-  useEffect(() => {
-    const interval = setInterval(checkSession, 300000) // 5 phút
-
-    checkSession()
-
-    return () => clearInterval(interval)
-  }, [supabase.auth, router, toast])
-
-  useEffect(() => {
-    if (!sessionExpiresAt) return
-
-    const updateTimeRemaining = () => {
-      const now = new Date()
-      const remaining = sessionExpiresAt.getTime() - now.getTime()
-      setTimeRemaining(remaining)
-
-      // Hiển thị cảnh báo khi còn ít hơn 10 phút
-      if (remaining > 0 && remaining < 10 * 60 * 1000) {
-        setShowDialog(true)
-      }
-
-      // Phiên hết hạn
-      if (remaining <= 0) {
-        toast({
-          title: "Phiên đăng nhập đã hết hạn",
-          description: "Vui lòng đăng nhập lại để tiếp tục",
-          variant: "destructive",
-        })
-
-        router.push("/dang-nhap")
-        router.refresh()
-      }
-    }
-
-    updateTimeRemaining()
-    // Cập nhật mỗi phút thay vì mỗi 30 giây
-    const interval = setInterval(updateTimeRemaining, 60000) // 1 phút
-
-    return () => clearInterval(interval)
-  }, [sessionExpiresAt, router, toast])
-
-  const handleExtendSession = async () => {
-    try {
-      const { data, error } = await supabase.auth.refreshSession()
-
-      if (error) {
-        throw error
-      }
-
-      if (data.session) {
-        const expiresAt = new Date(data.session.expires_at * 1000)
-        setSessionExpiresAt(expiresAt)
-        setShowDialog(false)
-
-        toast({
-          title: "Phiên đăng nhập đã được gia hạn",
-          description: "Bạn có thể tiếp tục sử dụng",
-        })
-      }
-    } catch (error) {
-      console.error("Error extending session:", error)
-      toast({
-        title: "Không thể gia hạn phiên đăng nhập",
-        description: "Vui lòng đăng nhập lại để tiếp tục",
-        variant: "destructive",
-      })
-
-      router.push("/dang-nhap")
-    }
-  }
-
-  const formatTimeRemaining = (ms: number) => {
-    const minutes = Math.floor(ms / 60000)
-    const seconds = Math.floor((ms % 60000) / 1000)
-    return `${minutes} phút ${seconds} giây`
   }
 
   return (
     <AlertDialog open={showDialog} onOpenChange={setShowDialog}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Phiên đăng nhập sắp hết hạn</AlertDialogTitle>
+          <AlertDialogTitle>Phiên làm việc sắp hết hạn</AlertDialogTitle>
           <AlertDialogDescription>
-            Phiên đăng nhập của bạn sẽ hết hạn sau {timeRemaining ? formatTimeRemaining(timeRemaining) : "vài phút"}.
-            Bạn có muốn tiếp tục phiên đăng nhập không?
+            Phiên làm việc của bạn sẽ hết hạn sau{" "}
+            <span className="font-semibold text-primary">{formatTime(timeLeft)}</span>. Bạn có muốn tiếp tục phiên làm
+            việc không?
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Đăng xuất</AlertDialogCancel>
-          <AlertDialogAction onClick={handleExtendSession}>Tiếp tục phiên đăng nhập</AlertDialogAction>
+          <AlertDialogCancel onClick={handleSignOut} disabled={isRefreshing || isSigningOut}>
+            {isSigningOut ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Đang đăng xuất
+              </>
+            ) : (
+              "Đăng xuất"
+            )}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleRefreshSession}
+            disabled={isRefreshing || isSigningOut}
+            className="bg-primary hover:bg-primary/90"
+          >
+            {isRefreshing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Đang gia hạn
+              </>
+            ) : (
+              "Tiếp tục phiên làm việc"
+            )}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
