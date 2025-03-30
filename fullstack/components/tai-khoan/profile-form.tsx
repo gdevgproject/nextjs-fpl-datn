@@ -5,93 +5,72 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useToast } from "@/components/ui/use-toast"
-import { AvatarUpload } from "@/components/tai-khoan/avatar-upload"
-import { updateProfile } from "@/actions/profile-actions"
-import type { Tables } from "@/types/supabase"
+import { toast } from "@/components/ui/use-toast"
 import { Loader2 } from "lucide-react"
 
 const profileFormSchema = z.object({
-  display_name: z
-    .string()
-    .min(2, {
-      message: "Tên hiển thị phải có ít nhất 2 ký tự",
-    })
-    .max(50, {
-      message: "Tên hiển thị không được vượt quá 50 ký tự",
-    }),
+  display_name: z.string().min(2, {
+    message: "Tên hiển thị phải có ít nhất 2 ký tự",
+  }),
   phone_number: z.string().regex(/^(0|\+84)[3|5|7|8|9][0-9]{8}$/, {
     message: "Số điện thoại không hợp lệ",
   }),
+  email: z
+    .string()
+    .email({
+      message: "Email không hợp lệ",
+    })
+    .optional(),
   gender: z.string().optional(),
   birth_date: z.string().optional(),
-  avatar_url: z.string().optional(),
 })
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>
 
 interface ProfileFormProps {
-  profile: Tables<"profiles"> | null
+  initialData: {
+    display_name: string
+    phone_number: string
+    email: string
+    gender?: string
+    birth_date?: string
+  }
 }
 
-export function ProfileForm({ profile }: ProfileFormProps) {
+export function ProfileForm({ initialData }: ProfileFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const { toast } = useToast()
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
-      display_name: profile?.display_name || "",
-      phone_number: profile?.phone_number || "",
-      gender: profile?.gender || "",
-      birth_date: profile?.birth_date ? new Date(profile.birth_date).toISOString().split("T")[0] : "",
-      avatar_url: profile?.avatar_url || "",
+      display_name: initialData.display_name,
+      phone_number: initialData.phone_number,
+      email: initialData.email,
+      gender: initialData.gender || "",
+      birth_date: initialData.birth_date || "",
     },
   })
 
-  async function onSubmit(values: ProfileFormValues) {
-    try {
-      setIsSubmitting(true)
+  function onSubmit(data: ProfileFormValues) {
+    setIsSubmitting(true)
 
-      const result = await updateProfile(values)
-
-      if (result.success) {
-        toast({
-          title: "Cập nhật thành công",
-          description: "Thông tin tài khoản của bạn đã được cập nhật",
-        })
-      } else {
-        toast({
-          title: "Cập nhật thất bại",
-          description: result.error,
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error("Error updating profile:", error)
+    // Giả lập API call
+    setTimeout(() => {
+      console.log(data)
       toast({
-        title: "Cập nhật thất bại",
-        description: "Đã xảy ra lỗi khi cập nhật thông tin tài khoản",
-        variant: "destructive",
+        title: "Cập nhật thành công",
+        description: "Thông tin cá nhân của bạn đã được cập nhật",
       })
-    } finally {
       setIsSubmitting(false)
-    }
+    }, 1000)
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="flex justify-center mb-6">
-          <AvatarUpload
-            currentAvatarUrl={profile?.avatar_url || ""}
-            onAvatarChange={(url) => form.setValue("avatar_url", url)}
-          />
-        </div>
-
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="display_name"
@@ -101,12 +80,10 @@ export function ProfileForm({ profile }: ProfileFormProps) {
               <FormControl>
                 <Input placeholder="Nhập tên hiển thị" {...field} />
               </FormControl>
-              <FormDescription>Tên này sẽ được hiển thị trên trang web và trong đánh giá của bạn.</FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
-
         <FormField
           control={form.control}
           name="phone_number"
@@ -116,12 +93,23 @@ export function ProfileForm({ profile }: ProfileFormProps) {
               <FormControl>
                 <Input placeholder="Nhập số điện thoại" {...field} />
               </FormControl>
-              <FormDescription>Ví dụ: 0912345678 hoặc +84912345678</FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
-
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input placeholder="Nhập email" disabled {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="gender"
@@ -144,7 +132,6 @@ export function ProfileForm({ profile }: ProfileFormProps) {
             </FormItem>
           )}
         />
-
         <FormField
           control={form.control}
           name="birth_date"
@@ -158,12 +145,11 @@ export function ProfileForm({ profile }: ProfileFormProps) {
             </FormItem>
           )}
         />
-
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Đang cập nhật
+              Đang xử lý
             </>
           ) : (
             "Cập nhật thông tin"
