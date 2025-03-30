@@ -1,56 +1,67 @@
-import type { Metadata } from "next"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
-import { AddressList } from "@/components/tai-khoan/address-list"
-import { createServerSupabaseClient } from "@/lib/supabase/supabase-server"
-import { getSession } from "@/lib/supabase/supabase-server"
-import { redirect } from "next/navigation"
+import { Separator } from "@/components/ui/separator"
+import { PlusCircle } from "lucide-react"
+import { AddressCard } from "@/components/tai-khoan/address-card"
 
-export const metadata: Metadata = {
-  title: "Địa chỉ của tôi - MyBeauty",
-  description: "Quản lý địa chỉ giao hàng của bạn",
-}
-
-export default async function AddressPage() {
-  const session = await getSession()
-  if (!session) {
-    redirect("/dang-nhap?callbackUrl=/tai-khoan/dia-chi")
-  }
-
-  const supabase = createServerSupabaseClient()
-
-  // Lấy danh sách địa chỉ của người dùng
-  const { data: addresses } = await supabase
-    .from("addresses")
-    .select("*")
-    .eq("user_id", session.user.id)
-    .order("is_default", { ascending: false })
-    .order("created_at", { ascending: false })
-
-  // Lấy thông tin profile để biết địa chỉ mặc định
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("default_address_id")
-    .eq("id", session.user.id)
-    .single()
+export default function AddressesPage() {
+  // Dữ liệu mẫu
+  const addresses = [
+    {
+      id: 1,
+      recipient_name: "Nguyễn Văn A",
+      recipient_phone: "0912345678",
+      province_city: "Hồ Chí Minh",
+      district: "Quận 1",
+      ward: "Phường Bến Nghé",
+      street_address: "123 Lê Lợi",
+      is_default: true,
+    },
+    {
+      id: 2,
+      recipient_name: "Nguyễn Văn A",
+      recipient_phone: "0912345678",
+      province_city: "Hà Nội",
+      district: "Quận Ba Đình",
+      ward: "Phường Điện Biên",
+      street_address: "45 Điện Biên Phủ",
+      is_default: false,
+    },
+  ]
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-medium">Địa chỉ của tôi</h3>
-          <p className="text-sm text-muted-foreground">Quản lý địa chỉ giao hàng của bạn</p>
+          <h2 className="text-2xl font-bold tracking-tight">Sổ địa chỉ</h2>
+          <p className="text-muted-foreground">Quản lý địa chỉ giao hàng của bạn</p>
         </div>
         <Button asChild>
           <Link href="/tai-khoan/dia-chi/them">
-            <Plus className="mr-2 h-4 w-4" />
+            <PlusCircle className="mr-2 h-4 w-4" />
             Thêm địa chỉ mới
           </Link>
         </Button>
       </div>
-
-      <AddressList addresses={addresses || []} defaultAddressId={profile?.default_address_id} />
+      <Separator />
+      {addresses.length > 0 ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {addresses.map((address) => (
+            <AddressCard key={address.id} address={address} />
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+          <h3 className="mb-2 text-lg font-medium">Chưa có địa chỉ nào</h3>
+          <p className="mb-4 text-sm text-muted-foreground">Bạn chưa có địa chỉ nào trong sổ địa chỉ</p>
+          <Button asChild>
+            <Link href="/tai-khoan/dia-chi/them">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Thêm địa chỉ mới
+            </Link>
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
