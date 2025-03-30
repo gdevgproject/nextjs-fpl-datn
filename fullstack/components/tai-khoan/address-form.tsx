@@ -1,20 +1,17 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { useToast } from "@/components/ui/use-toast"
-import { addAddress, updateAddress } from "@/actions/address-actions"
-import type { Tables } from "@/types/supabase"
+import { toast } from "@/components/ui/use-toast"
 import { Loader2 } from "lucide-react"
-import { vietnamProvinces, getDistrictsByProvince, getWardsByDistrict } from "@/lib/vietnam-address"
 
 const addressFormSchema = z.object({
   recipient_name: z.string().min(2, {
@@ -33,7 +30,7 @@ const addressFormSchema = z.object({
     required_error: "Vui lòng chọn Phường/Xã",
   }),
   street_address: z.string().min(5, {
-    message: "Địa chỉ cụ thể phải có ít nhất 5 ký tự",
+    message: "Địa chỉ phải có ít nhất 5 ký tự",
   }),
   is_default: z.boolean().default(false),
 })
@@ -41,113 +38,108 @@ const addressFormSchema = z.object({
 type AddressFormValues = z.infer<typeof addressFormSchema>
 
 interface AddressFormProps {
-  address?: Tables<"addresses">
+  initialData?: {
+    id: number
+    recipient_name: string
+    recipient_phone: string
+    province_city: string
+    district: string
+    ward: string
+    street_address: string
+    is_default: boolean
+  }
 }
 
-export function AddressForm({ address }: AddressFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [districts, setDistricts] = useState<{ code: string; name: string }[]>([])
-  const [wards, setWards] = useState<{ code: string; name: string }[]>([])
+// Dữ liệu mẫu cho dropdown
+const provinces = [
+  { value: "Hồ Chí Minh", label: "Hồ Chí Minh" },
+  { value: "Hà Nội", label: "Hà Nội" },
+  { value: "Đà Nẵng", label: "Đà Nẵng" },
+]
+
+const districts = {
+  "Hồ Chí Minh": [
+    { value: "Quận 1", label: "Quận 1" },
+    { value: "Quận 2", label: "Quận 2" },
+    { value: "Quận 3", label: "Quận 3" },
+  ],
+  "Hà Nội": [
+    { value: "Quận Ba Đình", label: "Quận Ba Đình" },
+    { value: "Quận Hoàn Kiếm", label: "Quận Hoàn Kiếm" },
+    { value: "Quận Hai Bà Trưng", label: "Quận Hai Bà Trưng" },
+  ],
+  "Đà Nẵng": [
+    { value: "Quận Hải Châu", label: "Quận Hải Châu" },
+    { value: "Quận Thanh Khê", label: "Quận Thanh Khê" },
+    { value: "Quận Liên Chiểu", label: "Quận Liên Chiểu" },
+  ],
+}
+
+const wards = {
+  "Quận 1": [
+    { value: "Phường Bến Nghé", label: "Phường Bến Nghé" },
+    { value: "Phường Bến Thành", label: "Phường Bến Thành" },
+  ],
+  "Quận Ba Đình": [
+    { value: "Phường Điện Biên", label: "Phường Điện Biên" },
+    { value: "Phường Đội Cấn", label: "Phường Đội Cấn" },
+  ],
+  "Quận Hải Châu": [
+    { value: "Phường Hải Châu 1", label: "Phường Hải Châu 1" },
+    { value: "Phường Hải Châu 2", label: "Phường Hải Châu 2" },
+  ],
+}
+
+export function AddressForm({ initialData }: AddressFormProps) {
   const router = useRouter()
-  const { toast } = useToast()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedProvince, setSelectedProvince] = useState(initialData?.province_city || "")
+  const [selectedDistrict, setSelectedDistrict] = useState(initialData?.district || "")
 
   const form = useForm<AddressFormValues>({
     resolver: zodResolver(addressFormSchema),
-    defaultValues: {
-      recipient_name: address?.recipient_name || "",
-      recipient_phone: address?.recipient_phone || "",
-      province_city: address?.province_city || "",
-      district: address?.district || "",
-      ward: address?.ward || "",
-      street_address: address?.street_address || "",
-      is_default: address?.is_default || false,
-    },
+    defaultValues: initialData
+      ? {
+          recipient_name: initialData.recipient_name,
+          recipient_phone: initialData.recipient_phone,
+          province_city: initialData.province_city,
+          district: initialData.district,
+          ward: initialData.ward,
+          street_address: initialData.street_address,
+          is_default: initialData.is_default,
+        }
+      : {
+          recipient_name: "",
+          recipient_phone: "",
+          province_city: "",
+          district: "",
+          ward: "",
+          street_address: "",
+          is_default: false,
+        },
   })
 
-  // Cập nhật danh sách quận/huyện khi tỉnh/thành phố thay đổi
-  useEffect(() => {
-    const province = form.watch("province_city")
-    if (province) {
-      const provinceDistricts = getDistrictsByProvince(province)
-      setDistricts(provinceDistricts)
+  function onSubmit(data: AddressFormValues) {
+    setIsSubmitting(true)
 
-      // Reset quận/huyện và phường/xã nếu tỉnh/thành phố thay đổi
-      if (!address || province !== address.province_city) {
-        form.setValue("district", "")
-        form.setValue("ward", "")
-        setWards([])
-      }
-    }
-  }, [form.watch("province_city"), form, address])
-
-  // Cập nhật danh sách phường/xã khi quận/huyện thay đổi
-  useEffect(() => {
-    const district = form.watch("district")
-    if (district) {
-      const districtWards = getWardsByDistrict(district)
-      setWards(districtWards)
-
-      // Reset phường/xã nếu quận/huyện thay đổi
-      if (!address || district !== address.district) {
-        form.setValue("ward", "")
-      }
-    }
-  }, [form.watch("district"), form, address])
-
-  // Khởi tạo danh sách quận/huyện và phường/xã khi chỉnh sửa địa chỉ
-  useEffect(() => {
-    if (address) {
-      const provinceDistricts = getDistrictsByProvince(address.province_city)
-      setDistricts(provinceDistricts)
-
-      const districtWards = getWardsByDistrict(address.district)
-      setWards(districtWards)
-    }
-  }, [address])
-
-  async function onSubmit(values: AddressFormValues) {
-    try {
-      setIsSubmitting(true)
-
-      let result
-
-      if (address) {
-        // Cập nhật địa chỉ
-        result = await updateAddress(address.id, values)
-      } else {
-        // Thêm địa chỉ mới
-        result = await addAddress(values)
-      }
-
-      if (result.success) {
-        toast({
-          title: address ? "Cập nhật địa chỉ thành công" : "Thêm địa chỉ thành công",
-          description: address ? "Địa chỉ đã được cập nhật" : "Địa chỉ mới đã được thêm vào danh sách của bạn",
-        })
-        router.push("/tai-khoan/dia-chi")
-      } else {
-        toast({
-          title: address ? "Cập nhật địa chỉ thất bại" : "Thêm địa chỉ thất bại",
-          description: result.error,
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error("Error submitting address:", error)
+    // Giả lập API call
+    setTimeout(() => {
+      console.log(data)
       toast({
-        title: address ? "Cập nhật địa chỉ thất bại" : "Thêm địa chỉ thất bại",
-        description: "Đã xảy ra lỗi khi xử lý yêu cầu",
-        variant: "destructive",
+        title: initialData ? "Cập nhật địa chỉ thành công" : "Thêm địa chỉ thành công",
+        description: initialData
+          ? "Địa chỉ của bạn đã được cập nhật"
+          : "Địa chỉ mới đã được thêm vào sổ địa chỉ của bạn",
       })
-    } finally {
       setIsSubmitting(false)
-    }
+      router.push("/tai-khoan/dia-chi")
+    }, 1000)
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}
             name="recipient_name"
@@ -161,7 +153,6 @@ export function AddressForm({ address }: AddressFormProps) {
               </FormItem>
             )}
           />
-
           <FormField
             control={form.control}
             name="recipient_phone"
@@ -171,30 +162,37 @@ export function AddressForm({ address }: AddressFormProps) {
                 <FormControl>
                   <Input placeholder="Nhập số điện thoại" {...field} />
                 </FormControl>
-                <FormDescription>Ví dụ: 0912345678 hoặc +84912345678</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-3">
           <FormField
             control={form.control}
             name="province_city"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Tỉnh/Thành phố</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select
+                  onValueChange={(value) => {
+                    field.onChange(value)
+                    setSelectedProvince(value)
+                    form.setValue("district", "")
+                    form.setValue("ward", "")
+                  }}
+                  defaultValue={field.value}
+                >
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn Tỉnh/Thành phố" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {vietnamProvinces.map((province) => (
-                      <SelectItem key={province.code} value={province.name}>
-                        {province.name}
+                    {provinces.map((province) => (
+                      <SelectItem key={province.value} value={province.value}>
+                        {province.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -203,50 +201,58 @@ export function AddressForm({ address }: AddressFormProps) {
               </FormItem>
             )}
           />
-
           <FormField
             control={form.control}
             name="district"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Quận/Huyện</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={districts.length === 0}>
+                <Select
+                  onValueChange={(value) => {
+                    field.onChange(value)
+                    setSelectedDistrict(value)
+                    form.setValue("ward", "")
+                  }}
+                  defaultValue={field.value}
+                  disabled={!selectedProvince}
+                >
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn Quận/Huyện" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {districts.map((district) => (
-                      <SelectItem key={district.code} value={district.name}>
-                        {district.name}
-                      </SelectItem>
-                    ))}
+                    {selectedProvince &&
+                      districts[selectedProvince as keyof typeof districts]?.map((district) => (
+                        <SelectItem key={district.value} value={district.value}>
+                          {district.label}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
                 <FormMessage />
               </FormItem>
             )}
           />
-
           <FormField
             control={form.control}
             name="ward"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Phường/Xã</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={wards.length === 0}>
+                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!selectedDistrict}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn Phường/Xã" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {wards.map((ward) => (
-                      <SelectItem key={ward.code} value={ward.name}>
-                        {ward.name}
-                      </SelectItem>
-                    ))}
+                    {selectedDistrict &&
+                      wards[selectedDistrict as keyof typeof wards]?.map((ward) => (
+                        <SelectItem key={ward.value} value={ward.value}>
+                          {ward.label}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -262,9 +268,9 @@ export function AddressForm({ address }: AddressFormProps) {
             <FormItem>
               <FormLabel>Địa chỉ cụ thể</FormLabel>
               <FormControl>
-                <Input placeholder="Số nhà, tên đường, khu vực..." {...field} />
+                <Input placeholder="Số nhà, tên đường, khu vực" {...field} />
               </FormControl>
-              <FormDescription>Ví dụ: 123 Đường Nguyễn Văn A, Khu phố 1</FormDescription>
+              <FormDescription>Vui lòng nhập số nhà, tên đường, tòa nhà, khu vực...</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -286,20 +292,19 @@ export function AddressForm({ address }: AddressFormProps) {
           )}
         />
 
-        <div className="flex gap-4">
+        <div className="flex space-x-2">
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {address ? "Đang cập nhật" : "Đang thêm"}
+                Đang xử lý
               </>
-            ) : address ? (
+            ) : initialData ? (
               "Cập nhật địa chỉ"
             ) : (
               "Thêm địa chỉ"
             )}
           </Button>
-
           <Button type="button" variant="outline" onClick={() => router.push("/tai-khoan/dia-chi")}>
             Hủy
           </Button>
