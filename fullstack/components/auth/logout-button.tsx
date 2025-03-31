@@ -1,118 +1,67 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/hooks/use-auth"
-import { LogOut, Loader2 } from "lucide-react"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+import { Loader2 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast" // Fixed import path
 
 interface LogoutButtonProps {
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
   size?: "default" | "sm" | "lg" | "icon"
   className?: string
-  showIcon?: boolean
-  showConfirmDialog?: boolean
+  children?: React.ReactNode
 }
 
 export function LogoutButton({
   variant = "default",
   size = "default",
   className = "",
-  showIcon = true,
-  showConfirmDialog = true,
+  children = "Đăng xuất",
 }: LogoutButtonProps) {
   const { signOut } = useAuth()
-  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const handleLogout = async () => {
     try {
-      setIsLoggingOut(true)
+      setIsLoading(true)
 
-      // Giả lập đăng xuất (không thực sự gọi API)
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const { success, error } = await signOut()
 
-      toast({
-        title: "Đăng xuất thành công",
-        description: "Bạn đã đăng xuất khỏi tài khoản",
-      })
-
-      router.push("/dang-nhap")
-      router.refresh()
+      if (!success && error) {
+        toast({
+          title: "Lỗi đăng xuất",
+          description: error,
+          variant: "destructive",
+        })
+      }
     } catch (error) {
       console.error("Logout error:", error)
       toast({
-        title: "Đăng xuất thất bại",
-        description: "Đã xảy ra lỗi khi đăng xuất. Vui lòng thử lại.",
+        title: "Lỗi đăng xuất",
+        description: "Đã xảy ra lỗi khi đăng xuất. Vui lòng thử lại sau.",
         variant: "destructive",
       })
     } finally {
-      setIsLoggingOut(false)
+      // Even if there's an error, we should stop the loading state
+      setIsLoading(false)
     }
   }
 
-  const logoutButton = (
-    <Button
-      variant={variant}
-      size={size}
-      className={className}
-      onClick={showConfirmDialog ? undefined : handleLogout}
-      disabled={isLoggingOut}
-    >
-      {isLoggingOut ? (
+  return (
+    <Button variant={variant} size={size} className={className} onClick={handleLogout} disabled={isLoading}>
+      {isLoading ? (
         <>
-          <Loader2 className={`h-4 w-4 animate-spin ${showIcon ? "mr-2" : ""}`} />
-          Đang xử lý
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Đang đăng xuất...
         </>
       ) : (
-        <>
-          {showIcon && <LogOut className="h-4 w-4 mr-2" />}
-          Đăng xuất
-        </>
+        children
       )}
     </Button>
-  )
-
-  if (!showConfirmDialog) {
-    return logoutButton
-  }
-
-  return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>{logoutButton}</AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Xác nhận đăng xuất</AlertDialogTitle>
-          <AlertDialogDescription>Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không?</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Hủy</AlertDialogCancel>
-          <AlertDialogAction onClick={handleLogout} disabled={isLoggingOut} className="bg-primary hover:bg-primary/90">
-            {isLoggingOut ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Đang xử lý
-              </>
-            ) : (
-              "Đăng xuất"
-            )}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
   )
 }
 
