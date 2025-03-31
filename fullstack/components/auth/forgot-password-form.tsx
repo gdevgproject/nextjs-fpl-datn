@@ -10,11 +10,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/hooks/use-auth"
-import { getErrorMessage } from "@/lib/auth/auth-utils"
 import { Loader2, CheckCircle, Mail, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { motion } from "framer-motion"
+import { createClientSupabaseClient } from "@/lib/supabase/supabase-client"
 
 const forgotPasswordFormSchema = z.object({
   email: z.string().email({
@@ -36,6 +36,7 @@ export function ForgotPasswordForm() {
   const [cooldownProgress, setCooldownProgress] = useState(0)
   const cooldownTimerRef = useRef<NodeJS.Timeout | null>(null)
   const progressTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const [isSuccess, setIsSuccess] = useState(false)
 
   // Kiểm tra lỗi từ URL (ví dụ: link hết hạn)
   const error = searchParams.get("error")
@@ -52,79 +53,108 @@ export function ForgotPasswordForm() {
   // Xử lý cooldown timer
   useEffect(() => {
     if (cooldown > 0) {
-      // Cập nhật thời gian cooldown mỗi giây
+      // Set initial progress to 0 when cooldown starts
+      setCooldownProgress(0)
+
+      // Calculate the interval for smooth updates (aim for ~60 updates during the cooldown)
+      const updateInterval = Math.max(50, Math.floor((cooldown * 1000) / 60))
+
+      // Start the countdown timer
       cooldownTimerRef.current = setTimeout(() => {
         setCooldown((prevCooldown) => prevCooldown - 1)
       }, 1000)
 
-      // Cập nhật thanh tiến trình
-      const initialCooldown = cooldown
-      const updateProgress = () => {
+      // Create a separate timer for smooth progress updates
+      progressTimerRef.current = setInterval(() => {
         setCooldownProgress((prevProgress) => {
-          const newProgress = ((initialCooldown - cooldown + 1) / initialCooldown) * 100
+          // Calculate exact progress based on initial cooldown and elapsed time
+          const elapsedRatio = (cooldown - 1 + (Date.now() % 1000) / 1000) / cooldown
+          const newProgress = 100 - elapsedRatio * 100
           return Math.min(newProgress, 100)
         })
-      }
-
-      updateProgress()
-      progressTimerRef.current = setInterval(updateProgress, 100)
+      }, updateInterval)
     } else {
+      // When cooldown reaches 0, ensure progress is at 100%
       setCooldownProgress(100)
+
+      // Clear any existing timers
       if (progressTimerRef.current) {
         clearInterval(progressTimerRef.current)
+        progressTimerRef.current = null
       }
     }
 
+    // Cleanup function to clear timers when component unmounts or cooldown changes
     return () => {
       if (cooldownTimerRef.current) {
         clearTimeout(cooldownTimerRef.current)
+        cooldownTimerRef.current = null
       }
       if (progressTimerRef.current) {
         clearInterval(progressTimerRef.current)
+        progressTimerRef.current = null
       }
     }
   }, [cooldown])
 
   // Cập nhật thời gian cooldown để phản ánh giới hạn tốc độ gửi email
-  async function onSubmit(values: ForgotPasswordFormValues) {
+  async function onSubmit(values: z.infer<typeof forgotPasswordFormSchema>) {
+    setIsSubmitting(true)
+    setFormError(null)
+
     try {
-      // Nếu đang trong thời gian cooldown, hiển thị thông báo và không gửi yêu cầu
-      if (cooldown > 0) {
-        setFormError(`Vì lý do bảo mật, bạn chỉ có thể yêu cầu sau ${cooldown} giây nữa.`)
+      const supabase = createClientSupabaseClient()
+      const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
+        redirectTo: `${window.location.origin}/dat-lai-mat-khau`,
+      })
+
+      if (error) {
+        // Check if it's a cooldown error
+        if (error.message.includes("For security purposes, you can only request this")) {
+          // Try to extract the waiting time from the error message
+          const waitTimeMatch = error.message.match(/after (\d+) seconds/)
+          const waitTime = waitTimeMatch ? Number.parseInt(waitTimeMatch[1], 10) : 60
+
+          setCooldown(waitTime)
+          setFormError(`Vui lòng đợi ${waitTime} giây trước khi yêu cầu lại.`)
+        } else {
+          setFormError(error.message)
+        }
+        setIsSubmitting(false)
         return
       }
 
-      setIsSubmitting(true)
-      setFormError(null)
-
-      // Giả lập gửi email (không thực sự gọi API)
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      setEmailSent(true)
-      // Đặt cooldown 60 giây sau khi gửi thành công
-      setCooldown(60)
-      toast({
-        title: "Email đã được gửi",
-        description: "Vui lòng kiểm tra hộp thư của bạn để đặt lại mật khẩu",
-      })
-
-      // Reset form sau khi gửi thành công
-      form.reset()
+      // Success
+      setIsSuccess(true)
+      setCooldown(60) // Set a cooldown to prevent spam
+      startCooldown()
     } catch (error) {
       console.error("Reset password error:", error)
-      setFormError(getErrorMessage(error))
-      toast({
-        title: "Yêu cầu thất bại",
-        description: getErrorMessage(error),
-        variant: "destructive",
-      })
+      setFormError("Đã xảy ra lỗi. Vui lòng thử lại sau.")
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  const startCooldown = () => {
+    setCooldownProgress(0)
+    const updateInterval = Math.max(50, Math.floor((cooldown * 1000) / 60))
+
+    cooldownTimerRef.current = setTimeout(() => {
+      setCooldown((prevCooldown) => prevCooldown - 1)
+    }, 1000)
+
+    progressTimerRef.current = setInterval(() => {
+      setCooldownProgress((prevProgress) => {
+        const elapsedRatio = (cooldown - 1 + (Date.now() % 1000) / 1000) / cooldown
+        const newProgress = 100 - elapsedRatio * 100
+        return Math.min(newProgress, 100)
+      })
+    }, updateInterval)
+  }
+
   // Thêm nút quay lại trang đăng nhập ở cuối form
-  if (emailSent) {
+  if (isSuccess) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -161,7 +191,7 @@ export function ForgotPasswordForm() {
           variant="outline"
           className="w-full"
           onClick={() => {
-            setEmailSent(false)
+            setIsSuccess(false)
           }}
           disabled={cooldown > 0}
         >
