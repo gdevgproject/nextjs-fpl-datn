@@ -1,478 +1,399 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import type { Session, User } from "@supabase/supabase-js"
-import { createClientSupabaseClient } from "@/lib/supabase/supabase-client"
 import { useRouter } from "next/navigation"
-import type { Tables } from "@/types/supabase"
-import { useToast } from "@/components/ui/use-toast"
-import { savePendingConfirmationEmail } from "@/lib/auth/auth-utils"
+import { createClientComponentClient, type Session, type User } from "@supabase/auth-helpers-nextjs"
+import type { Provider } from "@supabase/supabase-js"
+import type { Database } from "@/types/supabase"
+// Import the cleanup function
+import { cleanupAuthState, getErrorMessage, signInWithProvider } from "@/lib/auth/auth-utils"
 
-type AuthContextType = {
+type Profile = Database["public"]["Tables"]["profiles"]["Row"]
+
+interface AuthState {
   user: User | null
-  profile: Tables<"profiles"> | null
+  session: Session | null
+  profile: Profile | null
   isLoading: boolean
   isAdmin: boolean
   isStaff: boolean
+}
+
+interface AuthContextType extends AuthState {
   signUp: (
     email: string,
     password: string,
-    metadata: { display_name: string; phone_number: string },
-  ) => Promise<{ success: boolean; error?: string }>
-  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
-  signInWithMagicLink: (email: string) => Promise<{ success: boolean; error?: string }>
-  signOut: () => Promise<void>
-  resetPassword: (email: string) => Promise<{ success: boolean; error?: string; cooldown?: number }>
-  updatePassword: (password: string) => Promise<{ success: boolean; error?: string }>
+    metadata?: { [key: string]: any },
+  ) => Promise<{ success: boolean; error: string | null }>
+  signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ success: boolean; error: string | null }>
+  signInWithMagicLink: (email: string) => Promise<{ success: boolean; error: string | null }>
+  signInWithProvider: (provider: Provider) => Promise<{ success: boolean; error: string | null }>
+  signOut: () => Promise<{ success: boolean; error: string | null }>
+  resetPassword: (email: string) => Promise<{ success: boolean; error: string | null }>
+  updatePassword: (password: string) => Promise<{ success: boolean; error: string | null }>
   refreshSession: () => Promise<void>
+}
+
+const initialState: AuthState = {
+  user: null,
+  session: null,
+  profile: null,
+  isLoading: true,
+  isAdmin: false,
+  isStaff: false,
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<Tables<"profiles"> | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [isStaff, setIsStaff] = useState(false)
-  const [session, setSession] = useState<Session | null>(null)
+  const [state, setState] = useState<AuthState>(initialState)
   const router = useRouter()
-  const { toast } = useToast()
-  const supabase = createClientSupabaseClient()
+  const supabase = createClientComponentClient<Database>()
 
-  // Cập nhật hàm handleDeletedAccount để xử lý tốt hơn khi tài khoản bị xóa
-  const handleDeletedAccount = async () => {
+  // Fetch user profile
+  const fetchProfile = async (userId: string) => {
     try {
-      // Đăng xuất người dùng
-      await supabase.auth.signOut()
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
 
-      // Xóa dữ liệu người dùng khỏi state
-      setUser(null)
-      setProfile(null)
-      setSession(null)
-      setIsAdmin(false)
-      setIsStaff(false)
+      if (error) {
+        console.error("Error fetching profile:", error)
+        return null
+      }
 
-      // Hiển thị thông báo cho người dùng
-      toast({
-        title: "Phiên đăng nhập đã hết hạn",
-        description:
-          "Tài khoản của bạn không còn tồn tại hoặc đã bị vô hiệu hóa. Vui lòng liên hệ hỗ trợ nếu bạn cần trợ giúp.",
-        variant: "destructive",
-      })
-
-      // Chuyển hướng người dùng đến trang đăng nhập
-      router.push("/dang-nhap?error=account_deleted")
-      router.refresh()
+      return data
     } catch (error) {
-      console.error("Error handling deleted account:", error)
+      console.error("Unexpected error fetching profile:", error)
+      return null
     }
   }
 
-  // Cập nhật phần xử lý lỗi trong getInitialSession
-  const getInitialSession = async () => {
+  // Check if user is admin
+  const checkIsAdmin = async () => {
     try {
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession()
+      const { data, error } = await supabase.rpc("is_admin")
 
-      // Kiểm tra lỗi session
-      if (sessionError) {
-        console.error("Error getting session:", sessionError)
-        await handleDeletedAccount()
-        return
+      if (error) {
+        console.error("Error checking admin status:", error)
+        return false
       }
 
-      setSession(session)
-      setUser(session?.user ?? null)
-
-      if (session?.user) {
-        try {
-          await fetchUserProfile(session.user.id)
-          await checkUserRoles()
-        } catch (error) {
-          // Nếu có lỗi khi lấy profile hoặc kiểm tra quyền, có thể tài khoản đã bị xóa
-          if (
-            error instanceof Error &&
-            (error.message.includes("user does not exist") ||
-              error.message.includes("no rows returned") ||
-              error.message.includes("JWT subject not found"))
-          ) {
-            await handleDeletedAccount()
-          } else {
-            console.error("Error initializing user data:", error)
-          }
-        }
-      }
+      return !!data
     } catch (error) {
-      console.error("Error getting initial session:", error)
-    } finally {
-      setIsLoading(false)
+      console.error("Unexpected error checking admin status:", error)
+      return false
     }
   }
 
+  // Check if user is staff
+  const checkIsStaff = async () => {
+    try {
+      const { data, error } = await supabase.rpc("is_staff")
+
+      if (error) {
+        console.error("Error checking staff status:", error)
+        return false
+      }
+
+      return !!data
+    } catch (error) {
+      console.error("Unexpected error checking staff status:", error)
+      return false
+    }
+  }
+
+  // Initialize auth state
   useEffect(() => {
-    getInitialSession()
+    const initializeAuth = async () => {
+      try {
+        setState((prev) => ({ ...prev, isLoading: true }))
 
+        // Get current session
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession()
+
+        if (error) {
+          throw error
+        }
+
+        if (session) {
+          // Get user profile
+          const profile = await fetchProfile(session.user.id)
+
+          // Check roles
+          const [isAdmin, isStaff] = await Promise.all([checkIsAdmin(), checkIsStaff()])
+
+          setState({
+            user: session.user,
+            session,
+            profile,
+            isLoading: false,
+            isAdmin,
+            isStaff,
+          })
+        } else {
+          setState({
+            user: null,
+            session: null,
+            profile: null,
+            isLoading: false,
+            isAdmin: false,
+            isStaff: false,
+          })
+        }
+      } catch (error) {
+        console.error("Error initializing auth:", error)
+        setState({
+          user: null,
+          session: null,
+          profile: null,
+          isLoading: false,
+          isAdmin: false,
+          isStaff: false,
+        })
+      }
+    }
+
+    initializeAuth()
+
+    // Set up auth state change listener
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
+      console.log("Auth state changed:", event)
 
-      if (session?.user) {
-        await fetchUserProfile(session.user.id)
-        await checkUserRoles()
-      } else {
-        setProfile(null)
-        setIsAdmin(false)
-        setIsStaff(false)
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        if (session) {
+          const profile = await fetchProfile(session.user.id)
+
+          // Check roles
+          const [isAdmin, isStaff] = await Promise.all([checkIsAdmin(), checkIsStaff()])
+
+          setState({
+            user: session.user,
+            session,
+            profile,
+            isLoading: false,
+            isAdmin,
+            isStaff,
+          })
+        }
+      } else if (event === "SIGNED_OUT") {
+        // Ensure we clear the state completely
+        setState({
+          user: null,
+          session: null,
+          profile: null,
+          isLoading: false,
+          isAdmin: false,
+          isStaff: false,
+        })
+
+        // Don't redirect here if we're already handling it in the signOut function
+        // This prevents double redirects
+      } else if (event === "USER_DELETED") {
+        setState({
+          user: null,
+          session: null,
+          profile: null,
+          isLoading: false,
+          isAdmin: false,
+          isStaff: false,
+        })
+
+        // Redirect to home page and show a message
+        router.push("/")
       }
-
-      router.refresh()
     })
 
     return () => {
       subscription.unsubscribe()
     }
-  }, [router, supabase])
+  }, [supabase, router])
 
-  // Cập nhật hàm fetchUserProfile để xử lý lỗi tốt hơn
-  const fetchUserProfile = async (userId: string) => {
+  // Sign up
+  const signUp = async (email: string, password: string, metadata?: { [key: string]: any }) => {
     try {
-      const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
-
-      if (error) {
-        // Kiểm tra nếu lỗi là do không tìm thấy profile (tài khoản đã bị xóa)
-        if (error.code === "PGRST116" || error.message.includes("no rows returned")) {
-          // Đăng xuất người dùng vì tài khoản không còn tồn tại
-          await handleDeletedAccount()
-          return
-        }
-        throw error
-      }
-
-      setProfile(data)
-    } catch (error) {
-      console.error("Error fetching user profile:", error)
-      setProfile(null)
-      throw error // Ném lỗi để có thể xử lý ở cấp cao hơn
-    }
-  }
-
-  // Cập nhật hàm checkUserRoles để xử lý lỗi tốt hơn
-  const checkUserRoles = async () => {
-    try {
-      // Check if user is admin
-      const { data: isAdminData, error: isAdminError } = await supabase.rpc("is_admin")
-
-      // Nếu lỗi là do không tìm thấy người dùng, xử lý tài khoản bị xóa
-      if (
-        isAdminError &&
-        (isAdminError.message.includes("user does not exist") || isAdminError.message.includes("JWT subject not found"))
-      ) {
-        await handleDeletedAccount()
-        return
-      }
-
-      if (isAdminError) throw isAdminError
-      setIsAdmin(!!isAdminData)
-
-      // Check if user is staff
-      const { data: isStaffData, error: isStaffError } = await supabase.rpc("is_staff")
-
-      // Nếu lỗi là do không tìm thấy người dùng, xử lý tài khoản bị xóa
-      if (
-        isStaffError &&
-        (isStaffError.message.includes("user does not exist") || isStaffError.message.includes("JWT subject not found"))
-      ) {
-        await handleDeletedAccount()
-        return
-      }
-
-      if (isStaffError) throw isStaffError
-      setIsStaff(!!isStaffData)
-    } catch (error) {
-      console.error("Error checking user roles:", error)
-      setIsAdmin(false)
-      setIsStaff(false)
-      throw error // Ném lỗi để có thể xử lý ở cấp cao hơn
-    }
-  }
-
-  // Cập nhật hàm signUp để phản ánh cấu hình xác nhận email
-  const signUp = async (email: string, password: string, metadata: { display_name: string; phone_number: string }) => {
-    try {
-      setIsLoading(true)
-
-      // Cấu hình URL chuyển hướng
-      const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?type=signup&next=/xac-nhan-email`
-
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: metadata,
-          emailRedirectTo: redirectTo,
         },
       })
 
       if (error) {
-        return { success: false, error: error.message }
+        return { success: false, error: getErrorMessage(error) }
       }
 
-      // Kiểm tra nếu người dùng đã tồn tại nhưng chưa xác nhận email
-      if (data.user && !data.user.email_confirmed_at) {
-        // Lưu email đang chờ xác nhận
-        savePendingConfirmationEmail(email)
-        return { success: true }
-      }
-
-      // Nếu người dùng đã tồn tại và đã xác nhận email
-      if (data.user && data.user.email_confirmed_at) {
-        return {
-          success: false,
-          error: "Email này đã được đăng ký. Vui lòng sử dụng email khác hoặc đăng nhập.",
-        }
-      }
-
-      // Lưu email đang chờ xác nhận
-      savePendingConfirmationEmail(email)
-      return { success: true }
+      return { success: true, error: null }
     } catch (error) {
-      console.error("Error signing up:", error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Đã xảy ra lỗi khi đăng ký",
-      }
-    } finally {
-      setIsLoading(false)
+      console.error("Sign up error:", error)
+      return { success: false, error: getErrorMessage(error) }
     }
   }
 
-  const signIn = async (email: string, password: string) => {
+  // Sign in
+  const signIn = async (email: string, password: string, rememberMe = false) => {
     try {
-      setIsLoading(true)
-
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-      })
-
-      if (error) {
-        return { success: false, error: error.message }
-      }
-
-      return { success: true }
-    } catch (error) {
-      console.error("Error signing in:", error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Đã xảy ra lỗi khi đăng nhập",
-      }
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const signInWithMagicLink = async (email: string) => {
-    try {
-      setIsLoading(true)
-
-      // Cấu hình URL chuyển hướng
-      const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
-
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
         options: {
-          emailRedirectTo: redirectTo,
+          // Set session expiry based on remember me option
+          // Default is 1 hour, extended to 30 days if remember me is checked
+          expiresIn: rememberMe ? 60 * 60 * 24 * 30 : 60 * 60,
         },
       })
 
       if (error) {
-        return { success: false, error: error.message }
+        return { success: false, error: getErrorMessage(error) }
       }
 
-      return { success: true }
+      return { success: true, error: null }
     } catch (error) {
-      console.error("Error signing in with magic link:", error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Đã xảy ra lỗi khi gửi liên kết đăng nhập",
-      }
-    } finally {
-      setIsLoading(false)
+      console.error("Sign in error:", error)
+      return { success: false, error: getErrorMessage(error) }
     }
   }
 
+  // Sign in with magic link
+  const signInWithMagicLink = async (email: string) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+
+      if (error) {
+        return { success: false, error: getErrorMessage(error) }
+      }
+
+      return { success: true, error: null }
+    } catch (error) {
+      console.error("Magic link error:", error)
+      return { success: false, error: getErrorMessage(error) }
+    }
+  }
+
+  // Sign out
   const signOut = async () => {
     try {
-      setIsLoading(true)
+      // Set loading state first
+      setState((prev) => ({ ...prev, isLoading: true }))
 
-      // Lưu trữ state hiện tại để khôi phục nếu cần
-      const currentUser = user
-      const currentProfile = profile
-
-      // Đăng xuất khỏi Supabase
+      // Call Supabase signOut
       const { error } = await supabase.auth.signOut()
 
+      // Clean up auth state regardless of Supabase response
+      cleanupAuthState()
+
       if (error) {
-        console.error("Supabase signOut error:", error)
-        throw error
+        // Reset loading state on error
+        setState((prev) => ({ ...prev, isLoading: false }))
+        return { success: false, error: getErrorMessage(error) }
       }
 
-      // Xóa dữ liệu người dùng khỏi state ngay lập tức
-      setUser(null)
-      setProfile(null)
-      setSession(null)
-      setIsAdmin(false)
-      setIsStaff(false)
-
-      // Xóa dữ liệu liên quan đến auth khỏi localStorage
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("supabase.auth.token")
-        localStorage.removeItem("pendingConfirmationEmail")
-      }
-
-      // Hiển thị thông báo thành công
-      toast({
-        title: "Đăng xuất thành công",
-        description: "Bạn đã đăng xuất khỏi tài khoản",
-        variant: "default",
+      // Manually clear state immediately
+      setState({
+        user: null,
+        session: null,
+        profile: null,
+        isLoading: false,
+        isAdmin: false,
+        isStaff: false,
       })
+
+      // Use router.push instead of router.refresh
+      router.push("/")
+
+      return { success: true, error: null }
     } catch (error) {
-      console.error("Error signing out:", error)
-
-      // Hiển thị thông báo lỗi
-      toast({
-        title: "Lỗi đăng xuất",
-        description: "Đã xảy ra lỗi khi đăng xuất. Vui lòng thử lại.",
-        variant: "destructive",
-      })
-
-      throw error
-    } finally {
-      setIsLoading(false)
+      console.error("Sign out error:", error)
+      // Reset loading state on error
+      setState((prev) => ({ ...prev, isLoading: false }))
+      return { success: false, error: getErrorMessage(error) }
     }
   }
 
-  // Cập nhật hàm resetPassword để xử lý giới hạn tốc độ gửi email
+  // Reset password
   const resetPassword = async (email: string) => {
     try {
-      setIsLoading(true)
-      console.log("Bắt đầu đặt lại mật khẩu cho email:", email)
-
-      // Cấu hình URL chuyển hướng
-      const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?type=recovery`
-      console.log("URL chuyển hướng đặt lại mật khẩu:", redirectTo)
-
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: redirectTo,
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback?next=/dat-lai-mat-khau`,
       })
 
       if (error) {
-        console.error("Lỗi đặt lại mật khẩu:", error.message)
-
-        // Xử lý lỗi cooldown
-        if (error.message.includes("security purposes") && error.message.includes("after")) {
-          // Trích xuất thời gian cooldown từ thông báo lỗi
-          const secondsMatch = error.message.match(/(\d+) seconds?/)
-          const cooldown = secondsMatch && secondsMatch[1] ? Number.parseInt(secondsMatch[1], 10) : 1800
-
-          return {
-            success: false,
-            error: `Vì lý do bảo mật, bạn chỉ có thể yêu cầu sau ${cooldown} giây nữa.`,
-            cooldown: cooldown,
-          }
-        }
-
-        // Xử lý lỗi giới hạn tốc độ
-        if (error.message.includes("rate limit") || error.message.includes("too many requests")) {
-          return {
-            success: false,
-            error: "Đã vượt quá giới hạn gửi email. Vui lòng thử lại sau 30 phút.",
-            cooldown: 1800, // 30 phút
-          }
-        }
-
-        return { success: false, error: error.message }
+        return { success: false, error: getErrorMessage(error) }
       }
 
-      console.log("Đã gửi email đặt lại mật khẩu thành công")
-      return { success: true }
+      return { success: true, error: null }
     } catch (error) {
-      console.error("Error resetting password:", error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Đã xảy ra lỗi khi yêu cầu đặt lại mật khẩu",
-      }
-    } finally {
-      setIsLoading(false)
+      console.error("Reset password error:", error)
+      return { success: false, error: getErrorMessage(error) }
     }
   }
 
+  // Update password
   const updatePassword = async (password: string) => {
     try {
-      setIsLoading(true)
-      console.log("Bắt đầu cập nhật mật khẩu mới")
-
-      const { error } = await supabase.auth.updateUser({
+      const { data, error } = await supabase.auth.updateUser({
         password,
       })
 
       if (error) {
-        console.error("Lỗi cập nhật mật khẩu:", error.message)
-        return { success: false, error: error.message }
+        return { success: false, error: getErrorMessage(error) }
       }
 
-      console.log("Cập nhật mật khẩu thành công")
-
-      // Đăng xuất sau khi cập nhật mật khẩu thành công
-      // Điều này đảm bảo người dùng đăng nhập lại với mật khẩu mới
-      await supabase.auth.signOut()
-
-      return { success: true }
+      return { success: true, error: null }
     } catch (error) {
-      console.error("Error updating password:", error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Đã xảy ra lỗi khi cập nhật mật khẩu",
-      }
-    } finally {
-      setIsLoading(false)
+      console.error("Update password error:", error)
+      return { success: false, error: getErrorMessage(error) }
     }
   }
 
+  // Refresh session
   const refreshSession = async () => {
     try {
-      setIsLoading(true)
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      setSession(session)
-      setUser(session?.user ?? null)
+      const { data, error } = await supabase.auth.refreshSession()
 
-      if (session?.user) {
-        await fetchUserProfile(session.user.id)
-        await checkUserRoles()
+      if (error) {
+        console.error("Session refresh error:", error)
+        return
+      }
+
+      const { session } = data
+
+      if (session) {
+        const profile = await fetchProfile(session.user.id)
+
+        // Check roles
+        const [isAdmin, isStaff] = await Promise.all([checkIsAdmin(), checkIsStaff()])
+
+        setState({
+          user: session.user,
+          session,
+          profile,
+          isLoading: false,
+          isAdmin,
+          isStaff,
+        })
       }
     } catch (error) {
-      console.error("Error refreshing session:", error)
-    } finally {
-      setIsLoading(false)
+      console.error("Unexpected session refresh error:", error)
     }
   }
 
   const value = {
-    user,
-    profile,
-    isLoading,
-    isAdmin,
-    isStaff,
+    ...state,
     signUp,
     signIn,
     signInWithMagicLink,
+    signInWithProvider,
     signOut,
     resetPassword,
     updatePassword,
@@ -484,9 +405,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext)
+
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider")
   }
+
   return context
 }
 

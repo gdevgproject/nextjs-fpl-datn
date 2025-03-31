@@ -19,7 +19,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MagicLinkForm } from "./magic-link-form"
 import { motion } from "framer-motion"
-// Thêm import
 import { AuthSocialButtons } from "@/components/auth/auth-social-buttons"
 
 const loginFormSchema = z.object({
@@ -82,23 +81,31 @@ export function LoginForm() {
     },
   })
 
-  // Cập nhật hiển thị lỗi trong form đăng nhập để hiển thị rõ ràng hơn
   async function onSubmit(values: LoginFormValues) {
     try {
       setIsSubmitting(true)
       setLoginError(null)
 
-      // Giả lập đăng nhập (không thực sự gọi API)
-      // Trong thực tế, bạn sẽ gọi signIn từ useAuth
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      // Gọi hàm đăng nhập từ useAuth hook
+      const { success, error } = await signIn(values.email, values.password)
 
-      // Giả lập thành công
+      if (!success) {
+        setLoginError(error)
+        toast({
+          title: "Đăng nhập thất bại",
+          description: error,
+          variant: "destructive",
+        })
+        return
+      }
+
       toast({
         title: "Đăng nhập thành công",
         description: "Chào mừng bạn quay trở lại",
       })
 
       router.push(callbackUrl)
+      router.refresh()
     } catch (error) {
       console.error("Login error:", error)
       const errorMessage = getErrorMessage(error)

@@ -41,10 +41,19 @@ export function MagicLinkForm() {
       setIsSubmitting(true)
       setFormError(null)
 
-      // Giả lập gửi magic link (không thực sự gọi API)
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      // Gọi hàm đăng nhập bằng Magic Link từ useAuth hook
+      const { success, error } = await signInWithMagicLink(values.email)
 
-      // Giả lập thành công
+      if (!success) {
+        setFormError(error)
+        toast({
+          title: "Gửi liên kết thất bại",
+          description: error,
+          variant: "destructive",
+        })
+        return
+      }
+
       setEmailSent(true)
       toast({
         title: "Liên kết đăng nhập đã được gửi",

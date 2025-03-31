@@ -6,22 +6,22 @@ export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(false)
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia(query)
+    const media = window.matchMedia(query)
 
-    // Set initial value
-    setMatches(mediaQuery.matches)
+    // Cập nhật state ban đầu
+    setMatches(media.matches)
 
-    // Define callback function to handle changes
-    const handleChange = (event: MediaQueryListEvent) => {
+    // Callback khi media query thay đổi
+    const listener = (event: MediaQueryListEvent) => {
       setMatches(event.matches)
     }
 
-    // Add event listener
-    mediaQuery.addEventListener("change", handleChange)
+    // Đăng ký listener
+    media.addEventListener("change", listener)
 
-    // Clean up
+    // Cleanup
     return () => {
-      mediaQuery.removeEventListener("change", handleChange)
+      media.removeEventListener("change", listener)
     }
   }, [query])
 
