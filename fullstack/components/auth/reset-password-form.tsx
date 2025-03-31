@@ -14,6 +14,7 @@ import { getErrorMessage, validatePassword } from "@/lib/auth/auth-utils"
 import { Loader2, ShieldAlert, Eye, EyeOff, CheckCircle, AlertCircle, Lock } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { motion } from "framer-motion"
+import { createClientSupabaseClient } from "@/lib/supabase/supabase-client"
 
 // Cập nhật kiểm tra mật khẩu trong form đặt lại mật khẩu
 const resetPasswordFormSchema = z
@@ -67,7 +68,7 @@ export function ResetPasswordForm() {
   // Kiểm tra mật khẩu khi người dùng nhập
   useEffect(() => {
     if (passwordValue) {
-      const { errors, strength } = validatePassword(passwordValue)
+      const { errors, isValid, strength } = validatePassword(passwordValue)
       setPasswordErrors(errors)
       setPasswordStrength(strength)
     } else {
@@ -101,11 +102,52 @@ export function ResetPasswordForm() {
           return
         }
 
-        // Giả lập kiểm tra token (không thực sự gọi API)
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+        // Get the code from URL if available
+        const code = searchParams.get("code")
+        const type = searchParams.get("type")
 
-        // Giả lập token hợp lệ
-        setIsTokenValid(true)
+        // If we have a code and it's a recovery type, we need to exchange it for a session
+        if (code && type === "recovery") {
+          const supabase = createClientSupabaseClient()
+
+          // Exchange the code for a session
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+
+          if (error) {
+            console.error("Error exchanging code for session:", error)
+            setIsTokenValid(false)
+            setIsLoading(false)
+            return
+          }
+
+          // If we got a session, the token is valid
+          if (data?.session) {
+            setIsTokenValid(true)
+          } else {
+            setIsTokenValid(false)
+          }
+        } else {
+          // Check if we already have a valid session
+          const supabase = createClientSupabaseClient()
+          const {
+            data: { session },
+            error: sessionError,
+          } = await supabase.auth.getSession()
+
+          if (sessionError) {
+            console.error("Session error:", sessionError)
+            setIsTokenValid(false)
+            setIsLoading(false)
+            return
+          }
+
+          // If we have a session, the token might be valid
+          if (session) {
+            setIsTokenValid(true)
+          } else {
+            setIsTokenValid(false)
+          }
+        }
       } catch (error) {
         console.error("Error checking reset token:", error)
         setIsTokenValid(false)
@@ -115,7 +157,7 @@ export function ResetPasswordForm() {
     }
 
     checkToken()
-  }, [toast, urlError, urlErrorCode, urlErrorDescription, code, type])
+  }, [searchParams, toast, urlError, urlErrorCode, urlErrorDescription])
 
   // Hiển thị thanh đánh giá độ mạnh mật khẩu
   const renderPasswordStrength = () => {
@@ -166,8 +208,15 @@ export function ResetPasswordForm() {
       setIsSubmitting(true)
       setFormError(null)
 
-      // Giả lập cập nhật mật khẩu (không thực sự gọi API)
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      // Sử dụng Supabase client để cập nhật mật khẩu
+      const supabase = createClientSupabaseClient()
+      const { error } = await supabase.auth.updateUser({
+        password: values.password,
+      })
+
+      if (error) {
+        throw error
+      }
 
       setResetSuccess(true)
       toast({
