@@ -4,114 +4,77 @@ import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
-import { getPendingConfirmationEmail, clearPendingConfirmationEmail } from "@/lib/auth/auth-utils"
-import { Loader2, Mail, CheckCircle, AlertCircle } from "lucide-react"
+import { useAuth } from "@/lib/hooks/use-auth"
+import {
+  getErrorMessage,
+  getPendingConfirmationEmail,
+  clearPendingConfirmationEmail,
+  sendVerificationEmail,
+} from "@/lib/auth/auth-utils"
+import { Loader2, CheckCircle, AlertCircle, Mail } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Progress } from "@/components/ui/progress"
-import { motion } from "framer-motion"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import Link from "next/link"
 
 export function EmailConfirmation() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
+  const { user } = useAuth()
   const [isResending, setIsResending] = useState(false)
-  const [emailResent, setEmailResent] = useState(false)
+  const [countdown, setCountdown] = useState(0)
   const [email, setEmail] = useState<string | null>(null)
-  const [cooldown, setCooldown] = useState(0)
-  const [cooldownProgress, setCooldownProgress] = useState(0)
 
-  // Kiểm tra xem người dùng đã được đăng nhập tự động chưa
-  const autoLogin = searchParams.get("auto_login") === "true"
-
-  // Kiểm tra xem email đã được xác nhận thành công chưa
+  // Lấy các tham số từ URL
   const success = searchParams.get("success") === "true"
-
-  // Kiểm tra lỗi từ URL (ví dụ: link hết hạn)
+  const autoLogin = searchParams.get("auto_login") === "true"
   const error = searchParams.get("error")
-  const errorCode = searchParams.get("error_code")
   const errorDescription = searchParams.get("error_description")
 
+  // Lấy email từ localStorage khi component được mount
   useEffect(() => {
-    // Lấy email từ localStorage
-    const storedEmail = getPendingConfirmationEmail()
-    setEmail(storedEmail)
+    const pendingEmail = getPendingConfirmationEmail()
+    setEmail(pendingEmail)
+  }, [])
 
-    // Nếu xác nhận thành công, xóa email khỏi localStorage
-    if (success) {
-      clearPendingConfirmationEmail()
-
-      // Hiển thị thông báo thành công
-      toast({
-        title: "Xác nhận email thành công",
-        description: "Tài khoản của bạn đã được kích hoạt và bạn đã được đăng nhập tự động.",
-      })
-    }
-  }, [success, toast])
-
-  // Xử lý cooldown timer
+  // Xử lý đếm ngược để gửi lại email
   useEffect(() => {
-    let timer: NodeJS.Timeout
-    let progressTimer: NodeJS.Timeout
-
-    if (cooldown > 0) {
-      timer = setTimeout(() => setCooldown((prev) => prev - 1), 1000)
-
-      const updateProgress = () => {
-        setCooldownProgress((prev) => {
-          const newProgress = ((60 - cooldown) / 60) * 100
-          return Math.min(newProgress, 100)
-        })
-      }
-
-      updateProgress()
-      progressTimer = setInterval(updateProgress, 100)
-    } else {
-      setCooldownProgress(100)
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
+      return () => clearTimeout(timer)
     }
+  }, [countdown])
 
-    return () => {
-      if (timer) clearTimeout(timer)
-      if (progressTimer) clearInterval(progressTimer)
-    }
-  }, [cooldown])
+  // Xử lý gửi lại email xác nhận
+  const handleResendEmail = async () => {
+    if (!email || isResending || countdown > 0) return
 
-  async function handleResendEmail() {
     try {
-      if (cooldown > 0) {
-        toast({
-          title: "Vui lòng đợi",
-          description: `Bạn có thể gửi lại email sau ${cooldown} giây`,
-          variant: "destructive",
-        })
-        return
-      }
-
       setIsResending(true)
 
-      if (!email) {
+      const result = await sendVerificationEmail(email)
+
+      if (!result.success) {
         toast({
-          title: "Không tìm thấy email",
-          description: "Vui lòng đăng ký lại hoặc đăng nhập",
+          title: "Gửi email thất bại",
+          description: result.error || "Không thể gửi email xác nhận. Vui lòng thử lại sau.",
           variant: "destructive",
         })
-        router.push("/dang-ky")
         return
       }
 
-      // Giả lập gửi email (không thực sự gọi API)
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      setEmailResent(true)
-      setCooldown(60) // Đặt cooldown 60 giây
       toast({
-        title: "Email đã được gửi lại",
-        description: "Vui lòng kiểm tra hộp thư của bạn",
+        title: "Email đã được gửi",
+        description: "Vui lòng kiểm tra hộp thư của bạn để xác nhận tài khoản.",
       })
+
+      // Bắt đầu đếm ngược 60 giây
+      setCountdown(60)
     } catch (error) {
       console.error("Error resending verification email:", error)
       toast({
         title: "Gửi email thất bại",
-        description: "Không thể gửi email xác nhận. Vui lòng thử lại sau.",
+        description: getErrorMessage(error),
         variant: "destructive",
       })
     } finally {
@@ -119,178 +82,173 @@ export function EmailConfirmation() {
     }
   }
 
-  // Nếu xác nhận thành công, hiển thị thông báo thành công
-  if (success) {
+  // Xử lý chuyển hướng đến trang đăng nhập
+  const handleGoToLogin = () => {
+    // Xóa email khỏi localStorage
+    clearPendingConfirmationEmail()
+    router.push("/dang-nhap")
+  }
+
+  // Hiển thị thông báo thành công
+  if (success || autoLogin || user) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="space-y-4 py-2"
-      >
-        <div className="flex justify-center mb-4">
-          <div className="rounded-full bg-primary/10 p-3">
-            <CheckCircle className="h-10 w-10 text-primary" />
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader className="space-y-1">
+          <div className="flex justify-center mb-4">
+            <div className="rounded-full bg-green-100 p-3">
+              <CheckCircle className="h-10 w-10 text-green-600" />
+            </div>
           </div>
-        </div>
-
-        <Alert className="bg-primary/10 border-primary">
-          <CheckCircle className="h-4 w-4 text-primary" />
-          <AlertTitle>Xác nhận email thành công!</AlertTitle>
-          <AlertDescription>
+          <CardTitle className="text-2xl font-bold text-center">Email đã được xác nhận!</CardTitle>
+          <CardDescription className="text-center">
             {autoLogin
-              ? "Tài khoản của bạn đã được kích hoạt và bạn đã được đăng nhập tự động."
-              : "Tài khoản của bạn đã được kích hoạt. Bạn có thể đăng nhập ngay bây giờ."}
-          </AlertDescription>
-        </Alert>
-
-        <Button
-          type="button"
-          className="w-full transition-all duration-200 hover:bg-primary/90"
-          onClick={() => router.push(autoLogin ? "/" : "/dang-nhap")}
-        >
-          {autoLogin ? "Đi đến trang chủ" : "Đăng nhập ngay"}
-        </Button>
-      </motion.div>
+              ? "Tài khoản của bạn đã được xác nhận và bạn đã được đăng nhập tự động."
+              : "Tài khoản của bạn đã được xác nhận thành công."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert className="bg-green-50 border-green-200">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <AlertTitle>Xác nhận thành công</AlertTitle>
+            <AlertDescription>
+              Bạn đã xác nhận email thành công. Giờ đây bạn có thể sử dụng đầy đủ các tính năng của tài khoản.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+        <CardFooter>
+          <Button className="w-full" onClick={() => router.push("/")}>
+            Đi đến trang chủ
+          </Button>
+        </CardFooter>
+      </Card>
     )
   }
 
-  // Nếu có lỗi, hiển thị thông báo lỗi
-  if (error || errorCode || errorDescription) {
+  // Hiển thị thông báo lỗi
+  if (error) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="space-y-4 py-2"
-      >
-        <div className="flex justify-center mb-4">
-          <div className="rounded-full bg-destructive/10 p-3">
-            <AlertCircle className="h-10 w-10 text-destructive" />
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader className="space-y-1">
+          <div className="flex justify-center mb-4">
+            <div className="rounded-full bg-red-100 p-3">
+              <AlertCircle className="h-10 w-10 text-red-600" />
+            </div>
           </div>
-        </div>
+          <CardTitle className="text-2xl font-bold text-center">Xác nhận thất bại</CardTitle>
+          <CardDescription className="text-center">
+            {errorDescription || "Liên kết xác nhận không hợp lệ hoặc đã hết hạn."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Lỗi xác nhận</AlertTitle>
+            <AlertDescription>
+              {error === "invalid_link"
+                ? "Liên kết xác nhận không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu gửi lại email xác nhận."
+                : errorDescription || "Đã xảy ra lỗi khi xác nhận email của bạn."}
+            </AlertDescription>
+          </Alert>
 
-        <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Xác nhận email thất bại</AlertTitle>
-          <AlertDescription>
-            {errorDescription
-              ? decodeURIComponent(errorDescription.replace(/\+/g, " "))
-              : "Liên kết xác nhận không hợp lệ hoặc đã hết hạn."}
-          </AlertDescription>
-        </Alert>
-
-        <div className="space-y-2">
-          {cooldown > 0 && (
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>Thời gian chờ</span>
-                <span>{cooldown}s</span>
-              </div>
-              <Progress value={cooldownProgress} className="h-2" />
+          {email && (
+            <div className="bg-muted p-4 rounded-lg">
+              <p className="text-sm font-medium mb-2">Bạn có thể yêu cầu gửi lại email xác nhận:</p>
+              <Button
+                onClick={handleResendEmail}
+                disabled={isResending || countdown > 0}
+                className="w-full"
+                variant="outline"
+              >
+                {isResending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Đang gửi...
+                  </>
+                ) : countdown > 0 ? (
+                  `Gửi lại sau ${countdown}s`
+                ) : (
+                  <>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Gửi lại email xác nhận
+                  </>
+                )}
+              </Button>
             </div>
           )}
-
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={handleResendEmail}
-            disabled={isResending || cooldown > 0}
-          >
-            {isResending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Đang gửi lại
-              </>
-            ) : cooldown > 0 ? (
-              `Gửi lại email xác nhận (${cooldown}s)`
-            ) : (
-              "Gửi lại email xác nhận"
-            )}
+        </CardContent>
+        <CardFooter className="flex flex-col space-y-2">
+          <Button className="w-full" onClick={handleGoToLogin}>
+            Đi đến đăng nhập
           </Button>
-
-          <Button
-            type="button"
-            className="w-full transition-all duration-200 hover:bg-primary/90"
-            onClick={() => router.push("/dang-nhap")}
-          >
-            Quay lại đăng nhập
-          </Button>
-        </div>
-      </motion.div>
+          <div className="text-center text-sm text-muted-foreground">
+            <Link href="/" className="hover:underline">
+              Quay lại trang chủ
+            </Link>
+          </div>
+        </CardFooter>
+      </Card>
     )
   }
 
   // Hiển thị thông báo chờ xác nhận
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-4 py-2"
-    >
-      <div className="flex justify-center mb-4">
-        <div className="rounded-full bg-primary/10 p-3">
-          {emailResent ? (
-            <CheckCircle className="h-10 w-10 text-primary" />
-          ) : (
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader className="space-y-1">
+        <div className="flex justify-center mb-4">
+          <div className="rounded-full bg-primary/10 p-3">
             <Mail className="h-10 w-10 text-primary" />
-          )}
-        </div>
-      </div>
-
-      <div className="bg-muted p-4 rounded-lg text-center">
-        <h3 className="font-medium mb-2">Kiểm tra email của bạn</h3>
-        <p className="text-sm text-muted-foreground">
-          Chúng tôi đã gửi email xác nhận đến địa chỉ email {email ? <strong>{email}</strong> : "của bạn"}. Vui lòng
-          kiểm tra hộp thư (và thư mục spam) để xác nhận tài khoản.
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        {cooldown > 0 && (
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <span>Thời gian chờ</span>
-              <span>{cooldown}s</span>
-            </div>
-            <Progress value={cooldownProgress} className="h-2" />
           </div>
-        )}
+        </div>
+        <CardTitle className="text-2xl font-bold text-center">Kiểm tra email của bạn</CardTitle>
+        <CardDescription className="text-center">
+          Chúng tôi đã gửi email xác nhận đến <span className="font-medium">{email || "địa chỉ email của bạn"}</span>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Alert className="bg-blue-50 border-blue-200">
+          <Mail className="h-4 w-4 text-blue-600" />
+          <AlertTitle>Kiểm tra hộp thư của bạn</AlertTitle>
+          <AlertDescription>
+            Vui lòng kiểm tra hộp thư đến và thư mục spam để tìm email xác nhận. Nhấp vào liên kết trong email để hoàn
+            tất quá trình đăng ký.
+          </AlertDescription>
+        </Alert>
 
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full"
-          onClick={handleResendEmail}
-          disabled={isResending || cooldown > 0}
-        >
-          {isResending ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Đang gửi lại
-            </>
-          ) : cooldown > 0 ? (
-            `Gửi lại email xác nhận (${cooldown}s)`
-          ) : (
-            "Gửi lại email xác nhận"
-          )}
+        <div className="bg-muted p-4 rounded-lg">
+          <p className="text-sm font-medium mb-2">Không nhận được email?</p>
+          <Button
+            onClick={handleResendEmail}
+            disabled={!email || isResending || countdown > 0}
+            className="w-full"
+            variant="outline"
+          >
+            {isResending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Đang gửi...
+              </>
+            ) : countdown > 0 ? (
+              `Gửi lại sau ${countdown}s`
+            ) : (
+              <>
+                <Mail className="mr-2 h-4 w-4" />
+                Gửi lại email xác nhận
+              </>
+            )}
+          </Button>
+        </div>
+      </CardContent>
+      <CardFooter className="flex flex-col space-y-2">
+        <Button className="w-full" variant="outline" onClick={handleGoToLogin}>
+          Đi đến đăng nhập
         </Button>
-
-        <Button
-          type="button"
-          className="w-full transition-all duration-200 hover:bg-primary/90"
-          onClick={() => router.push("/dang-nhap")}
-        >
-          Đã xác nhận? Đăng nhập
-        </Button>
-
-        <Button type="button" variant="link" className="w-full" onClick={() => router.push("/dang-ky")}>
-          Quay lại đăng ký
-        </Button>
-      </div>
-    </motion.div>
+        <div className="text-center text-sm text-muted-foreground">
+          <Link href="/" className="hover:underline">
+            Quay lại trang chủ
+          </Link>
+        </div>
+      </CardFooter>
+    </Card>
   )
 }
 
