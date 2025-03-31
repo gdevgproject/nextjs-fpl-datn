@@ -70,8 +70,17 @@ export function RegisterForm() {
   // Kiểm tra mật khẩu khi người dùng nhập
   useEffect(() => {
     if (passwordValue) {
-      const { errors, strength } = validatePassword(passwordValue)
+      const { errors, isValid } = validatePassword(passwordValue)
       setPasswordErrors(errors)
+
+      // Tính toán độ mạnh mật khẩu
+      let strength = 0
+      if (passwordValue.length >= 6) strength += 20
+      if (/[A-Z]/.test(passwordValue)) strength += 20
+      if (/[a-z]/.test(passwordValue)) strength += 20
+      if (/[0-9]/.test(passwordValue)) strength += 20
+      if (/[^A-Za-z0-9]/.test(passwordValue)) strength += 20
+
       setPasswordStrength(strength)
     } else {
       setPasswordErrors([])
@@ -84,14 +93,11 @@ export function RegisterForm() {
     const fieldsToValidate =
       currentStep === 1 ? ["displayName", "phoneNumber", "email"] : ["password", "confirmPassword"]
 
-    const isValid = fieldsToValidate.every((field) => {
-      const result = form.trigger(field as keyof RegisterFormValues)
-      return result
+    form.trigger(fieldsToValidate as any).then((isValid) => {
+      if (isValid) {
+        setCurrentStep((prev) => Math.min(prev + 1, totalSteps))
+      }
     })
-
-    if (isValid) {
-      setCurrentStep((prev) => Math.min(prev + 1, totalSteps))
-    }
   }
 
   const prevStep = () => {
@@ -103,8 +109,21 @@ export function RegisterForm() {
       setIsSubmitting(true)
       setFormError(null)
 
-      // Giả lập đăng ký (không thực sự gọi API)
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      // Gọi hàm đăng ký từ useAuth hook
+      const { success, error } = await signUp(values.email, values.password, {
+        display_name: values.displayName,
+        phone_number: values.phoneNumber,
+      })
+
+      if (!success) {
+        setFormError(error)
+        toast({
+          title: "Đăng ký thất bại",
+          description: error,
+          variant: "destructive",
+        })
+        return
+      }
 
       // Lưu email vào localStorage để có thể gửi lại email xác nhận
       savePendingConfirmationEmail(values.email)
