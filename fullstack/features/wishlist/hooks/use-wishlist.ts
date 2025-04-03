@@ -23,7 +23,13 @@ export interface WishlistItem {
   }
 }
 
-export function useWishlist() {
+// Định nghĩa kiểu dữ liệu cho filter
+export interface WishlistFilter {
+  sortBy?: "newest" | "oldest" | "price_asc" | "price_desc"
+  search?: string
+}
+
+export function useWishlist(filter?: WishlistFilter) {
   const { user, isAuthenticated } = useAuth()
   const supabase = getSupabaseBrowserClient()
   const queryClient = useQueryClient()
@@ -33,12 +39,12 @@ export function useWishlist() {
 
   // Fetch wishlist từ database nếu user đã đăng nhập
   const { data: wishlistItems, isLoading } = useQuery({
-    queryKey: ["wishlist", user?.id],
+    queryKey: ["wishlist", user?.id, filter],
     queryFn: async () => {
       if (!user) return []
 
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from("wishlists")
           .select(`
             id,
@@ -55,9 +61,50 @@ export function useWishlist() {
           `)
           .eq("user_id", user.id)
 
+        // Áp dụng filter nếu có
+        if (filter?.search) {
+          query = query.textSearch("products.name", filter.search, {
+            type: "websearch",
+            config: "english",
+          })
+        }
+
+        const { data, error } = await query
+
         if (error) throw error
 
-        return data as WishlistItem[]
+        // Sắp xếp dữ liệu theo filter
+        const sortedData = [...(data as WishlistItem[])]
+
+        if (filter?.sortBy) {
+          switch (filter.sortBy) {
+            case "newest":
+              sortedData.sort((a, b) => new Date(b.added_at).getTime() - new Date(a.added_at).getTime())
+              break
+            case "oldest":
+              sortedData.sort((a, b) => new Date(a.added_at).getTime() - new Date(b.added_at).getTime())
+              break
+            case "price_asc":
+              sortedData.sort((a, b) => {
+                const priceA = a.product.sale_price || a.product.price
+                const priceB = b.product.sale_price || b.product.price
+                return priceA - priceB
+              })
+              break
+            case "price_desc":
+              sortedData.sort((a, b) => {
+                const priceA = a.product.sale_price || a.product.price
+                const priceB = b.product.sale_price || b.product.price
+                return priceB - priceA
+              })
+              break
+          }
+        } else {
+          // Mặc định sắp xếp theo thời gian thêm vào mới nhất
+          sortedData.sort((a, b) => new Date(b.added_at).getTime() - new Date(a.added_at).getTime())
+        }
+
+        return sortedData
       } catch (error) {
         console.error("Error fetching wishlist:", error)
         throw new Error(handleApiError(error))
