@@ -1,100 +1,77 @@
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
-import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs"
+import { type NextRequest, NextResponse } from "next/server"
+import { createSupabaseMiddlewareClient } from "./lib/supabase/middleware"
+import { getUserRoleFromMetadata, canAccessPage } from "./lib/utils/auth-utils"
 
-/**
- * Middleware for authentication and authorization checks
- */
-export async function middleware(request: NextRequest) {
-  try {
-    // Create a Supabase client for the middleware
-    const supabase = createMiddlewareClient({ req: request, res: NextResponse.next() })
+export async function middleware(req: NextRequest) {
+  const { supabase, res } = await createSupabaseMiddlewareClient(req)
 
-    // Refresh the session if it exists
-    const {
-      data: { session },
-      error,
-    } = await supabase.auth.getSession()
+  // Check session
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
 
-    // Get the pathname from the request
-    const { pathname } = request.nextUrl
+  // Get current URL
+  const url = req.nextUrl.clone()
+  const { pathname } = url
 
-    // Auth routes that should redirect to dashboard if already logged in
-    const authRoutes = ["/dang-nhap", "/dang-ky", "/quen-mat-khau"]
+  // Check if it's an auth callback
+  const isAuthCallback = pathname.startsWith("/api/auth/callback")
 
-    // Protected routes that require authentication
-    const protectedRoutes = ["/tai-khoan", "/gio-hang/thanh-toan"]
-
-    // Admin routes that require admin role
-    const adminRoutes = ["/admin"]
-
-    // Check if the current route is an auth route
-    const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route))
-
-    // Check if the current route is a protected route
-    const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
-
-    // Check if the current route is an admin route
-    const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route))
-
-    // If user is logged in and trying to access auth routes, redirect to dashboard
-    if (session && isAuthRoute) {
-      return NextResponse.redirect(new URL("/tai-khoan/thong-tin", request.url))
-    }
-
-    // If user is not logged in and trying to access protected routes, redirect to login
-    if (!session && isProtectedRoute) {
-      const redirectUrl = new URL("/dang-nhap", request.url)
-      redirectUrl.searchParams.set("redirect", pathname)
-      return NextResponse.redirect(redirectUrl)
-    }
-
-    // If user is trying to access admin routes, check if they are an admin
-    if (isAdminRoute) {
-      if (!session) {
-        // Not logged in, redirect to login
-        const redirectUrl = new URL("/dang-nhap", request.url)
-        redirectUrl.searchParams.set("redirect", pathname)
-        return NextResponse.redirect(redirectUrl)
-      }
-
-      try {
-        // Check if the user is an admin using the RPC function
-        const { data: isAdmin, error: adminError } = await supabase.rpc("is_admin")
-
-        if (adminError || !isAdmin) {
-          // Not an admin, redirect to unauthorized page
-          return NextResponse.redirect(new URL("/khong-co-quyen-truy-cap", request.url))
-        }
-      } catch (error) {
-        console.error("Error checking admin status:", error)
-        // On error, redirect to unauthorized page
-        return NextResponse.redirect(new URL("/khong-co-quyen-truy-cap", request.url))
-      }
-    }
-
-    // Continue with the request for all other cases
-    return NextResponse.next()
-  } catch (error) {
-    console.error("Middleware error:", error)
-    // On error, continue with the request but log the error
-    return NextResponse.next()
+  // If it's a callback, allow access
+  if (isAuthCallback) {
+    return res
   }
+
+  // Check if there's auth_action=email_confirmed in query params
+  const hasEmailConfirmed = url.searchParams.get("auth_action") === "email_confirmed"
+
+  // Nếu không có session và truy cập trang bảo vệ
+  if (!session) {
+    // Nếu truy cập trang tài khoản sau khi xác nhận email, cho phép tạm thời
+    if (pathname.startsWith("/tai-khoan") && hasEmailConfirmed) {
+      // Cho phép một khoảng thời gian ngắn để cập nhật trạng thái xác thực
+      return res
+    }
+
+    if (pathname.startsWith("/admin") || pathname.startsWith("/tai-khoan") || pathname.startsWith("/thanh-toan")) {
+      url.pathname = "/dang-nhap"
+      url.searchParams.set("redirect", pathname)
+      return NextResponse.redirect(url)
+    }
+
+    // Cho phép truy cập vào các trang công khai
+    return res
+  }
+
+  // If session exists, determine role from app_metadata
+  const role = getUserRoleFromMetadata(session.user)
+
+  // Bảo vệ trang admin - chỉ cho phép admin và staff truy cập
+  if (pathname.startsWith("/admin")) {
+    // Kiểm tra xem người dùng có phải admin hoặc staff không
+    if (role !== "admin" && role !== "staff") {
+      url.pathname = "/khong-co-quyen"
+      return NextResponse.redirect(url)
+    }
+  }
+
+  // Check access permission for the page
+  if (!canAccessPage(role, pathname)) {
+    url.pathname = "/khong-co-quyen"
+    return NextResponse.redirect(url)
+  }
+
+  // Redirect logged-in users away from login/register pages
+  if ((pathname.startsWith("/dang-nhap") || pathname.startsWith("/dang-ky")) && session) {
+    const redirectTo = url.searchParams.get("redirect") || "/"
+    url.pathname = redirectTo
+    return NextResponse.redirect(url)
+  }
+
+  return res
 }
 
-// Configure the middleware to run on specific paths
 export const config = {
-  matcher: [
-    // Auth routes
-    "/dang-nhap",
-    "/dang-ky",
-    "/quen-mat-khau",
-    "/dat-lai-mat-khau",
-    // Protected routes
-    "/tai-khoan/:path*",
-    "/gio-hang/thanh-toan",
-    // Admin routes
-    "/admin/:path*",
-  ],
+  matcher: ["/admin/:path*", "/tai-khoan/:path*", "/dang-nhap", "/dang-ky", "/thanh-toan/:path*", "/api/auth/callback"],
 }
 
