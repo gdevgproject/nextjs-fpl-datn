@@ -1,41 +1,121 @@
 "use client"
 
 import type React from "react"
-
+import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Heart } from "lucide-react"
+import { Heart, ShoppingCart, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useToast } from "@/hooks/use-toast"
 import { formatPrice } from "@/lib/utils"
-import type { Product } from "@/lib/types/shared.types"
-import { DEFAULT_AVATAR_URL } from "@/lib/constants"
+import { useAuth } from "@/lib/providers/auth-context"
 import { useWishlistContext } from "@/features/wishlist/providers/wishlist-provider"
 import { useCartContext } from "@/features/cart/providers/cart-provider"
+import type { Product } from "@/lib/types/shared.types"
 
 interface ProductCardProps {
   product: Product
 }
 
 export function ProductCard({ product }: ProductCardProps) {
+  const { isAuthenticated } = useAuth()
   const { isInWishlist, toggleWishlist } = useWishlistContext()
   const { addToCart } = useCartContext()
+  const { toast } = useToast()
+  const [isAddingToCart, setIsAddingToCart] = useState(false)
+  const [isTogglingWishlist, setIsTogglingWishlist] = useState(false)
+  const [isImageLoading, setIsImageLoading] = useState(true)
 
-  const mainImage = product.images?.find((img) => img.is_main)?.image_url || DEFAULT_AVATAR_URL
-  const hasDiscount = product.sale_price !== null && product.sale_price < product.price
-  const isWishlisted = isInWishlist(Number(product.id))
+  // Tìm ảnh chính hoặc sử dụng ảnh đầu tiên
+  const mainImage =
+    product.images?.find((img) => img.is_main)?.image_url ||
+    product.images?.[0]?.image_url ||
+    `/placeholder.svg?height=400&width=400&text=${encodeURIComponent(product.name)}`
 
-  const handleToggleWishlist = (e: React.MouseEvent) => {
+  // Kiểm tra xem sản phẩm có giảm giá không
+  const hasDiscount = product.sale_price !== null && product.sale_price > 0 && product.sale_price < product.price
+
+  // Kiểm tra xem sản phẩm có trong danh sách yêu thích không
+  const isWishlisted = isInWishlist(product.id)
+
+  // Xử lý thêm vào giỏ hàng
+  const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    toggleWishlist(Number(product.id))
+
+    try {
+      setIsAddingToCart(true)
+
+      // Nếu sản phẩm có variants, sử dụng variant đầu tiên hoặc variant có giá thấp nhất
+      if (product.variants && product.variants.length > 0) {
+        // Tìm variant có giá thấp nhất
+        const sortedVariants = [...product.variants].sort((a, b) => {
+          const priceA = a.sale_price || a.price
+          const priceB = b.sale_price || b.price
+          return priceA - priceB
+        })
+
+        const variantToAdd = sortedVariants[0]
+        await addToCart(variantToAdd.id, 1, product.id.toString())
+
+        toast({
+          title: "Đã thêm vào giỏ hàng",
+          description: `${product.name} đã được thêm vào giỏ hàng của bạn.`,
+        })
+      } else {
+        // Fallback khi không có variant
+        toast({
+          title: "Không thể thêm vào giỏ hàng",
+          description: "Sản phẩm này không có biến thể nào.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error adding to cart:", error)
+      toast({
+        title: "Thêm vào giỏ hàng thất bại",
+        description: "Đã xảy ra lỗi khi thêm sản phẩm vào giỏ hàng.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsAddingToCart(false)
+    }
   }
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  // Xử lý thêm/xóa khỏi danh sách yêu thích
+  const handleToggleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    // Giả định variant_id là product_id (đơn giản hóa)
-    addToCart(Number(product.id), 1, product.id)
+
+    try {
+      setIsTogglingWishlist(true)
+
+      if (!isAuthenticated) {
+        toast({
+          title: "Vui lòng đăng nhập",
+          description: "Bạn cần đăng nhập để thêm sản phẩm vào danh sách yêu thích.",
+          variant: "default",
+        })
+        return
+      }
+
+      await toggleWishlist(product.id)
+    } catch (error) {
+      console.error("Error toggling wishlist:", error)
+    } finally {
+      setIsTogglingWishlist(false)
+    }
+  }
+
+  const handleImageLoad = () => {
+    setIsImageLoading(false)
+  }
+
+  const handleImageError = () => {
+    setIsImageLoading(false)
   }
 
   return (
@@ -43,27 +123,39 @@ export function ProductCard({ product }: ProductCardProps) {
       <CardContent className="p-0">
         <Link href={`/san-pham/${product.slug}`}>
           <div className="relative aspect-square overflow-hidden">
+            {isImageLoading && <Skeleton className="absolute inset-0 h-full w-full" />}
             <Image
               src={mainImage || "/placeholder.svg"}
               alt={product.name}
               fill
-              className="object-cover transition-transform hover:scale-105"
+              className={`object-cover transition-all duration-300 ${
+                isImageLoading ? "opacity-0" : "opacity-100 hover:scale-105"
+              }`}
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              onLoad={handleImageLoad}
+              onError={handleImageError}
             />
             {hasDiscount && (
-              <div className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-1 text-xs font-medium text-white">
+              <Badge className="absolute left-2 top-2 bg-red-500 hover:bg-red-600">
                 -{Math.round(((product.price - product.sale_price!) / product.price) * 100)}%
-              </div>
+              </Badge>
             )}
             <Button
-              variant="ghost"
+              variant="secondary"
               size="icon"
-              className={`absolute right-2 top-2 rounded-full ${
-                isWishlisted ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-white/80 hover:bg-white"
+              className={`absolute right-2 top-2 z-10 h-8 w-8 rounded-full shadow-md ${
+                isWishlisted
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "bg-white text-gray-700 hover:bg-white/90"
               }`}
               onClick={handleToggleWishlist}
+              disabled={isTogglingWishlist}
             >
-              <Heart className={`h-4 w-4 ${isWishlisted ? "fill-current" : ""}`} />
+              {isTogglingWishlist ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Heart className={`h-4 w-4 ${isWishlisted ? "fill-current" : ""}`} />
+              )}
               <span className="sr-only">{isWishlisted ? "Xóa khỏi danh sách yêu thích" : "Thêm vào yêu thích"}</span>
             </Button>
           </div>
@@ -86,8 +178,18 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
       </CardContent>
       <CardFooter className="p-4 pt-0">
-        <Button className="w-full" onClick={handleAddToCart}>
-          Thêm vào giỏ hàng
+        <Button className="w-full" onClick={handleAddToCart} disabled={isAddingToCart}>
+          {isAddingToCart ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Đang thêm...
+            </>
+          ) : (
+            <>
+              <ShoppingCart className="mr-2 h-4 w-4" />
+              Thêm vào giỏ hàng
+            </>
+          )}
         </Button>
       </CardFooter>
     </Card>
