@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils/error-utils"
 
-// Cập nhật thông tin profile
+// Các actions đã có trước đó
 export async function updateProfileInfo(userId: string, data: any) {
   const supabase = getSupabaseServerClient()
 
@@ -22,13 +22,10 @@ export async function updateProfileInfo(userId: string, data: any) {
   }
 }
 
-// Sửa hàm uploadAvatar để xử lý lỗi tốt hơn và trả về kết quả rõ ràng hơn
 export async function uploadAvatar(userId: string, file: File) {
   const supabase = getSupabaseServerClient()
 
   try {
-    console.log("Server action: Bắt đầu tải ảnh lên cho user", userId)
-
     // Lấy thông tin profile hiện tại để kiểm tra avatar_url cũ
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
@@ -37,7 +34,6 @@ export async function uploadAvatar(userId: string, file: File) {
       .single()
 
     if (profileError && profileError.code !== "PGRST116") {
-      console.error("Lỗi khi lấy thông tin profile:", profileError)
       return createErrorResponse(profileError.message)
     }
 
@@ -49,8 +45,6 @@ export async function uploadAvatar(userId: string, file: File) {
     const fileExt = file.name.split(".").pop()
     const fileName = `${userFolder}/avatar_${timestamp}.${fileExt}`
 
-    console.log("Tải lên file:", fileName)
-
     // Upload file lên Supabase Storage
     const { error: uploadError } = await supabase.storage.from("avatars").upload(fileName, file, {
       cacheControl: "3600",
@@ -58,14 +52,11 @@ export async function uploadAvatar(userId: string, file: File) {
     })
 
     if (uploadError) {
-      console.error("Lỗi khi tải lên file:", uploadError)
       return createErrorResponse(uploadError.message)
     }
 
     // Lấy public URL của file đã upload
     const { data: publicUrlData } = supabase.storage.from("avatars").getPublicUrl(fileName)
-
-    console.log("URL công khai của file:", publicUrlData.publicUrl)
 
     // Cập nhật avatar_url trong profile
     const { error: updateError } = await supabase
@@ -76,7 +67,6 @@ export async function uploadAvatar(userId: string, file: File) {
       .eq("id", userId)
 
     if (updateError) {
-      console.error("Lỗi khi cập nhật profile:", updateError)
       return createErrorResponse(updateError.message)
     }
 
@@ -89,21 +79,107 @@ export async function uploadAvatar(userId: string, file: File) {
 
         if (urlParts.length > 1) {
           const oldFilePath = urlParts[1]
-          console.log("Xóa file cũ:", oldFilePath)
           // Xóa file cũ
           await supabase.storage.from("avatars").remove([oldFilePath])
         }
       } catch (deleteError) {
-        console.error("Lỗi khi xóa avatar cũ:", deleteError)
+        console.error("Error deleting old avatar:", deleteError)
         // Không trả về lỗi vì việc xóa ảnh cũ không quan trọng bằng việc cập nhật ảnh mới
       }
     }
 
     revalidatePath("/tai-khoan")
-    console.log("Tải lên thành công, URL mới:", publicUrlData.publicUrl)
     return createSuccessResponse({ avatarUrl: publicUrlData.publicUrl })
   } catch (error) {
-    console.error("Lỗi không xác định khi tải lên avatar:", error)
+    return createErrorResponse(error)
+  }
+}
+
+// Cải thiện action đặt địa chỉ mặc định
+export async function setDefaultAddress(addressId: number) {
+  const supabase = getSupabaseServerClient()
+
+  try {
+    // Lấy thông tin session để kiểm tra user_id
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    if (!session) {
+      return createErrorResponse("Bạn cần đăng nhập để thực hiện hành động này", "unauthorized")
+    }
+
+    const userId = session.user.id
+
+    // Kiểm tra xem địa chỉ có thuộc về người dùng không
+    const { data: addressData, error: addressError } = await supabase
+      .from("addresses")
+      .select("id, is_default, recipient_name")
+      .eq("id", addressId)
+      .eq("user_id", userId)
+      .single()
+
+    if (addressError || !addressData) {
+      return createErrorResponse("Địa chỉ không tồn tại hoặc không thuộc về bạn", "not_found")
+    }
+
+    // Nếu địa chỉ đã là mặc định, không cần làm gì
+    if (addressData.is_default) {
+      return createSuccessResponse({
+        message: "Địa chỉ này đã là mặc định",
+        addressId: addressId,
+        recipientName: addressData.recipient_name,
+      })
+    }
+
+    // Thực hiện transaction để đảm bảo tính nhất quán
+    // 1. Đặt tất cả địa chỉ của người dùng thành không mặc định
+    // 2. Đặt địa chỉ được chọn thành mặc định
+    // 3. Cập nhật default_address_id trong profiles
+    const { error: updateError } = await supabase.rpc("set_default_address", {
+      p_address_id: addressId,
+      p_user_id: userId,
+    })
+
+    // Nếu không có RPC function, sử dụng cách thủ công
+    if (updateError) {
+      // Bắt đầu transaction thủ công
+      // 1. Đặt tất cả địa chỉ của người dùng thành không mặc định
+      const { error: resetError } = await supabase.from("addresses").update({ is_default: false }).eq("user_id", userId)
+
+      if (resetError) {
+        return createErrorResponse(resetError.message)
+      }
+
+      // 2. Đặt địa chỉ được chọn thành mặc định
+      const { error: setDefaultError } = await supabase
+        .from("addresses")
+        .update({ is_default: true })
+        .eq("id", addressId)
+        .eq("user_id", userId)
+
+      if (setDefaultError) {
+        return createErrorResponse(setDefaultError.message)
+      }
+
+      // 3. Cập nhật default_address_id trong profiles
+      const { error: updateProfileError } = await supabase
+        .from("profiles")
+        .update({ default_address_id: addressId })
+        .eq("id", userId)
+
+      if (updateProfileError) {
+        return createErrorResponse(updateProfileError.message)
+      }
+    }
+
+    revalidatePath("/tai-khoan/dia-chi")
+    return createSuccessResponse({
+      message: "Đã đặt địa chỉ làm mặc định",
+      addressId: addressId,
+      recipientName: addressData.recipient_name,
+    })
+  } catch (error) {
     return createErrorResponse(error)
   }
 }
