@@ -25,3 +25,12 @@ export function formatOrderId(id: string): string {
   return `#${id.slice(-6).toUpperCase()}`
 }
 
+export function formatDate(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(d)
+}
+
