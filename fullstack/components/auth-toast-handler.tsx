@@ -63,7 +63,7 @@ export function AuthToastHandler({ children }: { children: React.ReactNode }) {
         case "password_changed":
           toast({
             title: "Đổi mật khẩu thành công!",
-            description: "Mật khẩu của bạn đã được cập nhật thành công.",
+            description: "Mật khẩu của bạn đã được cập nhật thành c��ng.",
           })
           break
       }
