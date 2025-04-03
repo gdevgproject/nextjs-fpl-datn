@@ -1,0 +1,63 @@
+import Link from "next/link"
+import Image from "next/image"
+import { Button } from "@/components/ui/button"
+import type { Brand } from "@/lib/types/shared.types"
+
+interface FeaturedBrandsProps {
+  brands: Brand[]
+}
+
+export function FeaturedBrands({ brands }: FeaturedBrandsProps) {
+  // Nếu không có thương hiệu, hiển thị placeholder
+  const displayBrands =
+    brands.length > 0
+      ? brands
+      : Array.from({ length: 6 }).map((_, i) => ({
+          id: i,
+          name: `Thương hiệu ${i + 1}`,
+          description: `Mô tả thương hiệu ${i + 1}`,
+          logo_url: `/placeholder.svg?height=100&width=200&text=${encodeURIComponent(`Thương hiệu ${i + 1}`)}`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }))
+
+  return (
+    <section className="bg-muted py-12">
+      <div className="container">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Thương hiệu nổi tiếng</h2>
+            <p className="text-muted-foreground">Chúng tôi hợp tác với các thương hiệu nước hoa hàng đầu thế giới</p>
+          </div>
+          <Button asChild variant="ghost">
+            <Link href="/thuong-hieu">Xem tất cả</Link>
+          </Button>
+        </div>
+        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+          {displayBrands.map((brand) => (
+            <Link
+              key={brand.id}
+              href={`/thuong-hieu/${brand.id}`}
+              className="group flex h-24 items-center justify-center rounded-lg bg-background p-4 transition-all hover:shadow-md"
+            >
+              <div className="relative flex h-full w-full items-center justify-center">
+                {brand.logo_url ? (
+                  <Image
+                    src={brand.logo_url || "/placeholder.svg"}
+                    alt={brand.name}
+                    fill
+                    className="object-contain p-2"
+                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw"
+                  />
+                ) : (
+                  <span className="text-center text-sm font-medium">{brand.name}</span>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
