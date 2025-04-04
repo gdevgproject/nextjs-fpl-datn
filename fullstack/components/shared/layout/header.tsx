@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { User, Search, Menu, LogOut, Settings, Package, Heart, LayoutDashboard } from "lucide-react"
+import { User, Menu, LogOut, Settings, Package, Heart, LayoutDashboard } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/lib/providers/auth-context"
@@ -22,6 +22,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useEffect, useState } from "react"
+import { SearchForm } from "./search-form"
 
 const mainNavItems = [
   { title: "Trang chủ", href: "/" },
@@ -94,12 +95,7 @@ export function Header() {
           </nav>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/tim-kiem">
-              <Search className="h-5 w-5" />
-              <span className="sr-only">Tìm kiếm</span>
-            </Link>
-          </Button>
+          <SearchForm />
           <CartButton />
 
           {isAuthenticated ? (
