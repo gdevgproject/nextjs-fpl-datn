@@ -4,7 +4,7 @@ import type React from "react"
 import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Heart, ShoppingCart, Loader2 } from "lucide-react"
+import { Heart, ShoppingCart, Loader2, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -15,6 +15,8 @@ import { useAuth } from "@/lib/providers/auth-context"
 import { useWishlistContext } from "@/features/wishlist/providers/wishlist-provider"
 import { useCartContext } from "@/features/cart/providers/cart-provider"
 import type { Product } from "@/lib/types/shared.types"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { useQuery } from "@tanstack/react-query"
 
 interface ProductCardProps {
   product: Product
@@ -43,6 +45,54 @@ export function ProductCard({ product }: ProductCardProps) {
 
   // Kiểm tra xem sản phẩm có trong danh sách yêu thích không
   const isWishlisted = isInWishlist(product.id)
+
+  // Fetch product labels
+  const { data: labels } = useQuery({
+    queryKey: ["productLabels", product.id],
+    queryFn: async () => {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from("product_label_assignments")
+        .select("label:product_labels(*)")
+        .eq("product_id", product.id)
+
+      if (error) {
+        console.error("Error fetching product labels:", error)
+        return []
+      }
+      return data?.map((item) => item.label) || []
+    },
+    staleTime: 1000 * 60 * 60, // 1 hour
+  })
+
+  // Fetch average rating
+  const { data: avgRating } = useQuery({
+    queryKey: ["averageRating", product.id],
+    queryFn: async () => {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase
+        .from("reviews")
+        .select("rating")
+        .eq("product_id", product.id)
+        .eq("is_approved", true)
+
+      if (error) {
+        console.error("Error fetching average rating:", error)
+        return 0
+      }
+
+      if (!data || data.length === 0) {
+        return 0
+      }
+
+      const totalRating = data.reduce((sum, review) => sum + review.rating, 0)
+      return totalRating / data.length
+    },
+    staleTime: 1000 * 60 * 15, // 15 minutes
+  })
+
+  // Determine the volume of the product
+  const volume = product.variants && product.variants.length > 0 ? product.variants[0].volume_ml : null
 
   // Xử lý thêm vào giỏ hàng
   const handleAddToCart = async (e: React.MouseEvent) => {
@@ -186,7 +236,26 @@ export function ProductCard({ product }: ProductCardProps) {
             ) : (
               <span className="font-medium text-primary">{formatPrice(product.price)}</span>
             )}
+            {/* Display volume if it's a perfume product */}
+            {volume && <span className="text-sm text-muted-foreground">{volume}ml</span>}
           </div>
+          {/* Product Labels */}
+          {labels && labels.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {labels.map((label) => (
+                <Badge key={label.id} className="bg-secondary text-secondary-foreground">
+                  {label.name}
+                </Badge>
+              ))}
+            </div>
+          )}
+          {/* Average Rating */}
+          {avgRating > 0 && (
+            <div className="mt-2 flex items-center gap-1">
+              <Star className="h-4 w-4 text-yellow-500" />
+              <span className="text-sm font-medium">{avgRating.toFixed(1)}</span>
+            </div>
+          )}
         </div>
       </CardContent>
       <CardFooter className="p-4 pt-0">
