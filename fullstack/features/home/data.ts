@@ -413,19 +413,18 @@ export async function getBestSellingProducts(limit = 8): Promise<Product[]> {
 
   try {
     // Kiểm tra xem có sản phẩm nào không
-    const { data: productsCheck, error: productsCheckError } = await supabase
+    const { count: productsCount, error: productsCountError } = await supabase
       .from("products")
-      .select("id")
+      .select("*", { count: "exact", head: true })
       .is("deleted_at", null)
-      .limit(1)
 
-    if (productsCheckError) {
-      console.error("Error checking products:", productsCheckError)
+    if (productsCountError) {
+      console.error("Error checking products:", productsCountError)
       return []
     }
 
     // Nếu không có sản phẩm nào, trả về mảng rỗng
-    if (!productsCheck || productsCheck.length === 0) {
+    if (productsCount === 0) {
       console.log("No products found in database")
       return []
     }

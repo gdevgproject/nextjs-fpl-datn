@@ -40,7 +40,7 @@ export function FeaturedCategories({ categories }: FeaturedCategoriesProps) {
           {displayCategories.map((category) => (
             <Link
               key={category.id}
-              href={`/danh-muc/${category.slug}`}
+              href={`/san-pham?category=${category.slug}`}
               className="group overflow-hidden rounded-lg border bg-card transition-colors hover:border-primary"
             >
               <div className="relative aspect-square overflow-hidden bg-muted">

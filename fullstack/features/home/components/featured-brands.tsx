@@ -37,7 +37,7 @@ export function FeaturedBrands({ brands }: FeaturedBrandsProps) {
           {displayBrands.map((brand) => (
             <Link
               key={brand.id}
-              href={`/thuong-hieu/${brand.id}`}
+              href={`/san-pham?brand=${brand.id}`}
               className="group flex h-24 items-center justify-center rounded-lg bg-background p-4 transition-all hover:shadow-md"
             >
               <div className="relative flex h-full w-full items-center justify-center">

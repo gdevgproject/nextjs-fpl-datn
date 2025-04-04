@@ -27,7 +27,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
             title: "Khám phá bộ sưu tập mới",
             subtitle: "Nước hoa cao cấp với hương thơm độc đáo",
             image_url: "/placeholder.svg?height=600&width=1400",
-            link_url: "/san-pham",
+            link_url: "/san-pham?sort=newest",
             is_active: true,
             display_order: 1,
             start_date: null,
@@ -40,7 +40,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
             title: "Thương hiệu cao cấp",
             subtitle: "Các thương hiệu nước hoa nổi tiếng thế giới",
             image_url: "/placeholder.svg?height=600&width=1400",
-            link_url: "/thuong-hieu",
+            link_url: "/san-pham?perfume_type=1", // Giả sử 1 là ID của loại nước hoa cao cấp
             is_active: true,
             display_order: 2,
             start_date: null,
@@ -81,6 +81,30 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     setIsImageLoading(false)
   }
 
+  // Xử lý link_url để đảm bảo tương thích với trang sản phẩm
+  const getLinkUrl = (banner: Banner) => {
+    // Nếu link_url đã có, kiểm tra xem có cần điều chỉnh không
+    if (banner.link_url) {
+      // Nếu link_url là "/danh-muc/X", chuyển thành "/san-pham?category=X"
+      if (banner.link_url.startsWith("/danh-muc/")) {
+        const slug = banner.link_url.replace("/danh-muc/", "")
+        return `/san-pham?category=${slug}`
+      }
+
+      // Nếu link_url là "/thuong-hieu/X", chuyển thành "/san-pham?brand=X"
+      if (banner.link_url.startsWith("/thuong-hieu/")) {
+        const slug = banner.link_url.replace("/thuong-hieu/", "")
+        return `/san-pham?brand=${slug}`
+      }
+
+      // Nếu không cần điều chỉnh, giữ nguyên
+      return banner.link_url
+    }
+
+    // Mặc định trỏ đến trang sản phẩm
+    return "/san-pham"
+  }
+
   return (
     <div className="relative w-full overflow-hidden" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
       <div
@@ -109,7 +133,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
                   )}
                   {banner.link_url && (
                     <Button asChild className="mt-4 bg-white text-black hover:bg-white/90">
-                      <Link href={banner.link_url}>Khám phá ngay</Link>
+                      <Link href={getLinkUrl(banner)}>Khám phá ngay</Link>
                     </Button>
                   )}
                 </div>

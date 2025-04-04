@@ -14,7 +14,7 @@ export function HeroSection() {
             <Link href="/san-pham">Khám phá ngay</Link>
           </Button>
           <Button asChild variant="outline" size="lg">
-            <Link href="/thuong-hieu">Thương hiệu</Link>
+            <Link href="/san-pham?sort=best-selling">Sản phẩm bán chạy</Link>
           </Button>
         </div>
       </div>
