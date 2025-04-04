@@ -29,6 +29,9 @@ export function ProductCard({ product }: ProductCardProps) {
   const [isTogglingWishlist, setIsTogglingWishlist] = useState(false)
   const [isImageLoading, setIsImageLoading] = useState(true)
 
+  // Đảm bảo product.slug tồn tại
+  const productSlug = product.slug || `product-${product.id}`
+
   // Tìm ảnh chính hoặc sử dụng ảnh đầu tiên
   const mainImage =
     product.images?.find((img) => img.is_main)?.image_url ||
@@ -49,8 +52,8 @@ export function ProductCard({ product }: ProductCardProps) {
     try {
       setIsAddingToCart(true)
 
-      // Nếu sản phẩm có variants, sử dụng variant đầu tiên hoặc variant có giá thấp nhất
-      if (product.variants && product.variants.length > 0) {
+      // Kiểm tra sản phẩm và variants
+      if (product && product.variants && product.variants.length > 0) {
         // Tìm variant có giá thấp nhất
         const sortedVariants = [...product.variants].sort((a, b) => {
           const priceA = a.sale_price || a.price
@@ -59,12 +62,20 @@ export function ProductCard({ product }: ProductCardProps) {
         })
 
         const variantToAdd = sortedVariants[0]
-        await addToCart(variantToAdd.id, 1, product.id.toString())
+        if (variantToAdd && variantToAdd.id) {
+          await addToCart(variantToAdd.id, 1, product.id.toString())
 
-        toast({
-          title: "Đã thêm vào giỏ hàng",
-          description: `${product.name} đã được thêm vào giỏ hàng của bạn.`,
-        })
+          toast({
+            title: "Đã thêm vào giỏ hàng",
+            description: `${product.name} đã được thêm vào giỏ hàng của bạn.`,
+          })
+        } else {
+          toast({
+            title: "Không thể thêm vào giỏ hàng",
+            description: "Không thể xác định biến thể sản phẩm.",
+            variant: "destructive",
+          })
+        }
       } else {
         // Fallback khi không có variant
         toast({
@@ -121,7 +132,7 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-0">
-        <Link href={`/san-pham/${product.slug}`}>
+        <Link href={`/san-pham/${productSlug}`}>
           <div className="relative aspect-square overflow-hidden">
             {isImageLoading && <Skeleton className="absolute inset-0 h-full w-full" />}
             <Image
@@ -134,6 +145,7 @@ export function ProductCard({ product }: ProductCardProps) {
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               onLoad={handleImageLoad}
               onError={handleImageError}
+              loading="lazy"
             />
             {hasDiscount && (
               <Badge className="absolute left-2 top-2 bg-red-500 hover:bg-red-600">
@@ -162,7 +174,7 @@ export function ProductCard({ product }: ProductCardProps) {
         </Link>
         <div className="p-4">
           {product.brand && <div className="text-xs text-muted-foreground">{product.brand.name}</div>}
-          <Link href={`/san-pham/${product.slug}`} className="line-clamp-2 mt-1 font-medium hover:underline">
+          <Link href={`/san-pham/${productSlug}`} className="line-clamp-2 mt-1 font-medium hover:underline">
             {product.name}
           </Link>
           <div className="mt-2 flex items-center gap-2">
