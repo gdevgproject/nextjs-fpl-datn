@@ -7,7 +7,7 @@ import {
   getNewArrivals,
   getProductsOnSale,
   getBestSellingProducts,
-} from "../data";
+} from "../queries";
 import { BannerCarousel } from "./banner-carousel";
 import { FeaturedCategories } from "./featured-categories";
 import { ProductSection } from "./product-section";
