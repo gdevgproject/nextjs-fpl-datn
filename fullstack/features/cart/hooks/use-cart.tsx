@@ -29,6 +29,15 @@ export type LocalCartItem = {
   variant_id: number
   quantity: number
   product_id: string
+  product?: {
+    // Add product details
+    name: string
+    slug: string
+    price: number
+    sale_price: number | null
+    volume_ml: number
+    images: any[]
+  }
 }
 
 export function useCart() {
@@ -124,7 +133,51 @@ export function useCart() {
       try {
         const savedCart = localStorage.getItem("mybeauty_cart")
         if (savedCart) {
-          setLocalCart(JSON.parse(savedCart))
+          const parsedCart = JSON.parse(savedCart) as LocalCartItem[]
+          // Fetch product details for each item in the local cart
+          Promise.all(
+            parsedCart.map(async (item) => {
+              try {
+                const { data: productData, error: productError } = await supabase
+                  .from("products")
+                  .select(`id, name, slug, images:product_images(*), variants:product_variants(*)`)
+                  .eq("id", item.product_id)
+                  .single()
+
+                if (productError || !productData) {
+                  console.error(`Error fetching product details for product ID ${item.product_id}:`, productError)
+                  return item // Return the item as is if there's an error
+                }
+
+                // Calculate the price and sale_price from variants
+                const prices = productData.variants.map((v: any) => v.price).filter((p: any) => p !== null && p > 0)
+                const salePrices = productData.variants
+                  .map((v: any) => v.sale_price)
+                  .filter((p: any) => p !== null && p > 0)
+
+                const price = prices.length > 0 ? Math.min(...prices) : 0
+                const sale_price = salePrices.length > 0 ? Math.min(...salePrices) : null
+
+                return {
+                  ...item,
+                  product: {
+                    id: productData.id,
+                    name: productData.name,
+                    slug: productData.slug,
+                    price: price,
+                    sale_price: sale_price,
+                    volume_ml: productData.variants[0]?.volume_ml, // Assuming the first variant's volume is representative
+                    images: productData.images,
+                  },
+                }
+              } catch (error) {
+                console.error(`Error processing local cart item ${item.product_id}:`, error)
+                return item // Return the item as is if there's an error
+              }
+            }),
+          ).then((updatedCart) => {
+            setLocalCart(updatedCart)
+          })
         }
       } catch (error) {
         console.error("Error parsing local cart:", error)
@@ -132,7 +185,7 @@ export function useCart() {
       }
       setIsInitialized(true)
     }
-  }, [])
+  }, [supabase])
 
   // Lưu local cart vào localStorage khi thay đổi
   useEffect(() => {
@@ -424,7 +477,12 @@ export function useCart() {
   const cartTotal = isAuthenticated
     ? cartItems?.reduce((total, item) => total + (item.product.sale_price || item.product.price) * item.quantity, 0) ||
       0
-    : 0 // Cần fetch thêm thông tin sản phẩm để tính tổng tiền cho local cart
+    : localCart.reduce((total, item) => {
+        if (item.product) {
+          return total + (item.product.sale_price || item.product.price) * item.quantity
+        }
+        return total
+      }, 0)
 
   return {
     cartItems: isAuthenticated ? cartItems || [] : [], // Cần fetch thông tin sản phẩm cho local cart
