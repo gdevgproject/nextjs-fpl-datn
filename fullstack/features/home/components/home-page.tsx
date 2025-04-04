@@ -1,4 +1,4 @@
-import { Suspense } from "react"
+import { Suspense } from "react";
 import {
   getActiveBanners,
   getFeaturedBrands,
@@ -7,18 +7,20 @@ import {
   getNewArrivals,
   getProductsOnSale,
   getBestSellingProducts,
-} from "../data"
-import { BannerCarousel } from "./banner-carousel"
-import { FeaturedCategories } from "./featured-categories"
-import { ProductSection } from "./product-section"
-import { FeaturedBrands } from "./featured-brands"
-import { FeaturesSection } from "./features-section"
-import { HeroSection } from "./hero-section"
-import { Skeleton } from "@/components/ui/skeleton"
+} from "../data";
+import { BannerCarousel } from "./banner-carousel";
+import { FeaturedCategories } from "./featured-categories";
+import { ProductSection } from "./product-section";
+import { FeaturedBrands } from "./featured-brands";
+import { FeaturesSection } from "./features-section";
+import { HeroSection } from "./hero-section";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Skeleton loaders for each section
 function BannerSkeleton() {
-  return <Skeleton className="aspect-[21/9] w-full rounded-none md:aspect-[3/1]" />
+  return (
+    <Skeleton className="aspect-[21/9] w-full rounded-none md:aspect-[3/1]" />
+  );
 }
 
 function CategoriesSkeleton() {
@@ -44,10 +46,14 @@ function CategoriesSkeleton() {
         </div>
       </div>
     </section>
-  )
+  );
 }
 
-function ProductsSkeleton({ bgColor = "default" }: { bgColor?: "default" | "muted" }) {
+function ProductsSkeleton({
+  bgColor = "default",
+}: {
+  bgColor?: "default" | "muted";
+}) {
   return (
     <section className={bgColor === "muted" ? "bg-muted" : "bg-background"}>
       <div className="container py-12">
@@ -73,7 +79,7 @@ function ProductsSkeleton({ bgColor = "default" }: { bgColor?: "default" | "mute
         </div>
       </div>
     </section>
-  )
+  );
 }
 
 function BrandsSkeleton() {
@@ -94,22 +100,22 @@ function BrandsSkeleton() {
         </div>
       </div>
     </section>
-  )
+  );
 }
 
 // Async components for each section
 async function BannerSection() {
-  const banners = await getActiveBanners()
-  return <BannerCarousel banners={banners} />
+  const banners = await getActiveBanners();
+  return <BannerCarousel banners={banners} />;
 }
 
 async function CategoriesSection() {
-  const categories = await getFeaturedCategories()
-  return <FeaturedCategories categories={categories} />
+  const categories = await getFeaturedCategories();
+  return <FeaturedCategories categories={categories} />;
 }
 
 async function FeaturedProductsSection() {
-  const products = await getFeaturedProducts()
+  const products = await getFeaturedProducts();
   return (
     <ProductSection
       title="Sản phẩm nổi bật"
@@ -117,11 +123,11 @@ async function FeaturedProductsSection() {
       products={products}
       viewAllLink="/san-pham?featured=true"
     />
-  )
+  );
 }
 
 async function NewArrivalsSection() {
-  const products = await getNewArrivals()
+  const products = await getNewArrivals();
   return (
     <ProductSection
       title="Sản phẩm mới"
@@ -130,11 +136,11 @@ async function NewArrivalsSection() {
       viewAllLink="/san-pham?sort=newest"
       bgColor="muted"
     />
-  )
+  );
 }
 
 async function SaleProductsSection() {
-  const products = await getProductsOnSale()
+  const products = await getProductsOnSale();
   return (
     <ProductSection
       title="Đang giảm giá"
@@ -142,11 +148,11 @@ async function SaleProductsSection() {
       products={products}
       viewAllLink="/san-pham?sale=true"
     />
-  )
+  );
 }
 
 async function BestSellingSection() {
-  const products = await getBestSellingProducts()
+  const products = await getBestSellingProducts();
   return (
     <ProductSection
       title="Bán chạy nhất"
@@ -155,12 +161,12 @@ async function BestSellingSection() {
       viewAllLink="/san-pham?sort=best-selling"
       bgColor="muted"
     />
-  )
+  );
 }
 
 async function BrandsSection() {
-  const brands = await getFeaturedBrands()
-  return <FeaturedBrands brands={brands} />
+  const brands = await getFeaturedBrands();
+  return <FeaturedBrands brands={brands} />;
 }
 
 // Main HomePage component
@@ -208,6 +214,5 @@ export async function HomePage() {
       {/* Features Section */}
       <FeaturesSection />
     </div>
-  )
+  );
 }
-

@@ -1,0 +1,80 @@
+-- ============================================================================
+-- SETUP SCRIPT: Supabase Storage Buckets & Basic Policies
+-- Chạy script này MỘT LẦN SAU KHI đã chạy thành công file sql.txt
+-- Script này tạo các bucket cần thiết và thiết lập quyền cơ bản.
+-- QUAN TRỌNG: Việc upload/delete file trong ứng dụng nên được quản lý an toàn
+-- thông qua backend (Next.js Server Actions dùng service_role hoặc Signed URLs)
+-- để kiểm tra logic nghiệp vụ phức tạp hơn là chỉ dựa vào Storage RLS.
+-- ============================================================================
+
+-- 1. Tạo Bucket "avatars" (Public Read, 5MB limit, common image types)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('avatars', 'avatars', true, 5242880, ARRAY['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
+ON CONFLICT (id) DO NOTHING; -- Không làm gì nếu bucket đã tồn tại
+
+-- 2. Tạo Bucket "logos" (Public Read, 2MB limit, common image types + SVG)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('logos', 'logos', true, 2097152, ARRAY['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'])
+ON CONFLICT (id) DO NOTHING;
+
+-- 3. Tạo Bucket "products" (Public Read, 5MB limit, common image types)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('products', 'products', true, 5242880, ARRAY['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
+ON CONFLICT (id) DO NOTHING;
+
+-- 4. Tạo Bucket "banners" (Public Read, 5MB limit, common image types)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('banners', 'banners', true, 5242880, ARRAY['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
+ON CONFLICT (id) DO NOTHING;
+
+-- 5. Thiết lập Policies cho Storage Objects
+
+-- Policy cho phép mọi người đọc file trong các bucket public (được tạo mặc định khi set public=true, tạo rõ ràng để chắc chắn)
+DROP POLICY IF EXISTS "Public read access" ON storage.objects;
+CREATE POLICY "Public read access" ON storage.objects FOR SELECT USING (true);
+
+-- Policy cho phép người dùng đã đăng nhập upload vào bucket 'avatars'
+-- LƯU Ý: Kiểm tra ownership chi tiết (vd: user_id trong path) nên thực hiện ở backend (Server Action).
+DROP POLICY IF EXISTS "Authenticated user can insert avatar" ON storage.objects;
+CREATE POLICY "Authenticated user can insert avatar" ON storage.objects
+  FOR INSERT
+  TO authenticated -- Chỉ áp dụng cho người dùng đã đăng nhập
+  WITH CHECK (
+    bucket_id = 'avatars' AND
+    auth.uid() IS NOT NULL
+    -- Các kiểm tra file size/type được bucket settings xử lý, không cần check lại ở đây trừ khi muốn logic phức tạp hơn.
+  );
+
+-- Policy cho phép người dùng đã đăng nhập cập nhật/xóa avatar của chính họ (dựa vào cột 'owner' tự động của Supabase)
+DROP POLICY IF EXISTS "Owner can update own avatar" ON storage.objects;
+CREATE POLICY "Owner can update own avatar" ON storage.objects
+  FOR UPDATE
+  TO authenticated
+  USING ( bucket_id = 'avatars' AND auth.uid() = owner ); -- owner là user_id của người upload
+
+DROP POLICY IF EXISTS "Owner can delete own avatar" ON storage.objects;
+CREATE POLICY "Owner can delete own avatar" ON storage.objects
+  FOR DELETE
+  TO authenticated
+  USING ( bucket_id = 'avatars' AND auth.uid() = owner ); -- owner là user_id của người upload
+
+
+-- Policy cho phép Admin/Staff quản lý (CRUD) file trong các bucket 'logos', 'products', 'banners'
+-- Sử dụng hàm is_staff() đã định nghĩa trong sql.txt (hàm này bao gồm cả admin)
+DROP POLICY IF EXISTS "Admin/Staff can manage business assets" ON storage.objects;
+CREATE POLICY "Admin/Staff can manage business assets" ON storage.objects
+  FOR ALL -- INSERT, SELECT, UPDATE, DELETE
+  USING (
+    bucket_id IN ('logos', 'products', 'banners') AND
+    public.is_staff() -- Hàm kiểm tra vai trò staff hoặc admin
+  )
+  WITH CHECK (
+    bucket_id IN ('logos', 'products', 'banners') AND
+    public.is_staff() -- Hàm kiểm tra vai trò staff hoặc admin
+  );
+
+
+-- ============================================================================
+-- END OF STORAGE SETUP SCRIPT - Hạ tầng Storage đã sẵn sàng
+-- ============================================================================
+
