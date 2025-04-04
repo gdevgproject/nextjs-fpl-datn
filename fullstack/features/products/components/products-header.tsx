@@ -1,21 +1,16 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge"
 
 interface ProductsHeaderProps {
-  title: string;
-  description: string;
-  count: number;
+  title: string
+  description: string
+  count: number
   activeFilters?: {
-    type: string;
-    value: string;
-  }[];
+    type: string
+    value: string
+  }[]
 }
 
-export function ProductsHeader({
-  title,
-  description,
-  count,
-  activeFilters = [],
-}: ProductsHeaderProps) {
+export function ProductsHeader({ title, description, count, activeFilters = [] }: ProductsHeaderProps) {
   return (
     <div className="flex flex-col gap-2">
       <h1 className="text-3xl font-bold">{title}</h1>
@@ -33,14 +28,11 @@ export function ProductsHeader({
 
       <p className="text-muted-foreground">{description}</p>
       {count > 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Tìm thấy {count} sản phẩm
-        </p>
+        <p className="text-sm text-muted-foreground">Tìm thấy {count} sản phẩm</p>
       ) : (
-        <p className="text-sm text-muted-foreground">
-          Không tìm thấy sản phẩm nào
-        </p>
+        <p className="text-sm text-muted-foreground">Không tìm thấy sản phẩm nào</p>
       )}
     </div>
-  );
+  )
 }
+

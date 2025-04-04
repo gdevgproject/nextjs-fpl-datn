@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ["latin", "vietnamese"] })
 export const metadata: Metadata = {
   title: "MyBeauty - Nước hoa chính hãng",
   description: "Cửa hàng nước hoa chính hãng với đa dạng thương hiệu cao cấp",
-    generator: 'v0.dev'
+  generator: "v0.dev",
 }
 
 export default function RootLayout({
@@ -30,6 +30,8 @@ export default function RootLayout({
     </html>
   )
 }
+
+import "./globals.css"
 
 
 

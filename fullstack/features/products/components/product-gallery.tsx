@@ -1,32 +1,32 @@
-"use client";
+"use client"
 
-import { useState, useCallback } from "react";
-import Image from "next/image";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { useState, useCallback } from "react"
+import Image from "next/image"
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import { cn } from "@/lib/utils"
 
 interface ProductGalleryProps {
   images: Array<{
-    id: number;
-    image_url: string;
-    alt_text?: string | null;
-    is_main: boolean;
-  }>;
-  productName: string;
+    id: number
+    image_url: string
+    alt_text?: string | null
+    is_main: boolean
+  }>
+  productName: string
 }
 
 export function ProductGallery({ images, productName }: ProductGalleryProps) {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
 
   // Sắp xếp ảnh để ảnh chính hiển thị đầu tiên
   const sortedImages = [...images].sort((a, b) => {
-    if (a.is_main && !b.is_main) return -1;
-    if (!a.is_main && b.is_main) return 1;
-    return 0;
-  });
+    if (a.is_main && !b.is_main) return -1
+    if (!a.is_main && b.is_main) return 1
+    return 0
+  })
 
   // Nếu không có ảnh, hiển thị ảnh mặc định
   const displayImages =
@@ -35,40 +35,34 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
       : [
           {
             id: 0,
-            image_url: `/placeholder.svg?height=600&width=600&text=${encodeURIComponent(
-              productName
-            )}`,
+            image_url: `/placeholder.svg?height=600&width=600&text=${encodeURIComponent(productName)}`,
             alt_text: productName,
             is_main: true,
           },
-        ];
+        ]
 
   const handlePrevImage = useCallback(() => {
-    setCurrentImageIndex((prev) =>
-      prev === 0 ? displayImages.length - 1 : prev - 1
-    );
-    setIsLoading(true);
-  }, [displayImages.length]);
+    setCurrentImageIndex((prev) => (prev === 0 ? displayImages.length - 1 : prev - 1))
+    setIsLoading(true)
+  }, [displayImages.length])
 
   const handleNextImage = useCallback(() => {
-    setCurrentImageIndex((prev) =>
-      prev === displayImages.length - 1 ? 0 : prev + 1
-    );
-    setIsLoading(true);
-  }, [displayImages.length]);
+    setCurrentImageIndex((prev) => (prev === displayImages.length - 1 ? 0 : prev + 1))
+    setIsLoading(true)
+  }, [displayImages.length])
 
   const handleThumbnailClick = useCallback((index: number) => {
-    setCurrentImageIndex(index);
-    setIsLoading(true);
-  }, []);
+    setCurrentImageIndex(index)
+    setIsLoading(true)
+  }, [])
 
   const handleImageLoad = useCallback(() => {
-    setIsLoading(false);
-  }, []);
+    setIsLoading(false)
+  }, [])
 
   const handleImageError = useCallback(() => {
-    setIsLoading(false);
-  }, []);
+    setIsLoading(false)
+  }, [])
 
   return (
     <div className="space-y-4">
@@ -79,10 +73,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
           src={displayImages[currentImageIndex].image_url || "/placeholder.svg"}
           alt={displayImages[currentImageIndex].alt_text || productName}
           fill
-          className={cn(
-            "object-cover transition-opacity duration-300",
-            isLoading ? "opacity-0" : "opacity-100"
-          )}
+          className={cn("object-cover transition-opacity duration-300", isLoading ? "opacity-0" : "opacity-100")}
           sizes="(max-width: 768px) 100vw, 50vw"
           priority
           onLoad={handleImageLoad}
@@ -122,9 +113,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
               key={image.id}
               className={cn(
                 "relative aspect-square h-20 overflow-hidden rounded-md border",
-                index === currentImageIndex
-                  ? "border-primary"
-                  : "border-muted hover:border-primary/50"
+                index === currentImageIndex ? "border-primary" : "border-muted hover:border-primary/50",
               )}
               onClick={() => handleThumbnailClick(index)}
               aria-label={`View image ${index + 1}`}
@@ -143,5 +132,6 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
         </div>
       )}
     </div>
-  );
+  )
 }
+

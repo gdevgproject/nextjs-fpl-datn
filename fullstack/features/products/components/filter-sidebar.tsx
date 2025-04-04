@@ -1,97 +1,79 @@
-"use client";
+"use client"
 
-import type React from "react";
+import type React from "react"
 
-import { useState, useEffect, useTransition, useCallback } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Filter, X, Check, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Slider } from "@/components/ui/slider";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { formatPrice } from "@/lib/utils";
-import { cn } from "@/lib/utils";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useState, useEffect, useTransition, useCallback } from "react"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import { Filter, X, Check, Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Slider } from "@/components/ui/slider"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { formatPrice } from "@/lib/utils"
+import { cn } from "@/lib/utils"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 // Giá trị mặc định cho khoảng giá
-const DEFAULT_MIN_PRICE = 0;
-const DEFAULT_MAX_PRICE = 10000000;
+const DEFAULT_MIN_PRICE = 0
+const DEFAULT_MAX_PRICE = 10000000
 
 interface FilterSidebarProps {
   filterOptions: {
-    brands: { id: number; name: string }[];
+    brands: { id: number; name: string }[]
     categories: {
-      id: number;
-      name: string;
-      slug: string;
-      parent_category_id: number | null;
-    }[];
-    genders: { id: number; name: string }[];
-    perfumeTypes: { id: number; name: string }[];
-    concentrations: { id: number; name: string }[];
-    priceRanges: { min: number; max: number; label: string }[];
-  };
-  currentFilters: { [key: string]: string | string[] | undefined };
+      id: number
+      name: string
+      slug: string
+      parent_category_id: number | null
+    }[]
+    genders: { id: number; name: string }[]
+    perfumeTypes: { id: number; name: string }[]
+    concentrations: { id: number; name: string }[]
+    priceRanges: { min: number; max: number; label: string }[]
+  }
+  currentFilters: { [key: string]: string | string[] | undefined }
 }
 
-export function FilterSidebar({
-  filterOptions,
-  currentFilters,
-}: FilterSidebarProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+export function FilterSidebar({ filterOptions, currentFilters }: FilterSidebarProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
 
   // Add useTransition hook for smoother navigation
-  const [isPending, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition()
 
   // State cho mobile filter sheet
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false)
 
   // State for error handling
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null)
 
   // Parse initial price values safely
-  const parseInitialPrice = useCallback(
-    (value: string | undefined, defaultValue: number): number => {
-      if (!value) return defaultValue;
-      const parsed = parseInt(value, 10);
-      return isNaN(parsed) ? defaultValue : parsed;
-    },
-    []
-  );
+  const parseInitialPrice = useCallback((value: string | undefined, defaultValue: number): number => {
+    if (!value) return defaultValue
+    const parsed = Number.parseInt(value, 10)
+    return isNaN(parsed) ? defaultValue : parsed
+  }, [])
 
   // State cho khoảng giá
   const [priceRange, setPriceRange] = useState<[number, number]>([
     parseInitialPrice(currentFilters.minPrice as string, DEFAULT_MIN_PRICE),
     parseInitialPrice(currentFilters.maxPrice as string, DEFAULT_MAX_PRICE),
-  ]);
+  ])
 
   // State cho giá hiển thị (để tránh re-render liên tục khi kéo slider)
-  const [displayPriceRange, setDisplayPriceRange] =
-    useState<[number, number]>(priceRange);
+  const [displayPriceRange, setDisplayPriceRange] = useState<[number, number]>(priceRange)
 
   // State cho tìm kiếm trong các bộ lọc
-  const [brandSearch, setBrandSearch] = useState("");
-  const [categorySearch, setCategorySearch] = useState("");
+  const [brandSearch, setBrandSearch] = useState("")
+  const [categorySearch, setCategorySearch] = useState("")
 
   // State cục bộ để lưu trữ các bộ lọc đã chọn
   const [localFilters, setLocalFilters] = useState<{
-    [key: string]: string | string[];
+    [key: string]: string | string[]
   }>({
     brand: currentFilters.brand || "",
     category: currentFilters.category || "",
@@ -102,7 +84,7 @@ export function FilterSidebar({
     maxPrice: currentFilters.maxPrice || "",
     featured: currentFilters.featured === "true" ? "true" : "",
     sale: currentFilters.sale === "true" ? "true" : "",
-  });
+  })
 
   // Cập nhật localFilters khi currentFilters thay đổi từ URL
   useEffect(() => {
@@ -116,195 +98,183 @@ export function FilterSidebar({
       maxPrice: currentFilters.maxPrice || "",
       featured: currentFilters.featured === "true" ? "true" : "",
       sale: currentFilters.sale === "true" ? "true" : "",
-    });
-  }, [currentFilters]);
+    })
+  }, [currentFilters])
 
   // Cập nhật displayPriceRange và priceRange khi currentFilters thay đổi từ URL
   useEffect(() => {
-    const minPrice = parseInitialPrice(
-      currentFilters.minPrice as string,
-      DEFAULT_MIN_PRICE
-    );
-    const maxPrice = parseInitialPrice(
-      currentFilters.maxPrice as string,
-      DEFAULT_MAX_PRICE
-    );
+    const minPrice = parseInitialPrice(currentFilters.minPrice as string, DEFAULT_MIN_PRICE)
+    const maxPrice = parseInitialPrice(currentFilters.maxPrice as string, DEFAULT_MAX_PRICE)
 
     // Đảm bảo min <= max
-    const validatedMinPrice = Math.min(minPrice, maxPrice);
-    const validatedMaxPrice = Math.max(minPrice, maxPrice);
+    const validatedMinPrice = Math.min(minPrice, maxPrice)
+    const validatedMaxPrice = Math.max(minPrice, maxPrice)
 
-    setPriceRange([validatedMinPrice, validatedMaxPrice]);
-    setDisplayPriceRange([validatedMinPrice, validatedMaxPrice]);
+    setPriceRange([validatedMinPrice, validatedMaxPrice])
+    setDisplayPriceRange([validatedMinPrice, validatedMaxPrice])
 
     // Cập nhật localFilters để đồng bộ với URL
     setLocalFilters((prev) => ({
       ...prev,
-      minPrice:
-        validatedMinPrice !== DEFAULT_MIN_PRICE
-          ? validatedMinPrice.toString()
-          : "",
-      maxPrice:
-        validatedMaxPrice !== DEFAULT_MAX_PRICE
-          ? validatedMaxPrice.toString()
-          : "",
-    }));
-  }, [currentFilters.minPrice, currentFilters.maxPrice, parseInitialPrice]);
+      minPrice: validatedMinPrice !== DEFAULT_MIN_PRICE ? validatedMinPrice.toString() : "",
+      maxPrice: validatedMaxPrice !== DEFAULT_MAX_PRICE ? validatedMaxPrice.toString() : "",
+    }))
+  }, [currentFilters.minPrice, currentFilters.maxPrice, parseInitialPrice])
 
   // Tính toán số lượng bộ lọc đang áp dụng
   const getActiveFilterCount = () => {
-    let count = 0;
+    let count = 0
 
-    if (localFilters.brand) count++;
-    if (localFilters.category) count++;
-    if (localFilters.gender) count++;
-    if (localFilters.perfume_type) count++;
-    if (localFilters.concentration) count++;
-    if (localFilters.minPrice || localFilters.maxPrice) count++;
-    if (localFilters.featured === "true") count++;
-    if (localFilters.sale === "true") count++;
+    if (localFilters.brand) count++
+    if (localFilters.category) count++
+    if (localFilters.gender) count++
+    if (localFilters.perfume_type) count++
+    if (localFilters.concentration) count++
+    if (localFilters.minPrice || localFilters.maxPrice) count++
+    if (localFilters.featured === "true") count++
+    if (localFilters.sale === "true") count++
 
-    return count;
-  };
+    return count
+  }
 
   // Lọc danh sách thương hiệu theo từ khóa tìm kiếm
   const filteredBrands = filterOptions.brands.filter((brand) =>
-    brand.name.toLowerCase().includes(brandSearch.toLowerCase())
-  );
+    brand.name.toLowerCase().includes(brandSearch.toLowerCase()),
+  )
 
   // Lọc danh sách danh mục theo từ khóa tìm kiếm
   const filteredCategories = filterOptions.categories.filter((category) =>
-    category.name.toLowerCase().includes(categorySearch.toLowerCase())
-  );
+    category.name.toLowerCase().includes(categorySearch.toLowerCase()),
+  )
 
   // Xử lý khi thay đổi bộ lọc (trong local state)
   const handleLocalFilterChange = (key: string, value: string) => {
     setLocalFilters((prev) => ({
       ...prev,
       [key]: value,
-    }));
-  };
+    }))
+  }
 
   // Áp dụng các bộ lọc (tạo URL và điều hướng)
   const applyFilters = () => {
     // Reset any previous errors
-    setError(null);
+    setError(null)
 
     try {
       // Validate price ranges before applying
       if (localFilters.minPrice && localFilters.maxPrice) {
-        const minPrice = parseInt(localFilters.minPrice as string, 10);
-        const maxPrice = parseInt(localFilters.maxPrice as string, 10);
+        const minPrice = Number.parseInt(localFilters.minPrice as string, 10)
+        const maxPrice = Number.parseInt(localFilters.maxPrice as string, 10)
 
         if (minPrice > maxPrice) {
-          setError("Giá tối thiểu không thể lớn hơn giá tối đa");
-          return;
+          setError("Giá tối thiểu không thể lớn hơn giá tối đa")
+          return
         }
       }
 
-      const params = new URLSearchParams();
+      const params = new URLSearchParams()
 
       // Thêm các tham số từ localFilters
       for (const key in localFilters) {
         if (localFilters[key]) {
-          params.set(key, localFilters[key] as string);
+          params.set(key, localFilters[key] as string)
         }
       }
 
       // Giữ lại tham số tìm kiếm nếu có
       if (searchParams.has("q")) {
-        params.set("q", searchParams.get("q")!);
+        params.set("q", searchParams.get("q")!)
       }
 
       // Giữ lại tham số sắp xếp nếu có
       if (searchParams.has("sort")) {
-        params.set("sort", searchParams.get("sort")!);
+        params.set("sort", searchParams.get("sort")!)
       }
 
       // Reset page number to 1 when applying new filters
-      params.delete("page");
+      params.delete("page")
 
       // Use startTransition to avoid blocking the UI during navigation
       startTransition(() => {
         // Điều hướng đến URL mới với REPLACE để không thêm vào history stack quá nhiều
-        router.replace(`${pathname}?${params.toString()}`);
+        router.replace(`${pathname}?${params.toString()}`)
 
         // Đóng sheet trên mobile
-        setIsOpen(false);
-      });
+        setIsOpen(false)
+      })
     } catch (error) {
-      console.error("Error applying filters:", error);
-      setError("Có lỗi xảy ra khi áp dụng bộ lọc. Vui lòng thử lại.");
+      console.error("Error applying filters:", error)
+      setError("Có lỗi xảy ra khi áp dụng bộ lọc. Vui lòng thử lại.")
     }
-  };
+  }
 
   // Xử lý khi thay đổi khoảng giá từ slider
   const handlePriceChange = (values: number[]) => {
-    setDisplayPriceRange([values[0], values[1]]);
-  };
+    setDisplayPriceRange([values[0], values[1]])
+  }
 
   // Xử lý khi kết thúc thay đổi khoảng giá từ slider
   const handlePriceChangeEnd = (values: number[]) => {
-    setPriceRange([values[0], values[1]]);
+    setPriceRange([values[0], values[1]])
     setLocalFilters((prev) => ({
       ...prev,
       minPrice: values[0].toString(),
       maxPrice: values[1].toString(),
-    }));
-  };
+    }))
+  }
 
   // Xử lý khi thay đổi giá trực tiếp qua input
   const handleMinPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputValue = e.target.value.trim();
+    const inputValue = e.target.value.trim()
 
     if (inputValue === "") {
-      setDisplayPriceRange([DEFAULT_MIN_PRICE, displayPriceRange[1]]);
-      return;
+      setDisplayPriceRange([DEFAULT_MIN_PRICE, displayPriceRange[1]])
+      return
     }
 
-    const value = parseInt(inputValue, 10);
+    const value = Number.parseInt(inputValue, 10)
 
-    if (isNaN(value)) return;
+    if (isNaN(value)) return
 
     // Ensure min price is not negative
-    const validValue = Math.max(0, value);
-    setDisplayPriceRange([validValue, displayPriceRange[1]]);
-  };
+    const validValue = Math.max(0, value)
+    setDisplayPriceRange([validValue, displayPriceRange[1]])
+  }
 
   const handleMaxPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputValue = e.target.value.trim();
+    const inputValue = e.target.value.trim()
 
     if (inputValue === "") {
-      setDisplayPriceRange([displayPriceRange[0], DEFAULT_MAX_PRICE]);
-      return;
+      setDisplayPriceRange([displayPriceRange[0], DEFAULT_MAX_PRICE])
+      return
     }
 
-    const value = parseInt(inputValue, 10);
+    const value = Number.parseInt(inputValue, 10)
 
-    if (isNaN(value)) return;
+    if (isNaN(value)) return
 
     // Ensure max price is not above the maximum allowed
-    const validValue = Math.min(DEFAULT_MAX_PRICE, value);
-    setDisplayPriceRange([displayPriceRange[0], validValue]);
-  };
+    const validValue = Math.min(DEFAULT_MAX_PRICE, value)
+    setDisplayPriceRange([displayPriceRange[0], validValue])
+  }
 
   // Apply price range changes when input fields lose focus
   const handlePriceInputBlur = () => {
     // Ensure min <= max
-    const validMin = Math.min(displayPriceRange[0], displayPriceRange[1]);
-    const validMax = Math.max(displayPriceRange[0], displayPriceRange[1]);
+    const validMin = Math.min(displayPriceRange[0], displayPriceRange[1])
+    const validMax = Math.max(displayPriceRange[0], displayPriceRange[1])
 
-    const newPriceRange: [number, number] = [validMin, validMax];
+    const newPriceRange: [number, number] = [validMin, validMax]
 
-    setDisplayPriceRange(newPriceRange);
-    setPriceRange(newPriceRange);
+    setDisplayPriceRange(newPriceRange)
+    setPriceRange(newPriceRange)
 
     setLocalFilters((prev) => ({
       ...prev,
       minPrice: validMin.toString(),
       maxPrice: validMax.toString(),
-    }));
-  };
+    }))
+  }
 
   // Xóa tất cả bộ lọc
   const clearAllFilters = () => {
@@ -318,286 +288,197 @@ export function FilterSidebar({
       maxPrice: "",
       featured: "",
       sale: "",
-    });
+    })
 
     // Reset price range
-    setPriceRange([DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE]);
-    setDisplayPriceRange([DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE]);
+    setPriceRange([DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE])
+    setDisplayPriceRange([DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE])
 
     // Auto-apply the cleared filters
     startTransition(() => {
-      router.replace(pathname);
-      setIsOpen(false);
-    });
-  };
+      router.replace(pathname)
+      setIsOpen(false)
+    })
+  }
 
   // Xóa một bộ lọc cụ thể và tự động áp dụng
   const removeFilter = (key: string) => {
     setLocalFilters((prev) => {
-      const newFilters = { ...prev };
+      const newFilters = { ...prev }
 
       // Special handling for price filters
       if (key === "price") {
-        newFilters.minPrice = "";
-        newFilters.maxPrice = "";
-        setPriceRange([DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE]);
-        setDisplayPriceRange([DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE]);
+        newFilters.minPrice = ""
+        newFilters.maxPrice = ""
+        setPriceRange([DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE])
+        setDisplayPriceRange([DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE])
       } else {
-        newFilters[key] = "";
+        newFilters[key] = ""
       }
 
       // Auto-apply the updated filters
-      const params = new URLSearchParams();
+      const params = new URLSearchParams()
 
       for (const filterKey in newFilters) {
         if (newFilters[filterKey]) {
-          params.set(filterKey, newFilters[filterKey] as string);
+          params.set(filterKey, newFilters[filterKey] as string)
         }
       }
 
       // Giữ lại tham số tìm kiếm và sắp xếp
       if (searchParams.has("q")) {
-        params.set("q", searchParams.get("q")!);
+        params.set("q", searchParams.get("q")!)
       }
 
       if (searchParams.has("sort")) {
-        params.set("sort", searchParams.get("sort")!);
+        params.set("sort", searchParams.get("sort")!)
       }
 
       // Reset page number to 1 when removing filters
-      params.delete("page");
+      params.delete("page")
 
       startTransition(() => {
-        router.replace(`${pathname}?${params.toString()}`);
-      });
+        router.replace(`${pathname}?${params.toString()}`)
+      })
 
-      return newFilters;
-    });
-  };
+      return newFilters
+    })
+  }
 
   // Kiểm tra xem một khoảng giá có đang được chọn không
   const isPriceRangeSelected = (min: number, max: number): boolean => {
-    const currentMin =
-      parseInt(localFilters.minPrice as string, 10) || DEFAULT_MIN_PRICE;
-    const currentMax =
-      parseInt(localFilters.maxPrice as string, 10) || DEFAULT_MAX_PRICE;
+    const currentMin = Number.parseInt(localFilters.minPrice as string, 10) || DEFAULT_MIN_PRICE
+    const currentMax = Number.parseInt(localFilters.maxPrice as string, 10) || DEFAULT_MAX_PRICE
 
-    return currentMin === min && currentMax === max;
-  };
+    return currentMin === min && currentMax === max
+  }
 
   // Hiển thị các bộ lọc đang áp dụng
   const renderActiveFilters = () => {
-    const activeFilters = [];
+    const activeFilters = []
 
     // Thương hiệu
     if (localFilters.brand) {
-      const brand = filterOptions.brands.find(
-        (b) => b.id.toString() === localFilters.brand
-      );
+      const brand = filterOptions.brands.find((b) => b.id.toString() === localFilters.brand)
       if (brand) {
         activeFilters.push(
-          <Badge
-            key="brand"
-            variant="secondary"
-            className="flex items-center gap-1"
-          >
+          <Badge key="brand" variant="secondary" className="flex items-center gap-1">
             {brand.name}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-4 w-4 p-0"
-              onClick={() => removeFilter("brand")}
-            >
+            <Button variant="ghost" size="icon" className="h-4 w-4 p-0" onClick={() => removeFilter("brand")}>
               <X className="h-3 w-3" />
               <span className="sr-only">Xóa bộ lọc thương hiệu</span>
             </Button>
-          </Badge>
-        );
+          </Badge>,
+        )
       }
     }
 
     // Danh mục
     if (localFilters.category) {
-      const category = filterOptions.categories.find(
-        (c) => c.slug === localFilters.category
-      );
+      const category = filterOptions.categories.find((c) => c.slug === localFilters.category)
       if (category) {
         activeFilters.push(
-          <Badge
-            key="category"
-            variant="secondary"
-            className="flex items-center gap-1"
-          >
+          <Badge key="category" variant="secondary" className="flex items-center gap-1">
             {category.name}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-4 w-4 p-0"
-              onClick={() => removeFilter("category")}
-            >
+            <Button variant="ghost" size="icon" className="h-4 w-4 p-0" onClick={() => removeFilter("category")}>
               <X className="h-3 w-3" />
               <span className="sr-only">Xóa bộ lọc danh mục</span>
             </Button>
-          </Badge>
-        );
+          </Badge>,
+        )
       }
     }
 
     // Giới tính
     if (localFilters.gender) {
-      const gender = filterOptions.genders.find(
-        (g) => g.id.toString() === localFilters.gender
-      );
+      const gender = filterOptions.genders.find((g) => g.id.toString() === localFilters.gender)
       if (gender) {
         activeFilters.push(
-          <Badge
-            key="gender"
-            variant="secondary"
-            className="flex items-center gap-1"
-          >
+          <Badge key="gender" variant="secondary" className="flex items-center gap-1">
             {gender.name}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-4 w-4 p-0"
-              onClick={() => removeFilter("gender")}
-            >
+            <Button variant="ghost" size="icon" className="h-4 w-4 p-0" onClick={() => removeFilter("gender")}>
               <X className="h-3 w-3" />
               <span className="sr-only">Xóa bộ lọc giới tính</span>
             </Button>
-          </Badge>
-        );
+          </Badge>,
+        )
       }
     }
 
     // Loại nước hoa
     if (localFilters.perfume_type) {
-      const type = filterOptions.perfumeTypes.find(
-        (t) => t.id.toString() === localFilters.perfume_type
-      );
+      const type = filterOptions.perfumeTypes.find((t) => t.id.toString() === localFilters.perfume_type)
       if (type) {
         activeFilters.push(
-          <Badge
-            key="perfume_type"
-            variant="secondary"
-            className="flex items-center gap-1"
-          >
+          <Badge key="perfume_type" variant="secondary" className="flex items-center gap-1">
             {type.name}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-4 w-4 p-0"
-              onClick={() => removeFilter("perfume_type")}
-            >
+            <Button variant="ghost" size="icon" className="h-4 w-4 p-0" onClick={() => removeFilter("perfume_type")}>
               <X className="h-3 w-3" />
               <span className="sr-only">Xóa bộ lọc loại nước hoa</span>
             </Button>
-          </Badge>
-        );
+          </Badge>,
+        )
       }
     }
 
     // Nồng độ
     if (localFilters.concentration) {
-      const concentration = filterOptions.concentrations.find(
-        (c) => c.id.toString() === localFilters.concentration
-      );
+      const concentration = filterOptions.concentrations.find((c) => c.id.toString() === localFilters.concentration)
       if (concentration) {
         activeFilters.push(
-          <Badge
-            key="concentration"
-            variant="secondary"
-            className="flex items-center gap-1"
-          >
+          <Badge key="concentration" variant="secondary" className="flex items-center gap-1">
             {concentration.name}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-4 w-4 p-0"
-              onClick={() => removeFilter("concentration")}
-            >
+            <Button variant="ghost" size="icon" className="h-4 w-4 p-0" onClick={() => removeFilter("concentration")}>
               <X className="h-3 w-3" />
               <span className="sr-only">Xóa bộ lọc nồng độ</span>
             </Button>
-          </Badge>
-        );
+          </Badge>,
+        )
       }
     }
 
     // Khoảng giá
     if (localFilters.minPrice || localFilters.maxPrice) {
       activeFilters.push(
-        <Badge
-          key="price"
-          variant="secondary"
-          className="flex items-center gap-1"
-        >
-          {formatPrice(
-            parseInt(localFilters.minPrice as string, 10) || DEFAULT_MIN_PRICE
-          )}{" "}
-          -{" "}
-          {formatPrice(
-            parseInt(localFilters.maxPrice as string, 10) || DEFAULT_MAX_PRICE
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-4 w-4 p-0"
-            onClick={() => removeFilter("price")}
-          >
+        <Badge key="price" variant="secondary" className="flex items-center gap-1">
+          {formatPrice(Number.parseInt(localFilters.minPrice as string, 10) || DEFAULT_MIN_PRICE)} -{" "}
+          {formatPrice(Number.parseInt(localFilters.maxPrice as string, 10) || DEFAULT_MAX_PRICE)}
+          <Button variant="ghost" size="icon" className="h-4 w-4 p-0" onClick={() => removeFilter("price")}>
             <X className="h-3 w-3" />
             <span className="sr-only">Xóa bộ lọc giá</span>
           </Button>
-        </Badge>
-      );
+        </Badge>,
+      )
     }
 
     // Sản phẩm nổi bật
     if (localFilters.featured === "true") {
       activeFilters.push(
-        <Badge
-          key="featured"
-          variant="secondary"
-          className="flex items-center gap-1"
-        >
+        <Badge key="featured" variant="secondary" className="flex items-center gap-1">
           Nổi bật
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-4 w-4 p-0"
-            onClick={() => removeFilter("featured")}
-          >
+          <Button variant="ghost" size="icon" className="h-4 w-4 p-0" onClick={() => removeFilter("featured")}>
             <X className="h-3 w-3" />
             <span className="sr-only">Xóa bộ lọc nổi bật</span>
           </Button>
-        </Badge>
-      );
+        </Badge>,
+      )
     }
 
     // Sản phẩm giảm giá
     if (localFilters.sale === "true") {
       activeFilters.push(
-        <Badge
-          key="sale"
-          variant="secondary"
-          className="flex items-center gap-1"
-        >
+        <Badge key="sale" variant="secondary" className="flex items-center gap-1">
           Giảm giá
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-4 w-4 p-0"
-            onClick={() => removeFilter("sale")}
-          >
+          <Button variant="ghost" size="icon" className="h-4 w-4 p-0" onClick={() => removeFilter("sale")}>
             <X className="h-3 w-3" />
             <span className="sr-only">Xóa bộ lọc giảm giá</span>
           </Button>
-        </Badge>
-      );
+        </Badge>,
+      )
     }
 
-    return activeFilters;
-  };
+    return activeFilters
+  }
 
   // Nội dung bộ lọc
   const filterContent = (
@@ -613,15 +494,8 @@ export function FilterSidebar({
       {getActiveFilterCount() > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="font-medium">
-              Bộ lọc đang áp dụng ({getActiveFilterCount()})
-            </h3>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearAllFilters}
-              className="h-8 px-2 text-xs"
-            >
+            <h3 className="font-medium">Bộ lọc đang áp dụng ({getActiveFilterCount()})</h3>
+            <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-8 px-2 text-xs">
               Xóa tất cả
             </Button>
           </div>
@@ -629,10 +503,7 @@ export function FilterSidebar({
         </div>
       )}
 
-      <Accordion
-        type="multiple"
-        defaultValue={["category", "brand", "gender", "price"]}
-      >
+      <Accordion type="multiple" defaultValue={["category", "brand", "gender", "price"]}>
         {/* Bộ lọc danh mục */}
         <AccordionItem value="category" className="border-b">
           <AccordionTrigger className="py-3 text-sm hover:no-underline">
@@ -650,20 +521,12 @@ export function FilterSidebar({
             <div className="max-h-48 space-y-1 overflow-y-auto pr-2">
               {filteredCategories.length > 0 ? (
                 filteredCategories.map((category) => (
-                  <div
-                    key={category.id}
-                    className="flex items-center space-x-2"
-                  >
+                  <div key={category.id} className="flex items-center space-x-2">
                     <div className="flex h-4 w-4 items-center justify-center rounded-sm border">
                       <Checkbox
                         id={`category-${category.id}`}
                         checked={localFilters.category === category.slug}
-                        onCheckedChange={(checked) =>
-                          handleLocalFilterChange(
-                            "category",
-                            checked ? category.slug : ""
-                          )
-                        }
+                        onCheckedChange={(checked) => handleLocalFilterChange("category", checked ? category.slug : "")}
                         className="h-3 w-3 rounded-sm"
                       />
                     </div>
@@ -671,22 +534,16 @@ export function FilterSidebar({
                       htmlFor={`category-${category.id}`}
                       className={cn(
                         "flex-1 cursor-pointer text-sm",
-                        localFilters.category === category.slug
-                          ? "font-medium text-primary"
-                          : ""
+                        localFilters.category === category.slug ? "font-medium text-primary" : "",
                       )}
                     >
                       {category.name}
                     </label>
-                    {localFilters.category === category.slug && (
-                      <Check className="h-3 w-3 text-primary" />
-                    )}
+                    {localFilters.category === category.slug && <Check className="h-3 w-3 text-primary" />}
                   </div>
                 ))
               ) : (
-                <p className="text-xs text-muted-foreground">
-                  Không tìm thấy danh mục
-                </p>
+                <p className="text-xs text-muted-foreground">Không tìm thấy danh mục</p>
               )}
             </div>
           </AccordionContent>
@@ -715,10 +572,7 @@ export function FilterSidebar({
                         id={`brand-${brand.id}`}
                         checked={localFilters.brand === brand.id.toString()}
                         onCheckedChange={(checked) =>
-                          handleLocalFilterChange(
-                            "brand",
-                            checked ? brand.id.toString() : ""
-                          )
+                          handleLocalFilterChange("brand", checked ? brand.id.toString() : "")
                         }
                         className="h-3 w-3 rounded-sm"
                       />
@@ -727,22 +581,16 @@ export function FilterSidebar({
                       htmlFor={`brand-${brand.id}`}
                       className={cn(
                         "flex-1 cursor-pointer text-sm",
-                        localFilters.brand === brand.id.toString()
-                          ? "font-medium text-primary"
-                          : ""
+                        localFilters.brand === brand.id.toString() ? "font-medium text-primary" : "",
                       )}
                     >
                       {brand.name}
                     </label>
-                    {localFilters.brand === brand.id.toString() && (
-                      <Check className="h-3 w-3 text-primary" />
-                    )}
+                    {localFilters.brand === brand.id.toString() && <Check className="h-3 w-3 text-primary" />}
                   </div>
                 ))
               ) : (
-                <p className="text-xs text-muted-foreground">
-                  Không tìm thấy thương hiệu
-                </p>
+                <p className="text-xs text-muted-foreground">Không tìm thấy thương hiệu</p>
               )}
             </div>
           </AccordionContent>
@@ -762,10 +610,7 @@ export function FilterSidebar({
                       id={`gender-${gender.id}`}
                       checked={localFilters.gender === gender.id.toString()}
                       onCheckedChange={(checked) =>
-                        handleLocalFilterChange(
-                          "gender",
-                          checked ? gender.id.toString() : ""
-                        )
+                        handleLocalFilterChange("gender", checked ? gender.id.toString() : "")
                       }
                       className="h-3 w-3 rounded-sm"
                     />
@@ -774,16 +619,12 @@ export function FilterSidebar({
                     htmlFor={`gender-${gender.id}`}
                     className={cn(
                       "flex-1 cursor-pointer text-sm",
-                      localFilters.gender === gender.id.toString()
-                        ? "font-medium text-primary"
-                        : ""
+                      localFilters.gender === gender.id.toString() ? "font-medium text-primary" : "",
                     )}
                   >
                     {gender.name}
                   </label>
-                  {localFilters.gender === gender.id.toString() && (
-                    <Check className="h-3 w-3 text-primary" />
-                  )}
+                  {localFilters.gender === gender.id.toString() && <Check className="h-3 w-3 text-primary" />}
                 </div>
               ))}
             </div>
@@ -804,10 +645,7 @@ export function FilterSidebar({
                       id={`type-${type.id}`}
                       checked={localFilters.perfume_type === type.id.toString()}
                       onCheckedChange={(checked) =>
-                        handleLocalFilterChange(
-                          "perfume_type",
-                          checked ? type.id.toString() : ""
-                        )
+                        handleLocalFilterChange("perfume_type", checked ? type.id.toString() : "")
                       }
                       className="h-3 w-3 rounded-sm"
                     />
@@ -816,16 +654,12 @@ export function FilterSidebar({
                     htmlFor={`type-${type.id}`}
                     className={cn(
                       "flex-1 cursor-pointer text-sm",
-                      localFilters.perfume_type === type.id.toString()
-                        ? "font-medium text-primary"
-                        : ""
+                      localFilters.perfume_type === type.id.toString() ? "font-medium text-primary" : "",
                     )}
                   >
                     {type.name}
                   </label>
-                  {localFilters.perfume_type === type.id.toString() && (
-                    <Check className="h-3 w-3 text-primary" />
-                  )}
+                  {localFilters.perfume_type === type.id.toString() && <Check className="h-3 w-3 text-primary" />}
                 </div>
               ))}
             </div>
@@ -840,22 +674,13 @@ export function FilterSidebar({
           <AccordionContent>
             <div className="space-y-1">
               {filterOptions.concentrations.map((concentration) => (
-                <div
-                  key={concentration.id}
-                  className="flex items-center space-x-2"
-                >
+                <div key={concentration.id} className="flex items-center space-x-2">
                   <div className="flex h-4 w-4 items-center justify-center rounded-sm border">
                     <Checkbox
                       id={`concentration-${concentration.id}`}
-                      checked={
-                        localFilters.concentration ===
-                        concentration.id.toString()
-                      }
+                      checked={localFilters.concentration === concentration.id.toString()}
                       onCheckedChange={(checked) =>
-                        handleLocalFilterChange(
-                          "concentration",
-                          checked ? concentration.id.toString() : ""
-                        )
+                        handleLocalFilterChange("concentration", checked ? concentration.id.toString() : "")
                       }
                       className="h-3 w-3 rounded-sm"
                     />
@@ -864,15 +689,12 @@ export function FilterSidebar({
                     htmlFor={`concentration-${concentration.id}`}
                     className={cn(
                       "flex-1 cursor-pointer text-sm",
-                      localFilters.concentration === concentration.id.toString()
-                        ? "font-medium text-primary"
-                        : ""
+                      localFilters.concentration === concentration.id.toString() ? "font-medium text-primary" : "",
                     )}
                   >
                     {concentration.name}
                   </label>
-                  {localFilters.concentration ===
-                    concentration.id.toString() && (
+                  {localFilters.concentration === concentration.id.toString() && (
                     <Check className="h-3 w-3 text-primary" />
                   )}
                 </div>
@@ -902,23 +724,17 @@ export function FilterSidebar({
                               ...prev,
                               minPrice: range.min.toString(),
                               maxPrice: range.max.toString(),
-                            }));
-                            setPriceRange([range.min, range.max]);
-                            setDisplayPriceRange([range.min, range.max]);
+                            }))
+                            setPriceRange([range.min, range.max])
+                            setDisplayPriceRange([range.min, range.max])
                           } else {
                             setLocalFilters((prev) => ({
                               ...prev,
                               minPrice: "",
                               maxPrice: "",
-                            }));
-                            setPriceRange([
-                              DEFAULT_MIN_PRICE,
-                              DEFAULT_MAX_PRICE,
-                            ]);
-                            setDisplayPriceRange([
-                              DEFAULT_MIN_PRICE,
-                              DEFAULT_MAX_PRICE,
-                            ]);
+                            }))
+                            setPriceRange([DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE])
+                            setDisplayPriceRange([DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE])
                           }
                         }}
                         className="h-3 w-3 rounded-sm"
@@ -928,24 +744,18 @@ export function FilterSidebar({
                       htmlFor={`price-range-${index}`}
                       className={cn(
                         "flex-1 cursor-pointer text-sm",
-                        isPriceRangeSelected(range.min, range.max)
-                          ? "font-medium text-primary"
-                          : ""
+                        isPriceRangeSelected(range.min, range.max) ? "font-medium text-primary" : "",
                       )}
                     >
                       {range.label}
                     </label>
-                    {isPriceRangeSelected(range.min, range.max) && (
-                      <Check className="h-3 w-3 text-primary" />
-                    )}
+                    {isPriceRangeSelected(range.min, range.max) && <Check className="h-3 w-3 text-primary" />}
                   </div>
                 ))}
               </div>
 
               <div className="pt-2">
-                <h4 className="mb-2 text-xs font-medium text-muted-foreground">
-                  Hoặc chọn khoảng giá tùy chỉnh:
-                </h4>
+                <h4 className="mb-2 text-xs font-medium text-muted-foreground">Hoặc chọn khoảng giá tùy chỉnh:</h4>
                 <Slider
                   value={displayPriceRange}
                   min={DEFAULT_MIN_PRICE}
@@ -959,10 +769,7 @@ export function FilterSidebar({
               </div>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex-1">
-                  <label
-                    htmlFor="min-price"
-                    className="mb-1 block text-xs text-muted-foreground"
-                  >
+                  <label htmlFor="min-price" className="mb-1 block text-xs text-muted-foreground">
                     Giá tối thiểu
                   </label>
                   <Input
@@ -977,10 +784,7 @@ export function FilterSidebar({
                   />
                 </div>
                 <div className="flex-1">
-                  <label
-                    htmlFor="max-price"
-                    className="mb-1 block text-xs text-muted-foreground"
-                  >
+                  <label htmlFor="max-price" className="mb-1 block text-xs text-muted-foreground">
                     Giá tối đa
                   </label>
                   <Input
@@ -1015,9 +819,7 @@ export function FilterSidebar({
                   <Checkbox
                     id="featured"
                     checked={localFilters.featured === "true"}
-                    onCheckedChange={(checked) =>
-                      handleLocalFilterChange("featured", checked ? "true" : "")
-                    }
+                    onCheckedChange={(checked) => handleLocalFilterChange("featured", checked ? "true" : "")}
                     className="h-3 w-3 rounded-sm"
                   />
                 </div>
@@ -1025,25 +827,19 @@ export function FilterSidebar({
                   htmlFor="featured"
                   className={cn(
                     "flex-1 cursor-pointer text-sm",
-                    localFilters.featured === "true"
-                      ? "font-medium text-primary"
-                      : ""
+                    localFilters.featured === "true" ? "font-medium text-primary" : "",
                   )}
                 >
                   Sản phẩm nổi bật
                 </label>
-                {localFilters.featured === "true" && (
-                  <Check className="h-3 w-3 text-primary" />
-                )}
+                {localFilters.featured === "true" && <Check className="h-3 w-3 text-primary" />}
               </div>
               <div className="flex items-center space-x-2">
                 <div className="flex h-4 w-4 items-center justify-center rounded-sm border">
                   <Checkbox
                     id="sale"
                     checked={localFilters.sale === "true"}
-                    onCheckedChange={(checked) =>
-                      handleLocalFilterChange("sale", checked ? "true" : "")
-                    }
+                    onCheckedChange={(checked) => handleLocalFilterChange("sale", checked ? "true" : "")}
                     className="h-3 w-3 rounded-sm"
                   />
                 </div>
@@ -1051,16 +847,12 @@ export function FilterSidebar({
                   htmlFor="sale"
                   className={cn(
                     "flex-1 cursor-pointer text-sm",
-                    localFilters.sale === "true"
-                      ? "font-medium text-primary"
-                      : ""
+                    localFilters.sale === "true" ? "font-medium text-primary" : "",
                   )}
                 >
                   Đang giảm giá
                 </label>
-                {localFilters.sale === "true" && (
-                  <Check className="h-3 w-3 text-primary" />
-                )}
+                {localFilters.sale === "true" && <Check className="h-3 w-3 text-primary" />}
               </div>
             </div>
           </AccordionContent>
@@ -1078,7 +870,7 @@ export function FilterSidebar({
         )}
       </Button>
     </div>
-  );
+  )
 
   // Hiển thị bộ lọc trên desktop
   const desktopFilter = (
@@ -1091,18 +883,14 @@ export function FilterSidebar({
         {filterContent}
       </div>
     </div>
-  );
+  )
 
   // Hiển thị bộ lọc trên mobile
   const mobileFilter = (
     <div className="md:hidden">
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetTrigger asChild>
-          <Button
-            variant="outline"
-            className="flex items-center gap-2"
-            disabled={isPending}
-          >
+          <Button variant="outline" className="flex items-center gap-2" disabled={isPending}>
             <Filter className="h-4 w-4" />
             Bộ lọc
             {getActiveFilterCount() > 0 && (
@@ -1120,7 +908,7 @@ export function FilterSidebar({
         </SheetContent>
       </Sheet>
     </div>
-  );
+  )
 
   // Hiển thị toàn bộ trang
   return (
@@ -1128,5 +916,6 @@ export function FilterSidebar({
       {desktopFilter}
       {mobileFilter}
     </>
-  );
+  )
 }
+
