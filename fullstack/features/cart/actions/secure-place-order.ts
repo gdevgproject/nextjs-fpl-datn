@@ -1,17 +1,21 @@
-"use server"
+"use server";
 
-import { revalidatePath } from "next/cache"
-import { createServiceRoleClient, getSupabaseServerClient } from "@/lib/supabase/server"
-import type { Address } from "@/features/account/types"
-import type { CartItem, GuestCheckoutInfo } from "../types"
+import { revalidatePath } from "next/cache";
+import {
+  createServiceRoleClient,
+  getSupabaseServerClient,
+} from "@/lib/supabase/server";
+import type { Address } from "@/features/account/types";
+import type { CartItem, GuestCheckoutInfo } from "../types";
 
 /**
  * Type definition for the Place Order response
  */
 interface PlaceOrderResponse {
-  success: boolean
-  orderId?: number
-  error?: string
+  success: boolean;
+  orderId?: number;
+  accessToken?: string;
+  error?: string;
 }
 
 /**
@@ -30,37 +34,41 @@ export async function securedPlaceOrder({
   total,
   guestInfo,
 }: {
-  shippingAddress: Address
-  paymentMethodId: number
-  deliveryNotes?: string
-  discountId?: number
-  cartItems: CartItem[]
-  subtotal: number
-  discountAmount: number
-  shippingFee: number
-  total: number
-  guestInfo?: GuestCheckoutInfo | null
+  shippingAddress: Address;
+  paymentMethodId: number;
+  deliveryNotes?: string;
+  discountId?: number;
+  cartItems: CartItem[];
+  subtotal: number;
+  discountAmount: number;
+  shippingFee: number;
+  total: number;
+  guestInfo?: GuestCheckoutInfo | null;
 }): Promise<PlaceOrderResponse> {
   // Create regular Supabase client for user session check only
-  const regularSupabase = getSupabaseServerClient()
+  const regularSupabase = getSupabaseServerClient();
 
   // Create service role client for transaction operations (bypasses RLS)
-  const supabase = createServiceRoleClient()
+  const supabase = createServiceRoleClient();
 
-  console.log("Starting order placement process with", cartItems.length, "items")
+  console.log(
+    "Starting order placement process with",
+    cartItems.length,
+    "items"
+  );
 
   try {
     // Get user session if available
     const {
       data: { session },
-    } = await regularSupabase.auth.getSession()
-    const userId = session?.user?.id
+    } = await regularSupabase.auth.getSession();
+    const userId = session?.user?.id;
 
-    console.log("Session check complete. User authenticated:", !!userId)
+    console.log("Session check complete. User authenticated:", !!userId);
 
     // PRE-COMMIT VALIDATION: Verify current product variant data
-    console.log("Performing pre-commit validation...")
-    const variantIds = cartItems.map((item) => item.variant_id)
+    console.log("Performing pre-commit validation...");
+    const variantIds = cartItems.map((item) => item.variant_id);
 
     // Fetch the latest data for all variants being ordered
     const { data: latestVariants, error: variantsError } = await supabase
@@ -78,36 +86,38 @@ export async function securedPlaceOrder({
           name, 
           deleted_at
         )
-      `,
+      `
       )
-      .in("id", variantIds)
+      .in("id", variantIds);
 
     if (variantsError) {
-      console.error("Error fetching latest variant data:", variantsError)
+      console.error("Error fetching latest variant data:", variantsError);
       return {
         success: false,
         error: "Không thể xác minh thông tin sản phẩm. Vui lòng thử lại sau.",
-      }
+      };
     }
 
     // Validate the variants
-    const unavailableVariants: { id: number; reason: string }[] = []
+    const unavailableVariants: { id: number; reason: string }[] = [];
     const priceChangedVariants: {
-      id: number
-      oldPrice: number
-      newPrice: number
-    }[] = []
+      id: number;
+      oldPrice: number;
+      newPrice: number;
+    }[] = [];
 
     for (const item of cartItems) {
-      const currentVariant = latestVariants.find((v) => v.id === item.variant_id)
+      const currentVariant = latestVariants.find(
+        (v) => v.id === item.variant_id
+      );
 
       // Check if variant exists and is not deleted
       if (!currentVariant || currentVariant.deleted_at) {
         unavailableVariants.push({
           id: item.variant_id,
           reason: "Sản phẩm không còn tồn tại trong hệ thống.",
-        })
-        continue
+        });
+        continue;
       }
 
       // Check if product is deleted
@@ -115,8 +125,8 @@ export async function securedPlaceOrder({
         unavailableVariants.push({
           id: item.variant_id,
           reason: `Sản phẩm "${currentVariant.products.name}" không còn kinh doanh.`,
-        })
-        continue
+        });
+        continue;
       }
 
       // Check stock quantity
@@ -124,38 +134,41 @@ export async function securedPlaceOrder({
         unavailableVariants.push({
           id: item.variant_id,
           reason: `Chỉ còn ${currentVariant.stock_quantity} sản phẩm "${currentVariant.products.name}" trong kho.`,
-        })
-        continue
+        });
+        continue;
       }
 
       // Check price changes (using the effective price - sale price if available, otherwise regular price)
-      const clientPrice = item.product?.sale_price || item.product?.price
-      const currentPrice = currentVariant.sale_price || currentVariant.price
+      const clientPrice = item.product?.sale_price || item.product?.price;
+      const currentPrice = currentVariant.sale_price || currentVariant.price;
 
       if (clientPrice !== currentPrice) {
         priceChangedVariants.push({
           id: item.variant_id,
           oldPrice: clientPrice,
           newPrice: currentPrice,
-        })
+        });
       }
     }
 
     // Handle validation failures
     if (unavailableVariants.length > 0) {
-      console.error("Unavailable variants detected:", unavailableVariants)
+      console.error("Unavailable variants detected:", unavailableVariants);
       return {
         success: false,
-        error: `Một số sản phẩm không khả dụng: ${unavailableVariants.map((v) => v.reason).join("; ")}`,
-      }
+        error: `Một số sản phẩm không khả dụng: ${unavailableVariants
+          .map((v) => v.reason)
+          .join("; ")}`,
+      };
     }
 
     if (priceChangedVariants.length > 0) {
-      console.error("Price changes detected:", priceChangedVariants)
+      console.error("Price changes detected:", priceChangedVariants);
       return {
         success: false,
-        error: "Giá của một số sản phẩm đã thay đổi. Vui lòng làm mới trang để cập nhật giỏ hàng.",
-      }
+        error:
+          "Giá của một số sản phẩm đã thay đổi. Vui lòng làm mới trang để cập nhật giỏ hàng.",
+      };
     }
 
     // Validate discount if provided
@@ -164,18 +177,18 @@ export async function securedPlaceOrder({
         .from("discounts")
         .select("*")
         .eq("id", discountId)
-        .single()
+        .single();
 
       if (discountError || !discount) {
-        console.error("Discount validation error:", discountError)
+        console.error("Discount validation error:", discountError);
         return {
           success: false,
           error: "Mã giảm giá không hợp lệ hoặc đã hết hạn.",
-        }
+        };
       }
 
       // Check discount validity
-      const now = new Date()
+      const now = new Date();
       if (
         !discount.is_active ||
         (discount.start_date && new Date(discount.start_date) > now) ||
@@ -186,45 +199,57 @@ export async function securedPlaceOrder({
         return {
           success: false,
           error: "Mã giảm giá không hợp lệ hoặc không thỏa điều kiện áp dụng.",
-        }
+        };
       }
     }
 
     // Fetch the Pending order status ID
-    const { data: statusList, error: statusError } = await supabase.from("order_statuses").select("id, name")
+    const { data: statusList, error: statusError } = await supabase
+      .from("order_statuses")
+      .select("id, name");
 
     if (statusError) {
-      console.error("Error fetching order statuses:", statusError)
+      console.error("Error fetching order statuses:", statusError);
       return {
         success: false,
         error: "Lỗi hệ thống: Không thể xác định trạng thái đơn hàng.",
-      }
+      };
     }
 
     // Look for Pending status using various possible names
-    const pendingStatus = statusList.find((status) => ["Pending", "Chờ xử lý", "Đang chờ", "Mới"].includes(status.name))
+    let pendingStatus = statusList.find((status) =>
+      ["Pending", "Chờ xử lý", "Đang chờ", "Mới", "Chờ xác nhận"].includes(
+        status.name
+      )
+    );
 
     if (!pendingStatus) {
-      console.error("Could not find a valid initial order status", statusList)
+      console.error("Could not find a valid initial order status", statusList);
       // If no matching status found, use the first available status as fallback
       if (statusList.length === 0) {
         return {
           success: false,
-          error: "Lỗi hệ thống: Không có trạng thái đơn hàng nào được định nghĩa.",
-        }
+          error:
+            "Lỗi hệ thống: Không có trạng thái đơn hàng nào được định nghĩa.",
+        };
       }
       // Use the first status as fallback
-      pendingStatus = statusList[0]
+      pendingStatus = statusList[0];
     }
 
-    const orderStatusId = pendingStatus.id
-    console.log("Using order status ID:", orderStatusId, "Name:", pendingStatus.name)
+    const orderStatusId = pendingStatus.id;
+    console.log(
+      "Using order status ID:",
+      orderStatusId,
+      "Name:",
+      pendingStatus.name
+    );
 
     // Start transaction - all operations will be atomic
     // The transaction block guarantees that either ALL operations succeed, or NONE do
-    console.log("Starting transaction...")
+    console.log("Starting transaction...");
 
-    let orderId: number | undefined
+    let orderId: number | undefined;
 
     // Step 1: Insert order record
     const { data: newOrder, error: orderError } = await supabase
@@ -253,24 +278,25 @@ export async function securedPlaceOrder({
         shipping_fee: shippingFee,
         total_amount: total,
       })
-      .select("id")
-      .single()
+      .select("id, access_token")
+      .single();
 
     if (orderError) {
-      console.error("Error creating order:", orderError)
-      throw new Error(`Không thể tạo đơn hàng: ${orderError.message}`)
+      console.error("Error creating order:", orderError);
+      throw new Error(`Không thể tạo đơn hàng: ${orderError.message}`);
     }
 
-    orderId = newOrder.id
-    console.log("Created order with ID:", orderId)
+    orderId = newOrder.id;
+    console.log("Created order with ID:", orderId);
 
     // Step 2: Insert order items
     for (const item of cartItems) {
       // Fetch variant details from our already validated data
-      const variant = latestVariants.find((v) => v.id === item.variant_id)!
+      const variant = latestVariants.find((v) => v.id === item.variant_id)!;
 
       // Calculate unit price (use sale_price if available)
-      const unitPrice = variant.sale_price !== null ? variant.sale_price : variant.price
+      const unitPrice =
+        variant.sale_price !== null ? variant.sale_price : variant.price;
 
       // Insert order item
       const { error: itemError } = await supabase.from("order_items").insert({
@@ -280,15 +306,17 @@ export async function securedPlaceOrder({
         variant_volume_ml: variant.volume_ml,
         quantity: item.quantity,
         unit_price_at_order: unitPrice,
-      })
+      });
 
       if (itemError) {
-        console.error("Error creating order item:", itemError)
-        throw new Error(`Không thể thêm sản phẩm vào đơn hàng: ${itemError.message}`)
+        console.error("Error creating order item:", itemError);
+        throw new Error(
+          `Không thể thêm sản phẩm vào đơn hàng: ${itemError.message}`
+        );
       }
     }
 
-    console.log("Created all order items")
+    console.log("Created all order items");
 
     // Step 3: Create payment record
     const { error: paymentError } = await supabase.from("payments").insert({
@@ -297,14 +325,16 @@ export async function securedPlaceOrder({
       payment_method_id: paymentMethodId,
       amount: total,
       status: "Pending",
-    })
+    });
 
     if (paymentError) {
-      console.error("Error creating payment record:", paymentError)
-      throw new Error(`Không thể tạo bản ghi thanh toán: ${paymentError.message}`)
+      console.error("Error creating payment record:", paymentError);
+      throw new Error(
+        `Không thể tạo bản ghi thanh toán: ${paymentError.message}`
+      );
     }
 
-    console.log("Created payment record")
+    console.log("Created payment record");
 
     // Step 4: Clear user's cart if authenticated
     if (userId) {
@@ -312,35 +342,38 @@ export async function securedPlaceOrder({
         .from("shopping_carts")
         .select("id")
         .eq("user_id", userId)
-        .single()
+        .single();
 
       if (!cartError && cart) {
-        await supabase.from("cart_items").delete().eq("cart_id", cart.id)
+        await supabase.from("cart_items").delete().eq("cart_id", cart.id);
 
-        console.log("Cleared user's cart")
+        console.log("Cleared user's cart");
       }
     }
 
     // Transaction complete successfully
-    console.log("Order placement transaction completed successfully")
+    console.log("Order placement transaction completed successfully");
 
     // Revalidate relevant paths
-    revalidatePath("/gio-hang")
-    revalidatePath("/thanh-toan")
-    revalidatePath(`/xac-nhan-don-hang?id=${orderId}`)
-    revalidatePath("/tai-khoan/don-hang")
-    revalidatePath("/api/cart")
+    revalidatePath("/gio-hang");
+    revalidatePath("/thanh-toan");
+    revalidatePath(`/xac-nhan-don-hang?id=${orderId}`);
+    revalidatePath("/tai-khoan/don-hang");
+    revalidatePath("/api/cart");
 
     return {
       success: true,
       orderId,
-    }
+      accessToken: !userId ? newOrder.access_token : undefined, // Only return access_token for guest users
+    };
   } catch (error) {
-    console.error("Fatal error during order placement:", error)
+    console.error("Fatal error during order placement:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Đã xảy ra lỗi khi đặt hàng. Vui lòng thử lại sau.",
-    }
+      error:
+        error instanceof Error
+          ? error.message
+          : "Đã xảy ra lỗi khi đặt hàng. Vui lòng thử lại sau.",
+    };
   }
 }
-
