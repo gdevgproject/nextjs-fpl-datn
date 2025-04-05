@@ -1,8 +1,8 @@
-import { ProductCard } from "@/components/shared/product-card"
-import type { Product } from "@/lib/types/shared.types"
+import { ProductCard } from "@/components/shared/product-card";
+import type { Product } from "@/features/products/types";
 
 interface ProductGridProps {
-  products: Product[]
+  products: Product[];
 }
 
 export function ProductGrid({ products }: ProductGridProps) {
@@ -11,7 +11,7 @@ export function ProductGrid({ products }: ProductGridProps) {
       <div className="py-8 text-center">
         <p className="text-muted-foreground">Không có sản phẩm nào</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -20,6 +20,5 @@ export function ProductGrid({ products }: ProductGridProps) {
         <ProductCard key={product.id} product={product} />
       ))}
     </div>
-  )
+  );
 }
-

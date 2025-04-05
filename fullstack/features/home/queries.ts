@@ -1,10 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import type {
-  Banner,
-  Brand,
-  Category,
-  Product,
-} from "@/lib/types/shared.types";
+import type { Banner, Brand, Category, Product } from "./types";
 
 /**
  * Lấy sản phẩm nổi bật (có nhãn "Featured")
