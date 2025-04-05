@@ -107,6 +107,7 @@ export function CartPage() {
                           item.product?.images?.[0]?.image_url ||
                           "/placeholder.jpg" ||
                           "/placeholder.svg" ||
+                          "/placeholder.svg" ||
                           "/placeholder.svg"
                         }
                         alt={item.product?.name || "Product image"}
@@ -287,7 +288,11 @@ export function CartPage() {
 
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Phí vận chuyển</span>
-                  <span className="text-green-600">Miễn phí</span>
+                  {shippingFee > 0 ? (
+                    <span>{formatCurrency(shippingFee)}</span>
+                  ) : (
+                    <span className="text-green-600">Miễn phí</span>
+                  )}
                 </div>
 
                 <Separator className="my-2" />

@@ -13,7 +13,6 @@ import { FeaturedCategories } from "./featured-categories"
 import { ProductSection } from "./product-section"
 import { FeaturedBrands } from "./featured-brands"
 import { FeaturesSection } from "./features-section"
-import { HeroSection } from "./hero-section"
 import { Skeleton } from "@/components/ui/skeleton"
 
 // Skeleton loaders for each section
@@ -50,10 +49,23 @@ function CategoriesSkeleton() {
 function ProductsSkeleton({
   bgColor = "default",
 }: {
-  bgColor?: "default" | "muted"
+  bgColor?: "default" | "muted" | "accent" | "subtle"
 }) {
+  const getBgClass = () => {
+    switch (bgColor) {
+      case "muted":
+        return "bg-muted/60 dark:bg-muted/30"
+      case "accent":
+        return "bg-primary/5 dark:bg-primary/10"
+      case "subtle":
+        return "bg-secondary/5 dark:bg-secondary/10"
+      default:
+        return "bg-background"
+    }
+  }
+
   return (
-    <section className={bgColor === "muted" ? "bg-muted" : "bg-background"}>
+    <section className={getBgClass()}>
       <div className="container py-12">
         <div className="flex items-center justify-between">
           <div>
@@ -82,7 +94,7 @@ function ProductsSkeleton({
 
 function BrandsSkeleton() {
   return (
-    <section className="bg-muted py-12">
+    <section className="bg-primary/5 dark:bg-primary/10 py-12">
       <div className="container">
         <div className="flex items-center justify-between">
           <div>
@@ -120,6 +132,7 @@ async function FeaturedProductsSection() {
       description="Những sản phẩm được yêu thích nhất của chúng tôi"
       products={products}
       viewAllLink="/san-pham?featured=true"
+      bgColor="default"
     />
   )
 }
@@ -132,7 +145,7 @@ async function NewArrivalsSection() {
       description="Những sản phẩm mới nhất vừa cập nhật"
       products={products}
       viewAllLink="/san-pham?sort=newest"
-      bgColor="muted"
+      bgColor="accent"
     />
   )
 }
@@ -145,6 +158,7 @@ async function SaleProductsSection() {
       description="Cơ hội sở hữu những sản phẩm chất lượng với giá tốt nhất"
       products={products}
       viewAllLink="/san-pham?sale=true"
+      bgColor="subtle"
     />
   )
 }
@@ -176,8 +190,25 @@ export async function HomePage() {
         <BannerSection />
       </Suspense>
 
-      {/* Hero Section */}
-      <HeroSection />
+      {/* Featured Brands - Moved up */}
+      <Suspense fallback={<BrandsSkeleton />}>
+        <BrandsSection />
+      </Suspense>
+
+      {/* Sale Products - Moved up */}
+      <Suspense fallback={<ProductsSkeleton bgColor="subtle" />}>
+        <SaleProductsSection />
+      </Suspense>
+
+      {/* New Arrivals */}
+      <Suspense fallback={<ProductsSkeleton bgColor="accent" />}>
+        <NewArrivalsSection />
+      </Suspense>
+
+      {/* Best Selling Products */}
+      <Suspense fallback={<ProductsSkeleton bgColor="muted" />}>
+        <BestSellingSection />
+      </Suspense>
 
       {/* Featured Categories */}
       <Suspense fallback={<CategoriesSkeleton />}>
@@ -187,26 +218,6 @@ export async function HomePage() {
       {/* Featured Products */}
       <Suspense fallback={<ProductsSkeleton />}>
         <FeaturedProductsSection />
-      </Suspense>
-
-      {/* New Arrivals */}
-      <Suspense fallback={<ProductsSkeleton bgColor="muted" />}>
-        <NewArrivalsSection />
-      </Suspense>
-
-      {/* Sale Products */}
-      <Suspense fallback={<ProductsSkeleton />}>
-        <SaleProductsSection />
-      </Suspense>
-
-      {/* Best Selling Products */}
-      <Suspense fallback={<ProductsSkeleton bgColor="muted" />}>
-        <BestSellingSection />
-      </Suspense>
-
-      {/* Featured Brands */}
-      <Suspense fallback={<BrandsSkeleton />}>
-        <BrandsSection />
       </Suspense>
 
       {/* Features Section */}

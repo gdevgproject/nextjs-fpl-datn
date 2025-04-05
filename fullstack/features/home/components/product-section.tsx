@@ -10,7 +10,7 @@ interface ProductSectionProps {
   products: Product[]
   viewAllLink: string
   isLoading?: boolean
-  bgColor?: "default" | "muted"
+  bgColor?: "default" | "muted" | "accent" | "subtle"
 }
 
 export function ProductSection({
@@ -21,10 +21,24 @@ export function ProductSection({
   isLoading = false,
   bgColor = "default",
 }: ProductSectionProps) {
+  // Get background color class based on the bgColor prop
+  const getBgClass = () => {
+    switch (bgColor) {
+      case "muted":
+        return "bg-muted/60 dark:bg-muted/30"
+      case "accent":
+        return "bg-primary/5 dark:bg-primary/10"
+      case "subtle":
+        return "bg-secondary/5 dark:bg-secondary/10"
+      default:
+        return "bg-background"
+    }
+  }
+
   // Nếu đang loading, hiển thị skeleton
   if (isLoading) {
     return (
-      <section className={bgColor === "muted" ? "bg-muted" : "bg-background"}>
+      <section className={getBgClass()}>
         <div className="container py-12">
           <div className="flex items-center justify-between">
             <div>
@@ -97,18 +111,18 @@ export function ProductSection({
         }))
 
   return (
-    <section className={bgColor === "muted" ? "bg-muted" : "bg-background"}>
+    <section className={getBgClass()}>
       <div className="container py-12">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-4 sm:mb-0">
             <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
             <p className="text-muted-foreground">{description}</p>
           </div>
-          <Button asChild variant="ghost">
+          <Button asChild variant="outline" className="self-start sm:self-center">
             <Link href={viewAllLink}>Xem tất cả</Link>
           </Button>
         </div>
-        <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {displayProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}

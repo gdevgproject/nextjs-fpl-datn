@@ -12,6 +12,10 @@ export const metadata: Metadata = {
   title: "MyBeauty - Nước hoa chính hãng",
   description: "Cửa hàng nước hoa chính hãng với đa dạng thương hiệu cao cấp",
   generator: "v0.dev",
+  icons: {
+    icon: "/images/logo.png",
+    apple: "/images/logo.png",
+  },
 }
 
 export default function RootLayout({

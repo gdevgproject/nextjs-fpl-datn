@@ -13,6 +13,7 @@ import {
   removeDiscountCode as removeDiscountCodeAction,
   getProductVariantDetails,
 } from "../actions/cart-actions"
+import { useShopSettings } from "@/features/shared/hooks/use-shop-settings"
 
 // Initial cart state
 const initialCartState: CartState = {
@@ -20,7 +21,7 @@ const initialCartState: CartState = {
   cartItemCount: 0,
   subtotal: 0,
   discount: 0,
-  shippingFee: 0, // Miễn phí vận chuyển
+  shippingFee: 0,
   cartTotal: 0,
   discountCode: "",
   appliedDiscount: null,
@@ -54,6 +55,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<CartState>(initialCartState)
   const { user, isAuthenticated } = useAuth()
   const { toast } = useToast()
+  const { settings } = useShopSettings()
+
+  // Get shipping fee from settings
+  const shippingFee = settings?.shipping_fee || 0
+  const freeShippingThreshold = settings?.free_shipping_threshold || null
 
   // Fetch cart items on mount and when auth state changes
   useEffect(() => {
@@ -150,15 +156,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       discountAmount = calculateDiscountAmount(subtotal, appliedDiscount)
     }
 
+    // Calculate shipping fee based on subtotal and free shipping threshold
+    let calculatedShippingFee = shippingFee
+    if (freeShippingThreshold !== null && subtotal >= freeShippingThreshold) {
+      calculatedShippingFee = 0
+    }
+
     // Calculate total (subtotal - discount + shipping)
-    const total = Math.max(0, subtotal - discountAmount) + 0 // Miễn phí vận chuyển
+    const total = Math.max(0, subtotal - discountAmount) + calculatedShippingFee
 
     setState({
       cartItems: items,
       cartItemCount: itemCount,
       subtotal,
       discount: discountAmount,
-      shippingFee: 0, // Miễn phí vận chuyển
+      shippingFee: calculatedShippingFee,
       cartTotal: total,
       discountCode: appliedDiscount?.code || "",
       appliedDiscount,

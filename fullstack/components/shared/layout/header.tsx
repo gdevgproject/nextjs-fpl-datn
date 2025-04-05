@@ -23,6 +23,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useEffect, useState } from "react"
 import { SearchForm } from "./search-form"
+import { useShopSettings } from "@/features/shared/hooks/use-shop-settings"
 
 const mainNavItems = [
   { title: "Trang chủ", href: "/" },
@@ -37,6 +38,7 @@ export function Header() {
   const pathname = usePathname()
   const { user, profile, signOut, isAuthenticated, isLoading, profileImageUrl, role } = useAuth()
   const [mounted, setMounted] = useState(false)
+  const { settings, isLoading: isLoadingSettings } = useShopSettings()
 
   // Đảm bảo component chỉ render ở client-side
   useEffect(() => {
@@ -48,6 +50,9 @@ export function Header() {
     await signOut()
   }
 
+  // Lấy tên shop từ settings hoặc dùng giá trị mặc định
+  const shopName = settings?.shop_name || "MyBeauty"
+
   // Nếu chưa mounted, hiển thị skeleton
   if (!mounted) {
     return (
@@ -55,7 +60,12 @@ export function Header() {
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-6 md:gap-10">
             <Link href="/" className="flex items-center space-x-2">
-              <Image src="/images/logo.png" alt="MyBeauty Logo" width={120} height={40} className="h-10 w-auto" />
+              <div className="rounded-lg overflow-hidden">
+                <Image src="/images/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10 object-contain" />
+              </div>
+              <span className="font-bold text-xl hidden sm:inline-block">
+                <Skeleton className="h-6 w-24" />
+              </span>
             </Link>
             <nav className="hidden gap-6 md:flex">
               {mainNavItems.map((item) => (
@@ -78,7 +88,18 @@ export function Header() {
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-6 md:gap-10">
           <Link href="/" className="flex items-center space-x-2">
-            <Image src="/images/logo.png" alt="MyBeauty Logo" width={120} height={40} className="h-10 w-auto" />
+            <div className="rounded-lg overflow-hidden">
+              <Image
+                src="/images/logo.png"
+                alt={`${shopName} Logo`}
+                width={40}
+                height={40}
+                className="h-10 w-10 object-contain"
+              />
+            </div>
+            <span className="font-bold text-xl hidden sm:inline-block">
+              {isLoadingSettings ? <Skeleton className="h-6 w-24" /> : shopName}
+            </span>
           </Link>
           <nav className="hidden gap-6 md:flex">
             {mainNavItems.map((item) => (
@@ -186,6 +207,20 @@ export function Header() {
             </SheetTrigger>
             <SheetContent side="right">
               <nav className="flex flex-col gap-4 mt-8">
+                <Link href="/" className="flex items-center space-x-2">
+                  <div className="rounded-lg overflow-hidden">
+                    <Image
+                      src="/images/logo.png"
+                      alt={`${shopName} Logo`}
+                      width={40}
+                      height={40}
+                      className="h-10 w-10 object-contain"
+                    />
+                  </div>
+                  <span className="font-bold text-xl">
+                    {isLoadingSettings ? <Skeleton className="h-6 w-24" /> : shopName}
+                  </span>
+                </Link>
                 {mainNavItems.map((item) => (
                   <Link
                     key={item.href}

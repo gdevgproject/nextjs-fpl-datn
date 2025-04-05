@@ -22,14 +22,14 @@ export function FeaturedBrands({ brands }: FeaturedBrandsProps) {
         }))
 
   return (
-    <section className="bg-muted py-12">
+    <section className="bg-primary/5 dark:bg-primary/10 py-12">
       <div className="container">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-4 sm:mb-0">
             <h2 className="text-2xl font-bold tracking-tight">Thương hiệu nổi tiếng</h2>
             <p className="text-muted-foreground">Chúng tôi hợp tác với các thương hiệu nước hoa hàng đầu thế giới</p>
           </div>
-          <Button asChild variant="ghost">
+          <Button asChild variant="outline" className="self-start sm:self-center">
             <Link href="/thuong-hieu">Xem tất cả</Link>
           </Button>
         </div>
@@ -38,7 +38,7 @@ export function FeaturedBrands({ brands }: FeaturedBrandsProps) {
             <Link
               key={brand.id}
               href={`/san-pham?brand=${brand.id}`}
-              className="group flex h-24 items-center justify-center rounded-lg bg-background p-4 transition-all hover:shadow-md"
+              className="group flex h-24 items-center justify-center rounded-lg bg-background p-4 transition-all hover:shadow-md hover:scale-105 border border-transparent hover:border-primary/20"
             >
               <div className="relative flex h-full w-full items-center justify-center">
                 {brand.logo_url ? (

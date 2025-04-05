@@ -1,40 +1,41 @@
-import { Truck, Shield, RotateCcw, Clock } from "lucide-react"
+import { Truck, ShieldCheck, RotateCcw, Clock } from "lucide-react"
 
 export function FeaturesSection() {
   const features = [
     {
-      icon: Truck,
-      title: "Giao hàng toàn quốc",
-      description: "Giao hàng nhanh chóng đến tận nhà trên toàn quốc",
+      icon: <Truck className="h-10 w-10 text-primary" />,
+      title: "Giao hàng miễn phí",
+      description: "Miễn phí giao hàng cho đơn hàng từ 1.000.000đ",
     },
     {
-      icon: Shield,
+      icon: <ShieldCheck className="h-10 w-10 text-primary" />,
       title: "Sản phẩm chính hãng",
-      description: "Cam kết 100% sản phẩm chính hãng, nguồn gốc rõ ràng",
+      description: "Cam kết 100% sản phẩm chính hãng",
     },
     {
-      icon: RotateCcw,
+      icon: <RotateCcw className="h-10 w-10 text-primary" />,
       title: "Đổi trả dễ dàng",
-      description: "Chính sách đổi trả linh hoạt trong vòng 30 ngày",
+      description: "Đổi trả sản phẩm trong vòng 30 ngày",
     },
     {
-      icon: Clock,
+      icon: <Clock className="h-10 w-10 text-primary" />,
       title: "Hỗ trợ 24/7",
-      description: "Đội ngũ tư vấn viên luôn sẵn sàng hỗ trợ bạn mọi lúc",
+      description: "Luôn sẵn sàng hỗ trợ bạn mọi lúc",
     },
   ]
 
   return (
-    <section className="bg-background py-12">
+    <section className="border-t py-12">
       <div className="container">
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((feature, index) => (
-            <div key={index} className="flex flex-col items-center text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                <feature.icon className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="mt-4 text-lg font-medium">{feature.title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{feature.description}</p>
+            <div
+              key={index}
+              className="flex flex-col items-center text-center rounded-lg p-6 transition-all hover:shadow-md"
+            >
+              <div className="mb-4 rounded-full bg-primary/10 p-3">{feature.icon}</div>
+              <h3 className="mb-2 text-lg font-medium">{feature.title}</h3>
+              <p className="text-sm text-muted-foreground">{feature.description}</p>
             </div>
           ))}
         </div>
