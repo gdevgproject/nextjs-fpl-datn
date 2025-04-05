@@ -1,142 +1,188 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useCheckout } from "../../providers/checkout-provider"
-import { useAuth } from "@/lib/providers/auth-context"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { AlertCircle, MapPin, Plus } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { useUserAddresses } from "@/features/account/queries"
+import { useState, useEffect } from "react";
+import { useCheckout } from "../../providers/checkout-provider";
+import { useAuth } from "@/lib/providers/auth-context";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { AlertCircle, MapPin, Plus } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useUserAddresses } from "@/features/account/queries";
+import { LoaderCircle } from "lucide-react";
 
 export function AddressStep() {
-  const { isAuthenticated, user } = useAuth()
-  const { formData, updateFormData, errors, goToNextStep } = useCheckout()
+  const { isAuthenticated } = useAuth();
+  const { formData, updateFormData, errors, goToNextStep } = useCheckout();
 
-  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
-  const [showAddressForm, setShowAddressForm] = useState(!isAuthenticated)
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
+    null
+  );
+  const [showAddressForm, setShowAddressForm] = useState(!isAuthenticated);
+  const [initialized, setInitialized] = useState(false);
 
-  const { data: addresses, isLoading } = useUserAddresses()
+  const { data: addresses, isLoading } = useUserAddresses();
 
-  // Fetch user addresses if authenticated
+  // Fetch user addresses if authenticated (run only once on mount)
   useEffect(() => {
-    async function fetchAddresses() {
-      if (!isAuthenticated) {
-        setShowAddressForm(true)
-        return
-      }
+    if (initialized) return;
 
-      if (!addresses) {
-        return
-      }
-
-      if (addresses.length === 0) {
-        setShowAddressForm(true)
-        return
-      }
-
-      try {
-        // Pre-select default address if exists
-        const defaultAddress = addresses.find((addr) => addr.is_default)
-        if (defaultAddress) {
-          setSelectedAddressId(defaultAddress.id)
-          // Fill form with default address data
-          updateFormData({
-            fullName: defaultAddress.recipient_name,
-            phoneNumber: defaultAddress.recipient_phone,
-            address: defaultAddress.street_address,
-            province: defaultAddress.province_city,
-            district: defaultAddress.district,
-            ward: defaultAddress.ward,
-          })
-        } else if (addresses.length > 0) {
-          // Select first address if no default
-          setSelectedAddressId(addresses[0].id)
-          updateFormData({
-            fullName: addresses[0].recipient_name,
-            phoneNumber: addresses[0].phone,
-            address: addresses[0].street_address,
-            province: addresses[0].province_city,
-            district: addresses[0].district,
-            ward: addresses[0].ward,
-          })
-        } else {
-          setShowAddressForm(true)
-        }
-      } catch (error) {
-        console.error("Error fetching addresses:", error)
-      }
+    // Handle guest users
+    if (!isAuthenticated) {
+      setShowAddressForm(true);
+      setInitialized(true);
+      return;
     }
 
-    fetchAddresses()
-  }, [isAuthenticated, updateFormData, addresses])
+    // Wait for addresses to load
+    if (isLoading || !addresses) return;
+
+    // If we have addresses, set up the form
+    if (addresses.length > 0) {
+      // Find default address if it exists
+      const defaultAddress = addresses.find((addr) => addr.is_default);
+      const addressToUse = defaultAddress || addresses[0];
+
+      setSelectedAddressId(addressToUse.id);
+      updateFormData({
+        fullName: addressToUse.recipient_name,
+        phoneNumber: addressToUse.recipient_phone,
+        address: addressToUse.street_address,
+        province: addressToUse.province_city,
+        district: addressToUse.district,
+        ward: addressToUse.ward,
+      });
+    } else {
+      // No addresses found, show the form
+      setShowAddressForm(true);
+    }
+
+    setInitialized(true);
+  }, [isAuthenticated, addresses, isLoading, updateFormData, initialized]);
 
   // Handle selecting an address from saved addresses
   const handleSelectAddress = (addressId: number) => {
-    const selectedAddress = addresses?.find((addr) => addr.id === addressId)
-    if (selectedAddress) {
-      setSelectedAddressId(addressId)
-      updateFormData({
-        fullName: selectedAddress.recipient_name,
-        phoneNumber: selectedAddress.recipient_phone,
-        address: selectedAddress.street_address,
-        province: selectedAddress.province_city,
-        district: selectedAddress.district,
-        ward: selectedAddress.ward,
-      })
-    }
-  }
+    if (!addresses) return;
+
+    const selectedAddress = addresses.find((addr) => addr.id === addressId);
+    if (!selectedAddress) return;
+
+    setSelectedAddressId(addressId);
+    updateFormData({
+      fullName: selectedAddress.recipient_name,
+      phoneNumber: selectedAddress.recipient_phone,
+      address: selectedAddress.street_address,
+      province: selectedAddress.province_city,
+      district: selectedAddress.district,
+      ward: selectedAddress.ward,
+    });
+
+    // Hide the form when selecting an existing address
+    setShowAddressForm(false);
+  };
 
   // Show new address form
   const handleAddNewAddress = () => {
-    setSelectedAddressId(null)
-    setShowAddressForm(true)
-    // Clear address fields
+    setSelectedAddressId(null);
+    setShowAddressForm(true);
+    // Clear address fields but keep user's name and phone if available
     updateFormData({
       address: "",
       province: "",
       district: "",
       ward: "",
-    })
+    });
+  };
+
+  // Show loading state while addresses are loading
+  if (isAuthenticated && isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-8 flex justify-center items-center">
+          <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Đang tải địa chỉ...</span>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Địa chỉ giao hàng</CardTitle>
-        {isAuthenticated && <CardDescription>Chọn địa chỉ giao hàng hoặc thêm địa chỉ mới</CardDescription>}
+        {isAuthenticated && (
+          <CardDescription>
+            Chọn địa chỉ giao hàng hoặc thêm địa chỉ mới
+          </CardDescription>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Show message when authenticated user has no addresses */}
+        {isAuthenticated && addresses?.length === 0 && !showAddressForm && (
+          <Alert className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Bạn chưa có địa chỉ nào. Vui lòng thêm địa chỉ mới.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Saved Addresses for authenticated users */}
-        {isAuthenticated && addresses?.length > 0 && (
+        {isAuthenticated && addresses && addresses.length > 0 && (
           <div className="space-y-4">
             <RadioGroup
               value={selectedAddressId?.toString() || ""}
-              onValueChange={(value) => handleSelectAddress(Number.parseInt(value))}
+              onValueChange={(value) => handleSelectAddress(Number(value))}
             >
-              {addresses?.map((address) => (
-                <div key={address.id} className="flex items-start space-x-3 p-3 border rounded-md">
-                  <RadioGroupItem value={address.id.toString()} id={`address-${address.id}`} className="mt-1" />
+              {addresses.map((address) => (
+                <div
+                  key={address.id}
+                  className="flex items-start space-x-3 p-3 border rounded-md"
+                >
+                  <RadioGroupItem
+                    value={address.id.toString()}
+                    id={`address-${address.id}`}
+                    className="mt-1"
+                  />
                   <div className="space-y-1 flex-1">
-                    <Label htmlFor={`address-${address.id}`} className="font-medium cursor-pointer">
+                    <Label
+                      htmlFor={`address-${address.id}`}
+                      className="font-medium cursor-pointer"
+                    >
                       {address.recipient_name}
                       {address.is_default && (
-                        <span className="ml-2 text-xs bg-primary/10 text-primary py-0.5 px-2 rounded">Mặc định</span>
+                        <span className="ml-2 text-xs bg-primary/10 text-primary py-0.5 px-2 rounded">
+                          Mặc định
+                        </span>
                       )}
                     </Label>
-                    <p className="text-sm text-muted-foreground">{address.recipient_phone}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {address.recipient_phone}
+                    </p>
                     <p className="text-sm">
-                      {address.street_address}, {address.ward}, {address.district}, {address.province_city}
+                      {address.street_address}, {address.ward},{" "}
+                      {address.district}, {address.province_city}
                     </p>
                   </div>
                 </div>
               ))}
             </RadioGroup>
 
-            <Button variant="outline" className="mt-2" onClick={handleAddNewAddress} type="button">
+            <Button
+              variant="outline"
+              className="mt-2"
+              onClick={handleAddNewAddress}
+              type="button"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Thêm địa chỉ mới
             </Button>
@@ -144,7 +190,7 @@ export function AddressStep() {
         )}
 
         {/* Address Form - shown for guests or when adding new address */}
-        {(showAddressForm || !isAuthenticated) && (
+        {showAddressForm && (
           <div className="space-y-4 mt-4">
             {isAuthenticated && (
               <div className="bg-muted p-3 rounded-md mb-4 flex items-center">
@@ -238,6 +284,5 @@ export function AddressStep() {
         <Button onClick={goToNextStep}>Tiếp tục</Button>
       </CardFooter>
     </Card>
-  )
+  );
 }
-
