@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { ShoppingBag } from "lucide-react"
+import Link from "next/link";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { ShoppingBag } from "lucide-react";
 
 export function EmptyCart() {
   return (
@@ -16,13 +16,14 @@ export function EmptyCart() {
             fill
             className="object-contain"
             onError={(e) => {
-              e.currentTarget.src = "/placeholder.jpg"
+              e.currentTarget.src = "/placeholder.jpg";
             }}
           />
         </div>
         <h1 className="text-3xl font-bold mb-3">Giỏ hàng trống</h1>
         <p className="text-muted-foreground mb-8">
-          Bạn chưa có sản phẩm nào trong giỏ hàng. Hãy khám phá các sản phẩm nước hoa tuyệt vời của chúng tôi.
+          Bạn chưa có sản phẩm nào trong giỏ hàng. Hãy khám phá các sản phẩm
+          nước hoa tuyệt vời của chúng tôi.
         </p>
         <Button size="lg" asChild>
           <Link href="/san-pham">
@@ -32,6 +33,5 @@ export function EmptyCart() {
         </Button>
       </div>
     </div>
-  )
+  );
 }
-

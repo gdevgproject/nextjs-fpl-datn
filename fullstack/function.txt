@@ -1,0 +1,198 @@
+-- ============================================================================
+-- FINAL FUNCTIONS SCRIPT (Chạy Lần 3)
+-- Bổ sung các Function PostgreSQL cần thiết cho các luồng nghiệp vụ phức tạp
+-- hoặc yêu cầu quyền truy cập dữ liệu toàn cục (SECURITY DEFINER).
+-- Chạy script này SAU KHI đã chạy thành công sql.txt (Lần 1)
+-- và script setup Storage (Lần 2).
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- Function 1: Lấy Sản Phẩm Bán Chạy Nhất (Cho Trang Chủ - Flow 3)
+-- Lý do cần: Yêu cầu tính toán trên toàn bộ đơn hàng (vượt RLS người dùng thường)
+--           và logic query phức tạp.
+-- Tính hữu ích: Cực kỳ cần thiết cho Flow 3.
+-- Trùng lặp với sql.txt: Không.
+-- ----------------------------------------------------------------------------
+DROP FUNCTION IF EXISTS public.get_best_selling_products(integer);
+CREATE OR REPLACE FUNCTION public.get_best_selling_products(
+    p_limit integer -- Số lượng sản phẩm cần lấy
+)
+RETURNS TABLE (
+    product_id bigint,
+    product_name text,
+    product_slug text,
+    brand_name text,
+    image_url text, -- Lấy ảnh chính (is_main=true)
+    total_sold bigint
+)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+    completed_status_ids smallint[];
+BEGIN
+    -- Lấy ID của các trạng thái đơn hàng được coi là hoàn thành
+    SELECT array_agg(id) INTO completed_status_ids
+    FROM public.order_statuses
+    WHERE name IN ('Shipped', 'Delivered'); -- Điều chỉnh nếu cần
+
+    RETURN QUERY
+    SELECT
+        p.id as product_id,
+        p.name as product_name,
+        p.slug as product_slug,
+        b.name as brand_name,
+        (SELECT pi.image_url FROM public.product_images pi WHERE pi.product_id = p.id AND pi.is_main = true ORDER BY pi.display_order ASC, pi.id ASC LIMIT 1) as image_url, -- Lấy ảnh chính, ưu tiên display_order
+        SUM(oi.quantity)::bigint as total_sold
+    FROM public.products p
+    JOIN public.product_variants pv ON p.id = pv.product_id
+    JOIN public.order_items oi ON pv.id = oi.variant_id
+    JOIN public.orders o ON oi.order_id = o.id
+    LEFT JOIN public.brands b ON p.brand_id = b.id
+    WHERE
+        p.deleted_at IS NULL
+        AND pv.deleted_at IS NULL
+        AND o.order_status_id = ANY(completed_status_ids)
+    GROUP BY p.id, p.name, p.slug, b.name -- Phải group by tất cả các cột non-aggregate
+    ORDER BY total_sold DESC
+    LIMIT p_limit;
+
+END;
+$$;
+COMMENT ON FUNCTION public.get_best_selling_products(integer) IS 'Lấy danh sách sản phẩm bán chạy nhất (tính theo số lượng) dựa trên các đơn hàng đã hoàn thành. Cần SECURITY DEFINER để truy cập tất cả đơn hàng.';
+
+
+-- ----------------------------------------------------------------------------
+-- Function 2: Lấy Doanh Thu Theo Tháng (Cho Báo Cáo Admin - Flow 14)
+-- Lý do cần: Yêu cầu tổng hợp dữ liệu trên toàn bộ đơn hàng (vượt RLS).
+-- Tính hữu ích: Cần thiết cho Flow 14.
+-- Trùng lặp với sql.txt: Không.
+-- ----------------------------------------------------------------------------
+DROP FUNCTION IF EXISTS public.get_monthly_revenue(date, date);
+CREATE OR REPLACE FUNCTION public.get_monthly_revenue(
+    p_start_date date,
+    p_end_date date
+)
+RETURNS TABLE (
+    report_month text,
+    total_revenue numeric,
+    order_count bigint
+)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+    completed_status_ids smallint[];
+BEGIN
+    -- Lấy ID của các trạng thái đơn hàng được coi là hoàn thành
+    SELECT array_agg(id) INTO completed_status_ids
+    FROM public.order_statuses
+    WHERE name IN ('Shipped', 'Delivered'); -- Điều chỉnh nếu cần
+
+    RETURN QUERY
+    SELECT
+        to_char(date_trunc('month', o.order_date), 'YYYY-MM') as report_month,
+        SUM(o.total_amount) as total_revenue,
+        COUNT(o.id) as order_count
+    FROM public.orders o
+    WHERE
+        o.order_status_id = ANY(completed_status_ids)
+        AND o.order_date >= date_trunc('month', p_start_date)
+        AND o.order_date < date_trunc('month', p_end_date) + interval '1 month' -- Bao gồm cả tháng cuối
+    GROUP BY date_trunc('month', o.order_date)
+    ORDER BY date_trunc('month', o.order_date);
+
+END;
+$$;
+COMMENT ON FUNCTION public.get_monthly_revenue(date, date) IS 'Tính tổng doanh thu và số đơn hàng hoàn thành theo tháng trong khoảng thời gian cho trước. Cần SECURITY DEFINER.';
+
+
+-- ----------------------------------------------------------------------------
+-- Function 3: Lấy Top Sản Phẩm Bán Chạy (Cho Báo Cáo Admin - Flow 14)
+-- Lý do cần: Tương tự Function 1 nhưng có thể cần thêm thông tin cho báo cáo.
+-- Tính hữu ích: Cần thiết cho Flow 14.
+-- Trùng lặp với sql.txt: Không (Function 1 cho trang chủ, function này cho báo cáo admin, có thể khác nhau về chi tiết).
+-- ----------------------------------------------------------------------------
+DROP FUNCTION IF EXISTS public.get_top_selling_products_report(integer, date, date);
+CREATE OR REPLACE FUNCTION public.get_top_selling_products_report(
+    p_limit integer,
+    p_start_date date,
+    p_end_date date
+)
+RETURNS TABLE (
+    product_id bigint,
+    product_name text,
+    product_code text,
+    brand_name text,
+    total_quantity_sold bigint,
+    total_revenue_generated numeric
+)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+    completed_status_ids smallint[];
+BEGIN
+    -- Lấy ID của các trạng thái đơn hàng được coi là hoàn thành
+    SELECT array_agg(id) INTO completed_status_ids
+    FROM public.order_statuses
+    WHERE name IN ('Shipped', 'Delivered'); -- Điều chỉnh nếu cần
+
+    RETURN QUERY
+    SELECT
+        p.id as product_id,
+        p.name as product_name,
+        p.product_code, -- Thêm mã sản phẩm cho báo cáo
+        b.name as brand_name,
+        SUM(oi.quantity)::bigint as total_quantity_sold,
+        SUM(oi.quantity * oi.unit_price_at_order) as total_revenue_generated -- Tính doanh thu từ sản phẩm này
+    FROM public.products p
+    JOIN public.product_variants pv ON p.id = pv.product_id
+    JOIN public.order_items oi ON pv.id = oi.variant_id
+    JOIN public.orders o ON oi.order_id = o.id
+    LEFT JOIN public.brands b ON p.brand_id = b.id
+    WHERE
+        p.deleted_at IS NULL
+        AND pv.deleted_at IS NULL
+        AND o.order_status_id = ANY(completed_status_ids)
+        AND o.order_date >= p_start_date
+        AND o.order_date < p_end_date + interval '1 day' -- Bao gồm cả ngày cuối
+    GROUP BY p.id, p.name, p.product_code, b.name
+    ORDER BY total_quantity_sold DESC -- Sắp xếp theo số lượng hoặc doanh thu tùy yêu cầu báo cáo
+    LIMIT p_limit;
+
+END;
+$$;
+COMMENT ON FUNCTION public.get_top_selling_products_report(integer, date, date) IS 'Lấy top sản phẩm bán chạy (số lượng và doanh thu) trong khoảng thời gian cho trước cho mục đích báo cáo. Cần SECURITY DEFINER.';
+
+
+CREATE OR REPLACE FUNCTION get_plp_filter_options()
+RETURNS json
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  result json;
+BEGIN
+  SELECT json_build_object(
+    'brands', (SELECT json_agg(json_build_object('id', id, 'name', name) ORDER BY name) FROM public.brands),
+    'categories', (SELECT json_agg(json_build_object('id', id, 'name', name, 'slug', slug, 'parent_category_id', parent_category_id) ORDER BY display_order) FROM public.categories),
+    'genders', (SELECT json_agg(json_build_object('id', id, 'name', name) ORDER BY id) FROM public.genders),
+    'perfumeTypes', (SELECT json_agg(json_build_object('id', id, 'name', name) ORDER BY id) FROM public.perfume_types),
+    'concentrations', (SELECT json_agg(json_build_object('id', id, 'name', name) ORDER BY id) FROM public.concentrations),
+    'priceRanges', (SELECT json_agg(json_build_object('min', range->>'min', 'max', range->>'max', 'label', range->>'label'))
+                      FROM json_array_elements('[
+                        {"min": 0, "max": 1000000, "label": "Dưới 1 triệu"},
+                        {"min": 1000000, "max": 2000000, "label": "1 - 2 triệu"},
+                        {"min": 2000000, "max": 5000000, "label": "2 - 5 triệu"},
+                        {"min": 5000000, "max": 10000000, "label": "5 - 10 triệu"},
+                        {"min": 10000000, "max": 9007199254740991, "label": "Trên 10 triệu"}
+                      ]') AS range) -- MAX_SAFE_INTEGER
+  ) INTO result;
+  RETURN result;
+END;
+$$;
+
+-- Thêm các function báo cáo khác nếu cần (ví dụ: top khách hàng, giá trị tồn kho,...)
+
+
+-- ============================================================================
+-- END OF FINAL FUNCTIONS SCRIPT
+-- ============================================================================
+

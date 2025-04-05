@@ -1,0 +1,386 @@
+KẾ HOẠCH HOÀN CHỈNH (PHIÊN BẢN CẢI TIẾN) - MYBEAUTY PERFUME E-COMMERCE
+
+Bối cảnh: Next.js (App Router, React 19/Phiên bản mới nhất, Server Actions), Supabase (PostgreSQL, Auth, Storage, RLS, Functions, Triggers).
+Mục tiêu: Tối ưu hóa từng luồng để tận dụng hiệu quả cơ sở dữ liệu (schema, RLS, functions, triggers đã định nghĩa trong sql.txt, function.txt), storage buckets đã cấu hình, đồng thời đảm bảo trải nghiệm người dùng mượt mà, bảo mật và logic nhất quán.
+
+I. CÁC LUỒNG CHÍNH (16 LUỒNG)
+
+Luồng 1: Xác thực (Authentication)
+
+Mục tiêu: Quản lý việc đăng ký, đăng nhập, đặt lại mật khẩu và phân quyền người dùng.
+
+Công nghệ chính: Supabase Auth, Triggers (handle_new_user, create_shopping_cart_for_new_user), RLS, Functions (get_auth_role, is_admin, is_staff), Next.js Middleware, Server Actions.
+
+1.1. Đăng ký:
+* Frontend: Form (email, password, display_name, phone_number), validation Zod.
+* Backend (Server Action): Gọi supabase.auth.signUp() kèm options.data.
+* Trigger DB: Tự động tạo profiles & shopping_carts.
+* Supabase Auth: Gửi email xác nhận.
+* Frontend: Thông báo kiểm tra email.
+1.2. Xác nhận Email:
+* Supabase: Xử lý token, cập nhật auth.users.email_confirmed_at.
+* Frontend: Trang callback xử lý redirect, thông báo, điều hướng.
+1.3. Đăng nhập:
+* Frontend: Form (email, password), tùy chọn "Ghi nhớ".
+* Backend (Server Action): Gọi supabase.auth.signInWithPassword().
+* Frontend: Quản lý session, cập nhật global state, điều hướng.
+1.4. Quên Mật khẩu:
+* Frontend: Form nhập email.
+* Backend (Server Action): Gọi supabase.auth.resetPasswordForEmail().
+* Supabase Auth: Gửi email đặt lại.
+* Frontend: Thông báo kiểm tra email.
+1.5. Đặt lại Mật khẩu:
+* Frontend: Trang callback xử lý token, form mật khẩu mới (validation Zod).
+* Backend (Server Action): Gọi supabase.auth.updateUser().
+* Frontend: Thông báo thành công, điều hướng đăng nhập.
+1.6. Đăng xuất:
+* Frontend: Nút/Link đăng xuất.
+* Backend (Server Action/Client): Gọi supabase.auth.signOut().
+* Frontend: Xóa state người dùng, điều hướng.
+1.7. Phân quyền:
+* Middleware (Next.js): Lấy session, gọi RPC get_auth_role, chặn truy cập dựa trên vai trò/path.
+* Backend (RLS): Policies tự động áp dụng dựa trên auth.uid() và hàm is_admin(), is_staff().
+* Frontend: Ẩn/hiện UI dựa trên vai trò.
+
+Luồng 2: Quản lý Tài khoản Người dùng
+
+Mục tiêu: Cho phép người dùng xem và quản lý thông tin cá nhân, địa chỉ, đơn hàng, đánh giá và danh sách yêu thích.
+
+Công nghệ chính: RLS (User policies), Bảng profiles, addresses, orders, reviews, wishlists, Supabase Storage (avatars), Server Actions, React Query.
+
+2.1. Xem và Cập nhật Thông tin Cá nhân:
+* Data Fetching: Lấy dữ liệu profiles (RLS cho phép).
+* Frontend: Hiển thị thông tin, form cập nhật, upload avatar.
+* Backend (Server Action updateProfile): Validation, xử lý upload/xóa avatar (bucket avatars), gọi supabase.from('profiles').update() (RLS cho phép), trigger set_updated_at.
+* Frontend: Thông báo, refresh data.
+2.2. Quản lý Địa chỉ:
+* Data Fetching: Lấy dữ liệu addresses (RLS cho phép).
+* Frontend: Hiển thị danh sách, form thêm/sửa/xóa, nút đặt mặc định.
+* Backend (Server Actions add/update/delete/setDefaultAddress): Gọi insert/update/delete trên addresses (RLS cho phép). Đặt mặc định cần Transaction để cập nhật addresses và profiles.default_address_id. Trigger set_updated_at.
+* Frontend: Cập nhật UI, thông báo.
+2.3. Xem Lịch sử Đơn hàng:
+* Data Fetching: Lấy dữ liệu orders kèm order_statuses (RLS cho phép), phân trang, lọc.
+* Frontend: Hiển thị danh sách, trạng thái, link xem chi tiết.
+2.4. Xem Chi tiết Đơn hàng:
+* Data Fetching: Lấy orders (kèm status, payment), order_items (kèm variant, product info) (RLS cho phép).
+* Frontend: Hiển thị đầy đủ thông tin, nút Hủy (nếu trạng thái cho phép), nút Đánh giá (nếu đã giao).
+2.5. Hủy Đơn hàng (bởi Người dùng):
+* Frontend: Nút "Hủy" chỉ hiển thị nếu trạng thái cho phép ('Pending', 'Processing').
+* Backend (Server Action cancelOrder): Kiểm tra trạng thái, UPDATE orders SET order_status_id = 'Cancelled' (Cần RLS cho phép user tự hủy hoặc dùng RPC/Server Action với quyền cao hơn). Trigger set_updated_at.
+* Frontend: Thông báo, cập nhật UI.
+2.6. Đánh giá Sản phẩm (Từ trang Đơn hàng):
+* Frontend: Nút/Link "Đánh giá" chỉ hiển thị nếu trạng thái 'Delivered'. Điều hướng hoặc mở modal.
+* Logic chi tiết xem Luồng 5.
+2.7. Quản lý Danh sách Yêu thích:
+* Data Fetching: Lấy wishlists kèm thông tin products (RLS cho phép).
+* Frontend: Hiển thị danh sách, nút "Xóa", nút "Thêm vào giỏ".
+* Backend (Server Actions removeFromWishlist, addToCartFromWishlist): DELETE từ wishlists (RLS cho phép). Logic thêm vào giỏ tương tự Luồng 4.
+* Frontend: Cập nhật UI, thông báo.
+2.8. Xem và Quản lý Đánh giá Cá nhân:
+* Data Fetching: Lấy reviews kèm products, review_replies (RLS cho phép).
+* Frontend: Hiển thị danh sách, trạng thái duyệt, nút Sửa (nếu chưa duyệt), nút Xóa.
+* Backend (Server Actions updateReview, deleteReview): UPDATE/DELETE trên reviews (RLS cho phép sửa/xóa review của chính mình). Trigger set_updated_at.
+* Frontend: Cập nhật UI, thông báo.
+
+Luồng 3: Duyệt và Tìm kiếm Sản phẩm
+
+Mục tiêu: Cung cấp các cách để người dùng khám phá sản phẩm: trang chủ, trang liệt kê (PLP), trang chi tiết (PDP), so sánh.
+
+Công nghệ chính: RLS (Public policies), Indexes, Functions (get_best_selling_products), Server Components, Client Components (cho tương tác lọc/sort/pagination), Search Params.
+
+3.1. Trang chủ:
+* Data Fetching (Server Components): Lấy Banners, Danh mục nổi bật, Sản phẩm mới, Sản phẩm bán chạy (RPC get_best_selling_products), Sản phẩm giảm giá, Thương hiệu nổi bật (RLS Public).
+* Frontend: Hiển thị dữ liệu, skeleton loading, lazy loading, nút "Thêm vào giỏ", "Yêu thích".
+3.2. Trang Liệt kê Sản phẩm (PLP - Chung cho Danh mục, Thương hiệu, Tìm kiếm):
+* URL: Sử dụng route /san-pham với Search Parameters (?category=..., ?brand=..., ?q=..., &sort=..., &page=...).
+* Data Fetching (Server Component /san-pham/page.tsx): Đọc searchParams, lấy thông tin ngữ cảnh (tên danh mục/thương hiệu), xây dựng query Supabase động (join, filter, sort, paginate dựa trên searchParams), lấy count để phân trang, lấy dữ liệu bộ lọc khả dụng (tối ưu bằng RPC get_plp_filter_options).
+* Frontend (Kết hợp Server & Client Components): Hiển thị ngữ cảnh, lưới sản phẩm, bộ lọc sidebar (Client - cập nhật URL), sắp xếp (Client - cập nhật URL), phân trang (Client - cập nhật URL).
+3.3. Trang Chi tiết Sản phẩm (PDP):
+* URL: /san-pham/[product_slug].
+* Data Fetching (Server Component): Lấy chi tiết products (kèm brands, images, variants hợp lệ, scents, ingredients,...), lấy reviews đã duyệt (kèm profiles, replies), kiểm tra đã mua chưa (RPC has_user_purchased_product), lấy sản phẩm liên quan.
+* Frontend: Hiển thị đầy đủ thông tin, gallery, chọn biến thể (cập nhật giá/tồn kho), hiển thị đánh giá, nút "Thêm vào giỏ", "Yêu thích", form/nút đánh giá (nếu đủ điều kiện), sản phẩm liên quan.
+3.4. Trang So sánh Sản phẩm:
+* Frontend: Quản lý danh sách ID sản phẩm cần so sánh (State/URL).
+* Data Fetching: Fetch chi tiết các sản phẩm trong danh sách.
+* Frontend: Hiển thị bảng so sánh thuộc tính, nút "Thêm vào giỏ", "Xóa khỏi so sánh".
+
+Luồng 4: Giỏ hàng và Thanh toán
+
+Mục tiêu: Cho phép người dùng quản lý giỏ hàng và hoàn tất quy trình đặt hàng.
+
+Công nghệ chính: RLS (User policies), Bảng shopping_carts, cart_items, orders, order_items, payments, discounts, Triggers (validate_stock_before_cart_change, calculate_order_total, validate_discount_code), Server Actions, localStorage (cho Guest Cart), Transaction.
+
+4.1. Thêm vào Giỏ hàng (Từ PLP/PDP):
+* Backend (Server Action addToCart): Lấy variant_id, quantity, lấy cart_id user, kiểm tra tồn kho (product_variants.stock_quantity), UPSERT vào cart_items (xử lý cộng dồn số lượng nếu đã có). Trigger validate_stock_before_cart_change, set_updated_at.
+* Frontend: Thông báo Toast, cập nhật icon giỏ hàng header.
+4.2. Xem Giỏ hàng (Trang Giỏ hàng):
+* Data Fetching: Lấy cart_items kèm chi tiết product_variants & products (RLS cho phép).
+* Frontend: Hiển thị danh sách, form cập nhật số lượng (kiểm tra stock client-side), nút xóa, form nhập mã giảm giá, tổng tạm tính.
+4.3. Cập nhật/Xóa Giỏ hàng:
+* Backend (Server Actions updateCartItemQuantity, removeCartItem): UPDATE/DELETE trên cart_items (RLS cho phép). Trigger validate_stock_before_cart_change (khi update), set_updated_at.
+* Frontend: Cập nhật UI, tổng tiền.
+4.4. Áp dụng Mã giảm giá:
+* Frontend: Input nhập mã.
+* Backend (Server Action applyDiscountCode): Query discounts kiểm tra mã (active, dates, uses, min value). Trả về thông tin discount nếu hợp lệ.
+* Frontend: Lưu discount ID vào state, hiển thị giảm giá, cập nhật tổng tiền.
+4.5. Xử lý Giỏ hàng Khách (Guest Cart):
+* Frontend: Dùng localStorage để lưu giỏ hàng.
+* Backend: Khi đăng nhập, Server Action mergeGuestCart đọc localStorage, thực hiện logic addToCart cho từng item, xóa localStorage.
+4.6. Quy trình Thanh toán (Checkout Process):
+* Frontend: Trang checkout (tóm tắt giỏ, form địa chỉ, chọn PTTT, ghi chú, tổng cuối).
+* Backend (Server Action placeOrder - Quan trọng: Transaction):
+1. Lấy input (địa chỉ, PTTT ID, notes, discount ID).
+2. Lấy lại cart_items từ DB.
+3. Kiểm tra tồn kho lần cuối.
+4. Tính Subtotal.
+5. Lấy Shipping Fee.
+6. INSERT vào orders (status 'Pending'). Trigger calculate_order_total & validate_discount_code tự chạy.
+7. Lấy order_id mới.
+8. INSERT vào order_items.
+9. INSERT vào payments (status 'Pending').
+10. DELETE cart_items.
+11. Gửi Email Xác Nhận.
+12. Commit Transaction.
+* Frontend: Điều hướng trang xác nhận nếu thành công, báo lỗi cụ thể nếu thất bại.
+4.7. Trang Xác nhận Đơn hàng:
+* Frontend: Hiển thị thông tin đơn hàng vừa tạo.
+4.8. Thanh toán Khách (Guest Checkout):
+* Logic tương tự, orders.user_id là NULL, lưu thông tin guest vào orders. Cần cơ chế theo dõi đơn hàng qua email.
+
+Luồng 5: Đánh giá và Tương tác Người dùng
+
+Mục tiêu: Cho phép người dùng đánh giá sản phẩm đã mua và quản lý danh sách yêu thích.
+
+Công nghệ chính: RLS (User policies), Bảng reviews, wishlists, Functions (has_user_purchased_product), Server Actions.
+
+5.1. Viết đánh giá:
+* Backend Check: Gọi RPC has_user_purchased_product trước khi hiển thị form.
+* Frontend: Form rating (1-5), comment.
+* Backend (Server Action submitReview): Validation, INSERT vào reviews (is_approved = false). RLS Users can insert reviews for purchased products đảm bảo chỉ người mua mới thêm được.
+* Frontend: Thông báo chờ duyệt.
+5.2. Xem đánh giá (Trên PDP):
+* Data Fetching: Lấy reviews đã duyệt kèm profiles, review_replies.
+* Frontend: Hiển thị danh sách, thông tin người viết, phản hồi shop, lọc theo sao.
+5.3. Thêm/Xóa Yêu thích (Từ PLP/PDP):
+* Frontend: Nút Yêu thích (toggle state).
+* Backend (Server Actions addToWishlist, removeFromWishlist): INSERT/DELETE trên wishlists (RLS cho phép). Xử lý lỗi UNIQUE khi thêm.
+* Frontend: Cập nhật UI nút, thông báo.
+
+Luồng 6: Admin - Quản lý Sản phẩm
+
+Mục tiêu: Cho phép Admin/Staff quản lý toàn bộ vòng đời sản phẩm.
+
+Công nghệ chính: RLS (Admin/Staff policies), Bảng products, product_variants, product_images, product_categories, etc., Triggers (set_product_slug, set_updated_at, log_admin_activity), Supabase Storage (products bucket), Server Actions, Transaction.
+
+6.1. Danh sách sản phẩm:
+* Data Fetching: Lấy products (kèm brands, categories, stock_quantity), hỗ trợ filter/search/sort/paginate, hiển thị cả sản phẩm đã xóa mềm (RLS Staff/Admin).
+* Frontend: Bảng dữ liệu, công cụ lọc/tìm kiếm, nút Thêm/Sửa/Xóa mềm/Khôi phục.
+6.2. Thêm/Sửa sản phẩm:
+* Frontend: Form lớn (tabs/sections), Select/MultiSelect, Upload ảnh, Quản lý variants, Rich text editor.
+* Backend (Server Action create/updateProduct - Transaction): Validation, INSERT/UPDATE products, xử lý product_variants (CRUD), xử lý product_images (upload/xóa file trong Storage, CRUD DB records), xử lý các bảng M-N (categories, scents, ingredients, labels), trigger set_product_slug, set_updated_at, log_admin_activity.
+* Frontend: Điều hướng/Thông báo.
+6.3. Xóa mềm/Khôi phục sản phẩm:
+* Backend (Server Actions softDelete/restoreProduct): UPDATE products SET deleted_at = now()/NULL (RLS Admin). Trigger log_admin_activity.
+* Frontend: Cập nhật UI bảng.
+6.4. Quản lý tồn kho (Trực tiếp):
+* Frontend: Giao diện sửa stock_quantity trên variant.
+* Backend (Server Action adjustStock): UPDATE product_variants. Quan trọng: Ghi log thủ công vào inventory. Trigger log_admin_activity.
+
+Luồng 7: Admin - Quản lý Danh mục, Thương hiệu & Thuộc tính
+
+Mục tiêu: Quản lý các dữ liệu nền tảng cho sản phẩm.
+
+Công nghệ chính: RLS (Admin policies), Bảng categories, brands, scents, ingredients, product_labels, etc., Triggers (set_category_slug, set_updated_at, log_admin_activity), Supabase Storage (logos bucket), Server Actions.
+
+7.1. Quản lý Danh mục:
+* Data Fetching: Lấy categories (RLS Admin).
+* Frontend: Giao diện CRUD (có thể dạng cây), kéo thả sắp xếp.
+* Backend (Server Actions): CRUD categories. Trigger set_category_slug, set_updated_at, log_admin_activity.
+7.2. Quản lý Thương hiệu:
+* Data Fetching: Lấy brands (RLS Admin).
+* Frontend: Giao diện CRUD, upload logo.
+* Backend (Server Actions): CRUD brands. Xử lý upload/xóa logo (bucket logos). Trigger set_updated_at, log_admin_activity.
+7.3. Quản lý Thuộc tính:
+* Data Fetching/Actions: Giao diện CRUD đơn giản cho scents, ingredients, product_labels, genders, perfume_types, concentrations (RLS Admin). Trigger set_updated_at, log_admin_activity.
+
+Luồng 8: Admin - Quản lý Đơn hàng
+
+Mục tiêu: Cho phép Admin/Staff xem, xử lý và cập nhật trạng thái đơn hàng.
+
+Công nghệ chính: RLS (Staff/Admin policies), Bảng orders, order_items, payments, Triggers (set_updated_at, update_inventory_on_order_shipped, log_admin_activity), Server Actions.
+
+8.1. Danh sách đơn hàng:
+* Data Fetching: Lấy orders (kèm status, payment, user info), filter/search/sort/paginate (RLS Staff/Admin).
+* Frontend: Bảng dữ liệu, công cụ lọc/tìm kiếm.
+8.2. Chi tiết đơn hàng:
+* Data Fetching: Lấy chi tiết orders, order_items, payments (RLS Staff/Admin).
+* Frontend: Hiển thị đầy đủ thông tin, form cập nhật trạng thái/thanh toán/tracking.
+8.3. Cập nhật trạng thái đơn hàng:
+* Backend (Server Action updateOrderStatus): UPDATE orders (RLS Staff/Admin). Trigger set_updated_at, update_inventory_on_order_shipped (nếu status='Shipped'), log_admin_activity. (Optional) Gửi email cho khách.
+* Frontend: Cập nhật UI, thông báo.
+8.4. In đơn hàng:
+* Frontend/Backend: Logic tạo PDF từ dữ liệu đơn hàng.
+
+Luồng 9: Admin - Quản lý Người dùng
+
+Mục tiêu: Cho phép Admin quản lý thông tin, vai trò và trạng thái tài khoản người dùng.
+
+Công nghệ chính: RLS (Admin policies), Bảng profiles, addresses, etc., Supabase Admin API (cần Service Role), Server Actions.
+
+9.1. Danh sách người dùng:
+* Data Fetching (Cần Service Role/Function): Lấy profiles join với auth.users (lấy email, status, role từ raw_app_meta_data). Filter/search/sort/paginate (RLS Admin trên profiles).
+* Frontend: Bảng dữ liệu, công cụ lọc/tìm kiếm.
+9.2. Chi tiết người dùng:
+* Data Fetching: Lấy profiles, auth.users (cần quyền), addresses, orders, reviews, wishlists liên quan (RLS Admin).
+* Frontend: Hiển thị thông tin, form cập nhật profile, form đổi vai trò, nút Khóa/Mở khóa.
+9.3. Cập nhật thông tin người dùng (bởi Admin):
+* Backend (Server Actions): UPDATE profiles (RLS Admin), xử lý avatar. Đổi vai trò/Khóa/Mở khóa: Dùng supabase.auth.admin.updateUserById() với Service Role. Ghi log admin_activity_log.
+
+Luồng 10: Admin - Quản lý Đánh giá
+
+Mục tiêu: Cho phép Admin/Staff duyệt, xóa và phản hồi đánh giá của khách hàng.
+
+Công nghệ chính: RLS (Staff/Admin policies), Bảng reviews, review_replies, Functions (approve_review, reply_to_review), Triggers (log_admin_activity), Server Actions.
+
+10.1. Danh sách đánh giá:
+* Data Fetching: Lấy reviews (kèm product, profile), filter theo trạng thái duyệt/rating (RLS Staff/Admin).
+* Frontend: Bảng dữ liệu, lọc, sắp xếp, đánh dấu đánh giá chưa duyệt.
+10.2. Chi tiết & Xử lý đánh giá:
+* Data Fetching: Lấy chi tiết reviews, review_replies.
+* Frontend: Hiển thị thông tin, nút Duyệt/Từ chối/Phản hồi/Xóa.
+* Backend (Server Actions): Gọi RPC approve_review (để duyệt), DELETE từ reviews (để từ chối/xóa - RLS Staff/Admin), gọi RPC reply_to_review (để phản hồi). Các RPC/trigger tự ghi log.
+
+Luồng 11: Admin - Quản lý Khuyến mãi
+
+Mục tiêu: Quản lý mã giảm giá và nhãn sản phẩm (Sale, New,...).
+
+Công nghệ chính: RLS (Admin policies), Bảng discounts, product_labels, product_label_assignments, Triggers (set_updated_at, log_admin_activity), Server Actions.
+
+11.1. Quản lý Mã giảm giá:
+* Data Fetching: Lấy discounts (RLS Admin).
+* Frontend: Giao diện CRUD cho discounts.
+* Backend (Server Actions): CRUD discounts. Trigger set_updated_at, log_admin_activity.
+11.2. Quản lý Nhãn sản phẩm:
+* Data Fetching: Lấy product_labels (RLS Admin).
+* Frontend: Giao diện CRUD cho product_labels.
+* Backend (Server Actions): CRUD product_labels. Trigger set_updated_at, log_admin_activity.
+11.3. Gán Nhãn cho Sản phẩm:
+* Frontend: Giao diện chọn sản phẩm, chọn nhãn, đặt ngày hết hạn.
+* Backend (Server Action assignLabel): INSERT/DELETE trong product_label_assignments (RLS Admin). Trigger log_admin_activity.
+
+Luồng 12: Admin - Quản lý Banner
+
+Mục tiêu: Quản lý banner hiển thị trên trang chủ.
+
+Công nghệ chính: RLS (Admin policies), Bảng banners, Supabase Storage (banners bucket), Triggers (set_updated_at, log_admin_activity), Server Actions.
+
+12.1. Danh sách banner:
+* Data Fetching: Lấy banners (RLS Admin).
+* Frontend: Danh sách, kéo thả sắp xếp, nút bật/tắt.
+12.2. Thêm/Sửa banner:
+* Frontend: Form CRUD, upload ảnh.
+* Backend (Server Actions): CRUD banners. Xử lý upload/xóa ảnh (bucket banners). Trigger set_updated_at, log_admin_activity.
+
+Luồng 13: Admin - Quản lý Cài đặt Cửa hàng
+
+Mục tiêu: Quản lý các thông tin cấu hình chung của cửa hàng.
+
+Công nghệ chính: RLS (Admin policies), Bảng shop_settings, payment_methods, Supabase Storage (logos bucket - tùy chọn), Triggers (set_updated_at, log_admin_activity), Server Actions.
+
+13.1. Cài đặt chung:
+* Data Fetching: Lấy shop_settings (id=1) (RLS Admin).
+* Frontend: Form cập nhật thông tin (tên shop, liên hệ, social, phí ship mặc định), upload logo/favicon.
+* Backend (Server Action updateShopSettings): UPDATE shop_settings. Xử lý upload logo/favicon. Trigger set_updated_at, log_admin_activity.
+13.2. Quản lý Chính sách:
+* Frontend: Rich text editor cho các trường chính sách trong shop_settings.
+* Backend: Cập nhật các trường text trong shop_settings.
+13.3. Quản lý Phương thức thanh toán:
+* Data Fetching: Lấy payment_methods (RLS Admin).
+* Frontend: Giao diện CRUD (chủ yếu bật/tắt, sửa mô tả).
+* Backend (Server Actions): UPDATE payment_methods. Trigger set_updated_at, log_admin_activity.
+
+Luồng 14: Admin - Báo cáo và Thống kê
+
+Mục tiêu: Cung cấp cái nhìn tổng quan về tình hình kinh doanh.
+
+Công nghệ chính: RLS (Staff/Admin policies), Functions (get_monthly_revenue, get_top_selling_products_report, các hàm RPC khác nếu cần - SECURITY DEFINER), Server Actions/API Routes, Thư viện biểu đồ (Recharts).
+
+14.1. Data Fetching: Gọi các function RPC đã tạo qua Server Actions/API Routes để lấy dữ liệu tổng hợp (doanh thu, sản phẩm bán chạy,...).
+14.2. Frontend: Hiển thị dữ liệu dưới dạng biểu đồ, bảng, cung cấp bộ lọc ngày tháng.
+
+Luồng 15: Admin - Nhật ký hoạt động
+
+Mục tiêu: Ghi lại các hành động quan trọng của Admin/Staff để kiểm tra, giám sát.
+
+Công nghệ chính: RLS (Admin policies), Bảng admin_activity_log, Index (idx_admin_activity_log_timestamp).
+
+15.1. Data Fetching: Lấy admin_activity_log (kèm thông tin admin từ profiles), filter/search/sort/paginate (RLS Admin).
+15.2. Frontend: Bảng dữ liệu, xem chi tiết log (JSONB).
+
+Luồng 16: Quản lý Hình ảnh (Tích hợp)
+
+Mục tiêu: Xử lý việc tải lên, lưu trữ và xóa hình ảnh trong toàn bộ ứng dụng.
+
+Công nghệ chính: Supabase Storage (buckets: avatars, products, logos, banners), Supabase Client (với service_role hoặc signed URLs), Server Actions, Next.js <Image> (tùy chọn: Supabase Image Transformation, Sharp).
+
+16.1. Tích hợp: Là một phần của Luồng 2, 6, 7, 12, 13.
+16.2. Upload: Thực hiện trong Server Actions, kiểm tra quyền, dùng client Supabase (service_role/signed URL) để upload lên bucket tương ứng.
+16.3. Tổ chức: Đặt tên file/folder có hệ thống (dùng ID).
+16.4. Lưu trữ: Lưu public URL vào DB.
+16.5. Xóa/Cập nhật: Logic trong Server Action để xóa file cũ trong Storage khi xóa/cập nhật record DB.
+16.6. Xử lý ảnh (Optional): Resize/optimize ảnh nếu cần.
+
+II. CÔNG NGHỆ SỬ DỤNG CHI TIẾT
+
+(Phần này giữ nguyên như bạn đã liệt kê, rất chi tiết và phù hợp)
+
+Hy vọng cấu trúc này giúp bạn dễ dàng theo dõi và quản lý kế hoạch hơn.
+
+
+2. Công Nghệ Sử Dụng Chi Tiết (Xác nhận & Bổ sung)
+Frontend
+
+Framework: Next.js 15 (App Router), React 19
+
+State Management:
+
+React Query 5 (@tanstack/react-query): Cho data fetching, caching, mutations (tương tác với Server Actions/API Routes). Rất quan trọng để giữ UI đồng bộ với DB.
+
+Context API: Cho global state đơn giản (theme, trạng thái modal, thông tin user cơ bản sau login), có thể dùng cho Auth state
+
+Styling: Tailwind CSS 3, Shadcn UI, clsx/tailwind-merge, Framer Motion.
+
+Form Handling: React Hook Form, Zod (validation cả client & server - trong Server Actions).
+
+UI Components: Shadcn UI (dùng Radix UI), Lucide React, React Datepicker, React Select (hoặc component Select của Shadcn), TipTap (cho Rich Text Editor).
+
+Image Upload: React Dropzone (kết hợp Supabase Storage JS client).
+
+Data Visualization: Recharts.
+
+Data Tables: React Table (@tanstack/react-table) (Shadcn có tích hợp sẵn).
+
+Utilities: date-fns, slugify (có thể dùng function generate_slug của DB hoặc JS).
+
+Backend (Supabase & Next.js)
+
+API/Logic: Next.js Server Actions (ưu tiên), Next.js API Routes (cho các trường hợp phức tạp hơn hoặc webhook).
+
+Database Client: Supabase JavaScript Client (@supabase/supabase-js).
+
+Authentication: Supabase Auth (Tích hợp sẵn).
+
+Authorization: Supabase RLS, PostgreSQL Functions (get_auth_role, is_admin, is_staff, has_user_purchased_product), Next.js Middleware.
+
+Database: Supabase PostgreSQL (với schema, functions, triggers đã cung cấp).
+
+Storage: Supabase Storage (cho avatars, product images, logos, banners).
+
+Email: Resend/SendGrid (cấu hình trong Supabase Auth hoặc gọi API trực tiếp từ Server Actions/Edge Functions). React Email cho tạo template.
+
+Image Processing (Optional): Sharp (trong API Route/Edge Function).
+
+Server-side Validation: Zod (trong Server Actions/API Routes).
+
+Typesafety: TypeScript xuyên suốt.
+
