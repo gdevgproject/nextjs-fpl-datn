@@ -1,16 +1,16 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { ProductCard } from "@/components/shared/product-card";
-import { Skeleton } from "@/components/ui/skeleton";
-import type { Product } from "../types";
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { ProductCard } from "@/components/shared/product-card"
+import { Skeleton } from "@/components/ui/skeleton"
+import type { Product } from "../types"
 
 interface ProductSectionProps {
-  title: string;
-  description: string;
-  products: Product[];
-  viewAllLink: string;
-  isLoading?: boolean;
-  bgColor?: "default" | "muted";
+  title: string
+  description: string
+  products: Product[]
+  viewAllLink: string
+  isLoading?: boolean
+  bgColor?: "default" | "muted"
 }
 
 export function ProductSection({
@@ -48,7 +48,7 @@ export function ProductSection({
           </div>
         </div>
       </section>
-    );
+    )
   }
 
   // Nếu không có sản phẩm, hiển thị placeholder
@@ -73,9 +73,7 @@ export function ProductSection({
             {
               id: i,
               product_id: i,
-              image_url: `/placeholder.svg?height=400&width=400&text=${encodeURIComponent(
-                `Sản phẩm ${i + 1}`
-              )}`,
+              image_url: `/placeholder.svg?height=400&width=400&text=${encodeURIComponent(`Sản phẩm ${i + 1}`)}`,
               is_main: true,
               display_order: 0,
               created_at: new Date().toISOString(),
@@ -96,7 +94,7 @@ export function ProductSection({
               deleted_at: null,
             },
           ],
-        }));
+        }))
 
   return (
     <section className={bgColor === "muted" ? "bg-muted" : "bg-background"}>
@@ -117,5 +115,6 @@ export function ProductSection({
         </div>
       </div>
     </section>
-  );
+  )
 }
+

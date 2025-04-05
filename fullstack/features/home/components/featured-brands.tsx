@@ -1,10 +1,10 @@
-import Link from "next/link";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import type { Brand } from "../types";
+import Link from "next/link"
+import Image from "next/image"
+import { Button } from "@/components/ui/button"
+import type { Brand } from "../types"
 
 interface FeaturedBrandsProps {
-  brands: Brand[];
+  brands: Brand[]
 }
 
 export function FeaturedBrands({ brands }: FeaturedBrandsProps) {
@@ -16,24 +16,18 @@ export function FeaturedBrands({ brands }: FeaturedBrandsProps) {
           id: i,
           name: `Thương hiệu ${i + 1}`,
           description: `Mô tả thương hiệu ${i + 1}`,
-          logo_url: `/placeholder.svg?height=100&width=200&text=${encodeURIComponent(
-            `Thương hiệu ${i + 1}`
-          )}`,
+          logo_url: `/placeholder.svg?height=100&width=200&text=${encodeURIComponent(`Thương hiệu ${i + 1}`)}`,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        }));
+        }))
 
   return (
     <section className="bg-muted py-12">
       <div className="container">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">
-              Thương hiệu nổi tiếng
-            </h2>
-            <p className="text-muted-foreground">
-              Chúng tôi hợp tác với các thương hiệu nước hoa hàng đầu thế giới
-            </p>
+            <h2 className="text-2xl font-bold tracking-tight">Thương hiệu nổi tiếng</h2>
+            <p className="text-muted-foreground">Chúng tôi hợp tác với các thương hiệu nước hoa hàng đầu thế giới</p>
           </div>
           <Button asChild variant="ghost">
             <Link href="/thuong-hieu">Xem tất cả</Link>
@@ -56,9 +50,7 @@ export function FeaturedBrands({ brands }: FeaturedBrandsProps) {
                     sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw"
                   />
                 ) : (
-                  <span className="text-center text-sm font-medium">
-                    {brand.name}
-                  </span>
+                  <span className="text-center text-sm font-medium">{brand.name}</span>
                 )}
               </div>
             </Link>
@@ -66,5 +58,6 @@ export function FeaturedBrands({ brands }: FeaturedBrandsProps) {
         </div>
       </div>
     </section>
-  );
+  )
 }
+

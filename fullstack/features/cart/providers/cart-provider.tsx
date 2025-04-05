@@ -1,412 +1,515 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect, useCallback } from "react"
+import { createContext, useContext, useEffect, useState } from "react"
 import { useAuth } from "@/lib/providers/auth-context"
-import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
+import type { CartItem, CartState, Discount } from "../types"
+import {
+  addToCart as addToCartAction,
+  updateCartItemQuantity as updateCartItemQuantityAction,
+  removeCartItem as removeCartItemAction,
+  clearCart as clearCartAction,
+  removeDiscountCode as removeDiscountCodeAction,
+  getProductVariantDetails,
+} from "../actions/cart-actions"
 
-type CartItem = {
-  id?: string
-  variant_id: number
-  quantity: number
-  product_id?: number
-}
-
-type CartContextType = {
-  cartItems: CartItem[]
-  cartItemCount: number
-  addToCart: (variantId: number, quantity: number, productId?: string) => Promise<void>
-  updateCartQuantity: (variantId: number, quantity: number) => Promise<void>
-  removeFromCart: (variantId: number) => Promise<void>
-  clearCart: () => Promise<void>
-}
-
-const CartContext = createContext<CartContextType>({
+// Initial cart state
+const initialCartState: CartState = {
   cartItems: [],
   cartItemCount: 0,
+  subtotal: 0,
+  discount: 0,
+  shippingFee: 0, // Miễn phí vận chuyển
+  cartTotal: 0,
+  discountCode: "",
+  appliedDiscount: null,
+  isUpdatingCart: false,
+}
+
+// Context type
+type CartContextType = CartState & {
+  addToCart: (variantId: number, quantity: number, productId?: string) => Promise<void>
+  updateCartItemQuantity: (variantId: number, quantity: number) => Promise<void>
+  removeCartItem: (variantId: number) => Promise<void>
+  clearCart: () => Promise<void>
+  applyDiscount: (code: string, discount: Discount, amount: number) => void
+  removeDiscount: () => Promise<void>
+  setDiscountCode: (code: string) => void
+}
+
+// Create context
+const CartContext = createContext<CartContextType>({
+  ...initialCartState,
   addToCart: async () => {},
-  updateCartQuantity: async () => {},
-  removeFromCart: async () => {},
+  updateCartItemQuantity: async () => {},
+  removeCartItem: async () => {},
   clearCart: async () => {},
+  applyDiscount: () => {},
+  removeDiscount: async () => {},
+  setDiscountCode: () => {},
 })
 
-export const useCartContext = () => useContext(CartContext)
-
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<CartState>(initialCartState)
   const { user, isAuthenticated } = useAuth()
   const { toast } = useToast()
-  const [cartItems, setCartItems] = useState<CartItem[]>([])
-  const [localCart, setLocalCart] = useState<CartItem[]>([])
-  const [cartId, setCartId] = useState<number | null>(null)
-  const [isInitialized, setIsInitialized] = useState(false)
 
-  const supabase = getSupabaseBrowserClient()
-
-  // Calculate cart item count
-  const cartItemCount = (isAuthenticated ? cartItems : localCart).reduce((total, item) => total + item.quantity, 0)
-
-  // Add item to cart
-  const addToCart = useCallback(
-    async (variantId: number, quantity: number, productId?: string) => {
-      if (isAuthenticated && cartId) {
-        try {
-          // Check if item already exists
-          const { data: existingItem, error: checkError } = await supabase
-            .from("cart_items")
-            .select("id, quantity")
-            .eq("cart_id", cartId)
-            .eq("variant_id", variantId)
-            .maybeSingle()
-
-          if (checkError && checkError.code !== "PGRST116") throw checkError
-
-          if (existingItem) {
-            // Update quantity
-            const { data, error: updateError } = await supabase
-              .from("cart_items")
-              .update({ quantity: existingItem.quantity + quantity })
-              .eq("id", existingItem.id)
-              .select()
-
-            if (updateError) throw updateError
-
-            // Update local state
-            setCartItems((prev) =>
-              prev.map((item) =>
-                item.id === existingItem.id ? { ...item, quantity: item.quantity + quantity } : item,
-              ),
-            )
-          } else {
-            // Insert new item
-            const { data, error: insertError } = await supabase
-              .from("cart_items")
-              .insert({
-                cart_id: cartId,
-                variant_id: variantId,
-                quantity,
-              })
-              .select()
-
-            if (insertError) throw insertError
-
-            // Refresh cart items
-            const { data: refreshedItems, error: refreshError } = await supabase
-              .from("cart_items")
-              .select("*")
-              .eq("cart_id", cartId)
-
-            if (refreshError) throw refreshError
-
-            setCartItems(refreshedItems)
-          }
-
-          toast({
-            title: "Đã thêm vào giỏ hàng",
-            description: "Sản phẩm đã được thêm vào giỏ hàng của bạn.",
-          })
-        } catch (error) {
-          console.error("Error adding to cart:", error)
-          throw error
-        }
-      } else {
-        // Add to local cart
-        const existingItemIndex = localCart.findIndex((item) => item.variant_id === variantId)
-
-        if (existingItemIndex !== -1) {
-          // Update quantity
-          const updatedCart = [...localCart]
-          updatedCart[existingItemIndex].quantity += quantity
-          setLocalCart(updatedCart)
-        } else {
-          // Add new item
-          setLocalCart([
-            ...localCart,
-            {
-              variant_id: variantId,
-              quantity,
-              product_id: productId ? Number.parseInt(productId) : undefined,
-            },
-          ])
-        }
-
-        toast({
-          title: "Đã thêm vào giỏ hàng",
-          description: "Sản phẩm đã được thêm vào giỏ hàng của bạn.",
-        })
-      }
-    },
-    [isAuthenticated, cartId, supabase, localCart, toast],
-  )
-
-  // Remove item from cart - Định nghĩa trước updateCartQuantity để tránh lỗi
-  const removeFromCart = useCallback(
-    async (variantId: number) => {
-      if (isAuthenticated && cartId) {
-        try {
-          // Find the item
-          const { data: existingItem, error: findError } = await supabase
-            .from("cart_items")
-            .select("id")
-            .eq("cart_id", cartId)
-            .eq("variant_id", variantId)
-            .single()
-
-          if (findError) throw findError
-
-          // Delete the item
-          const { error: deleteError } = await supabase.from("cart_items").delete().eq("id", existingItem.id)
-
-          if (deleteError) throw deleteError
-
-          // Update local state
-          setCartItems((prev) => prev.filter((item) => item.id !== existingItem.id))
-
-          toast({
-            title: "Đã xóa khỏi giỏ hàng",
-            description: "Sản phẩm đã được xóa khỏi giỏ hàng của bạn.",
-          })
-        } catch (error) {
-          console.error("Error removing from cart:", error)
-          throw error
-        }
-      } else {
-        // Remove from local cart
-        setLocalCart((prev) => prev.filter((item) => item.variant_id !== variantId))
-
-        toast({
-          title: "Đã xóa khỏi giỏ hàng",
-          description: "Sản phẩm đã được xóa khỏi giỏ hàng của bạn.",
-        })
-      }
-    },
-    [isAuthenticated, cartId, supabase, toast],
-  )
-
-  // Update item quantity - Định nghĩa sau removeFromCart để tránh lỗi circular reference
-  const updateCartQuantity = useCallback(
-    async (variantId: number, quantity: number) => {
-      if (quantity <= 0) {
-        return removeFromCart(variantId)
-      }
-
-      if (isAuthenticated && cartId) {
-        try {
-          // Find the item
-          const { data: existingItem, error: findError } = await supabase
-            .from("cart_items")
-            .select("id")
-            .eq("cart_id", cartId)
-            .eq("variant_id", variantId)
-            .single()
-
-          if (findError) throw findError
-
-          // Update quantity
-          const { error: updateError } = await supabase
-            .from("cart_items")
-            .update({ quantity })
-            .eq("id", existingItem.id)
-
-          if (updateError) throw updateError
-
-          // Update local state
-          setCartItems((prev) => prev.map((item) => (item.id === existingItem.id ? { ...item, quantity } : item)))
-        } catch (error) {
-          console.error("Error updating cart quantity:", error)
-          throw error
-        }
-      } else {
-        // Update local cart
-        const existingItemIndex = localCart.findIndex((item) => item.variant_id === variantId)
-
-        if (existingItemIndex !== -1) {
-          const updatedCart = [...localCart]
-          updatedCart[existingItemIndex].quantity = quantity
-          setLocalCart(updatedCart)
-        }
-      }
-    },
-    [isAuthenticated, cartId, supabase, localCart, removeFromCart],
-  )
-
-  // Clear cart
-  const clearCart = useCallback(async () => {
-    if (isAuthenticated && cartId) {
-      try {
-        // Delete all items
-        const { error } = await supabase.from("cart_items").delete().eq("cart_id", cartId)
-
-        if (error) throw error
-
-        // Update local state
-        setCartItems([])
-
-        toast({
-          title: "Đã xóa giỏ hàng",
-          description: "Tất cả sản phẩm đã được xóa khỏi giỏ hàng của bạn.",
-        })
-      } catch (error) {
-        console.error("Error clearing cart:", error)
-        throw error
-      }
-    } else {
-      // Clear local cart
-      setLocalCart([])
-      localStorage.removeItem("mybeauty_cart")
-
-      toast({
-        title: "Đã xóa giỏ hàng",
-        description: "Tất cả sản phẩm đã được xóa khỏi giỏ hàng của bạn.",
-      })
-    }
-  }, [isAuthenticated, cartId, supabase, toast])
-
-  const value = {
-    cartItems: isAuthenticated ? cartItems : localCart,
-    cartItemCount,
-    addToCart,
-    updateCartQuantity,
-    removeFromCart,
-    clearCart,
-  }
-
-  // Fetch cart and cart items when user is authenticated
+  // Fetch cart items on mount and when auth state changes
   useEffect(() => {
-    const fetchCart = async () => {
-      if (!isAuthenticated || !user) return
-
+    const fetchCartItems = async () => {
       try {
-        // Get user's cart
-        const { data: cartData, error: cartError } = await supabase
-          .from("shopping_carts")
-          .select("id")
-          .eq("user_id", user.id)
-          .single()
+        setState((prev) => ({ ...prev, isLoading: true }))
 
-        if (cartError) {
-          if (cartError.code === "PGRST116") {
-            // Cart doesn't exist, create one
-            const { data: newCart, error: createError } = await supabase
-              .from("shopping_carts")
-              .insert({ user_id: user.id })
-              .select("id")
-              .single()
+        // Fetch cart items from localStorage for guest users
+        if (!isAuthenticated) {
+          const localCart = localStorage.getItem("guestCart")
+          if (localCart) {
+            try {
+              const parsedCart = JSON.parse(localCart) as CartItem[]
 
-            if (createError) throw createError
+              // Fetch complete product details for each cart item
+              const updatedCartItems = await Promise.all(
+                parsedCart.map(async (item) => {
+                  // If the item already has complete product data, use it
+                  if (item.product && item.product.name !== "Loading..." && item.product.price > 0) {
+                    return item
+                  }
 
-            setCartId(newCart.id)
+                  // Otherwise fetch the product details
+                  try {
+                    const variantDetails = await getProductVariantDetails(item.variant_id)
+                    if (variantDetails.success && variantDetails.data) {
+                      return {
+                        ...item,
+                        product: variantDetails.data,
+                      }
+                    }
+                    return item
+                  } catch (error) {
+                    console.error("Error fetching product details:", error)
+                    return item
+                  }
+                }),
+              )
+
+              // Save the updated cart with complete product details
+              localStorage.setItem("guestCart", JSON.stringify(updatedCartItems))
+              updateCartState(updatedCartItems)
+            } catch (error) {
+              console.error("Error parsing local cart:", error)
+              localStorage.removeItem("guestCart")
+              setState((prev) => ({ ...prev, isLoading: false }))
+            }
           } else {
-            throw cartError
+            setState((prev) => ({ ...prev, isLoading: false }))
           }
-        } else {
-          setCartId(cartData.id)
-
-          // Get cart items
-          const { data: itemsData, error: itemsError } = await supabase
-            .from("cart_items")
-            .select("*")
-            .eq("cart_id", cartData.id)
-
-          if (itemsError) throw itemsError
-
-          setCartItems(itemsData)
+          return
         }
+
+        // For authenticated users, fetch from server
+        const response = await fetch("/api/cart", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        })
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch cart")
+        }
+
+        const data = await response.json()
+        updateCartState(data.items || [], data.appliedDiscount)
       } catch (error) {
         console.error("Error fetching cart:", error)
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải giỏ hàng",
+          variant: "destructive",
+        })
+        setState((prev) => ({ ...prev, isLoading: false }))
       }
     }
 
-    fetchCart()
-  }, [isAuthenticated, user, supabase])
+    fetchCartItems()
+  }, [isAuthenticated, user?.id, toast])
 
-  // Load local cart from localStorage when component mounts
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const savedCart = localStorage.getItem("mybeauty_cart")
-        if (savedCart) {
-          setLocalCart(JSON.parse(savedCart))
-        }
-      } catch (error) {
-        console.error("Error parsing local cart:", error)
-        localStorage.removeItem("mybeauty_cart")
-      }
-      setIsInitialized(true)
+  // Update cart state with new items and calculate totals
+  const updateCartState = (items: CartItem[], appliedDiscount = null) => {
+    const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
+
+    const subtotal = items.reduce((sum, item) => {
+      const price = item.product?.sale_price || item.product?.price || 0
+      return sum + price * item.quantity
+    }, 0)
+
+    // Calculate discount amount if discount is applied
+    let discountAmount = 0
+    if (appliedDiscount) {
+      discountAmount = calculateDiscountAmount(subtotal, appliedDiscount)
     }
-  }, [])
 
-  // Save local cart to localStorage when it changes
-  useEffect(() => {
-    if (isInitialized && !isAuthenticated && typeof window !== "undefined") {
-      localStorage.setItem("mybeauty_cart", JSON.stringify(localCart))
+    // Calculate total (subtotal - discount + shipping)
+    const total = Math.max(0, subtotal - discountAmount) + 0 // Miễn phí vận chuyển
+
+    setState({
+      cartItems: items,
+      cartItemCount: itemCount,
+      subtotal,
+      discount: discountAmount,
+      shippingFee: 0, // Miễn phí vận chuyển
+      cartTotal: total,
+      discountCode: appliedDiscount?.code || "",
+      appliedDiscount,
+      isUpdatingCart: false,
+    })
+  }
+
+  // Calculate discount amount based on discount object
+  const calculateDiscountAmount = (subtotal: number, discount: Discount): number => {
+    if (!discount) return 0
+
+    let amount = (discount.discount_percentage / 100) * subtotal
+
+    // Apply max discount amount if specified
+    if (discount.max_discount_amount && amount > discount.max_discount_amount) {
+      amount = discount.max_discount_amount
     }
-  }, [localCart, isInitialized, isAuthenticated])
 
-  // Merge local cart with database when user logs in
-  useEffect(() => {
-    const mergeCarts = async () => {
-      if (isAuthenticated && user && cartId && localCart.length > 0) {
-        try {
-          // Add each local cart item to the database
-          for (const item of localCart) {
-            // Check if item already exists
-            const { data: existingItem, error: checkError } = await supabase
-              .from("cart_items")
-              .select("id, quantity")
-              .eq("cart_id", cartId)
-              .eq("variant_id", item.variant_id)
-              .maybeSingle()
+    return amount
+  }
 
-            if (checkError && checkError.code !== "PGRST116") throw checkError
+  // Add to cart
+  const addToCart = async (variantId: number, quantity: number, productId?: string) => {
+    try {
+      setState((prev) => ({ ...prev, isUpdatingCart: true }))
 
-            if (existingItem) {
-              // Update quantity
-              const { error: updateError } = await supabase
-                .from("cart_items")
-                .update({ quantity: existingItem.quantity + item.quantity })
-                .eq("id", existingItem.id)
+      if (!isAuthenticated) {
+        // Handle guest cart in localStorage
+        const localCart = localStorage.getItem("guestCart")
+        const cartItems: CartItem[] = localCart ? JSON.parse(localCart) : []
 
-              if (updateError) throw updateError
-            } else {
-              // Insert new item
-              const { error: insertError } = await supabase.from("cart_items").insert({
-                cart_id: cartId,
-                variant_id: item.variant_id,
-                quantity: item.quantity,
-              })
+        // Check if item exists in cart
+        const existingItemIndex = cartItems.findIndex((item) => item.variant_id === variantId)
 
-              if (insertError) throw insertError
-            }
+        if (existingItemIndex >= 0) {
+          // Update existing item
+          cartItems[existingItemIndex].quantity += quantity
+        } else {
+          // Fetch product details before adding to cart
+          const result = await getProductVariantDetails(variantId)
+
+          if (result.success && result.data) {
+            // Add new item with complete product info
+            cartItems.push({
+              id: String(Date.now()),
+              variant_id: variantId,
+              quantity,
+              product: result.data,
+            })
+          } else {
+            // Fallback with minimal info if fetch fails
+            cartItems.push({
+              id: String(Date.now()),
+              variant_id: variantId,
+              quantity,
+              product: {
+                id: productId ? Number.parseInt(productId) : 0,
+                name: "Loading...",
+                slug: "",
+                price: 0,
+                sale_price: null,
+                volume_ml: 0,
+                images: [],
+              },
+            })
           }
-
-          // Clear local cart
-          setLocalCart([])
-          localStorage.removeItem("mybeauty_cart")
-
-          // Refresh cart items
-          const { data: refreshedItems, error: refreshError } = await supabase
-            .from("cart_items")
-            .select("*")
-            .eq("cart_id", cartId)
-
-          if (refreshError) throw refreshError
-
-          setCartItems(refreshedItems)
-
-          toast({
-            title: "Đồng bộ thành công",
-            description: "Giỏ hàng của bạn đã được đồng bộ.",
-          })
-        } catch (error) {
-          console.error("Error merging carts:", error)
         }
+
+        // Save to localStorage
+        localStorage.setItem("guestCart", JSON.stringify(cartItems))
+        updateCartState(cartItems)
+
+        toast({
+          title: "Thành công",
+          description: "Đã thêm sản phẩm vào giỏ hàng",
+        })
+
+        setState((prev) => ({ ...prev, isUpdatingCart: false }))
+        return
       }
+
+      // For authenticated users
+      const result = await addToCartAction(variantId, quantity)
+
+      if (result.error) {
+        throw new Error(result.error)
+      }
+
+      // Refresh cart items after adding
+      const response = await fetch("/api/cart", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to refresh cart")
+      }
+
+      const data = await response.json()
+      updateCartState(data.items || [], data.appliedDiscount)
+
+      toast({
+        title: "Thành công",
+        description: "Đã thêm sản phẩm vào giỏ hàng",
+      })
+    } catch (error) {
+      console.error("Error adding to cart:", error)
+      toast({
+        title: "Lỗi",
+        description: error instanceof Error ? error.message : "Không thể thêm sản phẩm vào giỏ hàng",
+        variant: "destructive",
+      })
+    } finally {
+      setState((prev) => ({ ...prev, isUpdatingCart: false }))
     }
+  }
 
-    mergeCarts()
-  }, [isAuthenticated, user, cartId, localCart, supabase, toast])
+  // Update cart item quantity
+  const updateCartItemQuantity = async (variantId: number, quantity: number) => {
+    try {
+      setState((prev) => ({ ...prev, isUpdatingCart: true }))
 
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>
+      if (!isAuthenticated) {
+        // Handle guest cart in localStorage
+        const localCart = localStorage.getItem("guestCart")
+        let cartItems: CartItem[] = localCart ? JSON.parse(localCart) : []
+
+        if (quantity <= 0) {
+          // Remove item if quantity is 0 or less
+          cartItems = cartItems.filter((item) => item.variant_id !== variantId)
+        } else {
+          // Update quantity
+          const itemIndex = cartItems.findIndex((item) => item.variant_id === variantId)
+          if (itemIndex >= 0) {
+            cartItems[itemIndex].quantity = quantity
+          }
+        }
+
+        // Save to localStorage
+        localStorage.setItem("guestCart", JSON.stringify(cartItems))
+        updateCartState(cartItems)
+
+        setState((prev) => ({ ...prev, isUpdatingCart: false }))
+        return
+      }
+
+      // For authenticated users
+      const result = await updateCartItemQuantityAction(String(variantId), quantity)
+
+      if (result.error) {
+        throw new Error(result.error)
+      }
+
+      // Refresh cart items after updating
+      const response = await fetch("/api/cart", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to refresh cart")
+      }
+
+      const data = await response.json()
+      updateCartState(data.items || [], data.appliedDiscount)
+    } catch (error) {
+      console.error("Error updating cart item:", error)
+      toast({
+        title: "Lỗi",
+        description: error instanceof Error ? error.message : "Không thể cập nhật số lượng sản phẩm",
+        variant: "destructive",
+      })
+    } finally {
+      setState((prev) => ({ ...prev, isUpdatingCart: false }))
+    }
+  }
+
+  // Remove from cart
+  const removeCartItem = async (variantId: number) => {
+    try {
+      setState((prev) => ({ ...prev, isUpdatingCart: true }))
+
+      if (!isAuthenticated) {
+        // Handle guest cart in localStorage
+        const localCart = localStorage.getItem("guestCart")
+        let cartItems: CartItem[] = localCart ? JSON.parse(localCart) : []
+
+        // Remove item
+        cartItems = cartItems.filter((item) => item.variant_id !== variantId)
+
+        // Save to localStorage
+        localStorage.setItem("guestCart", JSON.stringify(cartItems))
+        updateCartState(cartItems)
+
+        toast({
+          title: "Thành công",
+          description: "Đã xóa sản phẩm khỏi giỏ hàng",
+        })
+
+        setState((prev) => ({ ...prev, isUpdatingCart: false }))
+        return
+      }
+
+      // For authenticated users
+      const result = await removeCartItemAction(String(variantId))
+
+      if (result.error) {
+        throw new Error(result.error)
+      }
+
+      // Refresh cart items after removing
+      const response = await fetch("/api/cart", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to refresh cart")
+      }
+
+      const data = await response.json()
+      updateCartState(data.items || [], data.appliedDiscount)
+
+      toast({
+        title: "Thành công",
+        description: "Đã xóa sản phẩm khỏi giỏ hàng",
+      })
+    } catch (error) {
+      console.error("Error removing from cart:", error)
+      toast({
+        title: "Lỗi",
+        description: error instanceof Error ? error.message : "Không thể xóa sản phẩm khỏi giỏ hàng",
+        variant: "destructive",
+      })
+    } finally {
+      setState((prev) => ({ ...prev, isUpdatingCart: false }))
+    }
+  }
+
+  // Clear cart
+  const clearCart = async () => {
+    try {
+      setState((prev) => ({ ...prev, isUpdatingCart: true }))
+
+      if (!isAuthenticated) {
+        // Clear guest cart in localStorage
+        localStorage.removeItem("guestCart")
+        updateCartState([])
+
+        setState((prev) => ({ ...prev, isUpdatingCart: false }))
+        return
+      }
+
+      // For authenticated users
+      const result = await clearCartAction()
+
+      if (result.error) {
+        throw new Error(result.error)
+      }
+
+      // Reset cart state
+      updateCartState([])
+    } catch (error) {
+      console.error("Error clearing cart:", error)
+      toast({
+        title: "Lỗi",
+        description: error instanceof Error ? error.message : "Không thể xóa giỏ hàng",
+        variant: "destructive",
+      })
+    } finally {
+      setState((prev) => ({ ...prev, isUpdatingCart: false }))
+    }
+  }
+
+  // Apply discount
+  const applyDiscount = (code: string, discount: Discount, amount: number) => {
+    setState((prev) => ({
+      ...prev,
+      discountCode: code,
+      appliedDiscount: discount,
+      discount: amount,
+      cartTotal: Math.max(0, prev.subtotal - amount) + prev.shippingFee,
+    }))
+  }
+
+  // Remove discount
+  const removeDiscount = async () => {
+    try {
+      if (!isAuthenticated || !state.appliedDiscount) {
+        setState((prev) => ({
+          ...prev,
+          discountCode: "",
+          appliedDiscount: null,
+          discount: 0,
+          cartTotal: prev.subtotal + prev.shippingFee,
+        }))
+        return
+      }
+
+      // For authenticated users
+      const result = await removeDiscountCodeAction()
+
+      if (result.error) {
+        throw new Error(result.error)
+      }
+
+      setState((prev) => ({
+        ...prev,
+        discountCode: "",
+        appliedDiscount: null,
+        discount: 0,
+        cartTotal: prev.subtotal + prev.shippingFee,
+      }))
+    } catch (error) {
+      console.error("Error removing discount:", error)
+      toast({
+        title: "Lỗi",
+        description: error instanceof Error ? error.message : "Không thể xóa mã giảm giá",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Set discount code (without applying it)
+  const setDiscountCode = (code: string) => {
+    setState((prev) => ({ ...prev, discountCode: code }))
+  }
+
+  return (
+    <CartContext.Provider
+      value={{
+        ...state,
+        addToCart,
+        updateCartItemQuantity,
+        removeCartItem,
+        clearCart,
+        applyDiscount,
+        removeDiscount,
+        setDiscountCode,
+      }}
+    >
+      {children}
+    </CartContext.Provider>
+  )
 }
+
+export const useCartContext = () => useContext(CartContext)
 

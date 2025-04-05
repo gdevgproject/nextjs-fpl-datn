@@ -1,9 +1,9 @@
-"use client";
+"use client"
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Edit, Trash2, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Edit, Trash2, Loader2 } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,31 +14,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { formatPhoneNumber } from "@/lib/utils/format";
-import type { Address } from "../types";
-import { useSetDefaultAddress } from "../queries";
+} from "@/components/ui/alert-dialog"
+import { formatPhoneNumber } from "@/lib/utils/format"
+import type { Address } from "../types"
+import { useSetDefaultAddress } from "../queries"
 
 interface AddressCardProps {
-  address: Address;
-  onEdit: () => void;
-  onDelete: () => void;
-  onSetDefault: () => void;
-  disabled?: boolean;
+  address: Address
+  onEdit: () => void
+  onDelete: () => void
+  onSetDefault: () => void
+  disabled?: boolean
 }
 
-export function AddressCard({
-  address,
-  onEdit,
-  onDelete,
-  onSetDefault,
-  disabled = false,
-}: AddressCardProps) {
+export function AddressCard({ address, onEdit, onDelete, onSetDefault, disabled = false }: AddressCardProps) {
   // Sử dụng hook để kiểm tra trạng thái loading
-  const setDefaultAddressMutation = useSetDefaultAddress();
-  const isSettingDefault =
-    setDefaultAddressMutation.isPending &&
-    setDefaultAddressMutation.variables === address.id;
+  const setDefaultAddressMutation = useSetDefaultAddress()
+  const isSettingDefault = setDefaultAddressMutation.isPending && setDefaultAddressMutation.variables === address.id
 
   return (
     <Card className={address.is_default ? "border-primary" : ""}>
@@ -48,17 +40,12 @@ export function AddressCard({
             <div className="flex items-center gap-2">
               <h3 className="font-medium">{address.recipient_name}</h3>
               {address.is_default && (
-                <Badge
-                  variant="outline"
-                  className="bg-primary/10 text-primary border-primary/20"
-                >
+                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
                   Mặc định
                 </Badge>
               )}
             </div>
-            <p className="text-sm text-muted-foreground">
-              {formatPhoneNumber(address.recipient_phone)}
-            </p>
+            <p className="text-sm text-muted-foreground">{formatPhoneNumber(address.recipient_phone)}</p>
           </div>
         </div>
         <div className="mt-4 space-y-1 text-sm">
@@ -72,12 +59,7 @@ export function AddressCard({
       </CardContent>
       <CardFooter className="flex justify-between border-t p-4">
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onEdit}
-            disabled={disabled}
-          >
+          <Button variant="outline" size="sm" onClick={onEdit} disabled={disabled}>
             <Edit className="mr-2 h-4 w-4" />
             Sửa
           </Button>
@@ -92,12 +74,11 @@ export function AddressCard({
               <AlertDialogHeader>
                 <AlertDialogTitle>Xác nhận xóa địa chỉ</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Bạn có chắc chắn muốn xóa địa chỉ này? Hành động này không thể
-                  hoàn tác.
+                  Bạn có chắc chắn muốn xóa địa chỉ này? Hành động này không thể hoàn tác.
                   {address.is_default && (
                     <p className="mt-2 font-medium text-destructive">
-                      Lưu ý: Đây là địa chỉ mặc định của bạn. Nếu xóa, hệ thống
-                      sẽ tự động chọn địa chỉ khác làm mặc định.
+                      Lưu ý: Đây là địa chỉ mặc định của bạn. Nếu xóa, hệ thống sẽ tự động chọn địa chỉ khác làm mặc
+                      định.
                     </p>
                   )}
                 </AlertDialogDescription>
@@ -110,12 +91,7 @@ export function AddressCard({
           </AlertDialog>
         </div>
         {!address.is_default && (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={onSetDefault}
-            disabled={disabled || isSettingDefault}
-          >
+          <Button variant="secondary" size="sm" onClick={onSetDefault} disabled={disabled || isSettingDefault}>
             {isSettingDefault ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -128,5 +104,6 @@ export function AddressCard({
         )}
       </CardFooter>
     </Card>
-  );
+  )
 }
+

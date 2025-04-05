@@ -7,6 +7,7 @@ import { QueryProvider } from "./query-provider"
 import { ThemeProvider } from "@/components/theme-provider"
 import { CartProvider } from "@/features/cart/providers/cart-provider"
 import { WishlistProvider } from "@/features/wishlist/providers/wishlist-provider"
+import { CheckoutProvider } from "@/features/cart/providers/checkout-provider"
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
@@ -22,9 +23,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
         {mounted && (
           <WishlistProvider>
             <CartProvider>
-              <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-                {children}
-              </ThemeProvider>
+              <CheckoutProvider>
+                <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+                  {children}
+                </ThemeProvider>
+              </CheckoutProvider>
             </CartProvider>
           </WishlistProvider>
         )}

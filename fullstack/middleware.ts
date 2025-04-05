@@ -33,10 +33,19 @@ export async function middleware(req: NextRequest) {
       return res
     }
 
-    if (pathname.startsWith("/admin") || pathname.startsWith("/tai-khoan") || pathname.startsWith("/thanh-toan")) {
+    // Thay đổi điều kiện chuyển hướng
+    if (pathname.startsWith("/admin") || pathname.startsWith("/tai-khoan")) {
       url.pathname = "/dang-nhap"
       url.searchParams.set("redirect", pathname)
       return NextResponse.redirect(url)
+    }
+
+    // Xử lý riêng cho trang thanh toán
+    if (pathname.startsWith("/thanh-toan")) {
+      // Kiểm tra xem giỏ hàng có trống không (có thể thực hiện ở client-side)
+      // Nếu không có session, vẫn cho phép truy cập trang thanh toán
+      // Việc kiểm tra giỏ hàng trống sẽ được xử lý trong component CheckoutPage
+      return res
     }
 
     // Cho phép truy cập vào các trang công khai
