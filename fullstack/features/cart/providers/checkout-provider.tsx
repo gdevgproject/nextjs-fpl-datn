@@ -1,57 +1,57 @@
-"use client";
+"use client"
 
-import type React from "react";
-import { createContext, useContext, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useCartContext } from "./cart-provider";
-import { useAuth } from "@/lib/providers/auth-context";
-import { useToast } from "@/hooks/use-toast";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { securedPlaceOrder } from "../actions/secure-place-order";
-import type { Address } from "@/features/account/types";
+import type React from "react"
+import { createContext, useContext, useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useCartContext } from "./cart-provider"
+import { useAuth } from "@/lib/providers/auth-context"
+import { useToast } from "@/hooks/use-toast"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { securedPlaceOrder } from "../actions/secure-place-order"
+import type { Address } from "@/features/account/types"
 
 // Checkout steps
-type CheckoutStep = "address" | "payment" | "review";
+type CheckoutStep = "address" | "payment" | "review"
 
 // Form data type
 interface CheckoutFormData {
   // Guest info
-  fullName?: string;
-  email?: string;
-  phoneNumber?: string;
+  fullName?: string
+  email?: string
+  phoneNumber?: string
 
   // Address
-  address?: string;
-  province?: string;
-  district?: string;
-  ward?: string;
-  deliveryNotes?: string;
-  paymentMethod?: number;
+  address?: string
+  province?: string
+  district?: string
+  ward?: string
+  deliveryNotes?: string
+  paymentMethod?: number
 }
 
 // Payment Method Type
 interface PaymentMethod {
-  id: number;
-  name: string;
-  description?: string;
-  is_active: boolean;
+  id: number
+  name: string
+  description?: string
+  is_active: boolean
 }
 
 // Context type
 interface CheckoutContextType {
-  currentStep: CheckoutStep;
-  formData: CheckoutFormData;
-  errors: Record<string, string>;
-  isProcessing: boolean;
-  paymentMethods: PaymentMethod[];
-  updateFormData: (data: Partial<CheckoutFormData>) => void;
-  goToNextStep: () => void;
-  goToPreviousStep: () => void;
-  goToStep: (step: CheckoutStep) => void;
-  placeOrderHandler: () => Promise<void>;
-  validateCurrentStep: () => boolean;
-  justPlacedOrder: boolean;
-  setJustPlacedOrder: (value: boolean) => void;
+  currentStep: CheckoutStep
+  formData: CheckoutFormData
+  errors: Record<string, string>
+  isProcessing: boolean
+  paymentMethods: PaymentMethod[]
+  updateFormData: (data: Partial<CheckoutFormData>) => void
+  goToNextStep: () => void
+  goToPreviousStep: () => void
+  goToStep: (step: CheckoutStep) => void
+  placeOrderHandler: () => Promise<void>
+  validateCurrentStep: () => boolean
+  justPlacedOrder: boolean
+  setJustPlacedOrder: (value: boolean) => void
 }
 
 // Create context
@@ -69,167 +69,150 @@ const CheckoutContext = createContext<CheckoutContextType>({
   validateCurrentStep: () => false,
   justPlacedOrder: false,
   setJustPlacedOrder: () => {},
-});
+})
 
 export function CheckoutProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const { toast } = useToast();
-  const { isAuthenticated } = useAuth();
-  const {
-    cartItems,
-    subtotal,
-    discount,
-    shippingFee,
-    cartTotal,
-    appliedDiscount,
-    clearCart,
-  } = useCartContext();
+  const router = useRouter()
+  const { toast } = useToast()
+  const { isAuthenticated } = useAuth()
+  const { cartItems, subtotal, discount, shippingFee, cartTotal, appliedDiscount, clearCart } = useCartContext()
 
   // State
-  const [currentStep, setCurrentStep] = useState<CheckoutStep>("address");
-  const [formData, setFormData] = useState<CheckoutFormData>({});
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-  const [justPlacedOrder, setJustPlacedOrder] = useState(false);
+  const [currentStep, setCurrentStep] = useState<CheckoutStep>("address")
+  const [formData, setFormData] = useState<CheckoutFormData>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
+  const [justPlacedOrder, setJustPlacedOrder] = useState(false)
 
   useEffect(() => {
     const fetchPaymentMethods = async () => {
-      const supabase = getSupabaseBrowserClient();
-      const { data, error } = await supabase
-        .from("payment_methods")
-        .select("*")
-        .eq("is_active", true);
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase.from("payment_methods").select("*").eq("is_active", true)
 
       if (error) {
-        console.error("Error fetching payment methods:", error);
+        console.error("Error fetching payment methods:", error)
         toast({
           title: "Lỗi",
           description: "Không thể tải phương thức thanh toán",
           variant: "destructive",
-        });
+        })
       } else {
-        setPaymentMethods(data || []);
+        setPaymentMethods(data || [])
       }
-    };
+    }
 
-    fetchPaymentMethods();
-  }, [toast]);
+    fetchPaymentMethods()
+  }, [toast])
 
   // Update form data
   const updateFormData = (data: Partial<CheckoutFormData>) => {
-    setFormData((prev) => ({ ...prev, ...data }));
+    setFormData((prev) => ({ ...prev, ...data }))
 
     // Clear errors for updated fields
-    const updatedErrors = { ...errors };
+    const updatedErrors = { ...errors }
     Object.keys(data).forEach((key) => {
       if (updatedErrors[key]) {
-        delete updatedErrors[key];
+        delete updatedErrors[key]
       }
-    });
-    setErrors(updatedErrors);
-  };
+    })
+    setErrors(updatedErrors)
+  }
 
   // Validate current step
   const validateCurrentStep = (): boolean => {
-    const newErrors: Record<string, string> = {};
+    const newErrors: Record<string, string> = {}
 
     if (currentStep === "address") {
       // Validate guest info for non-authenticated users
       if (!isAuthenticated) {
         if (!formData.fullName?.trim()) {
-          newErrors.fullName = "Vui lòng nhập họ tên";
+          newErrors.fullName = "Vui lòng nhập họ tên"
         }
 
-        if (
-          formData.email &&
-          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
-        ) {
-          newErrors.email = "Email không hợp lệ";
+        if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+          newErrors.email = "Email không hợp lệ"
         }
 
         if (!formData.phoneNumber?.trim()) {
-          newErrors.phoneNumber = "Vui lòng nhập số điện thoại";
-        } else if (
-          !/(84|0[3|5|7|8|9])+([0-9]{8})\b/.test(formData.phoneNumber)
-        ) {
-          newErrors.phoneNumber = "Số điện thoại không hợp lệ";
+          newErrors.phoneNumber = "Vui lòng nhập số điện thoại"
+        } else if (!/(84|0[3|5|7|8|9])+([0-9]{8})\b/.test(formData.phoneNumber)) {
+          newErrors.phoneNumber = "Số điện thoại không hợp lệ"
         }
       }
 
       // Validate address fields
       if (!formData.address?.trim()) {
-        newErrors.address = "Vui lòng nhập địa chỉ";
+        newErrors.address = "Vui lòng nhập địa chỉ"
       }
 
       if (!formData.province?.trim()) {
-        newErrors.province = "Vui lòng nhập tỉnh/thành phố";
+        newErrors.province = "Vui lòng nhập tỉnh/thành phố"
       }
 
       if (!formData.district?.trim()) {
-        newErrors.district = "Vui lòng nhập quận/huyện";
+        newErrors.district = "Vui lòng nhập quận/huyện"
       }
 
       if (!formData.ward?.trim()) {
-        newErrors.ward = "Vui lòng nhập phường/xã";
+        newErrors.ward = "Vui lòng nhập phường/xã"
       }
     } else if (currentStep === "payment") {
       // Validate payment method
       if (!formData.paymentMethod) {
-        newErrors.paymentMethod = "Vui lòng chọn phương thức thanh toán";
+        newErrors.paymentMethod = "Vui lòng chọn phương thức thanh toán"
       }
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   // Go to next step
   const goToNextStep = () => {
     if (!validateCurrentStep()) {
-      return;
+      return
     }
 
     if (currentStep === "address") {
-      setCurrentStep("payment");
+      setCurrentStep("payment")
     } else if (currentStep === "payment") {
-      setCurrentStep("review");
+      setCurrentStep("review")
     }
-  };
+  }
 
   // Go to previous step
   const goToPreviousStep = () => {
     if (currentStep === "payment") {
-      setCurrentStep("address");
+      setCurrentStep("address")
     } else if (currentStep === "review") {
-      setCurrentStep("payment");
+      setCurrentStep("payment")
     }
-  };
+  }
 
   // Go to specific step
   const goToStep = (step: CheckoutStep) => {
-    setCurrentStep(step);
-  };
+    setCurrentStep(step)
+  }
 
   // Place order using our new secure implementation
   const placeOrderHandler = async () => {
     if (!validateCurrentStep()) {
-      return;
+      return
     }
 
     if (cartItems.length === 0) {
       toast({
         title: "Giỏ hàng trống",
-        description:
-          "Vui lòng thêm sản phẩm vào giỏ hàng trước khi thanh toán.",
+        description: "Vui lòng thêm sản phẩm vào giỏ hàng trước khi thanh toán.",
         variant: "destructive",
-      });
-      router.push("/gio-hang");
-      return;
+      })
+      router.push("/gio-hang")
+      return
     }
 
     try {
-      setIsProcessing(true);
+      setIsProcessing(true)
 
       // Prepare shipping address
       const shippingAddress: Address = {
@@ -242,7 +225,7 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
         ward: formData.ward || "",
         street_address: formData.address || "",
         is_default: false,
-      };
+      }
 
       // Prepare guest info if not authenticated
       const guestInfo = !isAuthenticated
@@ -251,7 +234,7 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
             email: formData.email || "",
             phone: formData.phoneNumber || "",
           }
-        : null;
+        : null
 
       // Place order using the secured transaction method that bypasses RLS
       const result = await securedPlaceOrder({
@@ -265,10 +248,10 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
         shippingFee,
         total: cartTotal,
         guestInfo,
-      });
+      })
 
       if (!result.success) {
-        throw new Error(result.error);
+        throw new Error(result.error)
       }
 
       // Show success notification for everyone (guest and logged-in users)
@@ -276,32 +259,29 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
         title: "Đặt hàng thành công",
         description: "Đơn hàng của bạn đã được tiếp nhận!",
         variant: "success",
-      });
+      })
 
       // Clear cart after successful order
       // For authenticated users, this was already done in the server action
       // For guest users, clear localStorage
       if (!isAuthenticated) {
-        await clearCart();
+        await clearCart()
       }
 
       // Redirect to order confirmation page
-      router.push(`/xac-nhan-don-hang?orderId=${result.orderId}`);
+      router.push(`/xac-nhan-don-hang?orderId=${result.orderId}`)
     } catch (error) {
-      console.error("Error placing order:", error);
+      console.error("Error placing order:", error)
       toast({
         title: "Đặt hàng thất bại",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Đã xảy ra lỗi khi đặt hàng. Vui lòng thử lại sau.",
+        description: error instanceof Error ? error.message : "Đã xảy ra lỗi khi đặt hàng. Vui lòng thử lại sau.",
         variant: "destructive",
-      });
+      })
     } finally {
-      setIsProcessing(false);
-      setJustPlacedOrder(true);
+      setIsProcessing(false)
+      setJustPlacedOrder(true)
     }
-  };
+  }
 
   return (
     <CheckoutContext.Provider
@@ -323,7 +303,8 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
     >
       {children}
     </CheckoutContext.Provider>
-  );
+  )
 }
 
-export const useCheckout = () => useContext(CheckoutContext);
+export const useCheckout = () => useContext(CheckoutContext)
+
