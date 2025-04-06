@@ -28,7 +28,7 @@ export interface Order {
   order_date: string;
   delivery_notes?: string;
   payment_method_id?: number;
-  payment_status: "Pending" | "Paid" | "Failed" | "Refunded";
+  payment_status: PaymentStatus;
   order_status_id?: number;
   tracking_number?: string;
   discount_id?: number;
@@ -91,7 +91,7 @@ export interface Payment {
   payment_method_id?: number;
   transaction_id?: string;
   amount: number;
-  status: "Pending" | "Completed" | "Failed" | "Refunded";
+  status: PaymentStatus;
   payment_details?: any;
   created_at: string;
   updated_at: string;
@@ -118,3 +118,13 @@ export interface Discount {
   created_at: string;
   updated_at: string;
 }
+
+export type OrderStatus =
+  | "Pending"
+  | "Processing"
+  | "Shipped"
+  | "Delivered"
+  | "Cancelled"
+  | "Refunded";
+
+export type PaymentStatus = "Pending" | "Paid" | "Failed" | "Refunded";
