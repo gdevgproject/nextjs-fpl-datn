@@ -1,12 +1,18 @@
-"use client"
+"use client";
 
-import type React from "react"
-import type { WishlistContextType, WishlistFilter } from "../types"
+import type React from "react";
+import type { WishlistContextType, WishlistFilter } from "../types";
 
-import { createContext, useContext, useState, useEffect, useCallback } from "react"
-import { useAuth } from "@/lib/providers/auth-context"
-import { getSupabaseBrowserClient } from "@/lib/supabase/client"
-import { useToast } from "@/hooks/use-toast"
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
+import { useAuth } from "@/lib/providers/auth-context";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const WishlistContext = createContext<WishlistContextType>({
   wishlistItems: [],
@@ -14,62 +20,70 @@ const WishlistContext = createContext<WishlistContextType>({
   toggleWishlist: async () => {},
   addToWishlist: async () => {},
   removeFromWishlist: async () => {},
-})
+});
 
-export const useWishlistContext = () => useContext(WishlistContext)
+export const useWishlistContext = () => useContext(WishlistContext);
 
 export function WishlistProvider({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated } = useAuth()
-  const { toast } = useToast()
-  const [wishlistItems, setWishlistItems] = useState<number[]>([])
-  const [localWishlist, setLocalWishlist] = useState<number[]>([])
-  const [isInitialized, setIsInitialized] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [filter, setFilter] = useState<WishlistFilter>({})
+  const { user, isAuthenticated } = useAuth();
+  const { toast } = useToast();
+  const [wishlistItems, setWishlistItems] = useState<number[]>([]);
+  const [localWishlist, setLocalWishlist] = useState<number[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [filter, setFilter] = useState<WishlistFilter>({});
 
-  const supabase = getSupabaseBrowserClient()
+  const supabase = getSupabaseBrowserClient();
 
   // Load wishlist items from database when user is authenticated
   useEffect(() => {
     const fetchWishlistItems = async () => {
-      if (!isAuthenticated || !user) return
+      if (!isAuthenticated || !user) {
+        setIsLoading(false);
+        return;
+      }
 
       try {
-        const { data, error } = await supabase.from("wishlists").select("product_id").eq("user_id", user.id)
+        const { data, error } = await supabase
+          .from("wishlists")
+          .select("product_id")
+          .eq("user_id", user.id);
 
-        if (error) throw error
+        if (error) throw error;
 
-        setWishlistItems(data.map((item) => item.product_id))
+        setWishlistItems(data.map((item) => item.product_id));
       } catch (error) {
-        console.error("Error fetching wishlist items:", error)
+        console.error("Error fetching wishlist items:", error);
+      } finally {
+        setIsLoading(false);
       }
-    }
+    };
 
-    fetchWishlistItems()
-  }, [isAuthenticated, user, supabase])
+    fetchWishlistItems();
+  }, [isAuthenticated, user, supabase]);
 
   // Load local wishlist from localStorage when component mounts
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
-        const savedWishlist = localStorage.getItem("mybeauty_wishlist")
+        const savedWishlist = localStorage.getItem("mybeauty_wishlist");
         if (savedWishlist) {
-          setLocalWishlist(JSON.parse(savedWishlist))
+          setLocalWishlist(JSON.parse(savedWishlist));
         }
       } catch (error) {
-        console.error("Error parsing local wishlist:", error)
-        localStorage.removeItem("mybeauty_wishlist")
+        console.error("Error parsing local wishlist:", error);
+        localStorage.removeItem("mybeauty_wishlist");
       }
-      setIsInitialized(true)
+      setIsInitialized(true);
     }
-  }, [])
+  }, []);
 
   // Save local wishlist to localStorage when it changes
   useEffect(() => {
     if (isInitialized && !isAuthenticated && typeof window !== "undefined") {
-      localStorage.setItem("mybeauty_wishlist", JSON.stringify(localWishlist))
+      localStorage.setItem("mybeauty_wishlist", JSON.stringify(localWishlist));
     }
-  }, [localWishlist, isInitialized, isAuthenticated])
+  }, [localWishlist, isInitialized, isAuthenticated]);
 
   // Merge local wishlist with database when user logs in
   useEffect(() => {
@@ -86,45 +100,48 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
               {
                 onConflict: "user_id, product_id",
                 ignoreDuplicates: true,
-              },
-            )
+              }
+            );
           }
 
           // Clear local wishlist
-          setLocalWishlist([])
-          localStorage.removeItem("mybeauty_wishlist")
+          setLocalWishlist([]);
+          localStorage.removeItem("mybeauty_wishlist");
 
           // Refresh wishlist items
-          const { data, error } = await supabase.from("wishlists").select("product_id").eq("user_id", user.id)
+          const { data, error } = await supabase
+            .from("wishlists")
+            .select("product_id")
+            .eq("user_id", user.id);
 
-          if (error) throw error
+          if (error) throw error;
 
-          setWishlistItems(data.map((item) => item.product_id))
+          setWishlistItems(data.map((item) => item.product_id));
 
           toast({
             title: "Đồng bộ thành công",
             description: "Danh sách yêu thích của bạn đã được đồng bộ.",
-          })
+          });
         } catch (error) {
-          console.error("Error merging wishlists:", error)
+          console.error("Error merging wishlists:", error);
         }
       }
-    }
+    };
 
-    mergeWishlists()
-  }, [isAuthenticated, user, localWishlist, supabase, toast])
+    mergeWishlists();
+  }, [isAuthenticated, user, localWishlist, supabase, toast]);
 
   // Check if a product is in the wishlist
   const isInWishlist = useCallback(
     (productId: number) => {
       if (isAuthenticated) {
-        return wishlistItems.includes(productId)
+        return wishlistItems.includes(productId);
       } else {
-        return localWishlist.includes(productId)
+        return localWishlist.includes(productId);
       }
     },
-    [isAuthenticated, wishlistItems, localWishlist],
-  )
+    [isAuthenticated, wishlistItems, localWishlist]
+  );
 
   // Add a product to the wishlist
   const addToWishlist = useCallback(
@@ -134,78 +151,85 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
           const { error } = await supabase.from("wishlists").insert({
             user_id: user.id,
             product_id: productId,
-          })
+          });
 
-          if (error) throw error
+          if (error) throw error;
 
-          setWishlistItems((prev) => [...prev, productId])
+          setWishlistItems((prev) => [...prev, productId]);
 
           toast({
             title: "Đã thêm vào danh sách yêu thích",
-            description: "Sản phẩm đã được thêm vào danh sách yêu thích của bạn.",
-          })
+            description:
+              "Sản phẩm đã được thêm vào danh sách yêu thích của bạn.",
+          });
         } catch (error) {
-          console.error("Error adding to wishlist:", error)
-          throw error
+          console.error("Error adding to wishlist:", error);
+          throw error;
         }
       } else {
         // Add to local wishlist
         if (!localWishlist.includes(productId)) {
-          setLocalWishlist((prev) => [...prev, productId])
+          setLocalWishlist((prev) => [...prev, productId]);
 
           toast({
             title: "Đã thêm vào danh sách yêu thích",
-            description: "Sản phẩm đã được thêm vào danh sách yêu thích của bạn.",
-          })
+            description:
+              "Sản phẩm đã được thêm vào danh sách yêu thích của bạn.",
+          });
         }
       }
     },
-    [isAuthenticated, user, supabase, localWishlist, toast],
-  )
+    [isAuthenticated, user, supabase, localWishlist, toast]
+  );
 
   // Remove a product from the wishlist
   const removeFromWishlist = useCallback(
     async (productId: number) => {
       if (isAuthenticated && user) {
         try {
-          const { error } = await supabase.from("wishlists").delete().eq("user_id", user.id).eq("product_id", productId)
+          const { error } = await supabase
+            .from("wishlists")
+            .delete()
+            .eq("user_id", user.id)
+            .eq("product_id", productId);
 
-          if (error) throw error
+          if (error) throw error;
 
-          setWishlistItems((prev) => prev.filter((id) => id !== productId))
+          setWishlistItems((prev) => prev.filter((id) => id !== productId));
 
           toast({
             title: "Đã xóa khỏi danh sách yêu thích",
-            description: "Sản phẩm đã được xóa khỏi danh sách yêu thích của bạn.",
-          })
+            description:
+              "Sản phẩm đã được xóa khỏi danh sách yêu thích của bạn.",
+          });
         } catch (error) {
-          console.error("Error removing from wishlist:", error)
-          throw error
+          console.error("Error removing from wishlist:", error);
+          throw error;
         }
       } else {
         // Remove from local wishlist
-        setLocalWishlist((prev) => prev.filter((id) => id !== productId))
+        setLocalWishlist((prev) => prev.filter((id) => id !== productId));
 
         toast({
           title: "Đã xóa khỏi danh sách yêu thích",
           description: "Sản phẩm đã được xóa khỏi danh sách yêu thích của bạn.",
-        })
+        });
       }
     },
-    [isAuthenticated, user, supabase, toast],
-  )
+    [isAuthenticated, user, supabase, toast]
+  );
 
   // Toggle a product in the wishlist
   const toggleWishlist = useCallback(
     async (productId: number) => {
       if (isInWishlist(productId)) {
-        await removeFromWishlist(productId)
+        await removeFromWishlist(productId);
       } else {
-        await addToWishlist(productId)
+        await addToWishlist(productId);
       }
     },
-    [isInWishlist, addToWishlist, removeFromWishlist],
-  )
+    [isInWishlist, addToWishlist, removeFromWishlist]
+  );
 
   const value: WishlistContextType = {
     wishlistItems: isAuthenticated ? wishlistItems : localWishlist,
@@ -216,8 +240,11 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
     isLoading,
     filter,
     setFilter,
-  }
+  };
 
-  return <WishlistContext.Provider value={value}>{children}</WishlistContext.Provider>
+  return (
+    <WishlistContext.Provider value={value}>
+      {children}
+    </WishlistContext.Provider>
+  );
 }
-

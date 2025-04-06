@@ -1,31 +1,60 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import {
-  CreditCard,
-  Heart,
-  LogOut,
-  Package,
-  Settings,
-  User,
-} from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { CreditCard, Heart, LogOut, Package, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/providers/auth-context";
 import { logout } from "@/features/auth/actions";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const accountNavItems = [
   { title: "Thông tin tài khoản", href: "/tai-khoan", icon: User },
   { title: "Đơn hàng của tôi", href: "/tai-khoan/don-hang", icon: Package },
   { title: "Sản phẩm yêu thích", href: "/tai-khoan/yeu-thich", icon: Heart },
   { title: "Địa chỉ giao hàng", href: "/tai-khoan/dia-chi", icon: CreditCard },
-  { title: "Cài đặt tài khoản", href: "/tai-khoan/cai-dat", icon: Settings },
 ];
 
 export function AccountSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { profile, profileImageUrl } = useAuth();
+  const { toast } = useToast();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Handle logout action
+  async function handleLogout() {
+    try {
+      setIsLoggingOut(true);
+      const result = await logout();
+
+      if (result.success) {
+        // Clear any client-side auth state if needed
+        // Redirect to home page
+        if (result.redirect) {
+          router.push(result.redirect);
+        } else {
+          router.push("/");
+        }
+      } else {
+        toast({
+          title: "Lỗi đăng xuất",
+          description: "Có lỗi xảy ra khi đăng xuất. Vui lòng thử lại.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast({
+        title: "Lỗi đăng xuất",
+        description: "Có lỗi xảy ra khi đăng xuất. Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }
 
   // Memoize the navigation items to prevent unnecessary re-renders
   const navigationItems = useMemo(() => {
@@ -71,16 +100,16 @@ export function AccountSidebar() {
         </div>
         <nav className="flex flex-col gap-2">
           {navigationItems}
-          <form action={logout}>
-            <Button
-              variant="ghost"
-              className="w-full justify-start px-3"
-              type="submit"
-            >
-              <LogOut className="mr-3 h-4 w-4" />
-              Đăng xuất
-            </Button>
-          </form>
+          <Button
+            variant="ghost"
+            className="w-full justify-start px-3"
+            type="button"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+          >
+            <LogOut className="mr-3 h-4 w-4" />
+            Đăng xuất
+          </Button>
         </nav>
       </div>
     </div>
