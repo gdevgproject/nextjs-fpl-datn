@@ -30,17 +30,17 @@ import {
   BulkLabelActionParams,
   ProductLookups,
 } from "./types";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 // Query key factory
 const productKeys = {
   all: ["products"] as const,
   lists: () => [...productKeys.all, "list"] as const,
-  list: (params: ProductListParams) => [...productKeys.lists(), params] as const,
+  list: (params: ProductListParams) =>
+    [...productKeys.lists(), params] as const,
   details: () => [...productKeys.all, "detail"] as const,
   detail: (id: number) => [...productKeys.details(), id] as const,
   lookups: ["productLookups"] as const,
-  inventoryHistory: (variantId: number) => 
+  inventoryHistory: (variantId: number) =>
     [...productKeys.all, "inventory", variantId] as const,
 };
 
@@ -73,16 +73,16 @@ export function useInventoryHistory(variantId: number) {
 // Create a new product
 export function useCreateProduct() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (data: ProductFormData) => createProduct(data),
     onSuccess: (result) => {
       toast.success(result.message);
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
-      
+
       if (result.productId) {
-        queryClient.invalidateQueries({ 
-          queryKey: productKeys.detail(result.productId)
+        queryClient.invalidateQueries({
+          queryKey: productKeys.detail(result.productId),
         });
       }
     },
@@ -95,14 +95,14 @@ export function useCreateProduct() {
 // Update an existing product
 export function useUpdateProduct() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ id, data }: { id: number, data: ProductFormData }) => 
+    mutationFn: ({ id, data }: { id: number; data: ProductFormData }) =>
       updateProduct(id, data),
     onSuccess: (result, variables) => {
       toast.success(result.message);
-      queryClient.invalidateQueries({ 
-        queryKey: productKeys.detail(variables.id)
+      queryClient.invalidateQueries({
+        queryKey: productKeys.detail(variables.id),
       });
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
     },
@@ -115,13 +115,13 @@ export function useUpdateProduct() {
 // Soft delete a product
 export function useSoftDeleteProduct() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (productId: number) => softDeleteProduct(productId),
     onSuccess: (_, productId) => {
       toast.success("Sản phẩm đã được xóa thành công");
-      queryClient.invalidateQueries({ 
-        queryKey: productKeys.detail(productId)
+      queryClient.invalidateQueries({
+        queryKey: productKeys.detail(productId),
       });
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
     },
@@ -134,13 +134,13 @@ export function useSoftDeleteProduct() {
 // Restore a product
 export function useRestoreProduct() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (productId: number) => restoreProduct(productId),
     onSuccess: (_, productId) => {
       toast.success("Sản phẩm đã được khôi phục thành công");
-      queryClient.invalidateQueries({ 
-        queryKey: productKeys.detail(productId)
+      queryClient.invalidateQueries({
+        queryKey: productKeys.detail(productId),
       });
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
     },
@@ -153,14 +153,14 @@ export function useRestoreProduct() {
 // Upload product images
 export function useUploadProductImages() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ productId, files }: { productId: number, files: File[] }) => 
+    mutationFn: ({ productId, files }: { productId: number; files: File[] }) =>
       uploadProductImages(productId, files),
     onSuccess: (result, variables) => {
       toast.success(result.message);
-      queryClient.invalidateQueries({ 
-        queryKey: productKeys.detail(variables.productId)
+      queryClient.invalidateQueries({
+        queryKey: productKeys.detail(variables.productId),
       });
     },
     onError: (error: Error) => {
@@ -172,7 +172,7 @@ export function useUploadProductImages() {
 // Delete product image
 export function useDeleteProductImage() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (imageId: number) => deleteProductImage(imageId),
     onSuccess: () => {
@@ -189,14 +189,14 @@ export function useDeleteProductImage() {
 // Update product image
 export function useUpdateProductImage() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ 
-      imageId, 
-      updates 
-    }: { 
-      imageId: number, 
-      updates: { is_main?: boolean; alt_text?: string; display_order?: number } 
+    mutationFn: ({
+      imageId,
+      updates,
+    }: {
+      imageId: number;
+      updates: { is_main?: boolean; alt_text?: string; display_order?: number };
     }) => updateProductImage(imageId, updates),
     onSuccess: () => {
       toast.success("Ảnh đã được cập nhật thành công");
@@ -212,14 +212,14 @@ export function useUpdateProductImage() {
 // Adjust inventory
 export function useAdjustInventory() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (data: StockAdjustmentParams) => adjustInventory(data),
     onSuccess: (_, variables) => {
       toast.success("Tồn kho đã được điều chỉnh thành công");
       // Invalidate the variant's inventory history
-      queryClient.invalidateQueries({ 
-        queryKey: productKeys.inventoryHistory(variables.variant_id)
+      queryClient.invalidateQueries({
+        queryKey: productKeys.inventoryHistory(variables.variant_id),
       });
       // Invalidate all product queries to update stock display
       queryClient.invalidateQueries({ queryKey: productKeys.all });
@@ -233,7 +233,7 @@ export function useAdjustInventory() {
 // Bulk delete products
 export function useBulkSoftDeleteProducts() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (params: BulkActionParams) => bulkSoftDeleteProducts(params),
     onSuccess: (result) => {
@@ -249,7 +249,7 @@ export function useBulkSoftDeleteProducts() {
 // Bulk restore products
 export function useBulkRestoreProducts() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (params: BulkActionParams) => bulkRestoreProducts(params),
     onSuccess: (result) => {
@@ -265,9 +265,10 @@ export function useBulkRestoreProducts() {
 // Bulk assign category to products
 export function useBulkAssignCategoryToProducts() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (params: BulkCategoryActionParams) => bulkAssignCategoryToProducts(params),
+    mutationFn: (params: BulkCategoryActionParams) =>
+      bulkAssignCategoryToProducts(params),
     onSuccess: (result) => {
       toast.success(result.message);
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
@@ -285,9 +286,10 @@ export function useBulkAssignCategoryToProducts() {
 // Bulk remove category from products
 export function useBulkRemoveCategoryFromProducts() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (params: BulkCategoryActionParams) => bulkRemoveCategoryFromProducts(params),
+    mutationFn: (params: BulkCategoryActionParams) =>
+      bulkRemoveCategoryFromProducts(params),
     onSuccess: (result) => {
       toast.success(result.message);
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
@@ -305,9 +307,10 @@ export function useBulkRemoveCategoryFromProducts() {
 // Bulk assign label to products
 export function useBulkAssignLabelToProducts() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (params: BulkLabelActionParams) => bulkAssignLabelToProducts(params),
+    mutationFn: (params: BulkLabelActionParams) =>
+      bulkAssignLabelToProducts(params),
     onSuccess: (result) => {
       toast.success(result.message);
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
@@ -325,9 +328,10 @@ export function useBulkAssignLabelToProducts() {
 // Bulk remove label from products
 export function useBulkRemoveLabelFromProducts() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (params: BulkLabelActionParams) => bulkRemoveLabelFromProducts(params),
+    mutationFn: (params: BulkLabelActionParams) =>
+      bulkRemoveLabelFromProducts(params),
     onSuccess: (result) => {
       toast.success(result.message);
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
@@ -347,50 +351,14 @@ export function useProductLookups() {
   return useQuery({
     queryKey: productKeys.lookups,
     queryFn: async (): Promise<ProductLookups> => {
-      const supabase = await getSupabaseServerClient();
-      
-      // Fetch all lookup data in parallel
-      const [
-        brandsResponse,
-        categoriesResponse,
-        gendersResponse,
-        perfumeTypesResponse,
-        concentrationsResponse,
-        productLabelsResponse,
-        scentsResponse,
-        ingredientsResponse,
-      ] = await Promise.all([
-        supabase.from("brands").select("*").order("name"),
-        supabase.from("categories").select("*").order("name"),
-        supabase.from("genders").select("*").order("id"),
-        supabase.from("perfume_types").select("*").order("name"),
-        supabase.from("concentrations").select("*").order("name"),
-        supabase.from("product_labels").select("*").order("name"),
-        supabase.from("scents").select("*").order("name"),
-        supabase.from("ingredients").select("*").order("name"),
-      ]);
-      
-      // Handle errors
-      if (brandsResponse.error) throw new Error(brandsResponse.error.message);
-      if (categoriesResponse.error) throw new Error(categoriesResponse.error.message);
-      if (gendersResponse.error) throw new Error(gendersResponse.error.message);
-      if (perfumeTypesResponse.error) throw new Error(perfumeTypesResponse.error.message);
-      if (concentrationsResponse.error) throw new Error(concentrationsResponse.error.message);
-      if (productLabelsResponse.error) throw new Error(productLabelsResponse.error.message);
-      if (scentsResponse.error) throw new Error(scentsResponse.error.message);
-      if (ingredientsResponse.error) throw new Error(ingredientsResponse.error.message);
-      
-      // Return combined data
-      return {
-        brands: brandsResponse.data || [],
-        categories: categoriesResponse.data || [],
-        genders: gendersResponse.data || [],
-        perfumeTypes: perfumeTypesResponse.data || [],
-        concentrations: concentrationsResponse.data || [],
-        productLabels: productLabelsResponse.data || [],
-        scents: scentsResponse.data || [],
-        ingredients: ingredientsResponse.data || [],
-      };
+      const response = await fetch("/api/admin/product-lookups");
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to fetch product lookups");
+      }
+
+      return response.json();
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
