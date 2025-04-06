@@ -1,45 +1,51 @@
-"use server"
+"use server";
 
-import { revalidatePath } from "next/cache"
-import { getSupabaseServerClient } from "@/lib/supabase/server"
-import { createErrorResponse, createSuccessResponse } from "@/lib/utils/error-utils"
-import type { CartItem, GuestCheckoutInfo } from "../types"
-import type { Address } from "@/features/account/types"
+import { revalidatePath } from "next/cache";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  createErrorResponse,
+  createSuccessResponse,
+} from "@/lib/utils/error-utils";
+import type { CartItem, GuestCheckoutInfo } from "../types";
+import type { Address } from "@/features/account/types";
 
 /**
  * Add a product to the cart
  */
 export async function addToCart(variantId: number, quantity: number) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient();
 
   try {
     // Ensure user is authenticated
     const {
       data: { session },
-    } = await supabase.auth.getSession()
+    } = await supabase.auth.getSession();
 
     if (!session) {
-      return createErrorResponse("You must be logged in to add items to cart", "unauthorized")
+      return createErrorResponse(
+        "You must be logged in to add items to cart",
+        "unauthorized"
+      );
     }
 
-    const userId = session.user.id
+    const userId = session.user.id;
 
     // Check if the product variant exists and has enough stock
     const { data: variant, error: variantError } = await supabase
       .from("product_variants")
       .select("id, stock_quantity, price, sale_price")
       .eq("id", variantId)
-      .single()
+      .single();
 
     if (variantError || !variant) {
-      return createErrorResponse("Product variant not found", "not_found")
+      return createErrorResponse("Product variant not found", "not_found");
     }
 
     if (variant.stock_quantity < quantity) {
       return createErrorResponse(
         `Insufficient stock. Only ${variant.stock_quantity} item(s) available.`,
-        "insufficient_stock",
-      )
+        "insufficient_stock"
+      );
     }
 
     // Get or create user's cart
@@ -47,9 +53,9 @@ export async function addToCart(variantId: number, quantity: number) {
       .from("shopping_carts")
       .select("id")
       .eq("user_id", userId)
-      .single()
+      .single();
 
-    let cartId: number
+    let cartId: number;
 
     if (cartError) {
       if (cartError.code === "PGRST116") {
@@ -58,18 +64,18 @@ export async function addToCart(variantId: number, quantity: number) {
           .from("shopping_carts")
           .insert({ user_id: userId })
           .select("id")
-          .single()
+          .single();
 
         if (createError) {
-          return createErrorResponse(createError.message)
+          return createErrorResponse(createError.message);
         }
 
-        cartId = newCart.id
+        cartId = newCart.id;
       } else {
-        return createErrorResponse(cartError.message)
+        return createErrorResponse(cartError.message);
       }
     } else {
-      cartId = cart.id
+      cartId = cart.id;
     }
 
     // Check if item already exists in cart
@@ -78,10 +84,10 @@ export async function addToCart(variantId: number, quantity: number) {
       .select("id, quantity")
       .eq("cart_id", cartId)
       .eq("variant_id", variantId)
-      .maybeSingle()
+      .maybeSingle();
 
     if (checkError && checkError.code !== "PGRST116") {
-      return createErrorResponse(checkError.message)
+      return createErrorResponse(checkError.message);
     }
 
     if (existingItem) {
@@ -89,10 +95,10 @@ export async function addToCart(variantId: number, quantity: number) {
       const { error: updateError } = await supabase
         .from("cart_items")
         .update({ quantity: existingItem.quantity + quantity })
-        .eq("id", existingItem.id)
+        .eq("id", existingItem.id);
 
       if (updateError) {
-        return createErrorResponse(updateError.message)
+        return createErrorResponse(updateError.message);
       }
     } else {
       // Add new item to cart
@@ -100,21 +106,21 @@ export async function addToCart(variantId: number, quantity: number) {
         cart_id: cartId,
         variant_id: variantId,
         quantity,
-      })
+      });
 
       if (insertError) {
-        return createErrorResponse(insertError.message)
+        return createErrorResponse(insertError.message);
       }
     }
 
-    revalidatePath("/gio-hang")
-    revalidatePath("/api/cart")
+    revalidatePath("/gio-hang");
+    revalidatePath("/api/cart");
 
     return createSuccessResponse({
       message: "Product added to cart successfully",
-    })
+    });
   } catch (error) {
-    return createErrorResponse(error)
+    return createErrorResponse(error);
   }
 }
 
@@ -122,16 +128,19 @@ export async function addToCart(variantId: number, quantity: number) {
  * Update the quantity of a cart item
  */
 export async function updateCartItemQuantity(itemId: string, quantity: number) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient();
 
   try {
     // Ensure user is authenticated
     const {
       data: { session },
-    } = await supabase.auth.getSession()
+    } = await supabase.auth.getSession();
 
     if (!session) {
-      return createErrorResponse("You must be logged in to update cart items", "unauthorized")
+      return createErrorResponse(
+        "You must be logged in to update cart items",
+        "unauthorized"
+      );
     }
 
     // Get user's cart
@@ -139,10 +148,10 @@ export async function updateCartItemQuantity(itemId: string, quantity: number) {
       .from("shopping_carts")
       .select("id")
       .eq("user_id", session.user.id)
-      .single()
+      .single();
 
     if (cartError) {
-      return createErrorResponse("Cart not found", "not_found")
+      return createErrorResponse("Cart not found", "not_found");
     }
 
     // Check if item exists and belongs to user's cart
@@ -151,10 +160,10 @@ export async function updateCartItemQuantity(itemId: string, quantity: number) {
       .select("id, variant_id")
       .eq("id", itemId)
       .eq("cart_id", cart.id)
-      .single()
+      .single();
 
     if (itemError) {
-      return createErrorResponse("Cart item not found", "not_found")
+      return createErrorResponse("Cart item not found", "not_found");
     }
 
     // Check variant's stock
@@ -162,43 +171,50 @@ export async function updateCartItemQuantity(itemId: string, quantity: number) {
       .from("product_variants")
       .select("stock_quantity")
       .eq("id", item.variant_id)
-      .single()
+      .single();
 
     if (variantError || !variant) {
-      return createErrorResponse("Product variant not found", "not_found")
+      return createErrorResponse("Product variant not found", "not_found");
     }
 
     if (variant.stock_quantity < quantity) {
       return createErrorResponse(
         `Insufficient stock. Only ${variant.stock_quantity} item(s) available.`,
-        "insufficient_stock",
-      )
+        "insufficient_stock"
+      );
     }
 
     // If quantity is 0 or less, remove the item
     if (quantity <= 0) {
-      const { error: deleteError } = await supabase.from("cart_items").delete().eq("id", itemId)
+      const { error: deleteError } = await supabase
+        .from("cart_items")
+        .delete()
+        .eq("id", itemId);
 
       if (deleteError) {
-        return createErrorResponse(deleteError.message)
+        return createErrorResponse(deleteError.message);
       }
     } else {
       // Update quantity
-      const { error: updateError } = await supabase.from("cart_items").update({ quantity }).eq("id", itemId)
+      const { error: updateError } = await supabase
+        .from("cart_items")
+        .update({ quantity })
+        .eq("id", itemId);
 
       if (updateError) {
-        return createErrorResponse(updateError.message)
+        return createErrorResponse(updateError.message);
       }
     }
 
-    revalidatePath("/gio-hang")
-    revalidatePath("/api/cart")
+    revalidatePath("/gio-hang");
+    revalidatePath("/api/cart");
 
     return createSuccessResponse({
-      message: quantity <= 0 ? "Item removed from cart" : "Cart updated successfully",
-    })
+      message:
+        quantity <= 0 ? "Item removed from cart" : "Cart updated successfully",
+    });
   } catch (error) {
-    return createErrorResponse(error)
+    return createErrorResponse(error);
   }
 }
 
@@ -206,16 +222,19 @@ export async function updateCartItemQuantity(itemId: string, quantity: number) {
  * Remove an item from the cart
  */
 export async function removeCartItem(itemId: string) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient();
 
   try {
     // Ensure user is authenticated
     const {
       data: { session },
-    } = await supabase.auth.getSession()
+    } = await supabase.auth.getSession();
 
     if (!session) {
-      return createErrorResponse("You must be logged in to remove cart items", "unauthorized")
+      return createErrorResponse(
+        "You must be logged in to remove cart items",
+        "unauthorized"
+      );
     }
 
     // Get user's cart
@@ -223,10 +242,10 @@ export async function removeCartItem(itemId: string) {
       .from("shopping_carts")
       .select("id")
       .eq("user_id", session.user.id)
-      .single()
+      .single();
 
     if (cartError) {
-      return createErrorResponse("Cart not found", "not_found")
+      return createErrorResponse("Cart not found", "not_found");
     }
 
     // Check if item exists and belongs to user's cart
@@ -235,27 +254,30 @@ export async function removeCartItem(itemId: string) {
       .select("id")
       .eq("id", itemId)
       .eq("cart_id", cart.id)
-      .single()
+      .single();
 
     if (itemError) {
-      return createErrorResponse("Cart item not found", "not_found")
+      return createErrorResponse("Cart item not found", "not_found");
     }
 
     // Delete the item
-    const { error: deleteError } = await supabase.from("cart_items").delete().eq("id", itemId)
+    const { error: deleteError } = await supabase
+      .from("cart_items")
+      .delete()
+      .eq("id", itemId);
 
     if (deleteError) {
-      return createErrorResponse(deleteError.message)
+      return createErrorResponse(deleteError.message);
     }
 
-    revalidatePath("/gio-hang")
-    revalidatePath("/api/cart")
+    revalidatePath("/gio-hang");
+    revalidatePath("/api/cart");
 
     return createSuccessResponse({
       message: "Item removed from cart successfully",
-    })
+    });
   } catch (error) {
-    return createErrorResponse(error)
+    return createErrorResponse(error);
   }
 }
 
@@ -263,16 +285,19 @@ export async function removeCartItem(itemId: string) {
  * Clear all items from the cart
  */
 export async function clearCart() {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient();
 
   try {
     // Ensure user is authenticated
     const {
       data: { session },
-    } = await supabase.auth.getSession()
+    } = await supabase.auth.getSession();
 
     if (!session) {
-      return createErrorResponse("You must be logged in to clear your cart", "unauthorized")
+      return createErrorResponse(
+        "You must be logged in to clear your cart",
+        "unauthorized"
+      );
     }
 
     // Get user's cart
@@ -280,33 +305,36 @@ export async function clearCart() {
       .from("shopping_carts")
       .select("id")
       .eq("user_id", session.user.id)
-      .single()
+      .single();
 
     if (cartError) {
       if (cartError.code === "PGRST116") {
         // Cart not found, nothing to clear
         return createSuccessResponse({
           message: "Cart is already empty",
-        })
+        });
       }
-      return createErrorResponse(cartError.message)
+      return createErrorResponse(cartError.message);
     }
 
     // Delete all items in the cart
-    const { error: deleteError } = await supabase.from("cart_items").delete().eq("cart_id", cart.id)
+    const { error: deleteError } = await supabase
+      .from("cart_items")
+      .delete()
+      .eq("cart_id", cart.id);
 
     if (deleteError) {
-      return createErrorResponse(deleteError.message)
+      return createErrorResponse(deleteError.message);
     }
 
-    revalidatePath("/gio-hang")
-    revalidatePath("/api/cart")
+    revalidatePath("/gio-hang");
+    revalidatePath("/api/cart");
 
     return createSuccessResponse({
       message: "Cart cleared successfully",
-    })
+    });
   } catch (error) {
-    return createErrorResponse(error)
+    return createErrorResponse(error);
   }
 }
 
@@ -314,7 +342,7 @@ export async function clearCart() {
  * Apply a discount code to the cart
  */
 export async function applyDiscountCode(code: string, subtotal: number) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient();
 
   try {
     // Find the discount code
@@ -323,61 +351,73 @@ export async function applyDiscountCode(code: string, subtotal: number) {
       .select("*")
       .eq("code", code)
       .eq("is_active", true)
-      .maybeSingle()
+      .maybeSingle();
 
     if (error) {
-      throw error
+      throw error;
     }
 
     if (!discount) {
-      return createErrorResponse("Mã giảm giá không tồn tại hoặc đã hết hạn")
+      return createErrorResponse("Mã giảm giá không tồn tại hoặc đã hết hạn");
     }
 
     // Check if discount is still valid (dates)
-    const now = new Date()
+    const now = new Date();
     if (discount.start_date && new Date(discount.start_date) > now) {
       return createErrorResponse(
-        `Mã giảm giá chưa có hiệu lực. Có hiệu lực từ: ${new Date(discount.start_date).toLocaleDateString("vi-VN")}`,
-      )
+        `Mã giảm giá chưa có hiệu lực. Có hiệu lực từ: ${new Date(
+          discount.start_date
+        ).toLocaleDateString("vi-VN")}`
+      );
     }
 
     if (discount.end_date && new Date(discount.end_date) < now) {
-      return createErrorResponse("Mã giảm giá đã hết hạn")
+      return createErrorResponse("Mã giảm giá đã hết hạn");
     }
 
     // Check if discount has remaining uses
-    if (discount.max_uses !== null && discount.remaining_uses !== null && discount.remaining_uses <= 0) {
-      return createErrorResponse("Mã giảm giá đã hết lượt sử dụng")
+    if (
+      discount.max_uses !== null &&
+      discount.remaining_uses !== null &&
+      discount.remaining_uses <= 0
+    ) {
+      return createErrorResponse("Mã giảm giá đã hết lượt sử dụng");
     }
 
     // Check if cart meets minimum order value
     if (discount.min_order_value && subtotal < discount.min_order_value) {
       return createErrorResponse(
-        `Giá trị đơn hàng tối thiểu để áp dụng mã là ${new Intl.NumberFormat("vi-VN", {
-          style: "currency",
-          currency: "VND",
-        }).format(discount.min_order_value)}`,
-      )
+        `Giá trị đơn hàng tối thiểu để áp dụng mã là ${new Intl.NumberFormat(
+          "vi-VN",
+          {
+            style: "currency",
+            currency: "VND",
+          }
+        ).format(discount.min_order_value)}`
+      );
     }
 
     // Calculate discount amount
-    let discountAmount = 0
+    let discountAmount = 0;
     if (discount.discount_percentage) {
-      discountAmount = (subtotal * discount.discount_percentage) / 100
+      discountAmount = (subtotal * discount.discount_percentage) / 100;
 
       // Cap discount amount if max_discount_amount is set
-      if (discount.max_discount_amount && discountAmount > discount.max_discount_amount) {
-        discountAmount = discount.max_discount_amount
+      if (
+        discount.max_discount_amount &&
+        discountAmount > discount.max_discount_amount
+      ) {
+        discountAmount = discount.max_discount_amount;
       }
     }
 
     return createSuccessResponse({
       discount,
       discountAmount,
-    })
+    });
   } catch (error) {
-    console.error("Error applying discount code:", error)
-    return createErrorResponse("Đã xảy ra lỗi khi áp dụng mã giảm giá")
+    console.error("Error applying discount code:", error);
+    return createErrorResponse("Đã xảy ra lỗi khi áp dụng mã giảm giá");
   }
 }
 
@@ -386,14 +426,14 @@ export async function applyDiscountCode(code: string, subtotal: number) {
  */
 export async function removeDiscountCode() {
   try {
-    revalidatePath("/gio-hang")
-    revalidatePath("/api/cart")
+    revalidatePath("/gio-hang");
+    revalidatePath("/api/cart");
 
     return createSuccessResponse({
       message: "Discount code removed successfully",
-    })
+    });
   } catch (error) {
-    return createErrorResponse("Đã xảy ra lỗi khi xóa mã giảm giá")
+    return createErrorResponse("Đã xảy ra lỗi khi xóa mã giảm giá");
   }
 }
 
@@ -412,25 +452,25 @@ export async function placeOrder({
   total,
   guestInfo,
 }: {
-  shippingAddress: Address
-  paymentMethodId: number
-  deliveryNotes?: string
-  discountId?: number
-  cartItems: CartItem[]
-  subtotal: number
-  discountAmount: number
-  shippingFee: number
-  total: number
-  guestInfo?: GuestCheckoutInfo | null
+  shippingAddress: Address;
+  paymentMethodId: number;
+  deliveryNotes?: string;
+  discountId?: number;
+  cartItems: CartItem[];
+  subtotal: number;
+  discountAmount: number;
+  shippingFee: number;
+  total: number;
+  guestInfo?: GuestCheckoutInfo | null;
 }) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient();
 
   try {
     // Get user session
     const {
       data: { session },
-    } = await supabase.auth.getSession()
-    const userId = session?.user?.id
+    } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
 
     // Start transaction
     const { data: newOrder, error: orderError } = await supabase
@@ -458,14 +498,14 @@ export async function placeOrder({
         total_amount: total,
       })
       .select("id")
-      .single()
+      .single();
 
     if (orderError) {
-      throw orderError
+      throw orderError;
     }
 
     // Get order ID
-    const orderId = newOrder.id
+    const orderId = newOrder.id;
 
     // Insert order items
     for (const item of cartItems) {
@@ -479,17 +519,17 @@ export async function placeOrder({
           price,
           sale_price,
           products(id, name)
-        `,
+        `
         )
         .eq("id", item.variant_id)
-        .single()
+        .single();
 
       if (variantError) {
-        throw variantError
+        throw variantError;
       }
 
       // Calculate unit price (use sale_price if available)
-      const unitPrice = variant.sale_price || variant.price
+      const unitPrice = variant.sale_price || variant.price;
 
       // Insert order item
       const { error: itemError } = await supabase.from("order_items").insert({
@@ -499,10 +539,10 @@ export async function placeOrder({
         variant_volume_ml: variant.volume_ml,
         quantity: item.quantity,
         unit_price_at_order: unitPrice,
-      })
+      });
 
       if (itemError) {
-        throw itemError
+        throw itemError;
       }
     }
 
@@ -512,10 +552,10 @@ export async function placeOrder({
         .from("shopping_carts")
         .select("id")
         .eq("user_id", userId)
-        .single()
+        .single();
 
       if (!cartError && cart) {
-        await supabase.from("cart_items").delete().eq("cart_id", cart.id)
+        await supabase.from("cart_items").delete().eq("cart_id", cart.id);
       }
     }
 
@@ -526,26 +566,28 @@ export async function placeOrder({
       payment_method_id: paymentMethodId,
       amount: total,
       status: "Pending",
-    })
+    });
 
     if (paymentError) {
-      throw paymentError
+      throw paymentError;
     }
 
     // Revalidate relevant pages
-    revalidatePath("/gio-hang")
-    revalidatePath("/thanh-toan")
-    revalidatePath(`/xac-nhan-don-hang?id=${orderId}`)
-    revalidatePath("/tai-khoan/don-hang")
-    revalidatePath("/api/cart")
+    revalidatePath("/gio-hang");
+    revalidatePath("/thanh-toan");
+    revalidatePath(`/xac-nhan-don-hang?id=${orderId}`);
+    revalidatePath("/tai-khoan/don-hang");
+    revalidatePath("/api/cart");
 
     return createSuccessResponse({
       orderId,
       orderNumber: `#${orderId.toString().padStart(6, "0")}`,
-    })
+    });
   } catch (error) {
-    console.error("Error placing order:", error)
-    return createErrorResponse("Đã xảy ra lỗi khi đặt hàng. Vui lòng thử lại sau.")
+    console.error("Error placing order:", error);
+    return createErrorResponse(
+      "Đã xảy ra lỗi khi đặt hàng. Vui lòng thử lại sau."
+    );
   }
 }
 
@@ -555,10 +597,10 @@ export async function placeOrder({
  * without actually applying it to the database yet
  */
 export async function validateDiscountCode(code: string, subtotal = 0) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient();
 
   if (!code.trim()) {
-    return { success: false, error: "Vui lòng nhập mã giảm giá" }
+    return { success: false, error: "Vui lòng nhập mã giảm giá" };
   }
 
   // Get discount details
@@ -567,47 +609,57 @@ export async function validateDiscountCode(code: string, subtotal = 0) {
     .select("*")
     .eq("code", code.trim().toUpperCase())
     .eq("is_active", true)
-    .single()
+    .single();
 
   if (error || !discount) {
-    return { success: false, error: "Mã giảm giá không hợp lệ" }
+    return { success: false, error: "Mã giảm giá không hợp lệ" };
   }
 
   // Check if discount is valid
-  const now = new Date().toISOString()
+  const now = new Date().toISOString();
 
   // Check start date
   if (discount.start_date && new Date(discount.start_date) > new Date(now)) {
-    return { success: false, error: "Mã giảm giá chưa có hiệu lực" }
+    return { success: false, error: "Mã giảm giá chưa có hiệu lực" };
   }
 
   // Check end date
   if (discount.end_date && new Date(discount.end_date) < new Date(now)) {
-    return { success: false, error: "Mã giảm giá đã hết hạn" }
+    return { success: false, error: "Mã giảm giá đã hết hạn" };
   }
 
   // Check remaining uses
-  if (discount.max_uses && discount.remaining_uses !== null && discount.remaining_uses <= 0) {
-    return { success: false, error: "Mã giảm giá đã hết lượt sử dụng" }
+  if (
+    discount.max_uses &&
+    discount.remaining_uses !== null &&
+    discount.remaining_uses <= 0
+  ) {
+    return { success: false, error: "Mã giảm giá đã hết lượt sử dụng" };
   }
 
   // Check min order value
   if (discount.min_order_value && subtotal < discount.min_order_value) {
     return {
       success: false,
-      error: `Giá trị đơn hàng tối thiểu để sử dụng mã là ${new Intl.NumberFormat("vi-VN", {
-        style: "currency",
-        currency: "VND",
-      }).format(discount.min_order_value)}`,
-    }
+      error: `Giá trị đơn hàng tối thiểu để sử dụng mã là ${new Intl.NumberFormat(
+        "vi-VN",
+        {
+          style: "currency",
+          currency: "VND",
+        }
+      ).format(discount.min_order_value)}`,
+    };
   }
 
   // Calculate discount amount
-  let discountAmount = (discount.discount_percentage / 100) * subtotal
+  let discountAmount = (discount.discount_percentage / 100) * subtotal;
 
   // Apply max discount amount if specified
-  if (discount.max_discount_amount && discountAmount > discount.max_discount_amount) {
-    discountAmount = discount.max_discount_amount
+  if (
+    discount.max_discount_amount &&
+    discountAmount > discount.max_discount_amount
+  ) {
+    discountAmount = discount.max_discount_amount;
   }
 
   return {
@@ -616,20 +668,21 @@ export async function validateDiscountCode(code: string, subtotal = 0) {
       discount: discount,
       discountAmount: discountAmount,
     },
-  }
+  };
 }
 
 /**
  * Get product variant details
  */
 export async function getProductVariantDetails(variantId: number) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient();
 
   try {
     // Get variant details with product info
     const { data, error } = await supabase
       .from("product_variants")
-      .select(`
+      .select(
+        `
         id,
         product_id,
         price,
@@ -646,16 +699,17 @@ export async function getProductVariantDetails(variantId: number) {
             is_main
           )
         )
-      `)
+      `
+      )
       .eq("id", variantId)
-      .single()
+      .single();
 
     if (error) {
-      return createErrorResponse(error.message)
+      return createErrorResponse(error.message);
     }
 
     if (!data) {
-      return createErrorResponse("Product variant not found")
+      return createErrorResponse("Product variant not found");
     }
 
     // Transform data to match product structure in CartItem
@@ -667,11 +721,10 @@ export async function getProductVariantDetails(variantId: number) {
       sale_price: data.sale_price,
       volume_ml: data.volume_ml,
       images: data.products.images,
-    }
+    };
 
-    return createSuccessResponse(productData)
+    return createSuccessResponse(productData);
   } catch (error) {
-    return createErrorResponse(error)
+    return createErrorResponse(error);
   }
 }
-

@@ -46,7 +46,7 @@ export async function securedPlaceOrder({
   guestInfo?: GuestCheckoutInfo | null;
 }): Promise<PlaceOrderResponse> {
   // Create regular Supabase client for user session check only
-  const regularSupabase = getSupabaseServerClient();
+  const regularSupabase = await getSupabaseServerClient();
 
   // Create service role client for transaction operations (bypasses RLS)
   const supabase = createServiceRoleClient();

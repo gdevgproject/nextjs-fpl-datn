@@ -1,42 +1,43 @@
-import { NextResponse } from "next/server"
-import { getSupabaseServerClient } from "@/lib/supabase/server"
+import { NextResponse } from "next/server";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET() {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient();
 
   try {
     // Get user session
     const {
       data: { session },
-    } = await supabase.auth.getSession()
+    } = await supabase.auth.getSession();
 
     if (!session) {
-      return NextResponse.json({ items: [], appliedDiscount: null })
+      return NextResponse.json({ items: [], appliedDiscount: null });
     }
 
-    const userId = session.user.id
+    const userId = session.user.id;
 
     // Get user's cart
     const { data: cart, error: cartError } = await supabase
       .from("shopping_carts")
       .select("id")
       .eq("user_id", userId)
-      .single()
+      .single();
 
     if (cartError) {
       if (cartError.code === "PGRST116") {
         // No cart found, return empty cart
-        return NextResponse.json({ items: [], appliedDiscount: null })
+        return NextResponse.json({ items: [], appliedDiscount: null });
       }
-      throw cartError
+      throw cartError;
     }
 
-    const cartId = cart.id
+    const cartId = cart.id;
 
     // Get cart items with product info
     const { data: items, error: itemsError } = await supabase
       .from("cart_items")
-      .select(`
+      .select(
+        `
         id,
         variant_id,
         quantity,
@@ -58,11 +59,12 @@ export async function GET() {
             )
           )
         )
-      `)
-      .eq("cart_id", cartId)
+      `
+      )
+      .eq("cart_id", cartId);
 
     if (itemsError) {
-      throw itemsError
+      throw itemsError;
     }
 
     // Transform data to match CartItem type
@@ -79,18 +81,24 @@ export async function GET() {
         volume_ml: item.product_variants.volume_ml,
         images: item.product_variants.products.images,
       },
-    }))
+    }));
 
     // Get applied discount if any
-    const { data: discountData } = await supabase.from("discounts").select("*").eq("is_active", true).single()
+    const { data: discountData } = await supabase
+      .from("discounts")
+      .select("*")
+      .eq("is_active", true)
+      .single();
 
     return NextResponse.json({
       items: cartItems,
       appliedDiscount: discountData || null,
-    })
+    });
   } catch (error) {
-    console.error("Error fetching cart:", error)
-    return NextResponse.json({ error: "Failed to fetch cart" }, { status: 500 })
+    console.error("Error fetching cart:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch cart" },
+      { status: 500 }
+    );
   }
 }
-

@@ -4,7 +4,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server"
 export async function getFilterOptions(searchParams: {
   [key: string]: string | string[] | undefined
 }) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Sử dụng RPC function để lấy tất cả tùy chọn lọc trong một lần gọi API
@@ -35,7 +35,7 @@ export async function getProducts(
   page = 1,
   limit = 12,
 ) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Thông tin bổ sung cho tiêu đề trang
@@ -314,7 +314,7 @@ export async function getProducts(
 
 // Hàm lấy sản phẩm theo slug
 export async function getProductBySlug(slug: string) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Lấy thông tin sản phẩm
@@ -351,7 +351,7 @@ export async function getProductBySlug(slug: string) {
 
 // Hàm lấy đánh giá của sản phẩm
 export async function getProductReviews(productId: number) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // First, fetch the reviews for the product
@@ -412,7 +412,7 @@ export async function getProductReviews(productId: number) {
 
 // Hàm kiểm tra người dùng đã mua sản phẩm chưa
 export async function hasUserPurchasedProduct(productId: number) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Kiểm tra session
@@ -443,7 +443,7 @@ export async function hasUserPurchasedProduct(productId: number) {
 
 // Hàm lấy sản phẩm liên quan
 export async function getRelatedProducts(productId: number, brandId: number | null, limit = 4) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Bắt đầu xây dựng query

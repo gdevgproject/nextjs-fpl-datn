@@ -1,32 +1,32 @@
-"use server"
+"use server";
 
-import { getSupabaseServerClient } from "@/lib/supabase/server"
-import { revalidatePath } from "next/cache"
-import type { CartItem, Discount, OrderData, OrderResponse } from "../types"
+import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
+import type { CartItem, Discount, OrderData, OrderResponse } from "../types";
 
 /**
  * Get the current user's cart items
  */
 export async function getCartItems() {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient();
 
   // Get user session
   const {
     data: { session },
-  } = await supabase.auth.getSession()
-  const userId = session?.user?.id
+  } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
 
   if (!userId) {
-    return { items: [], appliedDiscount: null }
+    return { items: [], appliedDiscount: null };
   }
 
   // First get or create the user's cart
-  let cartId: number
+  let cartId: number;
   const { data: cart, error: cartError } = await supabase
     .from("shopping_carts")
     .select("id")
     .eq("user_id", userId)
-    .single()
+    .single();
 
   if (cartError) {
     if (cartError.code === "PGRST116") {
@@ -36,19 +36,19 @@ export async function getCartItems() {
         .from("shopping_carts")
         .insert({ user_id: userId })
         .select("id")
-        .single()
+        .single();
 
       if (createError) {
-        console.error("Error creating shopping cart:", createError)
-        return { items: [], appliedDiscount: null }
+        console.error("Error creating shopping cart:", createError);
+        return { items: [], appliedDiscount: null };
       }
-      cartId = newCart.id
+      cartId = newCart.id;
     } else {
-      console.error("Error fetching shopping cart:", cartError)
-      return { items: [], appliedDiscount: null }
+      console.error("Error fetching shopping cart:", cartError);
+      return { items: [], appliedDiscount: null };
     }
   } else {
-    cartId = cart.id
+    cartId = cart.id;
   }
 
   // Now get cart items with product info using cart_id
@@ -77,13 +77,13 @@ export async function getCartItems() {
           )
         )
       )
-    `,
+    `
     )
-    .eq("cart_id", cartId)
+    .eq("cart_id", cartId);
 
   if (error) {
-    console.error("Error fetching cart items:", error)
-    return { items: [], appliedDiscount: null }
+    console.error("Error fetching cart items:", error);
+    return { items: [], appliedDiscount: null };
   }
 
   // Transform data to match CartItem type
@@ -100,7 +100,7 @@ export async function getCartItems() {
       volume_ml: item.product_variants.volume_ml,
       images: item.product_variants.products.images,
     },
-  }))
+  }));
 
   // Get applied discount if any
   const { data: discountData } = await supabase
@@ -119,31 +119,31 @@ export async function getCartItems() {
         max_uses,
         remaining_uses
       )
-    `,
+    `
     )
     .eq("user_id", userId)
     .eq("is_applied", true)
-    .single()
+    .single();
 
-  const appliedDiscount = discountData?.discounts || null
+  const appliedDiscount = discountData?.discounts || null;
 
-  return { items: cartItems, appliedDiscount }
+  return { items: cartItems, appliedDiscount };
 }
 
 /**
  * Add an item to the cart
  */
 export async function addItemToCart(variantId: number, quantity: number) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient();
 
   // Get user session
   const {
     data: { session },
-  } = await supabase.auth.getSession()
-  const userId = session?.user?.id
+  } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
 
   if (!userId) {
-    throw new Error("User not authenticated")
+    throw new Error("User not authenticated");
   }
 
   // Check if item exists in cart
@@ -152,53 +152,56 @@ export async function addItemToCart(variantId: number, quantity: number) {
     .select("id, quantity")
     .eq("user_id", userId)
     .eq("variant_id", variantId)
-    .single()
+    .single();
 
   if (existingItem) {
     // Update existing item quantity
     const { error } = await supabase
       .from("cart_items")
       .update({ quantity: existingItem.quantity + quantity })
-      .eq("id", existingItem.id)
+      .eq("id", existingItem.id);
 
-    if (error) throw error
+    if (error) throw error;
   } else {
     // Insert new item
     const { error } = await supabase.from("cart_items").insert({
       user_id: userId,
       variant_id: variantId,
       quantity,
-    })
+    });
 
-    if (error) throw error
+    if (error) throw error;
   }
 
-  revalidatePath("/gio-hang")
-  revalidatePath("/thanh-toan")
-  revalidatePath("/san-pham")
+  revalidatePath("/gio-hang");
+  revalidatePath("/thanh-toan");
+  revalidatePath("/san-pham");
 
-  return { success: true }
+  return { success: true };
 }
 
 /**
  * Update cart item quantity
  */
-export async function updateCartItemQuantity(variantId: number, quantity: number) {
-  const supabase = getSupabaseServerClient()
+export async function updateCartItemQuantity(
+  variantId: number,
+  quantity: number
+) {
+  const supabase = await getSupabaseServerClient();
 
   // Get user session
   const {
     data: { session },
-  } = await supabase.auth.getSession()
-  const userId = session?.user?.id
+  } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
 
   if (!userId) {
-    throw new Error("User not authenticated")
+    throw new Error("User not authenticated");
   }
 
   // If quantity is 0 or less, remove the item
   if (quantity <= 0) {
-    return removeCartItem(variantId)
+    return removeCartItem(variantId);
   }
 
   // Update item quantity
@@ -206,57 +209,61 @@ export async function updateCartItemQuantity(variantId: number, quantity: number
     .from("cart_items")
     .update({ quantity })
     .eq("user_id", userId)
-    .eq("variant_id", variantId)
+    .eq("variant_id", variantId);
 
-  if (error) throw error
+  if (error) throw error;
 
-  revalidatePath("/gio-hang")
-  revalidatePath("/thanh-toan")
+  revalidatePath("/gio-hang");
+  revalidatePath("/thanh-toan");
 
-  return { success: true }
+  return { success: true };
 }
 
 /**
  * Remove an item from the cart
  */
 export async function removeCartItem(variantId: number) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient();
 
   // Get user session
   const {
     data: { session },
-  } = await supabase.auth.getSession()
-  const userId = session?.user?.id
+  } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
 
   if (!userId) {
-    throw new Error("User not authenticated")
+    throw new Error("User not authenticated");
   }
 
   // Delete the item
-  const { error } = await supabase.from("cart_items").delete().eq("user_id", userId).eq("variant_id", variantId)
+  const { error } = await supabase
+    .from("cart_items")
+    .delete()
+    .eq("user_id", userId)
+    .eq("variant_id", variantId);
 
-  if (error) throw error
+  if (error) throw error;
 
-  revalidatePath("/gio-hang")
-  revalidatePath("/thanh-toan")
+  revalidatePath("/gio-hang");
+  revalidatePath("/thanh-toan");
 
-  return { success: true }
+  return { success: true };
 }
 
 /**
  * Apply discount code
  */
 export async function applyDiscountCode(code: string, subtotal = 0) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient();
 
   // Get user session
   const {
     data: { session },
-  } = await supabase.auth.getSession()
-  const userId = session?.user?.id
+  } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
 
   if (!userId) {
-    return { success: false, error: "User not authenticated" }
+    return { success: false, error: "User not authenticated" };
   }
 
   // Get discount details
@@ -265,43 +272,50 @@ export async function applyDiscountCode(code: string, subtotal = 0) {
     .select("*")
     .eq("code", code)
     .eq("is_active", true)
-    .single()
+    .single();
 
   if (error || !discount) {
-    return { success: false, error: "Mã giảm giá không hợp lệ" }
+    return { success: false, error: "Mã giảm giá không hợp lệ" };
   }
 
   // Check if discount is valid
-  const now = new Date().toISOString()
+  const now = new Date().toISOString();
 
   // Check start date
   if (discount.start_date && new Date(discount.start_date) > new Date(now)) {
-    return { success: false, error: "Mã giảm giá chưa có hiệu lực" }
+    return { success: false, error: "Mã giảm giá chưa có hiệu lực" };
   }
 
   // Check end date
   if (discount.end_date && new Date(discount.end_date) < new Date(now)) {
-    return { success: false, error: "Mã giảm giá đã hết hạn" }
+    return { success: false, error: "Mã giảm giá đã hết hạn" };
   }
 
   // Check remaining uses
-  if (discount.max_uses && discount.remaining_uses !== null && discount.remaining_uses <= 0) {
-    return { success: false, error: "Mã giảm giá đã hết lượt sử dụng" }
+  if (
+    discount.max_uses &&
+    discount.remaining_uses !== null &&
+    discount.remaining_uses <= 0
+  ) {
+    return { success: false, error: "Mã giảm giá đã hết lượt sử dụng" };
   }
 
   // Check min order value
   if (discount.min_order_value && subtotal < discount.min_order_value) {
     return {
       success: false,
-      error: `Giá trị đơn hàng tối thiểu để sử dụng mã là ${new Intl.NumberFormat("vi-VN", {
-        style: "currency",
-        currency: "VND",
-      }).format(discount.min_order_value)}`,
-    }
+      error: `Giá trị đơn hàng tối thiểu để sử dụng mã là ${new Intl.NumberFormat(
+        "vi-VN",
+        {
+          style: "currency",
+          currency: "VND",
+        }
+      ).format(discount.min_order_value)}`,
+    };
   }
 
   // Calculate discount amount
-  const discountAmount = calculateDiscountAmount(subtotal, discount)
+  const discountAmount = calculateDiscountAmount(subtotal, discount);
 
   // Check if user has already applied a discount
   const { data: existingDiscount } = await supabase
@@ -309,11 +323,14 @@ export async function applyDiscountCode(code: string, subtotal = 0) {
     .select("id")
     .eq("user_id", userId)
     .eq("is_applied", true)
-    .single()
+    .single();
 
   if (existingDiscount) {
     // Remove existing discount
-    await supabase.from("user_discounts").update({ is_applied: false }).eq("id", existingDiscount.id)
+    await supabase
+      .from("user_discounts")
+      .update({ is_applied: false })
+      .eq("id", existingDiscount.id);
   }
 
   // Apply new discount
@@ -321,14 +338,14 @@ export async function applyDiscountCode(code: string, subtotal = 0) {
     user_id: userId,
     discount_id: discount.id,
     is_applied: true,
-  })
+  });
 
   if (applyError) {
-    return { success: false, error: "Không thể áp dụng mã giảm giá" }
+    return { success: false, error: "Không thể áp dụng mã giảm giá" };
   }
 
-  revalidatePath("/gio-hang")
-  revalidatePath("/thanh-toan")
+  revalidatePath("/gio-hang");
+  revalidatePath("/thanh-toan");
 
   return {
     success: true,
@@ -336,23 +353,23 @@ export async function applyDiscountCode(code: string, subtotal = 0) {
       discount: discount,
       discountAmount: discountAmount,
     },
-  }
+  };
 }
 
 /**
  * Remove applied discount code
  */
 export async function removeDiscountCode() {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient();
 
   // Get user session
   const {
     data: { session },
-  } = await supabase.auth.getSession()
-  const userId = session?.user?.id
+  } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
 
   if (!userId) {
-    return { success: false, error: "User not authenticated" }
+    return { success: false, error: "User not authenticated" };
   }
 
   // Update user discount to not applied
@@ -360,92 +377,106 @@ export async function removeDiscountCode() {
     .from("user_discounts")
     .update({ is_applied: false })
     .eq("user_id", userId)
-    .eq("is_applied", true)
+    .eq("is_applied", true);
 
   if (error) {
-    return { success: false, error: "Không thể xóa mã giảm giá" }
+    return { success: false, error: "Không thể xóa mã giảm giá" };
   }
 
-  revalidatePath("/gio-hang")
-  revalidatePath("/thanh-toan")
+  revalidatePath("/gio-hang");
+  revalidatePath("/thanh-toan");
 
-  return { success: true }
+  return { success: true };
 }
 
 /**
  * Create a new order
  */
-export async function createOrder(orderData: OrderData): Promise<OrderResponse> {
-  const supabase = getSupabaseServerClient()
+export async function createOrder(
+  orderData: OrderData
+): Promise<OrderResponse> {
+  const supabase = await getSupabaseServerClient();
 
   // Get user session if authenticated
   const {
     data: { session },
-  } = await supabase.auth.getSession()
-  const userId = session?.user?.id
+  } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
 
   try {
     // Start a Supabase transaction to create order and related records
-    const { data: orderResult, error: orderError } = await supabase.rpc("create_order", {
-      p_user_id: userId || null,
-      p_customer_name: orderData.customerInfo.fullName,
-      p_customer_email: orderData.customerInfo.email,
-      p_customer_phone: orderData.customerInfo.phoneNumber,
-      p_shipping_address: JSON.stringify({
-        street: orderData.customerInfo.address,
-        ward: orderData.customerInfo.ward,
-        district: orderData.customerInfo.district,
-        province: orderData.customerInfo.province,
-      }),
-      p_delivery_notes: orderData.customerInfo.note || null,
-      p_payment_method_id: orderData.paymentMethod,
-      p_shipping_method: orderData.shippingMethod,
-      p_subtotal_amount: orderData.subtotal,
-      p_shipping_fee: orderData.shippingFee,
-      p_discount_amount: orderData.discount,
-      p_total_amount: orderData.total,
-      p_discount_code: orderData.discountCode || null,
-      p_order_items: orderData.items.map((item) => ({
-        product_variant_id: item.productVariantId,
-        quantity: item.quantity,
-        unit_price: item.price,
-      })),
-    })
+    const { data: orderResult, error: orderError } = await supabase.rpc(
+      "create_order",
+      {
+        p_user_id: userId || null,
+        p_customer_name: orderData.customerInfo.fullName,
+        p_customer_email: orderData.customerInfo.email,
+        p_customer_phone: orderData.customerInfo.phoneNumber,
+        p_shipping_address: JSON.stringify({
+          street: orderData.customerInfo.address,
+          ward: orderData.customerInfo.ward,
+          district: orderData.customerInfo.district,
+          province: orderData.customerInfo.province,
+        }),
+        p_delivery_notes: orderData.customerInfo.note || null,
+        p_payment_method_id: orderData.paymentMethod,
+        p_shipping_method: orderData.shippingMethod,
+        p_subtotal_amount: orderData.subtotal,
+        p_shipping_fee: orderData.shippingFee,
+        p_discount_amount: orderData.discount,
+        p_total_amount: orderData.total,
+        p_discount_code: orderData.discountCode || null,
+        p_order_items: orderData.items.map((item) => ({
+          product_variant_id: item.productVariantId,
+          quantity: item.quantity,
+          unit_price: item.price,
+        })),
+      }
+    );
 
     if (orderError) {
-      console.error("Error creating order:", orderError)
+      console.error("Error creating order:", orderError);
       return {
-        error: orderError.message || "Đã xảy ra lỗi khi tạo đơn hàng. Vui lòng thử lại sau.",
-      }
+        error:
+          orderError.message ||
+          "Đã xảy ra lỗi khi tạo đơn hàng. Vui lòng thử lại sau.",
+      };
     }
 
     if (!orderResult?.order_id) {
-      return { error: "Không thể tạo đơn hàng" }
+      return { error: "Không thể tạo đơn hàng" };
     }
 
     // If user is authenticated, clear their cart
     if (userId) {
-      const { error: clearCartError } = await supabase.from("cart_items").delete().eq("user_id", userId)
+      const { error: clearCartError } = await supabase
+        .from("cart_items")
+        .delete()
+        .eq("user_id", userId);
 
       if (clearCartError) {
-        console.error("Error clearing cart:", clearCartError)
+        console.error("Error clearing cart:", clearCartError);
       }
 
       // Reset applied discount
-      await supabase.from("user_discounts").update({ is_applied: false }).eq("user_id", userId).eq("is_applied", true)
+      await supabase
+        .from("user_discounts")
+        .update({ is_applied: false })
+        .eq("user_id", userId)
+        .eq("is_applied", true);
     }
 
-    revalidatePath("/gio-hang")
-    revalidatePath("/thanh-toan")
-    revalidatePath("/xac-nhan-don-hang")
+    revalidatePath("/gio-hang");
+    revalidatePath("/thanh-toan");
+    revalidatePath("/xac-nhan-don-hang");
 
     // Return order ID for redirection
-    return { orderId: orderResult.order_id }
+    return { orderId: orderResult.order_id };
   } catch (error) {
-    console.error("Error in createOrder function:", error)
+    console.error("Error in createOrder function:", error);
     return {
       error: "Đã xảy ra lỗi khi tạo đơn hàng. Vui lòng thử lại sau.",
-    }
+    };
   }
 }
 
@@ -454,13 +485,15 @@ export async function createOrder(orderData: OrderData): Promise<OrderResponse> 
  */
 function calculateDiscountAmount(subtotal: number, discount: Discount): number {
   // Calculate discount amount based on percentage
-  let discountAmount = (discount.discount_percentage / 100) * subtotal
+  let discountAmount = (discount.discount_percentage / 100) * subtotal;
 
   // Apply max discount amount if specified
-  if (discount.max_discount_amount && discountAmount > discount.max_discount_amount) {
-    discountAmount = discount.max_discount_amount
+  if (
+    discount.max_discount_amount &&
+    discountAmount > discount.max_discount_amount
+  ) {
+    discountAmount = discount.max_discount_amount;
   }
 
-  return discountAmount
+  return discountAmount;
 }
-

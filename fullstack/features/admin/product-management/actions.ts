@@ -1,7 +1,7 @@
 "use server";
 
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { getSupabaseServiceClient } from "@/lib/supabase/service";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 import { getUserRoleFromMetadata } from "@/lib/utils/auth-utils";
 import {
   productFilterSchema,
@@ -30,7 +30,7 @@ import { v4 as uuidv4 } from "uuid";
 
 // Helper function to get a service role client
 async function getServiceRoleClient() {
-  return getSupabaseServiceClient();
+  return await createServiceRoleClient();
 }
 
 // Get products with filtering, sorting, and pagination
@@ -45,10 +45,8 @@ export async function getProducts(
     const supabase = await getSupabaseServerClient();
 
     // Build the base query
-    let query = supabase
-      .from("products")
-      .select(
-        `
+    let query = supabase.from("products").select(
+      `
         id,
         name,
         product_code,
@@ -68,8 +66,8 @@ export async function getProducts(
           is_main
         )
       `,
-        { count: "exact" }
-      );
+      { count: "exact" }
+    );
 
     // Apply filters
     if (validParams.search) {
@@ -119,7 +117,10 @@ export async function getProducts(
     // Filter for deleted/active products
     if (validParams.deleted === true) {
       query = query.not("deleted_at", "is", null);
-    } else if (validParams.deleted === false || validParams.deleted === undefined) {
+    } else if (
+      validParams.deleted === false ||
+      validParams.deleted === undefined
+    ) {
       query = query.is("deleted_at", null);
     }
 
@@ -473,7 +474,9 @@ export async function getInventoryHistory(variantId: number) {
       product_name: variant.product.name,
       variant_volume: variant.volume_ml,
       updated_by_name:
-        record.updated_by?.profiles?.display_name || record.updated_by?.email || "System",
+        record.updated_by?.profiles?.display_name ||
+        record.updated_by?.email ||
+        "System",
     }));
 
     return { data: formattedData };
@@ -549,7 +552,9 @@ export async function createProduct(
         .insert(categoryRecords);
 
       if (categoriesError) {
-        throw new Error(`Failed to assign categories: ${categoriesError.message}`);
+        throw new Error(
+          `Failed to assign categories: ${categoriesError.message}`
+        );
       }
     }
 
@@ -645,7 +650,9 @@ export async function updateProduct(
       .eq("product_id", productId);
 
     if (variantsError) {
-      throw new Error(`Failed to fetch existing variants: ${variantsError.message}`);
+      throw new Error(
+        `Failed to fetch existing variants: ${variantsError.message}`
+      );
     }
 
     const existingVariantIds = existingVariants.map((v) => v.id);
@@ -705,7 +712,9 @@ export async function updateProduct(
         .insert(newVariants);
 
       if (createError) {
-        throw new Error(`Failed to create new variants: ${createError.message}`);
+        throw new Error(
+          `Failed to create new variants: ${createError.message}`
+        );
       }
     }
 
@@ -732,7 +741,9 @@ export async function updateProduct(
         .insert(categoryRecords);
 
       if (categoriesError) {
-        throw new Error(`Failed to assign categories: ${categoriesError.message}`);
+        throw new Error(
+          `Failed to assign categories: ${categoriesError.message}`
+        );
       }
     }
 
@@ -995,7 +1006,9 @@ export async function deleteProductImage(imageId: number) {
     // URL format should be: https://[supabase-project-url]/storage/v1/object/public/products/[file-path]
     const url = new URL(image.image_url);
     const pathParts = url.pathname.split("/");
-    const storagePath = pathParts.slice(pathParts.indexOf("products")).join("/");
+    const storagePath = pathParts
+      .slice(pathParts.indexOf("products"))
+      .join("/");
 
     // Delete the image record from the database
     const { error: dbError } = await supabase
@@ -1147,7 +1160,7 @@ export async function adjustInventory(data: StockAdjustmentParams) {
 
     // Update variant stock
     const newStockLevel = variant.stock_quantity + validatedData.change_amount;
-    
+
     if (newStockLevel < 0) {
       throw new Error("Stock adjustment would result in negative inventory");
     }

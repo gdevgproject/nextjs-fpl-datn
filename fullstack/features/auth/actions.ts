@@ -2,7 +2,7 @@
 
 import type { z } from "zod";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { getSupabaseServiceClient } from "@/lib/supabase/service";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 import type { loginSchema, registerSchema } from "./validators";
 import {
   createErrorResponse,
@@ -16,8 +16,8 @@ type LoginParams = z.infer<typeof loginSchema> & {
 
 // Đăng ký
 export async function register(values: z.infer<typeof registerSchema>) {
-  const supabase = getSupabaseServerClient();
-  const serviceClient = getSupabaseServiceClient();
+  const supabase = await getSupabaseServerClient();
+  const serviceClient = await createServiceRoleClient();
 
   try {
     // Kiểm tra xem email đã tồn tại chưa
@@ -92,7 +92,7 @@ export async function register(values: z.infer<typeof registerSchema>) {
 
 // Cải thiện hàm login để xử lý đăng nhập hiệu quả hơn
 export async function login(values: LoginParams) {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   try {
     // Đảm bảo persistSession luôn được đặt đúng
@@ -158,7 +158,7 @@ export async function login(values: LoginParams) {
 
 // Đăng xuất - server action
 export async function logout() {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   try {
     // Simply sign out on the server side
@@ -174,7 +174,7 @@ export async function logout() {
 
 // Xác nhận email
 export async function verifyOtp(token: string) {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   try {
     const { error } = await supabase.auth.verifyOtp({
@@ -194,7 +194,7 @@ export async function verifyOtp(token: string) {
 
 // Cập nhật profile
 export async function updateProfile(userId: string, data: Partial<any>) {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   try {
     const { error } = await supabase

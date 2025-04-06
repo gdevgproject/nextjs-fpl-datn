@@ -53,20 +53,25 @@ export function useProductList(params: ProductListParams) {
 }
 
 // Get product by ID
-export function useProductDetail(productId: number) {
+export function useProductDetail(productId: number, options = {}) {
   return useQuery({
     queryKey: productKeys.detail(productId),
     queryFn: () => getProductById(productId),
     enabled: !!productId,
+    ...options,
   });
 }
 
+// Alias for useProductDetail to maintain compatibility
+export const useGetProductById = useProductDetail;
+
 // Get inventory history for a variant
-export function useInventoryHistory(variantId: number) {
+export function useGetInventoryHistory(variantId: number, options = {}) {
   return useQuery({
     queryKey: productKeys.inventoryHistory(variantId),
     queryFn: () => getInventoryHistory(variantId),
     enabled: !!variantId,
+    ...options,
   });
 }
 

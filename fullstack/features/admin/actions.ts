@@ -1,42 +1,59 @@
-"use server"
+"use server";
 
-import { getSupabaseServiceClient } from "@/lib/supabase/service"
-import { createErrorResponse, createSuccessResponse } from "@/lib/utils/error-utils"
-import { getUserRoleFromMetadata } from "@/lib/utils/auth-utils"
-import { getSupabaseServerClient } from "@/lib/supabase/server"
+import { createServiceRoleClient } from "@/lib/supabase/server";
+import {
+  createErrorResponse,
+  createSuccessResponse,
+} from "@/lib/utils/error-utils";
+import { getUserRoleFromMetadata } from "@/lib/utils/auth-utils";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 // Cập nhật role của người dùng (chỉ admin mới có quyền)
-export async function updateUserRole(userId: string, newRole: "admin" | "staff" | "authenticated") {
+export async function updateUserRole(
+  userId: string,
+  newRole: "admin" | "staff" | "authenticated"
+) {
   try {
     // Kiểm tra quyền của người dùng hiện tại
-    const supabase = getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient();
     const {
       data: { session },
-    } = await supabase.auth.getSession()
+    } = await supabase.auth.getSession();
 
     if (!session) {
-      return createErrorResponse("Bạn cần đăng nhập để thực hiện hành động này", "unauthorized")
+      return createErrorResponse(
+        "Bạn cần đăng nhập để thực hiện hành động này",
+        "unauthorized"
+      );
     }
 
-    const currentUserRole = getUserRoleFromMetadata(session.user)
+    const currentUserRole = getUserRoleFromMetadata(session.user);
 
     // Chỉ admin mới có quyền cập nhật role
     if (currentUserRole !== "admin") {
-      return createErrorResponse("Bạn không có quyền thực hiện hành động này", "forbidden")
+      return createErrorResponse(
+        "Bạn không có quyền thực hiện hành động này",
+        "forbidden"
+      );
     }
 
     // Sử dụng service client để cập nhật app_metadata
-    const serviceClient = getSupabaseServiceClient()
+    const serviceClient = await createServiceRoleClient();
 
     // Cập nhật app_metadata của user
-    const { error } = await serviceClient.auth.admin.updateUserById(userId, { app_metadata: { role: newRole } })
+    const { error } = await serviceClient.auth.admin.updateUserById(userId, {
+      app_metadata: { role: newRole },
+    });
 
     if (error) {
-      return createErrorResponse(error.message)
+      return createErrorResponse(error.message);
     }
 
     // Cập nhật role trong bảng profiles
-    await serviceClient.from("profiles").update({ role: newRole }).eq("id", userId)
+    await serviceClient
+      .from("profiles")
+      .update({ role: newRole })
+      .eq("id", userId);
 
     // Ghi log hoạt động
     await serviceClient.from("admin_activity_log").insert({
@@ -46,11 +63,10 @@ export async function updateUserRole(userId: string, newRole: "admin" | "staff" 
       entity_type: "user",
       entity_id: userId,
       details: { new_role: newRole },
-    })
+    });
 
-    return createSuccessResponse({ role: newRole })
+    return createSuccessResponse({ role: newRole });
   } catch (error) {
-    return createErrorResponse(error)
+    return createErrorResponse(error);
   }
 }
-

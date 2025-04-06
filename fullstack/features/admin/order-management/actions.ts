@@ -1,7 +1,7 @@
 "use server";
 
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { getSupabaseServiceClient } from "@/lib/supabase/service";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 import {
   createErrorResponse,
   createSuccessResponse,
@@ -23,7 +23,7 @@ export async function getOrdersList(
 ): Promise<{ data?: PaginatedOrders; error?: string }> {
   try {
     // Verify user is staff or admin
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -51,7 +51,7 @@ export async function getOrdersList(
     } = filter;
 
     // Use service client to avoid RLS
-    const serviceClient = getSupabaseServiceClient();
+    const serviceClient = await createServiceRoleClient();
 
     // Start building query
     let query = serviceClient.from("orders").select(
@@ -168,7 +168,7 @@ export async function getOrderDetails(
 ): Promise<{ data?: OrderDetails; error?: string }> {
   try {
     // Verify user is staff or admin
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -183,7 +183,7 @@ export async function getOrderDetails(
     }
 
     // Use service client to avoid RLS
-    const serviceClient = getSupabaseServiceClient();
+    const serviceClient = await createServiceRoleClient();
 
     // Get order with details
     const { data: order, error: orderError } = await serviceClient
@@ -379,7 +379,7 @@ export async function updateOrderStatus(
 ): Promise<{ success: boolean; message: string; error?: string }> {
   try {
     // Verify user is staff or admin
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -394,7 +394,7 @@ export async function updateOrderStatus(
     }
 
     // Use service client to avoid RLS
-    const serviceClient = getSupabaseServiceClient();
+    const serviceClient = await createServiceRoleClient();
 
     // Validate status exists
     const { data: statusData, error: statusError } = await serviceClient
@@ -445,7 +445,7 @@ export async function updateOrderTracking(
 ): Promise<{ success: boolean; message: string; error?: string }> {
   try {
     // Verify user is staff or admin
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -460,7 +460,7 @@ export async function updateOrderTracking(
     }
 
     // Use service client to avoid RLS
-    const serviceClient = getSupabaseServiceClient();
+    const serviceClient = await createServiceRoleClient();
 
     // Update tracking number
     const { error: updateError } = await serviceClient
@@ -504,7 +504,7 @@ export async function updatePaymentStatus(
 ): Promise<{ success: boolean; message: string; error?: string }> {
   try {
     // Verify user is staff or admin
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -533,7 +533,7 @@ export async function updatePaymentStatus(
     }
 
     // Use service client to avoid RLS
-    const serviceClient = getSupabaseServiceClient();
+    const serviceClient = await createServiceRoleClient();
 
     // Update payment status
     const { error: updateError } = await serviceClient
@@ -597,7 +597,7 @@ export async function getOrderActivityLog(
 ): Promise<{ data?: any[]; error?: string }> {
   try {
     // Verify user is admin (not staff)
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -615,7 +615,7 @@ export async function getOrderActivityLog(
     }
 
     // Use service client to avoid RLS
-    const serviceClient = getSupabaseServiceClient();
+    const serviceClient = await createServiceRoleClient();
 
     // Get activity log
     const { data, error } = await serviceClient
@@ -673,7 +673,7 @@ export async function getOrderStats(): Promise<{
 }> {
   try {
     // Verify user is staff or admin
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -688,7 +688,7 @@ export async function getOrderStats(): Promise<{
     }
 
     // Use service client to avoid RLS
-    const serviceClient = getSupabaseServiceClient();
+    const serviceClient = await createServiceRoleClient();
 
     // Get order statuses first
     const { data: statuses, error: statusesError } = await serviceClient
@@ -839,7 +839,7 @@ export async function getOrderStatuses(): Promise<{
 }> {
   try {
     // Verify user is staff or admin
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -854,7 +854,7 @@ export async function getOrderStatuses(): Promise<{
     }
 
     // Use service client to avoid RLS
-    const serviceClient = getSupabaseServiceClient();
+    const serviceClient = await createServiceRoleClient();
 
     const { data, error } = await serviceClient
       .from("order_statuses")

@@ -333,7 +333,7 @@ export function ProductList() {
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
                             <Link
-                              href={`/san-pham/${product.id}`}
+                              href={`/san-pham/${product.slug || product.id}`}
                               target="_blank"
                             >
                               <ExternalLink className="mr-2 h-4 w-4" />
@@ -463,7 +463,7 @@ export function ProductList() {
                         asChild
                       >
                         <Link
-                          href={`/san-pham/${product.id}`}
+                          href={`/san-pham/${product.slug || product.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
