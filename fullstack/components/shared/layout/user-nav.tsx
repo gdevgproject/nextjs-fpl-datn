@@ -3,7 +3,15 @@
 import { memo } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/providers/auth-context";
-import { CircleUser, LogIn, LogOut, Package, Heart, User } from "lucide-react";
+import {
+  CircleUser,
+  LogIn,
+  LogOut,
+  Package,
+  Heart,
+  User,
+  LayoutDashboard,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -21,7 +29,8 @@ import { DEFAULT_AVATAR_URL } from "@/lib/constants";
 
 // Using memo to prevent unnecessary re-renders
 export const UserNav = memo(function UserNav() {
-  const { isAuthenticated, profile, signOut, profileImageUrl } = useAuth();
+  const { isAuthenticated, profile, signOut, profileImageUrl, role } =
+    useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -119,6 +128,18 @@ export const UserNav = memo(function UserNav() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
+        {/* Admin Dashboard link - only visible for admin/staff users */}
+        {role === "admin" || role === "staff" ? (
+          <>
+            <DropdownMenuItem asChild>
+              <Link href="/admin">
+                <LayoutDashboard className="mr-2 h-4 w-4" />
+                <span>Quản trị</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        ) : null}
         <DropdownMenuItem onClick={handleSignOut}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Đăng xuất</span>
