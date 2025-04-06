@@ -1,15 +1,22 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { ShoppingCart } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useCartContext } from "../providers/cart-provider"
+import Link from "next/link";
+import { memo } from "react";
+import { ShoppingCart } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useCartContext } from "../providers/cart-provider";
 
-export function CartButton() {
-  const { cartItemCount } = useCartContext()
+const CartButton = memo(function CartButton() {
+  const { cartItemCount } = useCartContext();
 
   return (
-    <Button variant="ghost" size="icon" asChild className="relative">
+    <Button
+      variant="ghost"
+      size="icon"
+      asChild
+      className="relative"
+      aria-label="Shopping cart"
+    >
       <Link href="/gio-hang">
         <ShoppingCart className="h-5 w-5" />
         {cartItemCount > 0 && (
@@ -20,6 +27,7 @@ export function CartButton() {
         <span className="sr-only">Giỏ hàng</span>
       </Link>
     </Button>
-  )
-}
+  );
+});
 
+export { CartButton };

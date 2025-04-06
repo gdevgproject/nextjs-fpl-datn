@@ -1,65 +1,86 @@
-"use client"
+"use client";
 
-import { useEffect } from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
-import { Button } from "@/components/ui/button"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
-import { useToast } from "@/hooks/use-toast"
-import { useAddAddress, useUpdateAddress, useUserAddresses } from "../queries"
-import { Loader2 } from "lucide-react"
-import type { Address } from "@/lib/types/shared.types"
+import { useEffect } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
+import { useAddAddress, useUpdateAddress } from "../queries";
+import type { Address } from "../types";
+import { Loader2 } from "lucide-react";
 
-// Schema cho form địa chỉ
-const addressFormSchema = z.object({
-  recipient_name: z.string().min(2, { message: "Tên người nhận phải có ít nhất 2 ký tự" }),
-  recipient_phone: z.string().regex(/^(0|\+84)[3|5|7|8|9][0-9]{8}$/, {
-    message: "Số điện thoại không hợp lệ",
-  }),
-  province_city: z.string().min(1, { message: "Vui lòng nhập tỉnh/thành phố" }),
-  district: z.string().min(1, { message: "Vui lòng nhập quận/huyện" }),
-  ward: z.string().min(1, { message: "Vui lòng nhập phường/xã" }),
-  street_address: z.string().min(1, { message: "Vui lòng nhập địa chỉ cụ thể" }),
+const addressSchema = z.object({
+  recipient_name: z.string().min(2, "Tên người nhận phải có ít nhất 2 ký tự"),
+  recipient_phone: z
+    .string()
+    .regex(/^(0|\+84)[3|5|7|8|9][0-9]{8}$/, "Số điện thoại không hợp lệ"),
+  province_city: z.string().min(1, "Vui lòng nhập tỉnh/thành phố"),
+  district: z.string().min(1, "Vui lòng nhập quận/huyện"),
+  ward: z.string().min(1, "Vui lòng nhập phường/xã"),
+  street_address: z.string().min(5, "Địa chỉ phải có ít nhất 5 ký tự"),
   postal_code: z.string().optional(),
   is_default: z.boolean().default(false),
-})
+});
 
-type AddressFormValues = z.infer<typeof addressFormSchema>
+type AddressFormValues = z.infer<typeof addressSchema>;
 
 interface AddressFormProps {
-  address?: Address
-  onCancel: () => void
-  onSuccess: () => void
+  address?: Address;
+  onCancel: () => void;
+  onSuccess: () => void;
 }
 
-export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) {
-  const { toast } = useToast()
-  const addAddressMutation = useAddAddress()
-  const updateAddressMutation = useUpdateAddress()
-  const { data: addresses, isLoading: isLoadingAddresses } = useUserAddresses()
+export function AddressForm({
+  address,
+  onCancel,
+  onSuccess,
+}: AddressFormProps) {
+  const { toast } = useToast();
+  const addAddressMutation = useAddAddress();
+  const updateAddressMutation = useUpdateAddress();
+  const isSubmitting =
+    addAddressMutation.isPending || updateAddressMutation.isPending;
 
-  // Kiểm tra xem đây có phải là địa chỉ đầu tiên không
-  const isFirstAddress = !isLoadingAddresses && (!addresses || addresses.length === 0)
-
-  // Khởi tạo form với giá trị mặc định
+  // Form setup with default values
   const form = useForm<AddressFormValues>({
-    resolver: zodResolver(addressFormSchema),
-    defaultValues: {
-      recipient_name: address?.recipient_name || "",
-      recipient_phone: address?.recipient_phone || "",
-      province_city: address?.province_city || "",
-      district: address?.district || "",
-      ward: address?.ward || "",
-      street_address: address?.street_address || "",
-      postal_code: address?.postal_code || "",
-      is_default: address?.is_default || isFirstAddress, // Tự động chọn là mặc định nếu là địa chỉ đầu tiên
-    },
-  })
+    resolver: zodResolver(addressSchema),
+    defaultValues: address
+      ? {
+          recipient_name: address.recipient_name,
+          recipient_phone: address.recipient_phone,
+          province_city: address.province_city,
+          district: address.district,
+          ward: address.ward,
+          street_address: address.street_address,
+          postal_code: address.postal_code || "",
+          is_default: address.is_default,
+        }
+      : {
+          recipient_name: "",
+          recipient_phone: "",
+          province_city: "",
+          district: "",
+          ward: "",
+          street_address: "",
+          postal_code: "",
+          is_default: false,
+        },
+  });
 
-  // Cập nhật form khi address thay đổi hoặc khi biết đây là địa chỉ đầu tiên
+  // Update form if address changes
   useEffect(() => {
     if (address) {
       form.reset({
@@ -71,50 +92,65 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
         street_address: address.street_address,
         postal_code: address.postal_code || "",
         is_default: address.is_default,
-      })
-    } else if (isFirstAddress) {
-      form.setValue("is_default", true)
+      });
     }
-  }, [address, form, isFirstAddress])
+  }, [address, form]);
 
-  // Xử lý khi submit form
+  // Form submission handler
   async function onSubmit(values: AddressFormValues) {
-    try {
-      if (address) {
-        // Cập nhật địa chỉ
-        await updateAddressMutation.mutateAsync({
-          id: address.id,
-          ...values,
-        })
-        toast({
-          title: "Cập nhật địa chỉ thành công",
-          description: "Địa chỉ của bạn đã được cập nhật",
-        })
-      } else {
-        // Thêm địa chỉ mới
-        await addAddressMutation.mutateAsync(values)
-        toast({
-          title: "Thêm địa chỉ thành công",
-          description: "Địa chỉ mới đã được thêm vào danh sách của bạn",
-        })
-      }
-      onSuccess()
-    } catch (error) {
-      toast({
-        title: address ? "Cập nhật địa chỉ thất bại" : "Thêm địa chỉ thất bại",
-        description: error instanceof Error ? error.message : "Đã xảy ra lỗi khi lưu địa chỉ",
-        variant: "destructive",
-      })
+    // If editing an existing address
+    if (address) {
+      updateAddressMutation.mutate(
+        { id: address.id, ...values },
+        {
+          onSuccess: () => {
+            toast({
+              title: "Địa chỉ đã được cập nhật",
+              description:
+                "Thông tin địa chỉ của bạn đã được cập nhật thành công",
+            });
+            onSuccess();
+          },
+          onError: (error) => {
+            toast({
+              title: "Không thể cập nhật địa chỉ",
+              description:
+                error instanceof Error
+                  ? error.message
+                  : "Đã xảy ra lỗi khi cập nhật địa chỉ",
+              variant: "destructive",
+            });
+          },
+        }
+      );
+    } else {
+      // Adding a new address
+      addAddressMutation.mutate(values, {
+        onSuccess: () => {
+          toast({
+            title: "Địa chỉ đã được thêm",
+            description: "Địa chỉ mới đã được thêm thành công",
+          });
+          onSuccess();
+        },
+        onError: (error) => {
+          toast({
+            title: "Không thể thêm địa chỉ",
+            description:
+              error instanceof Error
+                ? error.message
+                : "Đã xảy ra lỗi khi thêm địa chỉ mới",
+            variant: "destructive",
+          });
+        },
+      });
     }
   }
 
-  const isSubmitting = addAddressMutation.isPending || updateAddressMutation.isPending
-
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Form fields remain the same */}
-        <div className="grid gap-4 sm:grid-cols-2">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="recipient_name"
@@ -122,7 +158,11 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
               <FormItem>
                 <FormLabel>Tên người nhận</FormLabel>
                 <FormControl>
-                  <Input placeholder="Nguyễn Văn A" {...field} />
+                  <Input
+                    {...field}
+                    placeholder="Nguyễn Văn A"
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -136,7 +176,11 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
               <FormItem>
                 <FormLabel>Số điện thoại</FormLabel>
                 <FormControl>
-                  <Input placeholder="0912345678" {...field} />
+                  <Input
+                    {...field}
+                    placeholder="0912345678"
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -144,7 +188,7 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
           />
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <FormField
             control={form.control}
             name="province_city"
@@ -152,7 +196,11 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
               <FormItem>
                 <FormLabel>Tỉnh/Thành phố</FormLabel>
                 <FormControl>
-                  <Input placeholder="Hà Nội" {...field} />
+                  <Input
+                    {...field}
+                    placeholder="Hà Nội"
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -166,15 +214,17 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
               <FormItem>
                 <FormLabel>Quận/Huyện</FormLabel>
                 <FormControl>
-                  <Input placeholder="Cầu Giấy" {...field} />
+                  <Input
+                    {...field}
+                    placeholder="Cầu Giấy"
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-        </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}
             name="ward"
@@ -182,7 +232,31 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
               <FormItem>
                 <FormLabel>Phường/Xã</FormLabel>
                 <FormControl>
-                  <Input placeholder="Dịch Vọng" {...field} />
+                  <Input
+                    {...field}
+                    placeholder="Dịch Vọng"
+                    disabled={isSubmitting}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="street_address"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Địa chỉ cụ thể</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    placeholder="Số 1, Đường ABC"
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -194,9 +268,13 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
             name="postal_code"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Mã bưu điện (tùy chọn)</FormLabel>
+                <FormLabel>Mã bưu điện (không bắt buộc)</FormLabel>
                 <FormControl>
-                  <Input placeholder="100000" {...field} />
+                  <Input
+                    {...field}
+                    placeholder="100000"
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -206,55 +284,49 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
 
         <FormField
           control={form.control}
-          name="street_address"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Địa chỉ cụ thể</FormLabel>
-              <FormControl>
-                <Input placeholder="Số 1, Đường ABC" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
           name="is_default"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+            <FormItem className="flex flex-row items-center justify-between space-x-3 space-y-0 rounded-md border p-4">
+              <div className="space-y-1 leading-none">
+                <FormLabel>Đặt làm địa chỉ mặc định</FormLabel>
+                <FormDescription>
+                  Địa chỉ này sẽ được sử dụng mặc định cho đơn hàng của bạn
+                </FormDescription>
+              </div>
               <FormControl>
-                <Checkbox
+                <Switch
                   checked={field.value}
                   onCheckedChange={field.onChange}
-                  disabled={isFirstAddress} // Disable nếu là địa chỉ đầu tiên
+                  disabled={isSubmitting || (address && address.is_default)}
                 />
               </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel>
-                  Đặt làm địa chỉ mặc định
-                  {isFirstAddress && (
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      (Địa chỉ đầu tiên sẽ tự động là mặc định)
-                    </span>
-                  )}
-                </FormLabel>
-              </div>
             </FormItem>
           )}
         />
 
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+        <div className="flex justify-end space-x-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
             Hủy
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {address ? "Cập nhật" : "Thêm mới"}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {address ? "Đang cập nhật..." : "Đang thêm..."}
+              </>
+            ) : address ? (
+              "Cập nhật địa chỉ"
+            ) : (
+              "Thêm địa chỉ"
+            )}
           </Button>
         </div>
       </form>
     </Form>
-  )
+  );
 }
-
