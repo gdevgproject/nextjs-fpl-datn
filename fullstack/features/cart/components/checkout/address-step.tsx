@@ -28,26 +28,20 @@ export function AddressStep() {
     null
   );
   const [showAddressForm, setShowAddressForm] = useState(!isAuthenticated);
-  const [initialized, setInitialized] = useState(false);
 
+  // Remove unnecessary initialized state which causes delay in showing content
   const { data: addresses, isLoading } = useUserAddresses();
 
-  // Fetch user addresses if authenticated (run only once on mount)
+  // Improved address initialization logic
   useEffect(() => {
-    if (initialized) return;
-
     // Handle guest users
     if (!isAuthenticated) {
       setShowAddressForm(true);
-      setInitialized(true);
       return;
     }
 
-    // Wait for addresses to load
-    if (isLoading || !addresses) return;
-
-    // If we have addresses, set up the form
-    if (addresses.length > 0) {
+    // If addresses are loaded and we have at least one
+    if (addresses && addresses.length > 0 && !selectedAddressId) {
       // Find default address if it exists
       const defaultAddress = addresses.find((addr) => addr.is_default);
       const addressToUse = defaultAddress || addresses[0];
@@ -61,13 +55,12 @@ export function AddressStep() {
         district: addressToUse.district,
         ward: addressToUse.ward,
       });
-    } else {
+      setShowAddressForm(false);
+    } else if (addresses && addresses.length === 0) {
       // No addresses found, show the form
       setShowAddressForm(true);
     }
-
-    setInitialized(true);
-  }, [isAuthenticated, addresses, isLoading, updateFormData, initialized]);
+  }, [isAuthenticated, addresses, selectedAddressId, updateFormData]);
 
   // Handle selecting an address from saved addresses
   const handleSelectAddress = (addressId: number) => {
@@ -103,8 +96,9 @@ export function AddressStep() {
     });
   };
 
-  // Show loading state while addresses are loading
-  if (isAuthenticated && isLoading) {
+  // Only show loading state if we're authenticated and still waiting for addresses
+  // This prevents the loading indicator from showing when data is already available
+  if (isAuthenticated && isLoading && !addresses) {
     return (
       <Card>
         <CardContent className="py-8 flex justify-center items-center">

@@ -1,9 +1,16 @@
-import { Separator } from "@/components/ui/separator"
-import { formatCurrency } from "@/lib/utils/format"
-import { useCartContext } from "../../providers/cart-provider"
+import { Separator } from "@/components/ui/separator";
+import { formatCurrency } from "@/lib/utils/format";
+import { useCartContext } from "../../cart/providers/cart-provider";
 
 export function OrderSummary() {
-  const { cartItems, subtotal, discount, shippingFee, cartTotal, appliedDiscount } = useCartContext()
+  const {
+    cartItems,
+    subtotal,
+    discount,
+    shippingFee,
+    cartTotal,
+    appliedDiscount,
+  } = useCartContext();
 
   return (
     <div className="space-y-4">
@@ -14,10 +21,16 @@ export function OrderSummary() {
             <div key={item.variant_id} className="flex justify-between text-sm">
               <div className="flex-1">
                 <span className="font-medium">{item.product?.name}</span>
-                <span className="text-muted-foreground"> × {item.quantity}</span>
+                <span className="text-muted-foreground">
+                  {" "}
+                  × {item.quantity}
+                </span>
               </div>
               <div className="text-right">
-                {formatCurrency((item.product?.sale_price || item.product?.price || 0) * item.quantity)}
+                {formatCurrency(
+                  (item.product?.sale_price || item.product?.price || 0) *
+                    item.quantity
+                )}
               </div>
             </div>
           ))}
@@ -34,7 +47,10 @@ export function OrderSummary() {
 
         {discount > 0 && (
           <div className="flex justify-between text-green-600">
-            <span>Giảm giá {appliedDiscount && `(${appliedDiscount.discount_percentage}%)`}</span>
+            <span>
+              Giảm giá{" "}
+              {appliedDiscount && `(${appliedDiscount.discount_percentage}%)`}
+            </span>
             <span>-{formatCurrency(discount)}</span>
           </div>
         )}
@@ -56,6 +72,5 @@ export function OrderSummary() {
         </div>
       </div>
     </div>
-  )
+  );
 }
-

@@ -49,7 +49,8 @@ export async function securedPlaceOrder({
   const regularSupabase = await getSupabaseServerClient();
 
   // Create service role client for transaction operations (bypasses RLS)
-  const supabase = createServiceRoleClient();
+  // Fix: Make sure to await the async function to get the actual client instance
+  const supabase = await createServiceRoleClient();
 
   console.log(
     "Starting order placement process with",

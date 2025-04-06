@@ -1,40 +1,41 @@
-"use client"
+"use client";
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useCartContext } from "../../providers/cart-provider"
-import { useCheckout } from "../../providers/checkout-provider"
-import { CheckoutSteps } from "./checkout-steps"
-import { GuestInfoStep } from "./guest-info-step"
-import { AddressStep } from "./address-step"
-import { PaymentStep } from "./payment-step"
-import { ReviewStep } from "./review-step"
-import { OrderSummary } from "./order-summary"
-import { useAuth } from "@/lib/providers/auth-context"
-import { useToast } from "@/hooks/use-toast"
-import { EmptyCart } from "@/features/cart/components/empty-cart"
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useCartContext } from "../../providers/cart-provider";
+import { useCheckout } from "../../providers/checkout-provider";
+import { CheckoutSteps } from "./checkout-steps";
+import { GuestInfoStep } from "./guest-info-step";
+import { AddressStep } from "./address-step";
+import { PaymentStep } from "./payment-step";
+import { ReviewStep } from "./review-step";
+import { OrderSummary } from "../../../orders/components/order-summary";
+import { useAuth } from "@/lib/providers/auth-context";
+import { useToast } from "@/hooks/use-toast";
+import { EmptyCart } from "@/features/cart/components/empty-cart";
 
 export function CheckoutPage() {
-  const router = useRouter()
-  const { toast } = useToast()
-  const { isAuthenticated } = useAuth()
-  const { cartItemCount } = useCartContext()
-  const { currentStep, justPlacedOrder } = useCheckout()
+  const router = useRouter();
+  const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
+  const { cartItemCount } = useCartContext();
+  const { currentStep, justPlacedOrder } = useCheckout();
 
   // Check if cart is empty and redirect to cart page if it is
   useEffect(() => {
     if (cartItemCount === 0 && !justPlacedOrder) {
       toast({
         title: "Giỏ hàng trống",
-        description: "Vui lòng thêm sản phẩm vào giỏ hàng trước khi thanh toán.",
+        description:
+          "Vui lòng thêm sản phẩm vào giỏ hàng trước khi thanh toán.",
         variant: "destructive",
-      })
-      router.push("/gio-hang")
+      });
+      router.push("/gio-hang");
     }
-  }, [cartItemCount, router, toast, justPlacedOrder])
+  }, [cartItemCount, router, toast, justPlacedOrder]);
 
   if (cartItemCount === 0) {
-    return <EmptyCart />
+    return <EmptyCart />;
   }
 
   return (
@@ -65,6 +66,5 @@ export function CheckoutPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
-
