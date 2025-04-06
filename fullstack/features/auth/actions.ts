@@ -156,13 +156,15 @@ export async function login(values: LoginParams) {
   }
 }
 
-// Đăng xuất
+// Đăng xuất - server action
 export async function logout() {
   const supabase = getSupabaseServerClient();
 
   try {
+    // Simply sign out on the server side
     await supabase.auth.signOut();
-    // Redirect to home page after successful logout
+
+    // Return success to allow client-side code to handle redirection
     return { success: true, redirect: "/" };
   } catch (error) {
     console.error("Logout error:", error);

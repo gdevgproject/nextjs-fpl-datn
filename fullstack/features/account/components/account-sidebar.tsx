@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/providers/auth-context";
 import { logout } from "@/features/auth/actions";
 import { useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 const accountNavItems = [
   { title: "Thông tin tài khoản", href: "/tai-khoan", icon: User },
@@ -19,31 +20,35 @@ const accountNavItems = [
 export function AccountSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { profile, profileImageUrl } = useAuth();
+  const { profile, profileImageUrl, signOut } = useAuth();
   const { toast } = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const queryClient = useQueryClient();
 
-  // Handle logout action
+  // Improved logout handler - use context signOut instead of server action directly
   async function handleLogout() {
     try {
       setIsLoggingOut(true);
-      const result = await logout();
 
-      if (result.success) {
-        // Clear any client-side auth state if needed
-        // Redirect to home page
-        if (result.redirect) {
-          router.push(result.redirect);
-        } else {
-          router.push("/");
-        }
-      } else {
-        toast({
-          title: "Lỗi đăng xuất",
-          description: "Có lỗi xảy ra khi đăng xuất. Vui lòng thử lại.",
-          variant: "destructive",
-        });
+      // Immediately clear React Query cache for user data
+      // This prevents queries from firing during logout process
+      if (profile?.id) {
+        queryClient.removeQueries({ queryKey: ["profile"] });
+        queryClient.removeQueries({ queryKey: ["addresses"] });
+        queryClient.removeQueries({ queryKey: ["orders"] });
+        queryClient.removeQueries({ queryKey: ["cart"] });
+        queryClient.removeQueries({ queryKey: ["wishlist"] });
       }
+
+      // Use the auth context's signOut which handles state cleanup properly
+      await signOut();
+
+      toast({
+        title: "Đăng xuất thành công",
+        description: "Bạn đã đăng xuất khỏi tài khoản.",
+      });
+
+      // No longer need to use router.push as signOut already handles redirection
     } catch (error) {
       console.error("Logout error:", error);
       toast({

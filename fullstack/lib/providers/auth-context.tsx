@@ -73,11 +73,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const router = useRouter();
 
-  // Sử dụng React Query để fetch profile data
+  // Fix the profile query to prevent fetching when user is logged out
   const { data: profile, refetch } = useQuery({
     queryKey: ["profile", state.user?.id],
     queryFn: async () => {
-      if (!state.user) return null;
+      // Only fetch if there's a user AND the user is authenticated
+      if (!state.user || !state.isAuthenticated) return null;
 
       try {
         const { data, error } = await supabase
@@ -90,15 +91,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         return data as Profile;
       } catch (error) {
-        console.error("Error fetching profile:", error);
-        throw new Error(handleApiError(error));
+        // Only log error if user is still authenticated
+        if (state.isAuthenticated) {
+          console.error("Error fetching profile:", error);
+          throw new Error(handleApiError(error));
+        }
+        return null;
       }
     },
-    enabled: !!state.user && mounted, // Chỉ fetch khi đã mounted
-    staleTime: QUERY_STALE_TIME.USER, // Sử dụng staleTime từ config
-    gcTime: QUERY_STALE_TIME.USER * 2, // Giữ cache lâu hơn staleTime
-    refetchOnWindowFocus: true, // Refetch khi focus lại window
-    refetchOnMount: true, // Luôn refetch khi component được mount
+    // Only run query if user exists, is authenticated, and component is mounted
+    enabled: !!state.user && !!state.isAuthenticated && mounted,
+    staleTime: QUERY_STALE_TIME.USER,
+    gcTime: QUERY_STALE_TIME.USER * 2,
+    // Only refetch on focus/mount if still authenticated
+    refetchOnWindowFocus: state.isAuthenticated,
+    refetchOnMount: state.isAuthenticated,
   });
 
   // Tính toán profileImageUrl từ profile
@@ -255,10 +262,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [supabase, queryClient, fetchUserData, mounted]);
 
-  // Sign out function
+  // Enhanced sign out function with immediate state updates before Supabase call
   const signOut = useCallback(async () => {
     try {
-      await supabase.auth.signOut();
+      // 1. First immediately update local state to trigger UI updates right away
       setState({
         user: null,
         session: null,
@@ -267,24 +274,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: "anon",
       });
 
-      // Clear user-related queries
+      // 2. Clear all client-side cache related to authenticated state
       queryClient.removeQueries({ queryKey: ["profile"] });
       queryClient.removeQueries({ queryKey: ["addresses"] });
       queryClient.removeQueries({ queryKey: ["orders"] });
       queryClient.removeQueries({ queryKey: ["cart"] });
       queryClient.removeQueries({ queryKey: ["wishlist"] });
 
-      // Force refresh page để đảm bảo UI được cập nhật
+      // 3. Call Supabase to sign out (this can take a moment)
+      await supabase.auth.signOut();
+
+      // 4. Redirect to homepage to ensure complete reset
       window.location.href = "/";
     } catch (error) {
       console.error("Error signing out:", error);
+
+      // Even if sign out fails, ensure client state is reset
+      setState({
+        user: null,
+        session: null,
+        isLoading: false,
+        isAuthenticated: false,
+        role: "anon",
+      });
+
+      // Force a full cache reset in case of error to ensure clean state
+      queryClient.clear();
+
+      // Force redirect to home page
+      window.location.href = "/";
     }
   }, [supabase, queryClient]);
 
   // Improved refreshProfile function with broader cache invalidation
   const refreshProfile = useCallback(
     async (broadcastUpdate = true) => {
-      if (!state.user) return null;
+      // Check authentication state first - don't refresh if not authenticated
+      if (!state.user || !state.isAuthenticated) return null;
 
       try {
         // Add cache-busting with fresh fetch
@@ -324,20 +350,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         return data as Profile;
       } catch (error) {
-        console.error("Error refreshing profile:", error);
+        // Only log/handle error if still authenticated
+        if (state.isAuthenticated) {
+          console.error("Error refreshing profile:", error);
 
-        // Trigger a re-fetch to possibly recover from the error
-        refetch().catch((refetchError) => {
-          console.error(
-            "Error during refetch after refresh failure:",
-            refetchError
-          );
-        });
+          // Only attempt to refetch if still authenticated
+          if (state.isAuthenticated) {
+            refetch().catch((refetchError) => {
+              console.error(
+                "Error during refetch after refresh failure:",
+                refetchError
+              );
+            });
+          }
+        }
 
         return null;
       }
     },
-    [state.user, supabase, queryClient, refetch]
+    [state.user, state.isAuthenticated, supabase, queryClient, refetch]
   );
 
   // Enhanced update profile function with optimistic updates
