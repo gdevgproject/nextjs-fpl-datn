@@ -1,15 +1,10 @@
-import { createClient } from "@/lib/supabase/server"; // Import createClient từ server.ts
 import type { ShopSettings } from "@/lib/types/shared.types";
 
-// Tạo Supabase client từ createClient trong server.ts
-export async function getSupabaseClient() {
-  const supabaseClient = await createClient(); // await vì createClient trả về Promise
-  return supabaseClient;
-}
-
-// Fetch shop settings
+// Fetch shop settings - only for server components
 export async function getShopSettings(): Promise<ShopSettings> {
-  const supabase = await getSupabaseClient(); // Sử dụng supabase client đã tạo từ createClient
+  // Dynamically import the server client to prevent it from being included in client bundles
+  const { getSupabaseServerClient } = await import("@/lib/supabase/server");
+  const supabase = await getSupabaseServerClient();
 
   const { data, error } = await supabase
     .from("shop_settings")
