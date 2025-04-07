@@ -74,7 +74,7 @@ export async function getFeaturedProducts(limit = 8): Promise<Product[]> {
     const productIds = featuredProducts.map((item) => item.product_id);
     const { data: variantsData } = await supabase
       .from("product_variants")
-      .select("product_id, price, sale_price, volume_ml, stock_quantity")
+      .select("id, product_id, price, sale_price, volume_ml, stock_quantity")
       .in("product_id", productIds)
       .is("deleted_at", null);
 
@@ -83,7 +83,14 @@ export async function getFeaturedProducts(limit = 8): Promise<Product[]> {
       if (!acc[variant.product_id]) {
         acc[variant.product_id] = [];
       }
-      acc[variant.product_id].push(variant);
+      acc[variant.product_id].push({
+        id: variant.id, // Ensuring the ID is explicitly included
+        product_id: variant.product_id,
+        price: variant.price,
+        sale_price: variant.sale_price,
+        volume_ml: variant.volume_ml,
+        stock_quantity: variant.stock_quantity,
+      });
       return acc;
     }, {} as Record<number, any[]>);
 
@@ -145,7 +152,7 @@ export async function getNewArrivals(limit = 8): Promise<Product[]> {
     const productIds = data.map((product) => product.id);
     const { data: variants } = await supabase
       .from("product_variants")
-      .select("product_id, price, sale_price, volume_ml, stock_quantity")
+      .select("id, product_id, price, sale_price, volume_ml, stock_quantity")
       .in("product_id", productIds)
       .is("deleted_at", null);
 
@@ -154,7 +161,14 @@ export async function getNewArrivals(limit = 8): Promise<Product[]> {
       if (!acc[variant.product_id]) {
         acc[variant.product_id] = [];
       }
-      acc[variant.product_id].push(variant);
+      acc[variant.product_id].push({
+        id: variant.id, // Ensuring the ID is explicitly included
+        product_id: variant.product_id,
+        price: variant.price,
+        sale_price: variant.sale_price,
+        volume_ml: variant.volume_ml,
+        stock_quantity: variant.stock_quantity,
+      });
       return acc;
     }, {} as Record<number, any[]>);
 
@@ -279,7 +293,7 @@ export async function getProductsOnSale(limit = 8): Promise<Product[]> {
     // Lấy thông tin variants cho tất cả sản phẩm
     const { data: variantsData } = await supabase
       .from("product_variants")
-      .select("product_id, price, sale_price, volume_ml, stock_quantity")
+      .select("id, product_id, price, sale_price, volume_ml, stock_quantity")
       .in("product_id", Array.from(allProductIds))
       .is("deleted_at", null);
 
@@ -288,7 +302,14 @@ export async function getProductsOnSale(limit = 8): Promise<Product[]> {
       if (!acc[variant.product_id]) {
         acc[variant.product_id] = [];
       }
-      acc[variant.product_id].push(variant);
+      acc[variant.product_id].push({
+        id: variant.id, // Ensuring the ID is explicitly included
+        product_id: variant.product_id,
+        price: variant.price,
+        sale_price: variant.sale_price,
+        volume_ml: variant.volume_ml,
+        stock_quantity: variant.stock_quantity,
+      });
       return acc;
     }, {} as Record<number, any[]>);
 
@@ -374,7 +395,7 @@ export async function getBestSellingProducts(limit = 8): Promise<Product[]> {
     // Get variant information for these products
     const { data: variantsData } = await supabase
       .from("product_variants")
-      .select("product_id, price, sale_price, volume_ml, stock_quantity")
+      .select("id, product_id, price, sale_price, volume_ml, stock_quantity")
       .in("product_id", productIds)
       .is("deleted_at", null);
 
@@ -383,7 +404,14 @@ export async function getBestSellingProducts(limit = 8): Promise<Product[]> {
       if (!acc[variant.product_id]) {
         acc[variant.product_id] = [];
       }
-      acc[variant.product_id].push(variant);
+      acc[variant.product_id].push({
+        id: variant.id, // Ensuring the ID is explicitly included
+        product_id: variant.product_id,
+        price: variant.price,
+        sale_price: variant.sale_price,
+        volume_ml: variant.volume_ml,
+        stock_quantity: variant.stock_quantity,
+      });
       return acc;
     }, {} as Record<number, any[]>);
 
@@ -530,7 +558,7 @@ export async function getProductsByGender(
     const productIds = data.map((product) => product.id);
     const { data: variantsData } = await supabase
       .from("product_variants")
-      .select("product_id, price, sale_price, volume_ml, stock_quantity")
+      .select("id, product_id, price, sale_price, volume_ml, stock_quantity")
       .in("product_id", productIds)
       .is("deleted_at", null);
 
@@ -539,7 +567,14 @@ export async function getProductsByGender(
       if (!acc[variant.product_id]) {
         acc[variant.product_id] = [];
       }
-      acc[variant.product_id].push(variant);
+      acc[variant.product_id].push({
+        id: variant.id, // Ensuring the ID is explicitly included
+        product_id: variant.product_id,
+        price: variant.price,
+        sale_price: variant.sale_price,
+        volume_ml: variant.volume_ml,
+        stock_quantity: variant.stock_quantity,
+      });
       return acc;
     }, {} as Record<number, any[]>);
 
