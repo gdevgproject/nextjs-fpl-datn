@@ -38,7 +38,7 @@ export function FeaturedBrands({ brands }: FeaturedBrandsProps) {
   return (
     <section className="py-12 md:py-16 bg-muted/20">
       <div className="container">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <div>
             <h2 className="text-2xl md:text-3xl font-bold">
               Thương hiệu nổi bật
@@ -48,35 +48,56 @@ export function FeaturedBrands({ brands }: FeaturedBrandsProps) {
             </p>
           </div>
 
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => scroll("left")}
-              aria-label="Scroll left"
+          <div className="flex items-center gap-4">
+            <Link
+              href="/thuong-hieu"
+              className="group hidden sm:flex items-center text-sm font-medium text-primary hover:underline"
             >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => scroll("right")}
-              aria-label="Scroll right"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+              Xem tất cả
+              <ChevronRight className="h-4 w-4 ml-1 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => scroll("left")}
+                aria-label="Scroll left"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => scroll("right")}
+                aria-label="Scroll right"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
 
         {/* Scrollable container for brand logos */}
         <div
           ref={scrollContainerRef}
-          className="flex overflow-x-auto scrollbar-hide gap-8 pb-4"
+          className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory gap-8 pb-4"
           style={{ scrollbarWidth: "none" }}
         >
           {brands.map((brand) => (
             <BrandLogoItem key={brand.id} brand={brand} />
           ))}
+        </div>
+
+        {/* Mobile-only "View All" link */}
+        <div className="mt-6 text-center sm:hidden">
+          <Link
+            href="/thuong-hieu"
+            className="group inline-flex items-center text-sm font-medium text-primary hover:underline"
+          >
+            Xem tất cả thương hiệu
+            <ChevronRight className="h-4 w-4 ml-1 transition-transform group-hover:translate-x-0.5" />
+          </Link>
         </div>
       </div>
     </section>
@@ -86,20 +107,20 @@ export function FeaturedBrands({ brands }: FeaturedBrandsProps) {
 function BrandLogoItem({ brand }: { brand: Brand }) {
   return (
     <Link
-      href={`/thuong-hieu/${brand.id}`}
+      href={`/san-pham?brand=${brand.id}`}
       className={cn(
-        "flex flex-col items-center justify-center min-w-[160px] md:min-w-[180px] transition-transform",
+        "flex flex-col items-center justify-center min-w-[160px] md:min-w-[180px] snap-start transition-transform",
         "hover:scale-105 focus:scale-105 outline-none"
       )}
     >
-      <div className="relative w-[120px] h-[120px] md:w-[140px] md:h-[140px] bg-white rounded-full shadow-sm overflow-hidden p-4 flex items-center justify-center">
+      <div className="relative w-[120px] h-[120px] md:w-[140px] md:h-[140px] bg-white dark:bg-gray-800 rounded-full shadow-sm overflow-hidden p-4 flex items-center justify-center">
         {brand.logo_url ? (
           <Image
             src={brand.logo_url}
             alt={brand.name}
             width={100}
             height={100}
-            className="object-contain max-w-full max-h-full"
+            className="object-contain max-w-full max-h-full dark:filter dark:brightness-90"
           />
         ) : (
           <div className="text-xl font-bold text-center text-primary">

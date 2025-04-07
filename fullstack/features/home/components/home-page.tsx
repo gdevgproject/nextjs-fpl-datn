@@ -16,6 +16,7 @@ import {
   getBestSellingProducts,
   getProductsOnSale,
   getProductsByGender,
+  getRecentReviews,
 } from "../queries";
 
 // Skeleton loaders for suspense boundaries
@@ -108,44 +109,49 @@ async function GenderProductsSection() {
   );
 }
 
-// Customer Reviews section with some sample data
-// In a real app, you'd fetch these from a database
-function ReviewsSection() {
-  const reviews = [
-    {
-      id: 1,
-      user: {
-        id: "user1",
-        name: "Nguyễn Văn A",
+// Customer Reviews with Suspense
+async function ReviewsSection() {
+  const reviews = await getRecentReviews(3); // Fetch 3 recent approved reviews
+
+  // Fall back to sample data if no real reviews are available
+  if (!reviews || reviews.length === 0) {
+    const sampleReviews = [
+      {
+        id: 1,
+        user: {
+          id: "user1",
+          name: "Nguyễn Văn A",
+        },
+        rating: 5,
+        comment:
+          "Tôi rất hài lòng với nước hoa Bleu de Chanel. Mùi hương nam tính, lịch lãm và bền mùi cực kỳ. Chất lượng sản phẩm tuyệt vời và dịch vụ giao hàng nhanh chóng. Sẽ tiếp tục ủng hộ shop.",
+        product_name: "Bleu de Chanel EDP",
       },
-      rating: 5,
-      comment:
-        "Tôi rất hài lòng với nước hoa Bleu de Chanel. Mùi hương nam tính, lịch lãm và bền mùi cực kỳ. Chất lượng sản phẩm tuyệt vời và dịch vụ giao hàng nhanh chóng. Sẽ tiếp tục ủng hộ shop.",
-      product_name: "Bleu de Chanel EDP",
-    },
-    {
-      id: 2,
-      user: {
-        id: "user2",
-        name: "Trần Thị B",
+      {
+        id: 2,
+        user: {
+          id: "user2",
+          name: "Trần Thị B",
+        },
+        rating: 5,
+        comment:
+          "Nước hoa Creed Aventus for Her có mùi hương tinh tế, quyến rũ và độc đáo. Tôi đã dùng rất nhiều loại nước hoa nhưng đây là một trong những mùi hương tôi yêu thích nhất. Sẽ quay lại mua lần nữa.",
+        product_name: "Creed Aventus for Her",
       },
-      rating: 5,
-      comment:
-        "Nước hoa Creed Aventus for Her có mùi hương tinh tế, quyến rũ và độc đáo. Tôi đã dùng rất nhiều loại nước hoa nhưng đây là một trong những mùi hương tôi yêu thích nhất. Sẽ quay lại mua lần nữa.",
-      product_name: "Creed Aventus for Her",
-    },
-    {
-      id: 3,
-      user: {
-        id: "user3",
-        name: "Phạm Văn C",
+      {
+        id: 3,
+        user: {
+          id: "user3",
+          name: "Phạm Văn C",
+        },
+        rating: 4,
+        comment:
+          "CK One là một mùi hương unisex tuyệt vời, tươi mát và dễ sử dụng hàng ngày. Tôi rất hài lòng với sản phẩm và dịch vụ của shop. Giao hàng nhanh và đóng gói cẩn thận.",
+        product_name: "CK One EDT",
       },
-      rating: 4,
-      comment:
-        "CK One là một mùi hương unisex tuyệt vời, tươi mát và dễ sử dụng hàng ngày. Tôi rất hài lòng với sản phẩm và dịch vụ của shop. Giao hàng nhanh và đóng gói cẩn thận.",
-      product_name: "CK One EDT",
-    },
-  ];
+    ];
+    return <CustomerReviews reviews={sampleReviews} />;
+  }
 
   return <CustomerReviews reviews={reviews} />;
 }

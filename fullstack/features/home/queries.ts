@@ -567,3 +567,64 @@ export async function getProductsByGender(
     return [];
   }
 }
+
+/**
+ * Fetch customer reviews for the homepage
+ */
+export async function getRecentReviews(limit = 5): Promise<any[]> {
+  const supabase = await getSupabaseServerClient();
+
+  try {
+    // Check if reviews table exists and has data
+    const { count, error: countError } = await supabase
+      .from("reviews")
+      .select("*", { count: "exact", head: true });
+
+    if (countError || count === 0) {
+      console.log("No reviews found in database, returning sample data");
+      return []; // Return empty array, will use sample data in component
+    }
+
+    // Get approved reviews with user profile and product info
+    const { data, error } = await supabase
+      .from("reviews")
+      .select(
+        `
+        id,
+        rating,
+        comment,
+        created_at,
+        product_id,
+        user_id,
+        product:products(id, name, slug),
+        user:profiles(id, display_name, avatar_url)
+      `
+      )
+      .eq("is_approved", true)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error("Error fetching reviews:", error.message);
+      return [];
+    }
+
+    // Format the data for the component
+    return data.map((review) => ({
+      id: review.id,
+      rating: review.rating,
+      comment: review.comment,
+      product_name: review.product?.name,
+      product_slug: review.product?.slug,
+      created_at: review.created_at,
+      user: {
+        id: review.user?.id || review.user_id,
+        name: review.user?.display_name || "Anonymous",
+        avatar: review.user?.avatar_url,
+      },
+    }));
+  } catch (error) {
+    console.error("Error in getRecentReviews:", error);
+    return [];
+  }
+}

@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Category } from "../types";
 
@@ -18,11 +19,20 @@ export function FeaturedCategories({ categories }: FeaturedCategoriesProps) {
   return (
     <section className="py-12 md:py-16">
       <div className="container">
-        <div className="text-center mb-10">
-          <h2 className="text-2xl md:text-3xl font-bold">Danh mục nổi bật</h2>
-          <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
-            Khám phá bộ sưu tập nước hoa đa dạng của chúng tôi theo danh mục
-          </p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-bold">Danh mục nổi bật</h2>
+            <p className="text-muted-foreground mt-2">
+              Khám phá bộ sưu tập nước hoa đa dạng của chúng tôi theo danh mục
+            </p>
+          </div>
+          <Link
+            href="/danh-muc"
+            className="group flex items-center text-sm font-medium text-primary hover:underline"
+          >
+            Xem tất cả
+            <ChevronRight className="h-4 w-4 ml-1 transition-transform group-hover:translate-x-0.5" />
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -38,7 +48,7 @@ export function FeaturedCategories({ categories }: FeaturedCategoriesProps) {
 function CategoryCard({ category }: { category: Category }) {
   return (
     <Link
-      href={`/danh-muc/${category.slug}`}
+      href={`/san-pham?category=${category.slug}`}
       className={cn(
         "group relative block h-[240px] overflow-hidden rounded-lg shadow-sm",
         "transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"

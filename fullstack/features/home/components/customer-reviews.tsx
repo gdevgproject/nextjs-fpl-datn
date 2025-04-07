@@ -2,9 +2,11 @@
 
 import { useRef } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Star, ChevronLeft, ChevronRight, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/utils/format";
 
 interface Review {
   id: number;
@@ -16,6 +18,8 @@ interface Review {
   rating: number;
   comment: string;
   product_name?: string;
+  product_slug?: string;
+  created_at?: string;
 }
 
 interface CustomerReviewsProps {
@@ -44,9 +48,9 @@ export function CustomerReviews({ reviews }: CustomerReviewsProps) {
   };
 
   return (
-    <section className="py-12 md:py-16 bg-primary-foreground">
+    <section className="py-12 md:py-16 bg-muted/30 dark:bg-muted/10">
       <div className="container">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
           <div>
             <h2 className="text-2xl md:text-3xl font-bold">
               Khách hàng nói gì về chúng tôi
@@ -96,14 +100,14 @@ function ReviewCard({ review }: { review: Review }) {
     <div
       className={cn(
         "flex flex-col min-w-[300px] md:min-w-[400px] max-w-md",
-        "p-6 rounded-lg bg-background shadow-sm",
-        "snap-start border border-border"
+        "p-6 rounded-lg bg-background border border-border shadow-sm",
+        "snap-start hover:shadow-md transition-shadow"
       )}
     >
-      <div className="flex items-start mb-4">
+      <div className="flex items-start gap-4">
         {/* User avatar */}
-        <div className="flex-shrink-0 mr-4">
-          <div className="h-12 w-12 rounded-full overflow-hidden bg-muted relative">
+        <div className="flex-shrink-0">
+          <div className="h-12 w-12 rounded-full overflow-hidden bg-muted relative flex items-center justify-center">
             {review.user.avatar ? (
               <Image
                 src={review.user.avatar}
@@ -112,8 +116,8 @@ function ReviewCard({ review }: { review: Review }) {
                 className="object-cover"
               />
             ) : (
-              <div className="h-full w-full flex items-center justify-center text-lg font-medium">
-                {review.user.name.charAt(0)}
+              <div className="h-full w-full flex items-center justify-center text-lg font-medium bg-primary/10 text-primary">
+                {review.user.name.charAt(0).toUpperCase()}
               </div>
             )}
           </div>
@@ -121,7 +125,11 @@ function ReviewCard({ review }: { review: Review }) {
 
         {/* User info and rating */}
         <div className="flex-1">
-          <h3 className="font-medium">{review.user.name}</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium">{review.user.name}</h3>
+            <Quote className="h-5 w-5 text-primary/30 dark:text-primary/20" />
+          </div>
+
           <div className="flex items-center mt-1">
             {Array.from({ length: 5 }).map((_, i) => (
               <Star
@@ -134,22 +142,37 @@ function ReviewCard({ review }: { review: Review }) {
                 )}
               />
             ))}
+            {review.created_at && (
+              <span className="text-xs text-muted-foreground ml-2">
+                {formatDate(review.created_at)}
+              </span>
+            )}
           </div>
+
           {review.product_name && (
-            <p className="text-xs text-muted-foreground mt-1">
-              Đã mua: {review.product_name}
-            </p>
+            <div className="text-xs text-muted-foreground mt-1">
+              Đã mua:{" "}
+              {review.product_slug ? (
+                <Link
+                  href={`/san-pham/${review.product_slug}`}
+                  className="hover:underline text-primary"
+                >
+                  {review.product_name}
+                </Link>
+              ) : (
+                <span>{review.product_name}</span>
+              )}
+            </div>
           )}
         </div>
-
-        {/* Quote icon */}
-        <Quote className="h-6 w-6 text-primary/40" />
       </div>
 
       {/* Review comment */}
-      <p className="text-muted-foreground leading-relaxed line-clamp-4">
-        {review.comment}
-      </p>
+      <div className="mt-4">
+        <p className="text-muted-foreground leading-relaxed">
+          "{review.comment}"
+        </p>
+      </div>
     </div>
   );
 }

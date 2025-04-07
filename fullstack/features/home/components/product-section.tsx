@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ProductCard } from "@/components/shared/product-card";
+import { ChevronRight } from "lucide-react";
 import type { Product } from "../types";
 
 interface ProductSectionProps {
@@ -46,9 +47,13 @@ export function ProductSection({
             )}
           </div>
           {viewAllLink && (
-            <Button variant="outline" asChild>
-              <Link href={viewAllLink}>Xem tất cả</Link>
-            </Button>
+            <Link
+              href={viewAllLink}
+              className="group flex items-center text-sm font-medium text-primary hover:underline"
+            >
+              Xem tất cả
+              <ChevronRight className="h-4 w-4 ml-1 transition-transform group-hover:translate-x-0.5" />
+            </Link>
           )}
         </div>
 
