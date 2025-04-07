@@ -1,46 +1,66 @@
-import { Truck, ShieldCheck, RotateCcw, Clock } from "lucide-react"
+"use client";
+
+import { Truck, CheckCircle, Clock, CreditCard } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function FeaturesSection() {
   const features = [
     {
-      icon: <Truck className="h-10 w-10 text-primary" />,
-      title: "Giao hàng miễn phí",
-      description: "Miễn phí giao hàng cho đơn hàng từ 1.000.000đ",
+      icon: <Truck className="h-6 w-6" />,
+      title: "Giao hàng toàn quốc",
+      description: "Miễn phí giao hàng cho đơn từ 500.000đ",
     },
     {
-      icon: <ShieldCheck className="h-10 w-10 text-primary" />,
+      icon: <CheckCircle className="h-6 w-6" />,
       title: "Sản phẩm chính hãng",
-      description: "Cam kết 100% sản phẩm chính hãng",
+      description: "Cam kết 100% nước hoa authentic",
     },
     {
-      icon: <RotateCcw className="h-10 w-10 text-primary" />,
-      title: "Đổi trả dễ dàng",
-      description: "Đổi trả sản phẩm trong vòng 30 ngày",
-    },
-    {
-      icon: <Clock className="h-10 w-10 text-primary" />,
+      icon: <Clock className="h-6 w-6" />,
       title: "Hỗ trợ 24/7",
-      description: "Luôn sẵn sàng hỗ trợ bạn mọi lúc",
+      description: "Luôn sẵn sàng giải đáp mọi thắc mắc",
     },
-  ]
+    {
+      icon: <CreditCard className="h-6 w-6" />,
+      title: "Thanh toán đa dạng",
+      description: "Nhiều phương thức thanh toán an toàn",
+    },
+  ];
 
   return (
-    <section className="border-t py-12">
+    <section className="py-12 md:py-16 bg-muted">
       <div className="container">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {features.map((feature, index) => (
-            <div
-              key={index}
-              className="flex flex-col items-center text-center rounded-lg p-6 transition-all hover:shadow-md"
-            >
-              <div className="mb-4 rounded-full bg-primary/10 p-3">{feature.icon}</div>
-              <h3 className="mb-2 text-lg font-medium">{feature.title}</h3>
-              <p className="text-sm text-muted-foreground">{feature.description}</p>
-            </div>
+            <FeatureCard key={index} feature={feature} />
           ))}
         </div>
       </div>
     </section>
-  )
+  );
 }
 
+interface FeatureCardProps {
+  feature: {
+    icon: React.ReactNode;
+    title: string;
+    description: string;
+  };
+}
+
+function FeatureCard({ feature }: FeatureCardProps) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center text-center p-6 rounded-lg",
+        "bg-background shadow-sm hover:shadow-md transition-shadow"
+      )}
+    >
+      <div className="p-3 rounded-full bg-primary/10 text-primary mb-4">
+        {feature.icon}
+      </div>
+      <h3 className="text-lg font-medium mb-2">{feature.title}</h3>
+      <p className="text-muted-foreground">{feature.description}</p>
+    </div>
+  );
+}

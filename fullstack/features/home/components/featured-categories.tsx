@@ -1,68 +1,80 @@
-import Link from "next/link"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import type { Category } from "../types"
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+import type { Category } from "../types";
 
 interface FeaturedCategoriesProps {
-  categories: Category[]
+  categories: Category[];
 }
 
 export function FeaturedCategories({ categories }: FeaturedCategoriesProps) {
-  // Nếu không có danh mục, hiển thị placeholder
-  const displayCategories =
-    categories.length > 0
-      ? categories
-      : Array.from({ length: 6 }).map((_, i) => ({
-          id: i,
-          name: `Danh mục ${i + 1}`,
-          slug: `danh-muc-${i + 1}`,
-          description: `Mô tả danh mục ${i + 1}`,
-          is_featured: true,
-          display_order: i,
-          parent_category_id: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }))
+  // Skip rendering if no categories
+  if (!categories || categories.length === 0) {
+    return null;
+  }
 
   return (
-    <section className="bg-background py-12">
+    <section className="py-12 md:py-16">
       <div className="container">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Danh mục nổi bật</h2>
-            <p className="text-muted-foreground">Khám phá các danh mục sản phẩm đa dạng của chúng tôi</p>
-          </div>
-          <Button asChild variant="ghost">
-            <Link href="/danh-muc">Xem tất cả</Link>
-          </Button>
+        <div className="text-center mb-10">
+          <h2 className="text-2xl md:text-3xl font-bold">Danh mục nổi bật</h2>
+          <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
+            Khám phá bộ sưu tập nước hoa đa dạng của chúng tôi theo danh mục
+          </p>
         </div>
-        <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-          {displayCategories.map((category) => (
-            <Link
-              key={category.id}
-              href={`/san-pham?category=${category.slug}`}
-              className="group overflow-hidden rounded-lg border bg-card transition-colors hover:border-primary"
-            >
-              <div className="relative aspect-square overflow-hidden bg-muted">
-                <Image
-                  src={`/placeholder.svg?height=200&width=200&text=${encodeURIComponent(category.name)}`}
-                  alt={category.name}
-                  fill
-                  className="object-cover transition-transform group-hover:scale-105"
-                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw"
-                />
-              </div>
-              <div className="p-4">
-                <h3 className="font-medium line-clamp-1">{category.name}</h3>
-                {category.description && (
-                  <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{category.description}</p>
-                )}
-              </div>
-            </Link>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {categories.map((category) => (
+            <CategoryCard key={category.id} category={category} />
           ))}
         </div>
       </div>
     </section>
-  )
+  );
 }
 
+function CategoryCard({ category }: { category: Category }) {
+  return (
+    <Link
+      href={`/danh-muc/${category.slug}`}
+      className={cn(
+        "group relative block h-[240px] overflow-hidden rounded-lg shadow-sm",
+        "transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+      )}
+    >
+      {/* Category Image with overlay */}
+      <div className="relative h-full w-full">
+        {category.image_url ? (
+          <Image
+            src={category.image_url}
+            alt={category.name}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="h-full w-full bg-accent flex items-center justify-center">
+            <span className="text-2xl font-bold">
+              {category.name.charAt(0)}
+            </span>
+          </div>
+        )}
+
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+      </div>
+
+      {/* Category name and description */}
+      <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+        <h3 className="text-xl font-bold mb-2">{category.name}</h3>
+        {category.description && (
+          <p className="text-sm text-white/90 line-clamp-2 group-hover:line-clamp-3 transition-all duration-300">
+            {category.description}
+          </p>
+        )}
+      </div>
+    </Link>
+  );
+}

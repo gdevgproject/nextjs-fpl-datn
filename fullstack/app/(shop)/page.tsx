@@ -1,12 +1,12 @@
-import type { Metadata } from "next"
-import { HomePage } from "@/features/home/components/home-page"
+import { HomePage } from "@/features/home/components/home-page";
+import { Metadata } from "next";
+import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "MyBeauty - Nước hoa chính hãng",
-  description: "Cửa hàng nước hoa chính hãng với đa dạng thương hiệu cao cấp",
-}
+  title: `${SITE_NAME} - Nước hoa chính hãng | Cửa hàng nước hoa cao cấp`,
+  description: SITE_DESCRIPTION,
+};
 
-export default function Home() {
-  return <HomePage />
+export default function ShopHomePage() {
+  return <HomePage />;
 }
-
