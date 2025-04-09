@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useCallback, memo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/features/auth/context/auth-context";
@@ -13,28 +13,19 @@ import { Badge } from "@/components/ui/badge";
 import { MobileNav } from "./mobile-nav";
 import { SearchBar } from "./search-bar";
 import { UserMenu } from "./user-menu";
+import { useCart } from "@/features/shop/cart/context/cart-context";
 
-export function Header() {
+// Rename the current Header function to HeaderComponent
+function HeaderComponent() {
   const { user } = useAuth();
   const pathname = usePathname();
-  const [isScrolled, setIsScrolled] = useState(false);
+  const { itemCount: cartItemCount, isLoading: isCartLoading } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [cartItemCount, setCartItemCount] = useState(0);
 
-  // Handle scroll effect for sticky header
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+  // Memoize the callback functions
+  const handleMobileMenuToggle = useCallback((open: boolean) => {
+    setMobileMenuOpen(open);
   }, []);
-
-  // TODO: Fetch cart item count from API
-  useEffect(() => {
-    // This would be replaced with actual API call to get cart items
-    setCartItemCount(0);
-  }, [user]);
 
   const mainNavItems = [
     { name: "Nước hoa nam", href: "/san-pham?gender=1" },
@@ -45,14 +36,7 @@ export function Header() {
   ];
 
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-50 w-full transition-all duration-200",
-        isScrolled
-          ? "bg-background/95 backdrop-blur-sm shadow-sm"
-          : "bg-background"
-      )}
-    >
+    <header className="sticky top-0 z-50 w-full bg-background shadow-sm">
       {/* Top bar with logo, search, and user actions */}
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-4">
@@ -92,7 +76,7 @@ export function Header() {
                 <ShoppingCart className="h-5 w-5" />
                 {cartItemCount > 0 && (
                   <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                    {cartItemCount}
+                    {isCartLoading ? "..." : cartItemCount}
                   </Badge>
                 )}
                 <span className="sr-only">Cart</span>
@@ -117,7 +101,7 @@ export function Header() {
             )}
 
             {/* Mobile menu button */}
-            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <Sheet open={mobileMenuOpen} onOpenChange={handleMobileMenuToggle}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="md:hidden">
                   <Menu className="h-5 w-5" />
@@ -128,7 +112,7 @@ export function Header() {
                 <MobileNav
                   user={user}
                   navItems={mainNavItems}
-                  onNavClick={() => setMobileMenuOpen(false)}
+                  onNavClick={() => handleMobileMenuToggle(false)}
                 />
               </SheetContent>
             </Sheet>
@@ -167,3 +151,6 @@ export function Header() {
     </header>
   );
 }
+
+// At the end of the file, export the memoized Header component
+export const Header = memo(HeaderComponent);

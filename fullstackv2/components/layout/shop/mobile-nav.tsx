@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
@@ -58,8 +58,7 @@ export function MobileNav({ user, navItems, onNavClick }: MobileNavProps) {
       queryClient.invalidateQueries({ queryKey: ["user"] });
       toast.success("Đăng xuất thành công");
       onNavClick(); // Close mobile menu after logout
-    } catch (error: unknown) {
-      console.error("Logout error:", error);
+    } catch (error) {
       toast.error("Đăng xuất thất bại");
     } finally {
       setIsLoggingOut(false);
@@ -299,3 +298,5 @@ export function MobileNav({ user, navItems, onNavClick }: MobileNavProps) {
     </div>
   );
 }
+
+export default memo(MobileNav);

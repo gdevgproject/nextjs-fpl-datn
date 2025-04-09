@@ -10,7 +10,7 @@ interface ToastProviderProps extends Partial<ToasterProps> {
 
 export function ToastProvider({
   children,
-  position = "top-center",
+  position = "bottom-right",
   duration = 5000,
   closeButton = true,
   richColors = true,

@@ -1,7 +1,5 @@
 "use client";
 
-import type React from "react";
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Package, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -12,26 +10,45 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useState } from "react";
+
+// Define the search form schema with Zod
+const searchSchema = z.object({
+  query: z.string().min(1, "Please enter a search term"),
+});
+
+type SearchFormValues = z.infer<typeof searchSchema>;
 
 export function SearchBar() {
   const router = useRouter();
   const [searchMode, setSearchMode] = useState<"product" | "order">("product");
-  const [searchQuery, setSearchQuery] = useState("");
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Initialize React Hook Form with Zod validation
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SearchFormValues>({
+    resolver: zodResolver(searchSchema),
+    defaultValues: {
+      query: "",
+    },
+  });
 
-    if (!searchQuery.trim()) return;
-
+  // Form submission handler
+  const onSubmit = (data: SearchFormValues) => {
     if (searchMode === "product") {
-      router.push(`/san-pham?search=${encodeURIComponent(searchQuery)}`);
+      router.push(`/san-pham?search=${encodeURIComponent(data.query)}`);
     } else {
-      router.push(`/tra-cuu-don-hang?token=${encodeURIComponent(searchQuery)}`);
+      router.push(`/tra-cuu-don-hang?token=${encodeURIComponent(data.query)}`);
     }
   };
 
   return (
-    <form onSubmit={handleSearch} className="w-full">
+    <form onSubmit={handleSubmit(onSubmit)} className="w-full">
       <div className="relative flex w-full items-center">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -57,16 +74,24 @@ export function SearchBar() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Input
-          type="search"
-          placeholder={
-            searchMode === "product"
-              ? "Tìm kiếm sản phẩm..."
-              : "Nhập mã đơn hàng..."
-          }
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-[110px] pr-10"
+        <Controller
+          name="query"
+          control={control}
+          render={({ field }) => (
+            <Input
+              {...field}
+              type="search"
+              placeholder={
+                searchMode === "product"
+                  ? "Tìm kiếm sản phẩm..."
+                  : "Nhập mã đơn hàng..."
+              }
+              className={`w-full pl-[110px] pr-10 ${
+                errors.query ? "border-destructive" : ""
+              }`}
+              aria-invalid={errors.query ? "true" : "false"}
+            />
+          )}
         />
 
         <Button
@@ -82,6 +107,9 @@ export function SearchBar() {
           )}
         </Button>
       </div>
+      {errors.query && (
+        <p className="text-xs text-destructive mt-1">{errors.query.message}</p>
+      )}
     </form>
   );
 }
