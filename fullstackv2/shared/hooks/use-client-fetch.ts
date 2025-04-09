@@ -1,6 +1,13 @@
 import { createClient } from "@/shared/supabase/client";
 import { Database } from "@/shared/types";
-import { TableName, TableRow } from "@/shared/types/hooks";
+import {
+  TableName,
+  TableRow,
+  FilterFunction,
+  SearchConfig,
+  SortConfig,
+  PaginationConfig,
+} from "@/shared/types/hooks";
 import { useQuery, UseQueryOptions, QueryKey } from "@tanstack/react-query";
 import {
   PostgrestFilterBuilder,
@@ -27,33 +34,15 @@ export type FetchHookOptions<
    * Apply filters to the query. Provides type hints for the table's columns.
    * Example: `(query) => query.eq('status', 'active').gt('price', 100)`
    */
-  filters?: (
-    query: PostgrestFilterBuilder<Database["public"], TableRow<T>, TResult>
-  ) => PostgrestFilterBuilder<Database["public"], TableRow<T>, TResult>;
+  filters?: FilterFunction<T, TResult>;
   /** Pagination settings. */
-  pagination?: {
-    page: number; // 1-based
-    pageSize: number;
-  };
+  pagination?: PaginationConfig;
   /** Sorting criteria. */
-  sort?: {
-    column: keyof TResult | string; // Allow string for potentially joined/computed columns
-    ascending?: boolean;
-    nullsFirst?: boolean;
-    foreignTable?: string; // Use for sorting joined columns
-  }[];
+  sort?: SortConfig<TResult>[];
   /** Type of count to perform ('exact', 'planned', 'estimated'). 'exact' required for pagination total. */
   count?: "exact" | "planned" | "estimated";
   /** Full-text search or pattern matching configuration. */
-  search?: {
-    column: keyof TResult | string;
-    query: string;
-    type?: "ilike" | "like" | "eq" | "fts"; // Add more as needed
-    ftsOptions?: {
-      config?: string;
-      type?: "plain" | "phrase" | "websearch";
-    };
-  };
+  search?: SearchConfig<TResult>;
   /** Set to true to fetch a single record (e.g., using .eq('id', ...) and .single()). */
   single?: boolean;
 };
@@ -70,16 +59,6 @@ export type FetchHookResult<TData> = {
 /**
  * Base hook for fetching data from a Supabase table on the client-side using TanStack Query.
  * Strongly typed based on your `Database` schema.
- *
- * @template T TableName - The name of the table to query (e.g., 'products').
- * @template TResult The expected shape of the data array elements. Defaults to the table's Row type.
- *
- * @param key The TanStack Query key. Used for caching. MUST be unique for the query.
- * @param table The name of the Supabase table to query.
- * @param options Fetch configuration (columns, filters, pagination, sort, count, search, single).
- * @param queryOptions Additional options for `useQuery`.
- *
- * @returns The result object from `useQuery`, containing typed data, status, error, etc.
  */
 export function useClientFetch<
   T extends TableName,
@@ -106,7 +85,6 @@ export function useClientFetch<
         TableRow<T>,
         TResult[]
       >;
-      // Using unknown casting because Supabase's generic typing doesn't perfectly align with our Database type
 
       // Apply filters
       if (options?.filters) {
@@ -141,31 +119,36 @@ export function useClientFetch<
           ftsOptions,
         } = options.search;
 
-        // We use a type assertion here because the FilterBuilder methods return different types
-        // based on the method called, but we want to treat them uniformly
-        let searchResult;
-
-        // Fix the search functionality type issues
+        // Fixed search functionality with specific type handling
         if (type === "fts") {
-          searchResult = filterableQuery.textSearch(
+          const result = filterableQuery.textSearch(
             String(column),
             searchQuery,
             ftsOptions || {}
           );
+          selectQuery = result as unknown as PostgrestTransformBuilder<
+            Database["public"],
+            TableRow<T>,
+            TResult[]
+          >;
         } else if (type === "ilike" || type === "like") {
-          searchResult = filterableQuery[type](
+          const result = filterableQuery[type](
             String(column),
             `%${searchQuery}%`
           );
+          selectQuery = result as unknown as PostgrestTransformBuilder<
+            Database["public"],
+            TableRow<T>,
+            TResult[]
+          >;
         } else if (type === "eq") {
-          searchResult = filterableQuery.eq(String(column), searchQuery);
+          const result = filterableQuery.eq(String(column), searchQuery);
+          selectQuery = result as unknown as PostgrestTransformBuilder<
+            Database["public"],
+            TableRow<T>,
+            TResult[]
+          >;
         }
-
-        selectQuery = searchResult as unknown as PostgrestTransformBuilder<
-          Database["public"],
-          TableRow<T>,
-          TResult[]
-        >;
       }
 
       // Apply sorting - operates on TransformBuilder

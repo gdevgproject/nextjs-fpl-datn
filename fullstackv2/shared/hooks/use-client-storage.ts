@@ -33,7 +33,7 @@ function createFilePath(options?: CreatePathOptions): string {
   let path = "";
 
   if (prefix) path += `${prefix}/`;
-  if (id) path += `${id}/`;
+  if (id) path += `${String(id)}/`; // Convert id to string
   path += fileName || uuid;
   if (fileExtension) path += `.${fileExtension}`;
   path = path.replace(/\/+/g, "/").replace(/^\/|\/$/g, "");
@@ -75,10 +75,6 @@ interface UseStorageUploadOptions {
 
 /**
  * Base hook for uploading a file to a Supabase Storage bucket using TanStack Query.
- *
- * @param bucket The name of the Supabase Storage bucket.
- * @param options Configuration options for the upload hook.
- * @returns The result object from `useMutation`. Call `.mutate(variables)` or `.mutateAsync(variables)`.
  */
 export function useStorageUpload(
   bucket: StorageBuckets,
@@ -177,10 +173,6 @@ interface UseStorageDeleteOptions {
 
 /**
  * Base hook for deleting one or more files from a Supabase Storage bucket.
- *
- * @param bucket The name of the Supabase Storage bucket.
- * @param options Configuration options for the delete hook.
- * @returns The result object from `useMutation`. Call `.mutate(pathOrPaths)` or `.mutateAsync(pathOrPaths)`.
  */
 export function useStorageDelete(
   bucket: StorageBuckets,
@@ -252,11 +244,6 @@ interface UseStorageListOptions {
 
 /**
  * Base hook for listing files within a specific path in a Supabase Storage bucket.
- *
- * @param bucket The name of the Supabase Storage bucket.
- * @param path The directory path within the bucket. Empty string lists root.
- * @param options Configuration options for the list hook.
- * @returns The result object from `useQuery`.
  */
 export function useStorageList(
   bucket: StorageBuckets,

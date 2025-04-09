@@ -51,19 +51,6 @@ interface BatchMutationOptions<
 
 /**
  * Base hook for performing BATCH mutations on a Supabase table using TanStack Query.
- *
- * **Important:** Default optimistic updates are NOT implemented due to complexity.
- * Batch 'update' uses 'upsert' internally. Batch 'delete' with composite keys is not supported directly.
- *
- * @template T TableName - The name of the table.
- * @template TData Expected return data type.
- * @template TError Expected error type (default PostgrestError).
- * @template TItem Type of a single item in the batch array.
- * @template TVariables Type of the variables object passed to the mutation.
- *
- * @param table The name of the Supabase table.
- * @param options Configuration options for the mutation.
- * @returns The result object from `useMutation`.
  */
 export function useClientBatchMutation<
   T extends TableName,
@@ -105,7 +92,7 @@ export function useClientBatchMutation<
           case "insert":
             response = await supabase
               .from(table)
-              .insert(items as any) // Using 'any' to bypass the type checking issues
+              .insert(items as any) // Using 'any' to bypass type issues
               .select();
             break;
           case "update":
@@ -114,7 +101,7 @@ export function useClientBatchMutation<
             response = await supabase
               .from(table)
               .upsert(items as any, {
-                // Using 'any' to bypass the type checking issues
+                // Using 'any' to bypass type issues
                 onConflict: onConflictConstraint,
                 ignoreDuplicates: false,
               })
@@ -142,17 +129,19 @@ export function useClientBatchMutation<
               }
               return typedItem[key];
             });
+
+            // Cast to array of primitives for the 'in' operation
             response = await supabase
               .from(table)
               .delete()
-              .in(key, valuesToDelete as any); // Using 'any' to bypass the type checking issues
+              .in(key, valuesToDelete as any);
             // Delete often returns null data
             return null as TData;
           case "upsert":
             response = await supabase
               .from(table)
               .upsert(items as any, {
-                // Using 'any' to bypass the type checking issues
+                // Using 'any' to bypass type issues
                 onConflict: onConflictConstraint,
                 ignoreDuplicates: false,
               })

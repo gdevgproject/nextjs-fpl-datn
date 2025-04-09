@@ -1,6 +1,12 @@
 import { createClient } from "@/shared/supabase/client";
 import { Database } from "@/shared/types";
-import { TableName, TableRow } from "@/shared/types/hooks";
+import {
+  TableName,
+  TableRow,
+  FilterFunction,
+  SearchConfig,
+  SortConfig,
+} from "@/shared/types/hooks";
 import {
   useInfiniteQuery,
   UseInfiniteQueryOptions,
@@ -17,8 +23,6 @@ const supabase: SupabaseClient<Database> = createClient();
 
 /**
  * Options for configuring the infinite fetch query, strongly typed.
- * @template T TableName - The name of the table being queried.
- * @template TResult The shape of the result (can include joined data). Defaults to the table's Row type.
  */
 export type InfiniteHookOptions<
   T extends TableName,
@@ -30,28 +34,13 @@ export type InfiniteHookOptions<
    * Apply filters to the query. Provides type hints for the table's columns.
    * Example: `(query) => query.eq('status', 'active').gt('price', 100)`
    */
-  filters?: (
-    query: PostgrestFilterBuilder<Database["public"], TableRow<T>, TResult>
-  ) => PostgrestFilterBuilder<Database["public"], TableRow<T>, TResult>;
+  filters?: FilterFunction<T, TResult>;
   /** The number of items to fetch per page. **Required**. */
   pageSize: number;
   /** Sorting criteria. */
-  sort?: {
-    column: keyof TResult | string; // Allow string for potentially joined/computed columns
-    ascending?: boolean;
-    nullsFirst?: boolean;
-    foreignTable?: string; // Use for sorting joined columns
-  }[];
+  sort?: SortConfig<TResult>[];
   /** Full-text search or pattern matching configuration. */
-  search?: {
-    column: keyof TResult | string;
-    query: string;
-    type?: "ilike" | "like" | "eq" | "fts"; // Add more as needed
-    ftsOptions?: {
-      config?: string;
-      type?: "plain" | "phrase" | "websearch";
-    };
-  };
+  search?: SearchConfig<TResult>;
 };
 
 /** Type for the data structure returned by the query function for each page */
@@ -143,28 +132,36 @@ export function useClientInfiniteQuery<
           ftsOptions,
         } = options.search;
 
-        // Fix the search functionality type issues (similar to useClientFetch)
-        let searchResult;
+        // Fixed search functionality with specific type handling
         if (type === "fts") {
-          searchResult = filterableQuery.textSearch(
+          const result = filterableQuery.textSearch(
             String(column),
             searchQuery,
             ftsOptions || {}
           );
+          selectQuery = result as unknown as PostgrestTransformBuilder<
+            Database["public"],
+            TableRow<T>,
+            TResult[]
+          >;
         } else if (type === "ilike" || type === "like") {
-          searchResult = filterableQuery[type](
+          const result = filterableQuery[type](
             String(column),
             `%${searchQuery}%`
           );
+          selectQuery = result as unknown as PostgrestTransformBuilder<
+            Database["public"],
+            TableRow<T>,
+            TResult[]
+          >;
         } else if (type === "eq") {
-          searchResult = filterableQuery.eq(String(column), searchQuery);
+          const result = filterableQuery.eq(String(column), searchQuery);
+          selectQuery = result as unknown as PostgrestTransformBuilder<
+            Database["public"],
+            TableRow<T>,
+            TResult[]
+          >;
         }
-
-        selectQuery = searchResult as unknown as PostgrestTransformBuilder<
-          Database["public"],
-          TableRow<T>,
-          TResult[]
-        >;
       }
 
       // Apply sorting - operates on TransformBuilder

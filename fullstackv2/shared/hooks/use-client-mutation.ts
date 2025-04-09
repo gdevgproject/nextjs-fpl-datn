@@ -72,14 +72,11 @@ type MutationHookOptions<
     queryKey: QueryKey
   ) => MutationContext<T> | void | Promise<MutationContext<T> | void>;
   /** Additional options for the underlying `useMutation` hook. */
-  mutationOptions?: Omit<
-    UseMutationOptions<
-      TData,
-      TError,
-      MutationVariables<T, TAction>,
-      MutationContext<T>
-    >,
-    "mutationFn"
+  mutationOptions?: UseMutationOptions<
+    TData,
+    TError,
+    MutationVariables<T, TAction>,
+    MutationContext<T>
   >;
 };
 
@@ -153,6 +150,17 @@ export function useClientMutate<
     return match as MatchPayload<T>;
   };
 
+  // Create a mutable copy of mutation options to use with our intercepted callbacks
+  const finalMutationOptions: UseMutationOptions<
+    TData,
+    TError,
+    MutationVariables<T, TAction>,
+    MutationContext<T>
+  > = {
+    ...(mutationOptions || {}),
+    // These will be properly merged later
+  };
+
   return useMutation<
     TData,
     TError,
@@ -169,7 +177,7 @@ export function useClientMutate<
             // Type assertion needed because Supabase's polymorphic API accepts arrays or single items
             response = await supabase
               .from(table)
-              .insert(payload as any) // Using 'any' here to bypass the strict type checking
+              .insert(payload as any) // Using 'any' to bypass the strict type checking
               .select();
             break;
           case "update":
@@ -177,7 +185,7 @@ export function useClientMutate<
               processUpdatePayload(payload as object);
             response = await supabase
               .from(table)
-              .update(dataUpdate as any) // Using 'any' here to bypass the strict type checking
+              .update(dataUpdate as any) // Using 'any' to bypass the strict type checking
               .match(matchUpdate)
               .select();
             break;
@@ -192,7 +200,7 @@ export function useClientMutate<
             response = await supabase
               .from(table)
               .upsert(payload as any, {
-                // Using 'any' here to bypass the strict type checking
+                // Using 'any' to bypass type checking
                 onConflict: conflictConstraint,
               })
               .select();
@@ -359,6 +367,6 @@ export function useClientMutate<
       }
     },
     onSettled: mutationOptions?.onSettled,
-    ...mutationOptions,
+    ...finalMutationOptions,
   });
 }
