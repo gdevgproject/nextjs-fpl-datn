@@ -1,69 +1,74 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useQueryClient } from "@tanstack/react-query"
-import { createClient } from "@/shared/supabase/client"
-import { useAuth } from "@/features/auth/context/auth-context"
-import type { UpdateProfileData } from "../types"
-import { toast } from "sonner"
+import { useCallback } from "react";
+import { useClientMutate } from "@/shared/hooks/use-client-mutation";
+import { useAuth } from "@/features/auth/context/auth-context";
+import type { UpdateProfileData } from "../types";
+import { useSonnerToast } from "@/shared/hooks/use-sonner-toast";
+import { createClient } from "@/shared/supabase/client";
 
-const supabase = createClient()
+const supabase = createClient();
 
 export function useUpdateProfile() {
-  const [isUpdating, setIsUpdating] = useState(false)
-  const queryClient = useQueryClient()
-  const { user, refreshUser } = useAuth()
+  const toast = useSonnerToast();
+  const { user, refreshUser } = useAuth();
 
-  const updateProfile = async (data: UpdateProfileData) => {
-    if (!user?.id) {
-      throw new Error("User not authenticated")
-    }
+  // Use the client mutation hook for updating the profile
+  const mutation = useClientMutate<"profiles", "update">("profiles", "update", {
+    primaryKey: "id",
+    invalidateQueries: [["profile", user?.id], ["user"]],
+    mutationOptions: {
+      onSuccess: async () => {
+        toast.success("Thông tin tài khoản đã được cập nhật");
+      },
+      onError: (error) => {
+        console.error("Error updating profile:", error);
+        toast.error("Cập nhật thông tin thất bại");
+      },
+    },
+  });
 
-    setIsUpdating(true)
-
-    try {
-      // Format the data for Supabase
-      const updateData: Record<string, any> = { ...data }
-
-      // Format date if it exists
-      if (data.birth_date) {
-        updateData.birth_date = data.birth_date.toISOString().split("T")[0]
+  const updateProfile = useCallback(
+    async (data: UpdateProfileData) => {
+      if (!user?.id) {
+        throw new Error("User not authenticated");
       }
 
-      // Update profile in Supabase
-      const { error } = await supabase.from("profiles").update(updateData).eq("id", user.id)
+      try {
+        // Format the data for Supabase
+        const updateData: Record<string, any> = { ...data };
 
-      if (error) {
-        throw error
+        // Format date if it exists
+        if (data.birth_date) {
+          updateData.birth_date = data.birth_date.toISOString().split("T")[0];
+        }
+
+        // Update profile in Supabase using the mutation hook
+        await mutation.mutateAsync({
+          id: user.id,
+          ...updateData,
+        });
+
+        // Update user metadata if display_name changed
+        if (data.display_name) {
+          await supabase.auth.updateUser({
+            data: { display_name: data.display_name },
+          });
+
+          // Refresh user to update the header
+          await refreshUser();
+        }
+
+        return true;
+      } catch (error) {
+        throw error;
       }
-
-      // Update user metadata if display_name changed
-      if (data.display_name) {
-        await supabase.auth.updateUser({
-          data: { display_name: data.display_name },
-        })
-
-        // Refresh user to update the header
-        await refreshUser()
-      }
-
-      // Invalidate queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ["profile", user.id] })
-      queryClient.invalidateQueries({ queryKey: ["user"] })
-
-      toast.success("Thông tin tài khoản đã được cập nhật")
-      return true
-    } catch (error) {
-      console.error("Error updating profile:", error)
-      toast.error("Cập nhật thông tin thất bại")
-      throw error
-    } finally {
-      setIsUpdating(false)
-    }
-  }
+    },
+    [user, mutation, refreshUser]
+  );
 
   return {
     updateProfile,
-    isUpdating,
-  }
+    isUpdating: mutation.isPending,
+  };
 }
