@@ -1,15 +1,15 @@
-"use client";
+"use client"
 
-import type React from "react";
+import type React from "react"
 
-import { ThemeProvider } from "./theme-provider";
-import { ToastProvider } from "./toast-provider";
-import { AuthProvider } from "@/features/auth/context/auth-context";
-import QueryProvider from "./query-provider";
-import { CartProvider } from "@/features/shop/cart/context/cart-context";
+import { ThemeProvider } from "./theme-provider"
+import { ToastProvider } from "./toast-provider"
+import { AuthProvider } from "@/features/auth/context/auth-context"
+import QueryProvider from "./query-provider"
+import { CartProvider } from "@/features/shop/cart/context/cart-context"
 
 interface ProvidersProps {
-  children: React.ReactNode;
+  children: React.ReactNode
 }
 
 export function Providers({ children }: ProvidersProps) {
@@ -23,5 +23,5 @@ export function Providers({ children }: ProvidersProps) {
         </AuthProvider>
       </QueryProvider>
     </ThemeProvider>
-  );
+  )
 }

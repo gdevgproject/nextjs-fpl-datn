@@ -1,23 +1,19 @@
 // FILE: src/shared/hooks/use-client-rpc.ts
-import { createClient } from "@/shared/supabase/client";
-import { Database } from "@/shared/types";
-import {
-  FunctionName,
-  FunctionArgs,
-  FunctionReturns,
-} from "@/shared/types/hooks";
+import { createClient } from "@/shared/supabase/client"
+import type { Database } from "@/shared/types"
+import type { FunctionName, FunctionArgs, FunctionReturns } from "@/shared/types/hooks"
 import {
   useQuery,
   useMutation,
-  UseQueryOptions,
-  UseMutationOptions,
+  type UseQueryOptions,
+  type UseMutationOptions,
   useQueryClient,
-  QueryKey,
-} from "@tanstack/react-query";
-import { SupabaseClient, PostgrestError } from "@supabase/supabase-js";
+  type QueryKey,
+} from "@tanstack/react-query"
+import type { SupabaseClient, PostgrestError } from "@supabase/supabase-js"
 
 // Explicitly type the client
-const supabase: SupabaseClient<Database> = createClient();
+const supabase: SupabaseClient<Database> = createClient()
 
 /**
  * Base hook for calling Supabase RPC functions (PostgreSQL functions)
@@ -40,14 +36,10 @@ export function useClientRpcQuery<
   TParams extends FunctionArgs<TFunc> = FunctionArgs<TFunc>,
   // Infer return type from Database schema if available
   TData = FunctionReturns<TFunc>,
-  TError = PostgrestError
->(
-  rpcName: TFunc,
-  params?: TParams,
-  options?: Omit<UseQueryOptions<TData, TError>, "queryKey" | "queryFn">
-) {
+  TError = PostgrestError,
+>(rpcName: TFunc, params?: TParams, options?: Omit<UseQueryOptions<TData, TError>, "queryKey" | "queryFn">) {
   // Create a stable query key, including parameters if they exist
-  const queryKey: QueryKey = params ? [rpcName, params] : [rpcName];
+  const queryKey: QueryKey = params ? [rpcName, params] : [rpcName]
 
   return useQuery<TData, TError>({
     queryKey,
@@ -55,18 +47,18 @@ export function useClientRpcQuery<
       // Call the RPC function
       const { data, error } = await supabase.rpc(
         String(rpcName), // Convert to string to avoid implicit symbol-to-string conversion
-        params as Record<string, unknown>
-      );
+        params as Record<string, unknown>,
+      )
 
       if (error) {
-        console.error(`Supabase RPC (${rpcName}) query error:`, error);
-        throw error; // Re-throw for TanStack Query
+        console.error(`Supabase RPC (${rpcName}) query error:`, error)
+        throw error // Re-throw for TanStack Query
       }
       // Cast the returned data to the expected TData type
-      return data as TData;
+      return data as TData
     },
     ...options, // Spread the rest of the useQuery options
-  });
+  })
 }
 
 /**
@@ -91,50 +83,47 @@ export function useClientRpcMutation<
   // Infer return type from Database schema if available
   TData = FunctionReturns<TFunc>,
   TError = PostgrestError,
-  TContext = unknown
+  TContext = unknown,
 >(
   rpcName: TFunc,
   options?: {
     /** Array of query keys to invalidate upon successful mutation. */
-    invalidateQueries?: QueryKey[];
+    invalidateQueries?: QueryKey[]
     /** Additional options for the underlying `useMutation` hook. */
-    mutationOptions?: Omit<
-      UseMutationOptions<TData, TError, TParams, TContext>,
-      "mutationFn"
-    >;
-  }
+    mutationOptions?: Omit<UseMutationOptions<TData, TError, TParams, TContext>, "mutationFn">
+  },
 ) {
-  const queryClient = useQueryClient();
-  const { invalidateQueries = [], mutationOptions = {} } = options || {};
+  const queryClient = useQueryClient()
+  const { invalidateQueries = [], mutationOptions = {} } = options || {}
 
   return useMutation<TData, TError, TParams, TContext>({
     mutationFn: async (params: TParams) => {
       // Call the RPC function
       const { data, error } = await supabase.rpc(
         String(rpcName), // Convert to string to avoid implicit symbol-to-string conversion
-        params as Record<string, unknown>
-      );
+        params as Record<string, unknown>,
+      )
 
       if (error) {
-        console.error(`Supabase RPC (${rpcName}) mutation error:`, error);
-        throw error; // Re-throw for TanStack Query
+        console.error(`Supabase RPC (${rpcName}) mutation error:`, error)
+        throw error // Re-throw for TanStack Query
       }
       // Cast the returned data to the expected TData type
-      return data as TData;
+      return data as TData
     },
     onSuccess: (data, variables, context) => {
       // Invalidate specified queries upon success
       if (invalidateQueries.length > 0) {
         invalidateQueries.forEach((key) => {
-          queryClient.invalidateQueries({ queryKey: key });
-        });
+          queryClient.invalidateQueries({ queryKey: key })
+        })
       }
       // Call original onSuccess if provided
       if (mutationOptions.onSuccess) {
-        mutationOptions.onSuccess(data, variables, context);
+        mutationOptions.onSuccess(data, variables, context)
       }
     },
     // Spread the rest of the useMutation options
     ...mutationOptions,
-  });
+  })
 }
