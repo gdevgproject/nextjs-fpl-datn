@@ -1,19 +1,24 @@
-"use client"
+"use client";
 
-import { useCart } from "@/features/shop/cart/context/cart-context"
-import { CartItem } from "@/features/shop/cart/components/cart-item"
-import { EmptyCart } from "@/features/shop/cart/components/empty-cart"
-import { DiscountCodeInput } from "@/features/shop/cart/components/discount-code-input"
-import { useCartTotals } from "@/features/shop/cart/hooks/use-cart-totals"
-import { formatCurrency } from "@/features/shop/cart/utils/cart-calculations"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { ShoppingBag, Loader2 } from "lucide-react"
-import Link from "next/link"
+import { useCart } from "@/features/shop/cart/context/cart-context";
+import { CartItem } from "@/features/shop/cart/components/cart-item";
+import { EmptyCart } from "@/features/shop/cart/components/empty-cart";
+import { DiscountCodeInput } from "@/features/shop/cart/components/discount-code-input";
+import { useCartTotals } from "@/features/shop/cart/hooks/use-cart-totals";
+import { formatCurrency } from "@/features/shop/cart/utils/cart-calculations";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { ShoppingBag, Loader2, LogIn } from "lucide-react";
+import Link from "next/link";
+import { useAuth } from "@/features/auth/context/auth-context";
 
 export default function CartPage() {
-  const { items, isLoading, isEmpty } = useCart()
-  const { subtotal, discountAmount, shippingFee, total } = useCartTotals({ shippingFee: 0 })
+  const { items, isLoading, isEmpty, clearCart } = useCart();
+  const { user } = useAuth();
+  const isGuest = !user;
+  const { subtotal, discountAmount, shippingFee, total } = useCartTotals({
+    shippingFee: 0,
+  });
 
   // Show loading state
   if (isLoading) {
@@ -24,7 +29,7 @@ export default function CartPage() {
           <h2 className="text-xl font-medium">Đang tải giỏ hàng...</h2>
         </div>
       </div>
-    )
+    );
   }
 
   // Show empty cart state
@@ -33,7 +38,7 @@ export default function CartPage() {
       <div className="container mx-auto py-12 px-4">
         <EmptyCart />
       </div>
-    )
+    );
   }
 
   return (
@@ -49,7 +54,9 @@ export default function CartPage() {
           <div className="bg-card rounded-lg shadow-sm p-6">
             <div className="flex justify-between mb-4">
               <h2 className="text-xl font-semibold">Sản phẩm</h2>
-              <span className="text-muted-foreground">{items.length} sản phẩm</span>
+              <span className="text-muted-foreground">
+                {items.length} sản phẩm
+              </span>
             </div>
 
             <Separator className="mb-4" />
@@ -84,7 +91,9 @@ export default function CartPage() {
 
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Phí vận chuyển</span>
-                <span>{shippingFee > 0 ? formatCurrency(shippingFee) : "Miễn phí"}</span>
+                <span>
+                  {shippingFee > 0 ? formatCurrency(shippingFee) : "Miễn phí"}
+                </span>
               </div>
 
               <Separator />
@@ -98,10 +107,45 @@ export default function CartPage() {
               <DiscountCodeInput subtotal={subtotal} />
 
               <div className="pt-4">
-                <Button asChild className="w-full" size="lg">
-                  <Link href="/thanh-toan">Tiến hành thanh toán</Link>
-                </Button>
-                <Button variant="outline" className="w-full mt-2" size="lg" asChild>
+                {isGuest ? (
+                  <>
+                    <Button asChild className="w-full" size="lg">
+                      <Link href="/thanh-toan">
+                        Thanh toán với tư cách khách
+                      </Link>
+                    </Button>
+                    <div className="mt-2 text-center">
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        size="lg"
+                        asChild
+                      >
+                        <Link
+                          href={`/login?redirect=${encodeURIComponent(
+                            "/thanh-toan"
+                          )}`}
+                        >
+                          <LogIn className="mr-2 h-4 w-4" />
+                          Đăng nhập để thanh toán
+                        </Link>
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Đăng nhập để lưu giỏ hàng và tích điểm thành viên
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <Button asChild className="w-full" size="lg">
+                    <Link href="/thanh-toan">Tiến hành thanh toán</Link>
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  className="w-full mt-2"
+                  size="lg"
+                  asChild
+                >
                   <Link href="/san-pham">Tiếp tục mua sắm</Link>
                 </Button>
               </div>
@@ -110,5 +154,5 @@ export default function CartPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
