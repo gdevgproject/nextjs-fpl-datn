@@ -7,357 +7,375 @@ import {
   UseMutationOptions,
   QueryKey,
 } from "@tanstack/react-query";
-import { StorageError } from "@supabase/storage-js";
-import { v4 as uuidv4 } from "uuid";
+import { v4 as uuidv4 } from "uuid"; // For generating unique file names
+import { StorageError, FileObject } from "@supabase/storage-js"; // Import specific types
 
 const supabase = createClient();
 
 /**
- * [V3 Base Hooks] Tạo đường dẫn file theo quy ước chung.
- * @param bucket Tên bucket.
- * @param options Tùy chọn tạo path.
- * @param options.entityId ID của thực thể liên quan (user_id, product_id,...).
- * @param options.fileName Tên file mong muốn (không bao gồm extension). Nếu không có, dùng UUID.
- * @param options.fileExtension Extension của file (vd: 'jpg', 'png').
- * @returns Đường dẫn file hoàn chỉnh.
- * @example createFilePath('avatars', { entityId: 'user-123', fileExtension: 'png' }) -> 'user-123/uuid-v4.png'
- * @example createFilePath('products', { entityId: 101, fileName: 'main-image', fileExtension: 'webp' }) -> '101/main-image.webp'
+ * Options for creating a structured file path based on conventions.
  */
-function createFilePath(
-  bucket: string, // Thêm bucket vào để có thể dùng cho logic phức tạp hơn nếu cần
-  options: {
-    entityId?: string | number;
-    fileName?: string;
-    fileExtension?: string;
-  }
-): string {
-  const { entityId, fileName, fileExtension } = options;
-  const uuidName = uuidv4(); // Luôn tạo UUID để dùng nếu fileName không có
-
-  let pathSegments: string[] = [];
-
-  // 1. Thêm entityId làm thư mục nếu có
-  if (entityId !== undefined && entityId !== null && entityId !== "") {
-    pathSegments.push(String(entityId));
-  }
-
-  // 2. Xác định tên file chính
-  const baseFileName = fileName || uuidName;
-  pathSegments.push(baseFileName);
-
-  // 3. Ghép lại và thêm extension
-  let finalPath = pathSegments.join("/");
-  if (fileExtension) {
-    finalPath += `.${fileExtension.toLowerCase().replace(".", "")}`; // Đảm bảo extension sạch
-  }
-
-  console.log(`Generated storage path for bucket '${bucket}': ${finalPath}`);
-  return finalPath;
+interface CreatePathOptions {
+  /** Optional ID of the related entity (e.g., user_id, product_id). Used as a directory. */
+  id?: string | number;
+  /** Optional prefix directory (e.g., 'brands', 'public'). */
+  prefix?: string;
+  /** Optional base name for the file (without extension). Defaults to UUID. */
+  fileName?: string;
+  /** Optional file extension (e.g., 'png', 'jpg'). If not provided, extracted from original file name. */
+  fileExtension?: string;
 }
 
 /**
- * [V3 Base Hooks] Tùy chọn cho useClientStorageUpload.
+ * Generates a file path based on common conventions.
+ * Example conventions:
+ * - avatars:    `[user_id]/[uuid].[ext]`
+ * - logos:      `brands/[brand_id]/logo.[ext]` or `shop/logo.[ext]`
+ * - products:   `products/[product_id]/[uuid].[ext]`
+ * - banners:    `banners/[banner_id]/image.[ext]` or `banners/[uuid].[ext]`
+ * - categories: `categories/[category_id]/image.[ext]`
+ *
+ * @param options Configuration for path generation.
+ * @returns The generated file path string.
  */
-type ClientStorageUploadOptions = {
-  /**
-   * Cung cấp path tĩnh nếu không muốn tự động tạo. Sẽ ghi đè createPath.
-   */
-  path?: string;
-  /**
-   * Tùy chọn để tự động tạo path theo quy ước [entityId]/[uuid|fileName].[ext].
-   */
-  createPath?: {
-    entityId?: string | number; // ID của user, product, category...
-    fileName?: string; // Tên file mong muốn (không có ext), nếu không sẽ dùng UUID
+function createFilePath(options?: CreatePathOptions): string {
+  const { id, prefix, fileName, fileExtension } = options || {};
+  const uuid = uuidv4();
+  let path = "";
+
+  if (prefix) path += `${prefix}/`;
+  if (id) path += `${id}/`;
+
+  // Ensure trailing slash if prefix or id exists but no filename yet
+  if ((prefix || id) && !fileName)
+    path += ""; // No extra slash needed if filename follows
+  else if (prefix || id) path += ""; // Add slash if needed? Let's test this. No, usually handled by storage.
+
+  // Use provided filename or generate UUID
+  path += fileName || uuid;
+
+  // Add extension if provided
+  if (fileExtension) path += `.${fileExtension}`;
+
+  // Normalize path: remove leading/trailing slashes and excessive slashes
+  path = path.replace(/\/+/g, "/").replace(/^\/|\/$/g, "");
+
+  return path;
+}
+
+/** Input type for the upload mutation */
+interface UploadMutationVariables {
+  /** The file object to upload. */
+  file: File;
+  /** Optional file metadata and upload options. */
+  fileOptions?: {
+    /** Content type of the file (e.g., 'image/png'). Defaults to file.type. */
+    contentType?: string;
+    /** Cache control header value (e.g., 'public, max-age=3600'). Defaults to '3600'. */
+    cacheControl?: string;
+    /** Set to true to overwrite existing file with same path. Defaults to true. */
+    upsert?: boolean;
   };
-  /**
-   * Query key để invalidate sau khi upload thành công.
-   */
-  cacheKeysToInvalidate?: QueryKey[];
-  /**
-   * Callback sau khi upload thành công.
-   */
-  onSuccess?: (result: { publicUrl: string; path: string }) => void;
-  /**
-   * Các tùy chọn khác của useMutation (TanStack Query).
-   */
+  /** If provided, uses this exact path. Overrides `createPathOptions`. */
+  path?: string;
+  /** If provided (and `path` is not), generates path using these options. */
+  createPathOptions?: CreatePathOptions;
+}
+
+/** Return type for the upload mutation */
+interface UploadMutationResult {
+  /** The public URL of the uploaded file. */
+  publicUrl: string;
+  /** The final path where the file was stored. */
+  path: string;
+}
+
+/** Options for the useStorageUpload hook */
+interface UseStorageUploadOptions {
+  /** Optional query key(s) to invalidate after successful upload. */
+  invalidateQueryKeys?: QueryKey[];
+  /** Optional callback function executed on successful upload. */
+  onSuccess?: (
+    result: UploadMutationResult,
+    variables: UploadMutationVariables
+  ) => void;
+  /** Optional callback function executed on error. */
+  onError?: (error: StorageError, variables: UploadMutationVariables) => void;
+  /** Additional options for the underlying `useMutation` hook. */
   mutationOptions?: Omit<
     UseMutationOptions<
-      { publicUrl: string; path: string },
+      UploadMutationResult,
       StorageError,
-      { file: File; fileOptions?: SupabaseStorageOptions }
+      UploadMutationVariables
     >,
-    "mutationFn"
+    "mutationFn" | "onSuccess" | "onError"
   >;
-};
-
-type SupabaseStorageOptions = {
-  cacheControl?: string;
-  contentType?: string;
-  upsert?: boolean;
-};
+}
 
 /**
- * [V3 Base Hooks] Hook để upload file lên Supabase Storage.
- * Tự động tạo path theo quy ước nếu không cung cấp path tĩnh.
+ * Base hook for uploading a file to a Supabase Storage bucket using TanStack Query.
+ * Handles file path generation based on conventions and provides public URL.
  *
- * @param bucket Tên bucket cần upload tới.
- * @param options Các tùy chọn upload.
+ * @param bucket The name of the Supabase Storage bucket.
+ * @param options Configuration options for the upload hook.
+ * @returns The result object from `useMutation`. Call `.mutate(variables)` or `.mutateAsync(variables)`.
  */
-export function useClientStorageUpload(
+export function useStorageUpload(
   bucket: string,
-  options?: ClientStorageUploadOptions
+  options?: UseStorageUploadOptions
 ) {
   const queryClient = useQueryClient();
 
   return useMutation<
-    { publicUrl: string; path: string },
+    UploadMutationResult,
     StorageError,
-    { file: File; fileOptions?: SupabaseStorageOptions }
+    UploadMutationVariables
   >({
     mutationFn: async ({
       file,
       fileOptions,
-    }): Promise<{ publicUrl: string; path: string }> => {
-      // --- Xác định đường dẫn file ---
+      path: explicitPath,
+      createPathOptions,
+    }: UploadMutationVariables) => {
       let filePath: string;
-      const fileExtension = file.name.split(".").pop();
 
-      if (options?.path) {
-        // 1. Dùng path tĩnh nếu được cung cấp
-        filePath = options.path;
-      } else if (options?.createPath) {
-        // 2. Tạo path động theo quy ước
-        filePath = createFilePath(bucket, {
-          ...options.createPath,
-          fileExtension: fileExtension,
-        });
+      // Determine the file path
+      if (explicitPath) {
+        filePath = explicitPath;
       } else {
-        // 3. Mặc định: chỉ dùng UUID + extension ở thư mục gốc (nên tránh)
-        console.warn(
-          `Uploading to bucket '${bucket}' root using default UUID naming. Consider using 'createPath' option for better organization.`
-        );
-        filePath = `${uuidv4()}${fileExtension ? "." + fileExtension : ""}`;
+        // Try to get extension from file, default if not possible
+        const fileExtension = file.name.includes(".")
+          ? file.name.split(".").pop()
+          : undefined;
+        filePath = createFilePath({
+          ...(createPathOptions || {}), // Use provided creation options
+          fileExtension: createPathOptions?.fileExtension || fileExtension, // Prioritize provided ext
+        });
       }
 
-      // --- Upload file ---
+      // Normalize path just in case
+      filePath = filePath.replace(/\/+/g, "/").replace(/^\/|\/$/g, "");
+      if (!filePath) throw new Error("Generated file path is empty.");
+
+      // Upload the file
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(bucket)
         .upload(filePath, file, {
-          cacheControl: fileOptions?.cacheControl ?? "3600", // Mặc định 1 giờ
-          contentType: fileOptions?.contentType ?? file.type,
-          upsert: fileOptions?.upsert ?? true, // Mặc định là true để ghi đè nếu path tồn tại
+          cacheControl: fileOptions?.cacheControl ?? "3600", // Default cache
+          contentType: fileOptions?.contentType ?? file.type, // Default content type
+          upsert: fileOptions?.upsert ?? true, // Default upsert
         });
 
       if (uploadError) {
         console.error(
-          `Supabase storage upload error (bucket: ${bucket}, path: ${filePath}):`,
+          `Supabase Storage upload error (bucket: ${bucket}, path: ${filePath}):`,
           uploadError
         );
         throw uploadError;
       }
 
-      // --- Lấy public URL ---
-      // Lưu ý: Nếu bucket không public, bước này sẽ không hoạt động đúng hoặc trả về URL có token
+      // Get the public URL
       const { data: urlData } = supabase.storage
         .from(bucket)
         .getPublicUrl(filePath);
 
       if (!urlData?.publicUrl) {
+        // This usually shouldn't happen if upload succeeded, but handle defensively
         console.warn(
-          `Could not get public URL for uploaded file (bucket: ${bucket}, path: ${filePath}). Is the bucket public?`
+          `Could not get public URL for uploaded file (bucket: ${bucket}, path: ${filePath}). Upload might have succeeded partially.`
         );
-        // Vẫn trả về path để lưu vào DB nếu cần
-        return { publicUrl: "", path: filePath };
+        // Decide: throw error or return path only? Returning path might be okay.
+        // Let's throw for now to indicate an issue.
+        throw new StorageError(
+          `Could not retrieve public URL after upload for path: ${filePath}`
+        );
       }
 
       return { publicUrl: urlData.publicUrl, path: filePath };
     },
     onSuccess: (result, variables, context) => {
-      console.log(`File uploaded successfully to ${bucket}/${result.path}`);
-      // Invalidate cache nếu cần
-      if (options?.cacheKeysToInvalidate) {
-        options.cacheKeysToInvalidate.forEach((key) => {
+      // Invalidate specified query keys
+      if (options?.invalidateQueryKeys) {
+        options.invalidateQueryKeys.forEach((key) => {
           queryClient.invalidateQueries({ queryKey: key });
         });
       }
-      // Callback onSuccess
-      options?.onSuccess?.(result);
-      // Gọi onSuccess từ options nếu có
+
+      // Call user-defined onSuccess callback
+      options?.onSuccess?.(result, variables);
+
+      // Call original onSuccess from mutationOptions if provided
       options?.mutationOptions?.onSuccess?.(result, variables, context);
     },
     onError: (error, variables, context) => {
-      console.error("Storage upload failed:", error);
+      // Call user-defined onError callback
+      options?.onError?.(error, variables);
+
+      // Call original onError from mutationOptions if provided
       options?.mutationOptions?.onError?.(error, variables, context);
     },
-    onSettled: (data, error, variables, context) => {
-      options?.mutationOptions?.onSettled?.(data, error, variables, context);
-    },
-    ...options?.mutationOptions,
+    ...options?.mutationOptions, // Spread remaining mutation options
   });
 }
 
-/**
- * [V3 Base Hooks] Tùy chọn cho useClientStorageDelete / useClientStorageBatchDelete.
- */
-type ClientStorageDeleteOptions = {
-  /**
-   * Query key để invalidate sau khi xóa thành công.
-   */
-  cacheKeysToInvalidate?: QueryKey[];
-  /**
-   * Callback sau khi xóa thành công.
-   */
-  onSuccess?: () => void;
-  /**
-   * Các tùy chọn khác của useMutation (TanStack Query).
-   */
+// --- Delete Hook ---
+
+/** Input type for the delete mutation */
+type DeleteMutationVariables = string | string[]; // File path or array of paths
+
+/** Return type for the delete mutation */
+interface DeleteMutationResult {
+  /** Array of successfully deleted file objects (might be empty on error). */
+  data: FileObject[] | null;
+}
+
+/** Options for the useStorageDelete hook */
+interface UseStorageDeleteOptions {
+  /** Optional query key(s) to invalidate after successful deletion. */
+  invalidateQueryKeys?: QueryKey[];
+  /** Optional callback function executed on successful deletion. */
+  onSuccess?: (
+    result: DeleteMutationResult,
+    variables: DeleteMutationVariables
+  ) => void;
+  /** Optional callback function executed on error. */
+  onError?: (error: StorageError, variables: DeleteMutationVariables) => void;
+  /** Additional options for the underlying `useMutation` hook. */
   mutationOptions?: Omit<
-    UseMutationOptions<any, StorageError, any>,
-    "mutationFn"
-  >; // any vì kiểu trả về và biến có thể khác nhau
-};
-
-/**
- * [V3 Base Hooks] Hook để xóa MỘT file khỏi Supabase Storage.
- *
- * @param bucket Tên bucket chứa file.
- * @param options Các tùy chọn xóa.
- */
-export function useClientStorageDelete(
-  bucket: string,
-  options?: ClientStorageDeleteOptions
-) {
-  const queryClient = useQueryClient();
-
-  return useMutation<void, StorageError, string>({
-    // Biến là path (string)
-    mutationFn: async (path: string): Promise<void> => {
-      if (!path) {
-        console.warn("Attempted to delete storage file with empty path.");
-        return; // Không làm gì nếu path rỗng
-      }
-      const { error } = await supabase.storage.from(bucket).remove([path]); // remove nhận mảng path
-
-      if (error) {
-        console.error(
-          `Supabase storage delete error (bucket: ${bucket}, path: ${path}):`,
-          error
-        );
-        throw error;
-      }
-    },
-    onSuccess: (data, variables, context) => {
-      console.log(`File deleted successfully from ${bucket}/${variables}`);
-      if (options?.cacheKeysToInvalidate) {
-        options.cacheKeysToInvalidate.forEach((key) => {
-          queryClient.invalidateQueries({ queryKey: key });
-        });
-      }
-      options?.onSuccess?.();
-      options?.mutationOptions?.onSuccess?.(data, variables, context);
-    },
-    onError: (error, variables, context) => {
-      console.error("Storage delete failed:", error);
-      options?.mutationOptions?.onError?.(error, variables, context);
-    },
-    onSettled: (data, error, variables, context) => {
-      options?.mutationOptions?.onSettled?.(data, error, variables, context);
-    },
-    ...options?.mutationOptions,
-  });
+    UseMutationOptions<
+      DeleteMutationResult,
+      StorageError,
+      DeleteMutationVariables
+    >,
+    "mutationFn" | "onSuccess" | "onError"
+  >;
 }
 
 /**
- * [V3 Base Hooks] Hook để xóa NHIỀU file khỏi Supabase Storage.
+ * Base hook for deleting one or more files from a Supabase Storage bucket using TanStack Query.
  *
- * @param bucket Tên bucket chứa các file.
- * @param options Các tùy chọn xóa.
+ * @param bucket The name of the Supabase Storage bucket.
+ * @param options Configuration options for the delete hook.
+ * @returns The result object from `useMutation`. Call `.mutate(pathOrPaths)` or `.mutateAsync(pathOrPaths)`.
  */
-export function useClientStorageBatchDelete(
+export function useStorageDelete(
   bucket: string,
-  options?: ClientStorageDeleteOptions
+  options?: UseStorageDeleteOptions
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation<void, StorageError, string[]>({
-    // Biến là mảng path (string[])
-    mutationFn: async (paths: string[]): Promise<void> => {
-      const validPaths = paths.filter((p) => p); // Lọc bỏ path rỗng
-      if (validPaths.length === 0) {
-        console.warn(
-          "Attempted to batch delete storage files with empty path list."
-        );
-        return;
-      }
-      const { error } = await supabase.storage.from(bucket).remove(validPaths);
+  return useMutation<
+    DeleteMutationResult,
+    StorageError,
+    DeleteMutationVariables
+  >({
+    mutationFn: async (pathsToDelete: DeleteMutationVariables) => {
+      const pathsArray = Array.isArray(pathsToDelete)
+        ? pathsToDelete
+        : [pathsToDelete];
 
-      if (error) {
-        console.error(
-          `Supabase storage batch delete error (bucket: ${bucket}):`,
-          error
-        );
-        throw error;
+      if (pathsArray.length === 0) {
+        console.warn("useStorageDelete called with empty paths array.");
+        return { data: [] }; // Nothing to delete
       }
-    },
-    onSuccess: (data, variables, context) => {
-      console.log(
-        `Batch files deleted successfully from ${bucket}: ${variables.length} items`
+
+      // Normalize paths
+      const normalizedPaths = pathsArray.map((p) =>
+        p.replace(/\/+/g, "/").replace(/^\/|\/$/g, "")
       );
-      if (options?.cacheKeysToInvalidate) {
-        options.cacheKeysToInvalidate.forEach((key) => {
+
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .remove(normalizedPaths);
+
+      if (error) {
+        console.error(
+          `Supabase Storage delete error (bucket: ${bucket}):`,
+          error
+        );
+        throw error;
+      }
+
+      return { data };
+    },
+    onSuccess: (result, variables, context) => {
+      if (options?.invalidateQueryKeys) {
+        options.invalidateQueryKeys.forEach((key) => {
           queryClient.invalidateQueries({ queryKey: key });
         });
       }
-      options?.onSuccess?.();
-      options?.mutationOptions?.onSuccess?.(data, variables, context);
+      options?.onSuccess?.(result, variables);
+      options?.mutationOptions?.onSuccess?.(result, variables, context);
     },
     onError: (error, variables, context) => {
-      console.error("Storage batch delete failed:", error);
+      options?.onError?.(error, variables);
       options?.mutationOptions?.onError?.(error, variables, context);
-    },
-    onSettled: (data, error, variables, context) => {
-      options?.mutationOptions?.onSettled?.(data, error, variables, context);
     },
     ...options?.mutationOptions,
   });
 }
 
-/**
- * [V3 Base Hooks] Hook để lấy danh sách file trong một thư mục của Supabase Storage.
- *
- * @param bucket Tên bucket.
- * @param path Đường dẫn thư mục cần list (có thể rỗng để list thư mục gốc).
- * @param options Các tùy chọn khác của useQuery (TanStack Query).
- */
-export function useClientStorageList(
-  bucket: string,
-  path: string = "", // Mặc định list thư mục gốc
-  options?: Omit<UseQueryOptions<any[], StorageError>, "queryKey" | "queryFn"> // Kiểu trả về là FileObject[] nhưng dùng any[] cho đơn giản
-) {
-  const queryKey: QueryKey = ["storage", bucket, "list", path];
+// --- List Hook ---
 
-  return useQuery<any[], StorageError>({
-    queryKey: queryKey,
+/** Options for the useStorageList hook */
+interface UseStorageListOptions {
+  /** Standard react-query options like `enabled`, `staleTime` etc. */
+  queryOptions?: Omit<
+    UseQueryOptions<FileObject[], StorageError>,
+    "queryKey" | "queryFn"
+  >;
+  /** Options for the Supabase `list` method itself. */
+  listOptions?: {
+    limit?: number;
+    offset?: number;
+    sortBy?: {
+      column?: string;
+      order?: string;
+    };
+    search?: string;
+  };
+}
+
+/**
+ * Base hook for listing files within a specific path in a Supabase Storage bucket using TanStack Query.
+ *
+ * @param bucket The name of the Supabase Storage bucket.
+ * @param path The directory path within the bucket to list files from. Empty string lists root.
+ * @param options Configuration options for the list hook.
+ * @returns The result object from `useQuery`.
+ */
+export function useStorageList(
+  bucket: string,
+  path: string = "", // Default to root path
+  options?: UseStorageListOptions
+) {
+  // Normalize path for the query key
+  const normalizedPath = path.replace(/\/+/g, "/").replace(/^\/|\/$/g, "");
+  const queryKey: QueryKey = [
+    "storage",
+    bucket,
+    "list",
+    normalizedPath,
+    options?.listOptions,
+  ]; // Include listOptions in key
+
+  return useQuery<FileObject[], StorageError>({
+    queryKey,
     queryFn: async () => {
       const { data, error } = await supabase.storage
         .from(bucket)
-        .list(path || undefined, {
-          // Truyền undefined nếu path rỗng
-          // limit: 100, // Có thể thêm limit, offset nếu cần
-          // offset: 0,
-          // sortBy: { column: 'name', order: 'asc' },
-        });
+        .list(normalizedPath || undefined, options?.listOptions); // Pass listOptions
 
       if (error) {
         console.error(
-          `Supabase storage list error (bucket: ${bucket}, path: ${path}):`,
+          `Supabase Storage list error (bucket: ${bucket}, path: ${normalizedPath}):`,
           error
         );
         throw error;
       }
-      return data || [];
+      // Supabase list returns null if the path doesn't exist, handle this
+      return data ?? [];
     },
-    ...options,
+    ...options?.queryOptions, // Spread standard react-query options
   });
 }

@@ -1,170 +1,203 @@
-import { createClient } from "@/supabase/client";
+// NOTE: This hook implements infinite scrolling. While the current requirement is standard pagination,
+// this hook is kept available as it's well-implemented and might be needed in the future.
+// For standard pagination, use `useClientFetch`.
+import { createClient } from "@/shared/supabase/client";
 import {
   useInfiniteQuery,
   UseInfiniteQueryOptions,
   QueryKey,
 } from "@tanstack/react-query";
-import { PostgrestFilterBuilder, PostgrestError } from "@supabase/postgrest-js";
+import {
+  PostgrestFilterBuilder,
+  PostgrestTransformBuilder,
+} from "@supabase/postgrest-js";
+import { GenericSchema } from "@supabase/supabase-js/dist/module/lib/types";
 
 const supabase = createClient();
 
 /**
- * [V3 Base Hooks] Tùy chọn cho useClientInfiniteQuery.
+ * Options for configuring the infinite fetch query.
+ * Similar to FetchOptions but requires pageSize and uses pageParam.
+ * @template Schema The database schema type.
+ * @template TableName The name of the table being queried.
+ * @template Result The expected shape of a single row in the result.
  */
-type InfiniteFetchDataOptions<
-  Schema,
-  Table extends keyof Schema["public"]["Tables"],
-  Result
+type InfiniteQueryOptions<
+  Schema extends GenericSchema,
+  TableName extends keyof Schema["Tables"],
+  Result = Schema["Tables"][TableName]["Row"]
 > = {
-  /**
-   * Chuỗi select theo chuẩn Supabase, bao gồm nested selects.
-   * @example '*, brand(*), variants:product_variants(id, volume_ml)'
-   * @default '*'
-   */
+  /** Select specific columns, potentially with joins. E.g., `"id, name, profiles(*)"`, `"*"` */
   columns?: string;
   /**
-   * Hàm nhận PostgrestFilterBuilder để áp dụng các bộ lọc (where, eq, gt, in, etc.).
-   * @example query => query.eq('status', 'active').gt('price', 100)
+   * Apply filters to the query.
+   * Example: `(query) => query.eq('status', 'active').gt('price', 100)`
    */
   filters?: (
     query: PostgrestFilterBuilder<
-      Schema["public"]["Tables"][Table]["Row"],
-      any,
-      Result[]
+      Schema,
+      Schema["Tables"][TableName]["Row"],
+      Result
     >
   ) => PostgrestFilterBuilder<
-    Schema["public"]["Tables"][Table]["Row"],
-    any,
-    Result[]
+    Schema,
+    Schema["Tables"][TableName]["Row"],
+    Result
   >;
-  /**
-   * Số lượng item mỗi trang. **Bắt buộc.**
-   */
+  /** The number of items to fetch per page. **Required** for infinite query. */
   pageSize: number;
-  /**
-   * Mảng các tùy chọn sắp xếp.
-   */
+  /** Sorting criteria. Applied in the order provided. */
   sort?: {
-    column: keyof Schema["public"]["Tables"][Table]["Row"] | string; // Cho phép cả cột quan hệ 'relation.column'
+    column: keyof Result | string;
     ascending?: boolean;
+    nullsFirst?: boolean;
+    foreignTable?: string;
   }[];
-  /**
-   * Tùy chọn tìm kiếm văn bản cơ bản (sử dụng ILIKE). Ưu tiên fts nếu được cung cấp.
-   */
+  /** Full-text search or pattern matching configuration. */
   search?: {
-    column: keyof Schema["public"]["Tables"][Table]["Row"] | string;
+    column: keyof Result | string;
     query: string;
-  };
-  /**
-   * Tùy chọn Full-Text Search (Postgres FTS). Sẽ ghi đè 'search' nếu được cung cấp.
-   */
-  fts?: {
-    column: keyof Schema["public"]["Tables"][Table]["Row"] | string;
-    query: string;
-    config?: string; // Tùy chọn cấu hình FTS (vd: 'english')
+    type?: "ilike" | "like" | "eq" | "fts";
+    ftsOptions?: {
+      config?: string;
+      type?: "plain" | "phrase" | "websearch";
+    };
   };
 };
 
-/**
- * [V3 Base Hooks] Kiểu dữ liệu trả về cho mỗi trang của infinite query.
- */
-type InfiniteQueryResult<T> = {
+/** Type for the data structure returned by the query function for each page */
+interface InfiniteQueryResult<T> {
   data: T[];
-  nextPage: number | null; // Số trang tiếp theo (dùng làm pageParam)
-  totalCount: number | null; // Tổng số bản ghi (nếu có)
-};
+  nextPageParam: number | null; // Use page number as cursor
+  totalCount: number | null; // Total count if available
+}
 
 /**
- * [V3 Base Hooks] Hook cơ sở để fetch dữ liệu dạng infinite scroll/load more.
+ * Base hook for fetching data from a Supabase table with infinite scrolling
+ * on the client-side using TanStack Query.
  *
- * @template Schema - Kiểu schema Supabase.
- * @template Table - Tên bảng cần fetch.
- * @template Result - Kiểu dữ liệu mong đợi trả về cho mỗi item.
- * @param key Query key cho TanStack Query. Phải bao gồm các yếu tố filter/sort để key thay đổi khi filter/sort đổi.
- * @param table Tên bảng Supabase.
- * @param options Các tùy chọn fetch (columns, filters, pageSize, sort, search, fts).
- * @param queryOptions Các tùy chọn khác của useInfiniteQuery (TanStack Query).
+ * NOTE: Consider using `useClientFetch` with standard pagination if infinite scroll is not required.
+ *
+ * @template Schema The database schema type (e.g., Database).
+ * @template TableName The name of the table to query (e.g., 'products').
+ * @template Result The expected shape of the data array elements. Defaults to the table's Row type.
+ *
+ * @param key The base TanStack Query key. Page parameters are added automatically.
+ * @param table The name of the Supabase table to query.
+ * @param options Fetch configuration (columns, filters, pageSize, sort, search). `pageSize` is required.
+ * @param queryOptions Additional options for `useInfiniteQuery`.
+ *
+ * @returns The result object from `useInfiniteQuery`. Access pages via `data.pages`. Use `fetchNextPage`, `hasNextPage`, etc.
  */
 export function useClientInfiniteQuery<
-  Schema extends { public: { Tables: any } },
-  Table extends keyof Schema["public"]["Tables"],
-  Result = Schema["public"]["Tables"][Table]["Row"]
+  Schema extends GenericSchema,
+  TableName extends keyof Schema["Tables"] & string,
+  Result = Schema["Tables"][TableName]["Row"]
 >(
-  key: QueryKey,
-  table: Table,
-  options: InfiniteFetchDataOptions<Schema, Table, Result>,
+  key: QueryKey, // Base query key
+  table: TableName,
+  options: InfiniteQueryOptions<Schema, TableName, Result>,
   queryOptions?: Omit<
-    UseInfiniteQueryOptions<InfiniteQueryResult<Result>, PostgrestError>,
+    UseInfiniteQueryOptions<InfiniteQueryResult<Result>, Error>,
     "queryKey" | "queryFn" | "getNextPageParam" | "initialPageParam"
   >
 ) {
-  const queryKey = Array.isArray(key) ? key : [key];
+  const baseQueryKey = key; // Use the provided key directly
 
-  return useInfiniteQuery<InfiniteQueryResult<Result>, PostgrestError>({
-    queryKey: [...queryKey, options], // Bao gồm options trong key
-    queryFn: async ({
-      pageParam = 0,
-    }): Promise<InfiniteQueryResult<Result>> => {
-      const currentPage = typeof pageParam === "number" ? pageParam : 0;
-      const from = currentPage * options.pageSize;
+  return useInfiniteQuery<InfiniteQueryResult<Result>, Error>({
+    queryKey: baseQueryKey, // TanStack Query manages page params internally based on this key
+    queryFn: async ({ pageParam = 0 }) => {
+      // pageParam is the page number (0-based index)
+      const from = pageParam * options.pageSize;
       const to = from + options.pageSize - 1;
 
-      // Bắt đầu query
-      let queryBuilder = supabase.from(table as string);
+      let queryBuilder = supabase.from(table);
+      let selectQuery: PostgrestTransformBuilder<
+        Schema,
+        Schema["Tables"][TableName]["Row"],
+        Result[]
+      > = queryBuilder.select(options.columns || "*", {
+        count: "exact", // Need exact count to determine if there are more pages
+      }) as PostgrestTransformBuilder<
+        Schema,
+        Schema["Tables"][TableName]["Row"],
+        Result[]
+      >;
 
-      // 1. Select columns (luôn yêu cầu count)
-      let selectQuery = queryBuilder.select(options.columns || "*", {
-        count: "exact", // Luôn cần count để tính trang tiếp theo
-      });
+      let filteredQuery: PostgrestFilterBuilder<
+        Schema,
+        Schema["Tables"][TableName]["Row"],
+        Result
+      > = options.filters
+        ? options.filters(
+            selectQuery as PostgrestFilterBuilder<
+              Schema,
+              Schema["Tables"][TableName]["Row"],
+              Result
+            >
+          )
+        : (selectQuery as PostgrestFilterBuilder<
+            Schema,
+            Schema["Tables"][TableName]["Row"],
+            Result
+          >);
 
-      // 2. Áp dụng filters (nếu có)
-      if (options.filters) {
-        selectQuery = options.filters(selectQuery as any) as any;
+      if (options.search && options.search.query) {
+        const {
+          column,
+          query: searchQuery,
+          type = "ilike",
+          ftsOptions,
+        } = options.search;
+        if (type === "fts") {
+          filteredQuery = filteredQuery.textSearch(
+            column as string,
+            `'${searchQuery}'`,
+            ftsOptions || {}
+          );
+        } else {
+          filteredQuery = filteredQuery[type](
+            column as string,
+            `%${searchQuery}%`
+          );
+        }
       }
 
-      // 3. Áp dụng FTS hoặc Search
-      if (options.fts) {
-        selectQuery = selectQuery.textSearch(
-          options.fts.column as string,
-          options.fts.query,
-          { config: options.fts.config, type: "websearch" }
-        );
-      } else if (options.search) {
-        selectQuery = selectQuery.ilike(
-          options.search.column as string,
-          `%${options.search.query}%`
-        );
-      }
-
-      // 4. Áp dụng sắp xếp
       if (options.sort && options.sort.length > 0) {
         options.sort.forEach((sort) => {
-          selectQuery = selectQuery.order(sort.column as string, {
+          filteredQuery = filteredQuery.order(sort.column as string, {
             ascending: sort.ascending ?? true,
+            nullsFirst: sort.nullsFirst,
+            foreignTable: sort.foreignTable,
           });
         });
       }
 
-      // 5. Áp dụng phân trang
-      selectQuery = selectQuery.range(from, to);
+      // Apply range for the current page
+      filteredQuery = filteredQuery.range(from, to);
 
-      // Thực hiện truy vấn
-      const { data, error, count } = await selectQuery;
+      const { data, error, count } = await filteredQuery;
 
       if (error) {
-        console.error("Supabase infinite query error:", error);
+        console.error("Supabase infinite fetch error:", error);
         throw error;
       }
 
-      // Tính toán trang tiếp theo
-      const totalCount = count ?? 0;
-      const nextPage =
-        from + (data?.length ?? 0) < totalCount ? currentPage + 1 : null; // null nếu không còn trang nào
+      // Determine if there is a next page
+      const hasMore = from + (data?.length || 0) < (count ?? 0);
+      const nextPageParam = hasMore ? pageParam + 1 : null;
 
-      return { data: (data ?? []) as Result[], nextPage, totalCount };
+      return {
+        data: data as Result[],
+        nextPageParam: nextPageParam,
+        totalCount: count,
+      };
     },
-    initialPageParam: 0, // Trang đầu tiên luôn là 0
-    getNextPageParam: (lastPage) => lastPage.nextPage, // Lấy pageParam cho trang tiếp theo
+    initialPageParam: 0, // Start fetching from page 0
+    getNextPageParam: (lastPage) => {
+      // Return the next page number or undefined/null if there are no more pages
+      return lastPage.nextPageParam;
+    },
     ...queryOptions,
   });
 }

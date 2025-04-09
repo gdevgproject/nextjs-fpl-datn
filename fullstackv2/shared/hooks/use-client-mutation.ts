@@ -3,48 +3,45 @@ import {
   useMutation,
   useQueryClient,
   UseMutationOptions,
-  QueryKey,
   QueryClient,
 } from "@tanstack/react-query";
-import { PostgrestError } from "@supabase/postgrest-js";
+import { GenericSchema } from "@supabase/supabase-js/dist/module/lib/types";
 
 const supabase = createClient();
 
-/**
- * [V3 Base Hooks] Các hành động mutation được hỗ trợ.
- * `softDelete`: Cập nhật cột 'deleted_at'.
- */
-type MutationAction = "insert" | "update" | "delete" | "upsert" | "softDelete";
+/** Type definition for mutation actions */
+type MutationAction = "insert" | "update" | "delete" | "upsert";
 
 /**
- * [V3 Base Hooks] Dữ liệu context cho optimistic update.
+ * Options for configuring the mutation.
+ * @template Schema The database schema type.
+ * @template TableName The name of the table being mutated.
+ * @template TData The type of data returned by the mutation function.
+ * @template TError The type of error thrown by the mutation function.
+ * @template TVariables The type of variables passed to the mutation function.
+ * @template TContext The type of context returned by `onMutate` and passed to `onError` and `onSettled`.
  */
-type OptimisticContext<TVariables> = {
-  previousData?: unknown; // Dữ liệu cũ trước khi optimistic update
-  variables?: TVariables; // Dữ liệu mới được dùng để mutate
-};
-
-/**
- * [V3 Base Hooks] Tùy chọn cho useClientMutate.
- */
-type ClientMutationOptions<TData, TError, TVariables, TContext> = {
+type MutationOptions<
+  Schema extends GenericSchema,
+  TableName extends keyof Schema["Tables"],
+  TData,
+  TError,
+  TVariables,
+  TContext
+> = {
   /**
-   * Hàm xử lý optimistic update tùy chỉnh.
-   * Cung cấp queryClient để bạn có thể cập nhật nhiều query caches.
+   * Optional custom function for optimistic updates.
+   * If provided, it overrides the default optimistic update behavior.
+   * It receives the query key, the new variables, and the query client instance.
    */
   onOptimisticUpdate?: (
-    variables: TVariables,
-    context: TContext,
+    queryKey: unknown[],
+    newData: TVariables,
     queryClient: QueryClient
-  ) => TContext | Promise<TContext>;
-  /**
-   * Mảng các queryKey cần được invalidate sau khi mutation thành công.
-   * Nếu không cung cấp, sẽ invalidate mặc định theo [table].
-   */
-  invalidateQueries?: QueryKey[];
-  /**
-   * Các tùy chọn khác của useMutation (TanStack Query).
-   */
+  ) => TContext | void;
+  /** Array of query keys to invalidate upon successful mutation. */
+  invalidateQueries?: unknown[][];
+  /** Additional options for the underlying `useMutation` hook. */
   mutationOptions?: Omit<
     UseMutationOptions<TData, TError, TVariables, TContext>,
     "mutationFn" | "onMutate" | "onError" | "onSuccess"
@@ -52,235 +49,298 @@ type ClientMutationOptions<TData, TError, TVariables, TContext> = {
 };
 
 /**
- * [V3 Base Hooks] Hook cơ sở để thực hiện các thao tác INSERT, UPDATE, DELETE, UPSERT, SOFT_DELETE trên một bảng Supabase.
- * Hỗ trợ optimistic updates (mặc định và tùy chỉnh), invalidate queries.
+ * Base hook for performing mutations (insert, update, delete, upsert) on a Supabase table
+ * on the client-side using TanStack Query. Handles optimistic updates and query invalidation.
  *
- * @template TData - Kiểu dữ liệu trả về từ Supabase sau mutation (thường là mảng các bản ghi).
- * @template TError - Kiểu lỗi (mặc định là PostgrestError).
- * @template TVariables - Kiểu dữ liệu của payload gửi đi khi mutate.
- * @template TContext - Kiểu dữ liệu của context dùng trong optimistic updates.
- * @param table Tên bảng Supabase.
- * @param action Hành động mutation ('insert', 'update', 'delete', 'upsert', 'softDelete').
- * @param options Các tùy chọn (onOptimisticUpdate, invalidateQueries, mutationOptions).
+ * @template Schema The database schema type (e.g., Database).
+ * @template TableName The name of the table to mutate (e.g., 'products').
+ * @template TData The expected type of the data returned by the Supabase client on success.
+ * @template TError The type of error expected (defaults to Error).
+ * @template TVariables The type of the payload/variables required for the mutation (e.g., data for insert/update, id for delete).
+ * @template TContext The context type for optimistic updates (defaults to unknown).
+ *
+ * @param table The name of the Supabase table to mutate.
+ * @param action The type of mutation ('insert', 'update', 'delete', 'upsert').
+ * @param primaryKey The name of the primary key column(s) for the table (defaults to 'id'). Needed for default optimistic updates.
+ * @param options Configuration options for the mutation (optimistic updates, invalidation, etc.).
+ *
+ * @returns The result object from `useMutation`. Call `.mutate(variables)` or `.mutateAsync(variables)` to trigger the mutation.
  */
 export function useClientMutate<
-  TData = any,
-  TError = PostgrestError,
-  TVariables = any,
-  TContext extends OptimisticContext<TVariables> = OptimisticContext<TVariables>
+  Schema extends GenericSchema,
+  TableName extends keyof Schema["Tables"] & string,
+  TData = Schema["Tables"][TableName]["Row"][] | null, // Default based on Supabase client return
+  TError = Error,
+  TVariables =
+    | Partial<Schema["Tables"][TableName]["Insert"]>
+    | { id: any }
+    | { ids: any[] }, // Adjust as needed
+  TContext = { previousData?: TData } // Default context for optimistic updates
 >(
-  table: string,
+  table: TableName,
   action: MutationAction,
-  options?: ClientMutationOptions<TData, TError, TVariables, TContext>
+  primaryKey: string | string[] = "id", // Allow composite keys
+  options?: MutationOptions<
+    Schema,
+    TableName,
+    TData,
+    TError,
+    TVariables,
+    TContext
+  >
 ) {
   const queryClient = useQueryClient();
-  const primaryKey = "id"; // Giả định khóa chính là 'id', có thể làm tham số nếu cần
+  // Define a stable query key for the table, often used for invalidation or optimistic updates
+  const tableQueryKey = [table];
 
   return useMutation<TData, TError, TVariables, TContext>({
-    // --- Mutation Function ---
-    mutationFn: async (payload: TVariables): Promise<TData> => {
-      let queryBuilder = supabase.from(table);
+    mutationFn: async (payload: TVariables) => {
       let response: any;
+      const pkArray = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
 
       switch (action) {
         case "insert":
-          response = await queryBuilder.insert(payload as any).select(); // Luôn select để lấy data trả về
+          response = await supabase
+            .from(table)
+            .insert(payload as any)
+            .select(); // Often useful to select after insert
           break;
         case "update":
-          if (typeof payload === "object" && payload && primaryKey in payload) {
-            const { [primaryKey]: id, ...data } = payload as any;
-            if (id === undefined || id === null)
-              throw new Error(
-                `Update failed: '${primaryKey}' is missing in payload.`
-              );
-            response = await queryBuilder
-              .update(data)
-              .match({ [primaryKey]: id })
-              .select();
-          } else {
-            throw new Error(
-              `Invalid update payload for table '${table}'. Expecting object with '${primaryKey}'.`
-            );
+          // Ensure payload is an object
+          if (typeof payload !== "object" || payload === null) {
+            throw new Error("Update payload must be an object.");
           }
-          break;
-        case "delete": // Hard delete
-          if (typeof payload === "object" && payload && primaryKey in payload) {
-            const id = (payload as any)[primaryKey];
-            if (id === undefined || id === null)
+          // Build match condition dynamically for single or composite keys
+          const matchConditionUpdate: { [key: string]: any } = {};
+          let updateData: any = {};
+          pkArray.forEach((key) => {
+            if (!(key in payload))
               throw new Error(
-                `Delete failed: '${primaryKey}' is missing in payload.`
+                `Update payload must contain primary key field: '${key}'`
               );
-            response = await queryBuilder.delete().match({ [primaryKey]: id });
-            // Delete thường không trả về data, chỉ trả về error hoặc null
-            if (response.error) throw response.error;
-            return {} as TData; // Trả về object rỗng để nhất quán kiểu trả về (hoặc null)
-          } else {
-            throw new Error(
-              `Invalid delete payload for table '${table}'. Expecting object with '${primaryKey}'.`
+            matchConditionUpdate[key] = (payload as any)[key];
+          });
+          // Separate PKs from data to update
+          updateData = Object.keys(payload)
+            .filter((key) => !pkArray.includes(key))
+            .reduce((obj, key) => {
+              obj[key] = (payload as any)[key];
+              return obj;
+            }, {} as any);
+
+          if (Object.keys(updateData).length === 0) {
+            console.warn(
+              "Update payload contained only primary keys. No data fields to update."
             );
+            // Decide how to handle this: throw error, return early, or proceed (might be valid if only checking existence)
+            // For now, let it proceed, Supabase might handle it gracefully or return an appropriate response.
           }
-        case "upsert":
-          response = await queryBuilder
-            .upsert(payload as any, {
-              onConflict: (payload as any).onConflict || primaryKey, // Cho phép tùy chỉnh onConflict
-            })
+
+          response = await supabase
+            .from(table)
+            .update(updateData)
+            .match(matchConditionUpdate)
             .select();
           break;
-        case "softDelete":
-          if (typeof payload === "object" && payload && primaryKey in payload) {
-            const id = (payload as any)[primaryKey];
-            if (id === undefined || id === null)
-              throw new Error(
-                `Soft delete failed: '${primaryKey}' is missing in payload.`
-              );
-            // Thực hiện update để set deleted_at
-            response = await queryBuilder
-              .update({ deleted_at: new Date().toISOString() } as any)
-              .match({ [primaryKey]: id })
-              .select();
-          } else {
-            throw new Error(
-              `Invalid soft delete payload for table '${table}'. Expecting object with '${primaryKey}'.`
-            );
+        case "delete":
+          // Ensure payload is an object
+          if (typeof payload !== "object" || payload === null) {
+            throw new Error("Delete payload must be an object.");
           }
+          // Handle single ID or array of IDs
+          if ("ids" in payload && Array.isArray((payload as any).ids)) {
+            if (pkArray.length > 1)
+              throw new Error(
+                "Batch delete with composite keys requires custom logic or RPC."
+              );
+            response = await supabase
+              .from(table)
+              .delete()
+              .in(pkArray[0], (payload as any).ids);
+          } else {
+            // Build match condition dynamically for single or composite keys
+            const matchConditionDelete: { [key: string]: any } = {};
+            pkArray.forEach((key) => {
+              if (!(key in payload))
+                throw new Error(
+                  `Delete payload must contain primary key field: '${key}'`
+                );
+              matchConditionDelete[key] = (payload as any)[key];
+            });
+            response = await supabase
+              .from(table)
+              .delete()
+              .match(matchConditionDelete);
+          }
+          break;
+        case "upsert":
+          response = await supabase
+            .from(table)
+            .upsert(payload as any, {
+              onConflict: pkArray.join(","), // Supabase expects comma-separated string for composite keys
+            })
+            .select(); // Often useful to select after upsert
           break;
         default:
           throw new Error(`Unsupported mutation action: ${action}`);
       }
 
       if (response.error) {
-        console.error(
-          `Supabase mutation error (${action} on ${table}):`,
-          response.error
-        );
+        console.error(`Supabase ${action} error:`, response.error);
         throw response.error;
       }
-      // Supabase trả về mảng data, kể cả khi chỉ mutate 1 dòng
-      return (response.data ?? []) as TData;
+      return response.data as TData;
     },
-
-    // --- Optimistic Update Logic ---
-    onMutate: async (variables: TVariables): Promise<TContext> => {
-      const defaultContext = { variables } as TContext;
-
-      // 1. Ưu tiên hàm optimistic update tùy chỉnh
+    onMutate: async (newData: TVariables): Promise<TContext> => {
+      // Use custom optimistic update function if provided
       if (options?.onOptimisticUpdate) {
-        // Gọi hàm tùy chỉnh và trả về context nó tạo ra
-        const customContext = await options.onOptimisticUpdate(
-          variables,
-          defaultContext,
+        const context = options.onOptimisticUpdate(
+          tableQueryKey,
+          newData,
           queryClient
         );
-        return { ...defaultContext, ...customContext }; // Gộp context mặc định và tùy chỉnh
+        // Ensure a compatible context is returned, even if the custom function returns void
+        return (context ?? {}) as TContext;
       }
 
-      // 2. Logic optimistic update mặc định (chỉ hoạt động tốt với query key là [table])
-      const queryKeyToUpdate: QueryKey = [table]; // Giả định key chính là tên bảng
-      await queryClient.cancelQueries({ queryKey: queryKeyToUpdate });
-      const previousData = queryClient.getQueryData(queryKeyToUpdate);
-      defaultContext.previousData = previousData; // Lưu dữ liệu cũ vào context
+      // --- Default Optimistic Update Logic ---
+      await queryClient.cancelQueries({ queryKey: tableQueryKey });
+      const previousData = queryClient.getQueryData<{
+        data: any[];
+        count?: number | null;
+      }>(tableQueryKey);
 
-      try {
-        queryClient.setQueryData(queryKeyToUpdate, (oldData: any) => {
-          // Xử lý dữ liệu cache (thường là { data: [], count: number })
-          let oldItems = Array.isArray(oldData?.data)
-            ? oldData.data
-            : Array.isArray(oldData)
-            ? oldData
-            : [];
-          let newItems = oldItems;
+      // Helper to compare primary keys
+      const itemMatches = (item: any, vars: TVariables): boolean => {
+        if (typeof vars !== "object" || vars === null) return false;
+        return Array.isArray(primaryKey)
+          ? primaryKey.every(
+              (key) => key in vars && item[key] === (vars as any)[key]
+            )
+          : primaryKey in vars &&
+              item[primaryKey] === (vars as any)[primaryKey];
+      };
+
+      queryClient.setQueryData<{ data: any[]; count?: number | null }>(
+        tableQueryKey,
+        (old) => {
+          if (!old || !Array.isArray(old.data)) return { data: [], count: 0 }; // Handle undefined/null/non-array initial data
+
+          let updatedData = [...old.data];
+          let updatedCount = old.count ?? old.data.length; // Fallback count
 
           switch (action) {
             case "insert":
-              // Giả định insert 1 item, thêm vào cuối
-              // Cần ID tạm thời cho key của React
-              newItems = [
-                ...oldItems,
-                { [primaryKey]: `optimistic-${Date.now()}`, ...variables },
-              ];
+              // Assume newData is the object being inserted
+              // Use a temporary ID for optimistic UI rendering if PK is generated server-side
+              const tempId = `optimistic-${Date.now()}`;
+              const pkName = Array.isArray(primaryKey)
+                ? primaryKey[0]
+                : primaryKey; // Use first PK for temp ID
+              updatedData.push({ [pkName]: tempId, ...(newData as object) });
+              updatedCount++;
               break;
             case "update":
-            case "softDelete": // Xử lý tương tự update cho UI
-              if (
-                typeof variables === "object" &&
-                variables &&
-                primaryKey in variables
-              ) {
-                const id = (variables as any)[primaryKey];
-                newItems = oldItems.map((item: any) =>
-                  item[primaryKey] === id ? { ...item, ...variables } : item
-                );
-              }
+              updatedData = updatedData.map((item) =>
+                itemMatches(item, newData)
+                  ? { ...item, ...(newData as object) }
+                  : item
+              );
+              // Count doesn't change on update
               break;
             case "delete":
               if (
-                typeof variables === "object" &&
-                variables &&
-                primaryKey in variables
+                "ids" in (newData as any) &&
+                Array.isArray((newData as any).ids)
               ) {
-                const id = (variables as any)[primaryKey];
-                newItems = oldItems.filter(
-                  (item: any) => item[primaryKey] !== id
+                // Batch delete optimistic update
+                const idsToDelete = new Set((newData as any).ids);
+                const pkName = Array.isArray(primaryKey)
+                  ? primaryKey[0]
+                  : primaryKey; // Assumes single PK for batch
+                updatedData = updatedData.filter(
+                  (item) => !idsToDelete.has(item[pkName])
                 );
+                updatedCount -= idsToDelete.size; // Adjust count
+              } else {
+                // Single delete optimistic update
+                updatedData = updatedData.filter(
+                  (item) => !itemMatches(item, newData)
+                );
+                updatedCount--; // Adjust count
               }
               break;
-            // Upsert khó đoán trước nên không làm optimistic mặc định
             case "upsert":
-            default:
-              newItems = oldItems; // Không thay đổi cache
+              // More complex: could be insert or update
+              const existingIndex = updatedData.findIndex((item) =>
+                itemMatches(item, newData)
+              );
+              if (existingIndex > -1) {
+                // Update existing
+                updatedData[existingIndex] = {
+                  ...updatedData[existingIndex],
+                  ...(newData as object),
+                };
+              } else {
+                // Insert new (potentially with temp ID if needed)
+                const tempIdUpsert = `optimistic-${Date.now()}`;
+                const pkNameUpsert = Array.isArray(primaryKey)
+                  ? primaryKey[0]
+                  : primaryKey;
+                const newItem = {
+                  [pkNameUpsert]: tempIdUpsert,
+                  ...(newData as object),
+                };
+                // Check if the actual PK was provided in newData, if so, use it
+                if (Array.isArray(primaryKey)) {
+                  primaryKey.forEach((key) => {
+                    if (key in (newData as any))
+                      newItem[key] = (newData as any)[key];
+                  });
+                } else {
+                  if (primaryKey in (newData as any))
+                    newItem[primaryKey] = (newData as any)[primaryKey];
+                }
+                updatedData.push(newItem);
+                updatedCount++;
+              }
               break;
           }
 
-          // Trả về cấu trúc cache gốc nếu có
-          return oldData?.data ? { ...oldData, data: newItems } : newItems;
-        });
-      } catch (error) {
-        console.error("Optimistic update failed:", error);
-        // Không cần throw lỗi ở đây, để mutation tiếp tục
-      }
+          // Ensure count doesn't go below zero
+          updatedCount = Math.max(0, updatedCount);
 
-      return defaultContext;
+          return { data: updatedData, count: updatedCount };
+        }
+      );
+
+      // Return context with previous data for potential rollback
+      return { previousData: previousData as any } as TContext;
     },
-
-    // --- Error Handling ---
     onError: (error: TError, variables: TVariables, context?: TContext) => {
-      console.error("Mutation failed:", error);
-      // Rollback nếu có dữ liệu cũ trong context
-      if (context?.previousData !== undefined) {
-        const queryKeyToRollback: QueryKey = [table]; // Giả định key chính là tên bảng
-        queryClient.setQueryData(queryKeyToRollback, context.previousData);
-        console.log(
-          `Rolled back optimistic update for key: ${queryKeyToRollback}`
-        );
+      console.error(`Mutation error (${action} on ${table}):`, error);
+      // Rollback optimistic update if context contains previous data
+      if ((context as any)?.previousData) {
+        queryClient.setQueryData(tableQueryKey, (context as any).previousData);
       }
-      // Gọi thêm mutationOptions.onError nếu có
+      // Optionally call a custom error handler from mutationOptions
       options?.mutationOptions?.onError?.(error, variables, context);
     },
-
-    // --- Success Handling ---
     onSuccess: (data: TData, variables: TVariables, context?: TContext) => {
-      console.log(`Mutation successful (${action} on ${table})`);
-      // Invalidate queries để lấy dữ liệu mới nhất từ server
-      if (options?.invalidateQueries) {
-        options.invalidateQueries.forEach((key) => {
-          queryClient.invalidateQueries({ queryKey: key });
-        });
-      } else {
-        // Mặc định invalidate theo table
-        queryClient.invalidateQueries({ queryKey: [table], exact: false });
-      }
-      // Gọi thêm mutationOptions.onSuccess nếu có
+      // Invalidate specified queries or default table query
+      const queriesToInvalidate = options?.invalidateQueries ?? [tableQueryKey];
+      queriesToInvalidate.forEach((key) => {
+        queryClient.invalidateQueries({ queryKey: key });
+      });
+      // Optionally call a custom success handler
       options?.mutationOptions?.onSuccess?.(data, variables, context);
     },
-
-    // --- Settled Handling ---
     onSettled: (data, error, variables, context) => {
-      // Luôn chạy sau onSuccess hoặc onError
-      // Gọi thêm mutationOptions.onSettled nếu có
+      // This runs after mutation completes (success or error)
+      // Useful for cleanup or final invalidations regardless of outcome
       options?.mutationOptions?.onSettled?.(data, error, variables, context);
     },
-
-    // Spread các options còn lại từ mutationOptions
+    // Spread any remaining useMutation options
     ...options?.mutationOptions,
   });
 }

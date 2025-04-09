@@ -1,154 +1,222 @@
 import { createClient } from "@/shared/supabase/client";
-import { useQuery, UseQueryOptions, QueryKey } from "@tanstack/react-query";
-import { PostgrestFilterBuilder, PostgrestError } from "@supabase/postgrest-js";
+import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import {
+  PostgrestFilterBuilder,
+  PostgrestTransformBuilder,
+} from "@supabase/postgrest-js";
+import { GenericSchema } from "@supabase/supabase-js/dist/module/lib/types";
 
+// Initialize Supabase client
 const supabase = createClient();
 
 /**
- * [V3 Base Hooks] Tùy chọn cho việc fetch dữ liệu với useClientFetch.
+ * Options for configuring the fetch query.
+ * @template Schema The database schema type (usually inferred).
+ * @template TableName The name of the table being queried.
+ * @template RelationName The name of the relation for joins.
+ * @template Relationships The relationship definitions for joins.
+ * @template Result The expected shape of a single row in the result.
  */
-type FetchDataOptions<
-  Schema,
-  Table extends keyof Schema["public"]["Tables"],
-  Result
+type FetchOptions<
+  Schema extends GenericSchema,
+  TableName extends keyof Schema["Tables"],
+  RelationName extends keyof Schema["Tables"][TableName]["Relationships"][number],
+  Relationships = Schema["Tables"][TableName]["Relationships"],
+  Result = Schema["Tables"][TableName]["Row"]
 > = {
-  /**
-   * Chuỗi select theo chuẩn Supabase, bao gồm nested selects.
-   * @example '*, brand(*), variants:product_variants(id, volume_ml)'
-   * @default '*'
-   */
+  /** Select specific columns, potentially with joins. E.g., `"id, name, profiles(*)"`, `"*"` */
   columns?: string;
   /**
-   * Hàm nhận PostgrestFilterBuilder để áp dụng các bộ lọc (where, eq, gt, in, etc.).
-   * @example query => query.eq('status', 'active').gt('price', 100)
+   * Apply filters to the query.
+   * Example: `(query) => query.eq('status', 'active').gt('price', 100)`
+   * Allows chaining complex filters: `.or('cond1,cond2')`, `.in('id', [1,2])`, etc.
    */
   filters?: (
     query: PostgrestFilterBuilder<
-      Schema["public"]["Tables"][Table]["Row"],
-      any,
-      Result[]
+      Schema,
+      Schema["Tables"][TableName]["Row"],
+      Result
     >
   ) => PostgrestFilterBuilder<
-    Schema["public"]["Tables"][Table]["Row"],
-    any,
-    Result[]
+    Schema,
+    Schema["Tables"][TableName]["Row"],
+    Result
   >;
-  /**
-   * Tùy chọn phân trang.
-   */
+  /** Pagination settings. */
   pagination?: {
-    page: number; // Số trang (bắt đầu từ 1)
+    /** The current page number (1-based). */
+    page: number;
+    /** The number of items per page. */
     pageSize: number;
   };
-  /**
-   * Mảng các tùy chọn sắp xếp.
-   */
+  /** Sorting criteria. Applied in the order provided. */
   sort?: {
-    column: keyof Schema["public"]["Tables"][Table]["Row"] | string; // Cho phép cả cột quan hệ 'relation.column'
+    /** The column name to sort by. */
+    column: keyof Result | string; // Allow string for joined columns
+    /** Sort direction. Defaults to true (ascending). */
     ascending?: boolean;
+    /** Options for sorting nulls ('nullsfirst', 'nullslast'). */
+    nullsFirst?: boolean;
+    /** Specify foreign table for sorting on joined columns. */
+    foreignTable?: string;
   }[];
   /**
-   * Tùy chọn đếm tổng số bản ghi (hữu ích khi phân trang).
+   * Joins configuration. Use `columns` for more complex joins.
+   * Example: `[{ relation: 'profiles', columns: 'id, display_name' }]`
+   * Note: Type safety on joined columns relies on correct `columns` string.
+   * @deprecated Prefer using joined columns directly in the main `columns` string (e.g., `"*, relation(*)"`). This option is kept for potential specific use cases but might be removed later.
    */
+  joins?: {
+    relation: RelationName | string; // Allow string for flexibility
+    columns?: string;
+  }[];
+  /** Type of count to perform ('exact', 'planned', 'estimated'). 'exact' required for pagination total. */
   count?: "exact" | "planned" | "estimated";
-  /**
-   * Tùy chọn tìm kiếm văn bản cơ bản (sử dụng ILIKE). Ưu tiên fts nếu được cung cấp.
-   */
+  /** Full-text search or pattern matching configuration. */
   search?: {
-    column: keyof Schema["public"]["Tables"][Table]["Row"] | string;
+    /** Column to search against. */
+    column: keyof Result | string;
+    /** Search query string. */
     query: string;
-  };
-  /**
-   * Tùy chọn Full-Text Search (Postgres FTS). Sẽ ghi đè 'search' nếu được cung cấp.
-   */
-  fts?: {
-    column: keyof Schema["public"]["Tables"][Table]["Row"] | string;
-    query: string;
-    config?: string; // Tùy chọn cấu hình FTS (vd: 'english')
+    /** Search type ('ilike' for case-insensitive like, 'fts' for full-text search, etc.). Defaults to 'ilike'. */
+    type?: "ilike" | "like" | "eq" | "fts"; // Add more as needed
+    /** Full-text search options */
+    ftsOptions?: {
+      /** The text search configuration */
+      config?: string;
+      /** The type of query */
+      type?: "plain" | "phrase" | "websearch";
+    };
   };
 };
 
 /**
- * [V3 Base Hooks] Hook cơ sở để fetch dữ liệu từ một bảng Supabase phía client.
- * Hỗ trợ select cột (nested), filter, sort, pagination, count, search, FTS.
+ * Base hook for fetching data from a Supabase table on the client-side using TanStack Query.
+ * Handles selection, filtering, sorting, pagination, and joins.
  *
- * @template Schema - Kiểu schema Supabase (thường được tạo tự động).
- * @template Table - Tên bảng cần fetch.
- * @template Result - Kiểu dữ liệu mong đợi trả về (mặc định là Row của bảng).
- * @param key Query key cho TanStack Query.
- * @param table Tên bảng Supabase.
- * @param options Các tùy chọn fetch (columns, filters, pagination, sort, count, search, fts).
- * @param queryOptions Các tùy chọn khác của useQuery (TanStack Query).
- * @returns Kết quả từ useQuery, bao gồm data { data: Result[]; count?: number } và các trạng thái khác.
+ * @template Schema The database schema type (e.g., Database).
+ * @template TableName The name of the table to query (e.g., 'products').
+ * @template Result The expected shape of the data array elements. Defaults to the table's Row type.
+ *
+ * @param key The TanStack Query key. Used for caching.
+ * @param table The name of the Supabase table to query.
+ * @param options Fetch configuration (columns, filters, pagination, sort, joins, count, search).
+ * @param queryOptions Additional options for `useQuery`.
+ *
+ * @returns The result object from `useQuery`, containing data, status, error, etc.
+ *          The `data` property is an object `{ data: Result[]; count?: number }`.
  */
 export function useClientFetch<
-  Schema extends { public: { Tables: any } },
-  Table extends keyof Schema["public"]["Tables"],
-  Result = Schema["public"]["Tables"][Table]["Row"] // Mặc định kiểu trả về là Row
+  Schema extends GenericSchema,
+  TableName extends keyof Schema["Tables"] & string, // Ensure TableName is a string
+  Result = Schema["Tables"][TableName]["Row"]
 >(
-  key: QueryKey,
-  table: Table,
-  options?: FetchDataOptions<Schema, Table, Result>,
+  key: unknown[], // Use unknown[] for query keys as recommended by TanStack Query v5
+  table: TableName,
+  options?: FetchOptions<Schema, TableName, any, any, Result>, // Use 'any' for RelationName/Relationships generics here for simplicity in the base hook signature
   queryOptions?: Omit<
-    UseQueryOptions<{ data: Result[]; count?: number | null }, PostgrestError>,
+    UseQueryOptions<{ data: Result[]; count?: number | null }, Error>,
     "queryKey" | "queryFn"
   >
 ) {
-  const queryKey = Array.isArray(key) ? key : [key];
+  const queryKey = key; // Use the provided key directly
 
-  return useQuery<{ data: Result[]; count?: number | null }, PostgrestError>({
-    queryKey: [...queryKey, options], // Bao gồm options trong key để tự động refetch khi options thay đổi
+  return useQuery<{ data: Result[]; count?: number | null }, Error>({
+    queryKey,
     queryFn: async () => {
-      // Bắt đầu query
-      let queryBuilder = supabase.from(table as string);
+      // Start with select
+      // The initial PostgrestQueryBuilder needs the schema type
+      let queryBuilder = supabase.from(table);
 
-      // 1. Select columns (bao gồm nested và count)
-      let selectQuery = queryBuilder.select(options?.columns || "*", {
+      // Apply select with count
+      // The PostgrestFilterBuilder needs schema, row type, and result type
+      let selectQuery: PostgrestTransformBuilder<
+        Schema,
+        Schema["Tables"][TableName]["Row"],
+        Result[]
+      > = queryBuilder.select(options?.columns || "*", {
         count: options?.count,
-      });
+      }) as PostgrestTransformBuilder<
+        Schema,
+        Schema["Tables"][TableName]["Row"],
+        Result[]
+      >; // Assert type after select
 
-      // 2. Áp dụng filters (nếu có)
-      if (options?.filters) {
-        selectQuery = options.filters(selectQuery as any) as any;
+      // Apply joins (Deprecated approach - prefer joins in `columns`)
+      // if (options?.joins && options.joins.length > 0) {
+      //   console.warn("Using the 'joins' option in useClientFetch is deprecated. Prefer specifying joins directly in the 'columns' string (e.g., '*, relation(*)').");
+      //   options.joins.forEach(join => {
+      //     // This syntax is complex to type correctly with generics here, using 'any' for simplicity
+      //     selectQuery = (selectQuery as any).select(`${join.relation}(${join.columns || '*'})`);
+      //   });
+      // }
+
+      // Apply filters
+      let filteredQuery: PostgrestFilterBuilder<
+        Schema,
+        Schema["Tables"][TableName]["Row"],
+        Result
+      > = options?.filters
+        ? options.filters(
+            selectQuery as PostgrestFilterBuilder<
+              Schema,
+              Schema["Tables"][TableName]["Row"],
+              Result
+            >
+          ) // Apply filters
+        : (selectQuery as PostgrestFilterBuilder<
+            Schema,
+            Schema["Tables"][TableName]["Row"],
+            Result
+          >); // Cast if no filters
+
+      // Apply search
+      if (options?.search && options.search.query) {
+        const {
+          column,
+          query: searchQuery,
+          type = "ilike",
+          ftsOptions,
+        } = options.search;
+        if (type === "fts") {
+          filteredQuery = filteredQuery.textSearch(
+            column as string,
+            `'${searchQuery}'`,
+            ftsOptions || {}
+          );
+        } else {
+          filteredQuery = filteredQuery[type](
+            column as string,
+            `%${searchQuery}%`
+          );
+        }
       }
 
-      // 3. Áp dụng FTS hoặc Search (FTS ưu tiên hơn)
-      if (options?.fts) {
-        selectQuery = selectQuery.textSearch(
-          options.fts.column as string,
-          options.fts.query,
-          { config: options.fts.config, type: "websearch" } // 'websearch' thường phù hợp
-        );
-      } else if (options?.search) {
-        selectQuery = selectQuery.ilike(
-          options.search.column as string,
-          `%${options.search.query}%`
-        );
-      }
-
-      // 4. Áp dụng sắp xếp
+      // Apply sorting
       if (options?.sort && options.sort.length > 0) {
         options.sort.forEach((sort) => {
-          selectQuery = selectQuery.order(sort.column as string, {
+          filteredQuery = filteredQuery.order(sort.column as string, {
             ascending: sort.ascending ?? true,
+            nullsFirst: sort.nullsFirst,
+            foreignTable: sort.foreignTable,
           });
         });
       }
 
-      // 5. Áp dụng phân trang
+      // Apply pagination
       if (options?.pagination) {
         const { page, pageSize } = options.pagination;
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
-        selectQuery = selectQuery.range(from, to);
+        filteredQuery = filteredQuery.range(from, to);
       }
 
-      // Thực hiện truy vấn
-      const { data, error, count } = await selectQuery;
+      // Execute query
+      const { data, error, count } = await filteredQuery;
 
       if (error) {
         console.error("Supabase fetch error:", error);
-        throw error; // Ném lỗi để TanStack Query xử lý
+        throw error; // Re-throw the error for TanStack Query to handle
       }
 
       return { data: data as Result[], count };

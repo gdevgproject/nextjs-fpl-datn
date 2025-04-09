@@ -7,116 +7,105 @@ import {
   useQueryClient,
   QueryKey,
 } from "@tanstack/react-query";
-import { PostgrestError } from "@supabase/postgrest-js";
+import { SupabaseClient } from "@supabase/supabase-js";
 
-const supabase = createClient();
+const supabase: SupabaseClient = createClient(); // Explicitly type if needed
 
 /**
- * [V3 Base Hooks] Hook cơ sở để gọi RPC function và lấy dữ liệu (thường dùng cho GET-like operations).
+ * Base hook for calling Supabase RPC functions (PostgreSQL functions)
+ * that primarily fetch data (like a GET request) using TanStack Query.
  *
- * @template TData - Kiểu dữ liệu mong đợi RPC trả về.
- * @template TError - Kiểu lỗi (mặc định PostgrestError).
- * @template TParams - Kiểu dữ liệu của tham số truyền vào RPC.
- * @param rpcName Tên của RPC function trong Postgres.
- * @param params Tham số truyền vào RPC (nếu có).
- * @param options Các tùy chọn khác của useQuery (TanStack Query).
+ * @template TData The expected type of data returned by the RPC function.
+ * @template TError The type of error expected (defaults to Error).
+ * @template TParams The type of the parameters object passed to the RPC function.
+ *
+ * @param rpcName The name of the RPC function in your Supabase database.
+ * @param params Optional parameters to pass to the RPC function. The query key will include these.
+ * @param options Additional options for the underlying `useQuery` hook.
+ *
+ * @returns The result object from `useQuery`.
  */
 export function useClientRpcQuery<
   TData = unknown,
-  TError = PostgrestError,
-  TParams = object | undefined // RPC params thường là object
+  TError = Error,
+  TParams = Record<string, unknown> | undefined // Use Record for object params, allow undefined
 >(
   rpcName: string,
   params?: TParams,
   options?: Omit<UseQueryOptions<TData, TError>, "queryKey" | "queryFn">
 ) {
-  // Query key bao gồm tên RPC và params để đảm bảo tính duy nhất và refetch khi params đổi
+  // Create a stable query key, including parameters if they exist
   const queryKey: QueryKey = params ? [rpcName, params] : [rpcName];
 
   return useQuery<TData, TError>({
-    queryKey: queryKey,
-    queryFn: async (): Promise<TData> => {
-      const { data, error } = await supabase.rpc(rpcName, params as any); // Dùng as any vì Supabase client typing cho params có thể không khớp hoàn toàn
+    queryKey,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc(rpcName, params); // Pass params directly
+
       if (error) {
-        console.error(`Supabase RPC query error (${rpcName}):`, error);
-        throw error;
+        console.error(`Supabase RPC (${rpcName}) error:`, error);
+        throw error; // Re-throw for TanStack Query
       }
       return data as TData;
     },
-    ...options,
+    ...options, // Spread the rest of the useQuery options
   });
 }
 
 /**
- * [V3 Base Hooks] Tùy chọn cho useClientRpcMutation.
- */
-type ClientRpcMutationOptions<TData, TError, TParams, TContext> = {
-  /**
-   * Mảng các queryKey cần được invalidate sau khi mutation thành công.
-   */
-  invalidateQueries?: QueryKey[];
-  /**
-   * Các tùy chọn khác của useMutation (TanStack Query).
-   * Bao gồm cả onMutate, onError, onSuccess, onSettled nếu cần xử lý optimistic update tùy chỉnh.
-   */
-  mutationOptions?: Omit<
-    UseMutationOptions<TData, TError, TParams, TContext>,
-    "mutationFn"
-  >;
-};
-
-/**
- * [V3 Base Hooks] Hook cơ sở để gọi RPC function và thực hiện thay đổi dữ liệu (thường dùng cho POST-like operations).
+ * Base hook for calling Supabase RPC functions (PostgreSQL functions)
+ * that perform mutations or actions (like a POST/PUT/DELETE request) using TanStack Query.
  *
- * @template TData - Kiểu dữ liệu mong đợi RPC trả về sau khi thực thi.
- * @template TError - Kiểu lỗi (mặc định PostgrestError).
- * @template TParams - Kiểu dữ liệu của tham số truyền vào RPC.
- * @template TContext - Kiểu dữ liệu context cho các callback của useMutation.
- * @param rpcName Tên của RPC function trong Postgres.
- * @param options Các tùy chọn (invalidateQueries, mutationOptions).
+ * @template TData The expected type of data returned by the RPC function on success.
+ * @template TError The type of error expected (defaults to Error).
+ * @template TParams The type of the parameters object passed to the RPC function.
+ * @template TContext The context type for optimistic updates (if implemented).
+ *
+ * @param rpcName The name of the RPC function in your Supabase database.
+ * @param options Configuration options including query invalidation and standard `useMutation` options.
+ *
+ * @returns The result object from `useMutation`. Call `.mutate(params)` or `.mutateAsync(params)`.
  */
 export function useClientRpcMutation<
   TData = unknown,
-  TError = PostgrestError,
-  TParams = object | undefined, // RPC params thường là object
+  TError = Error,
+  TParams = Record<string, unknown> | undefined, // Use Record for object params, allow undefined
   TContext = unknown
 >(
   rpcName: string,
-  options?: ClientRpcMutationOptions<TData, TError, TParams, TContext>
+  options?: {
+    /** Array of query keys to invalidate upon successful mutation. */
+    invalidateQueries?: QueryKey[];
+    /** Additional options for the underlying `useMutation` hook. */
+    mutationOptions?: Omit<
+      UseMutationOptions<TData, TError, TParams, TContext>,
+      "mutationFn" | "onSuccess"
+    >;
+  }
 ) {
   const queryClient = useQueryClient();
 
   return useMutation<TData, TError, TParams, TContext>({
-    mutationFn: async (params: TParams): Promise<TData> => {
-      const { data, error } = await supabase.rpc(rpcName, params as any);
+    mutationFn: async (params: TParams) => {
+      const { data, error } = await supabase.rpc(rpcName, params); // Pass params directly
+
       if (error) {
-        console.error(`Supabase RPC mutation error (${rpcName}):`, error);
-        throw error;
+        console.error(`Supabase RPC (${rpcName}) mutation error:`, error);
+        throw error; // Re-throw for TanStack Query
       }
       return data as TData;
     },
-    // onSuccess, onError, onSettled có thể được override trong options.mutationOptions
     onSuccess: (data, variables, context) => {
-      console.log(`RPC mutation successful (${rpcName})`);
-      // Invalidate queries
+      // Invalidate specified queries upon success
       if (options?.invalidateQueries) {
         options.invalidateQueries.forEach((key) => {
           queryClient.invalidateQueries({ queryKey: key });
         });
       }
-      // Gọi onSuccess từ options nếu có
+      // Call original onSuccess if provided
       options?.mutationOptions?.onSuccess?.(data, variables, context);
     },
-    onError: (error, variables, context) => {
-      console.error(`RPC mutation failed (${rpcName}):`, error);
-      // Gọi onError từ options nếu có
-      options?.mutationOptions?.onError?.(error, variables, context);
-    },
-    onSettled: (data, error, variables, context) => {
-      // Gọi onSettled từ options nếu có
-      options?.mutationOptions?.onSettled?.(data, error, variables, context);
-    },
-    // Spread các options còn lại
+    // Spread the rest of the useMutation options (excluding mutationFn and onSuccess which we've handled)
     ...options?.mutationOptions,
   });
 }
