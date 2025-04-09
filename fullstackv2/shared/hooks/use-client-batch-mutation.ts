@@ -1,11 +1,6 @@
 import { createClient } from "@/shared/supabase/client";
-import {
-  Database,
-  PublicSchema,
-  TableName,
-  TableRow,
-  TableInsert,
-} from "@/shared/types/index";
+import { Database } from "@/shared/types";
+import { TableName, TableRow, TableInsert } from "@/shared/types/hooks";
 import {
   useMutation,
   useQueryClient,
@@ -47,9 +42,10 @@ interface BatchMutationOptions<
     queryClient: QueryClient
   ) => void | Promise<void>;
   invalidateQueries?: QueryKey[];
+  /** Additional options for the underlying `useMutation` hook. */
   mutationOptions?: Omit<
-    UseMutationOptions<TData, TError, TVariables>,
-    "mutationFn" | "onMutate" | "onError" | "onSuccess"
+    UseMutationOptions<TData, TError, TVariables, unknown>,
+    "mutationFn" | "onMutate"
   >;
 }
 
@@ -85,7 +81,7 @@ export function useClientBatchMutation<
   const queryClient = useQueryClient();
   const tableListQueryKey: QueryKey = [table, "list"]; // Example default key
 
-  return useMutation<TData, TError, TVariables>({
+  return useMutation<TData, TError, TVariables, unknown>({
     mutationFn: async (variables: TVariables): Promise<TData> => {
       const { action, items, matchColumn = "id" } = variables;
 
@@ -96,7 +92,9 @@ export function useClientBatchMutation<
         return null as TData; // Or appropriate empty value
       }
 
-      let response: any;
+      // We need to use type assertion here because the Supabase types don't perfectly match
+      // our generic approach. This is a necessary compromise for the flexibility of the API.
+      let response: { data: unknown; error: PostgrestError | null };
       const pkArray = Array.isArray(matchColumn)
         ? matchColumn.map((key) => String(key))
         : [String(matchColumn)];
@@ -107,7 +105,7 @@ export function useClientBatchMutation<
           case "insert":
             response = await supabase
               .from(table)
-              .insert(items as any)
+              .insert(items as any) // Using 'any' to bypass the type checking issues
               .select();
             break;
           case "update":
@@ -116,6 +114,7 @@ export function useClientBatchMutation<
             response = await supabase
               .from(table)
               .upsert(items as any, {
+                // Using 'any' to bypass the type checking issues
                 onConflict: onConflictConstraint,
                 ignoreDuplicates: false,
               })
@@ -129,6 +128,8 @@ export function useClientBatchMutation<
             }
             const key = pkArray[0];
             const valuesToDelete = items.map((item) => {
+              // We need to use Record<string, unknown> here because TItem is generic
+              // and we can't guarantee it has the key property
               const typedItem = item as Record<string, unknown>;
               if (
                 !(key in typedItem) ||
@@ -144,13 +145,14 @@ export function useClientBatchMutation<
             response = await supabase
               .from(table)
               .delete()
-              .in(key, valuesToDelete);
+              .in(key, valuesToDelete as any); // Using 'any' to bypass the type checking issues
             // Delete often returns null data
             return null as TData;
           case "upsert":
             response = await supabase
               .from(table)
               .upsert(items as any, {
+                // Using 'any' to bypass the type checking issues
                 onConflict: onConflictConstraint,
                 ignoreDuplicates: false,
               })
@@ -187,15 +189,17 @@ export function useClientBatchMutation<
       // Return undefined context as no default optimistic update is done
       return undefined;
     },
-    onError: (error: TError, variables: TVariables, context) => {
+    onError: (error: TError, variables: TVariables, context: unknown) => {
       console.error(
         `Batch mutation error (${variables.action} on ${table}):`,
         error
       );
       // No default rollback needed as no default optimistic update. Rely on invalidation.
-      options?.mutationOptions?.onError?.(error, variables, context);
+      if (options?.mutationOptions?.onError) {
+        options.mutationOptions.onError(error, variables, context);
+      }
     },
-    onSuccess: (data: TData, variables: TVariables, context) => {
+    onSuccess: (data: TData, variables: TVariables, context: unknown) => {
       const queriesToInvalidate = options?.invalidateQueries ?? [
         tableListQueryKey,
       ];
@@ -206,10 +210,14 @@ export function useClientBatchMutation<
       queriesToInvalidate.forEach((key) => {
         queryClient.invalidateQueries({ queryKey: key });
       });
-      options?.mutationOptions?.onSuccess?.(data, variables, context);
+      if (options?.mutationOptions?.onSuccess) {
+        options.mutationOptions.onSuccess(data, variables, context);
+      }
     },
     onSettled: (data, error, variables, context) => {
-      options?.mutationOptions?.onSettled?.(data, error, variables, context);
+      if (options?.mutationOptions?.onSettled) {
+        options.mutationOptions.onSettled(data, error, variables, context);
+      }
     },
     ...options?.mutationOptions,
   });

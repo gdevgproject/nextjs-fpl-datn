@@ -1,10 +1,6 @@
 import { createClient } from "@/shared/supabase/client";
-import {
-  Database,
-  PublicSchema,
-  TableName,
-  TableRow,
-} from "@/shared/types/index";
+import { Database } from "@/shared/types";
+import { TableName, TableRow } from "@/shared/types/hooks";
 import { useQuery, UseQueryOptions, QueryKey } from "@tanstack/react-query";
 import {
   PostgrestFilterBuilder,
@@ -32,8 +28,8 @@ export type FetchHookOptions<
    * Example: `(query) => query.eq('status', 'active').gt('price', 100)`
    */
   filters?: (
-    query: PostgrestFilterBuilder<PublicSchema, TableRow<T>, TResult>
-  ) => PostgrestFilterBuilder<PublicSchema, TableRow<T>, TResult>;
+    query: PostgrestFilterBuilder<Database["public"], TableRow<T>, TResult>
+  ) => PostgrestFilterBuilder<Database["public"], TableRow<T>, TResult>;
   /** Pagination settings. */
   pagination?: {
     page: number; // 1-based
@@ -105,27 +101,36 @@ export function useClientFetch<
       // Base select query
       let selectQuery = queryBuilder.select(options?.columns || "*", {
         count: options?.count,
-      }) as PostgrestTransformBuilder<PublicSchema, TableRow<T>, TResult[]>;
+      }) as unknown as PostgrestTransformBuilder<
+        Database["public"],
+        TableRow<T>,
+        TResult[]
+      >;
+      // Using unknown casting because Supabase's generic typing doesn't perfectly align with our Database type
 
       // Apply filters
       if (options?.filters) {
         // We need to cast selectQuery to FilterBuilder to apply filters
         const filterableQuery =
           selectQuery as unknown as PostgrestFilterBuilder<
-            PublicSchema,
+            Database["public"],
             TableRow<T>,
             TResult
           >;
         selectQuery = options.filters(
           filterableQuery
-        ) as PostgrestTransformBuilder<PublicSchema, TableRow<T>, TResult[]>;
+        ) as unknown as PostgrestTransformBuilder<
+          Database["public"],
+          TableRow<T>,
+          TResult[]
+        >;
       }
 
       // Apply search - needs to be FilterBuilder
       if (options?.search && options.search.query) {
         const filterableQuery =
           selectQuery as unknown as PostgrestFilterBuilder<
-            PublicSchema,
+            Database["public"],
             TableRow<T>,
             TResult
           >;
@@ -135,29 +140,32 @@ export function useClientFetch<
           type = "ilike",
           ftsOptions,
         } = options.search;
+
+        // We use a type assertion here because the FilterBuilder methods return different types
+        // based on the method called, but we want to treat them uniformly
+        let searchResult;
+
+        // Fix the search functionality type issues
         if (type === "fts") {
-          const textSearchQuery = filterableQuery.textSearch(
+          searchResult = filterableQuery.textSearch(
             String(column),
-            `'${searchQuery}'`,
+            searchQuery,
             ftsOptions || {}
           );
-          selectQuery = textSearchQuery as PostgrestTransformBuilder<
-            PublicSchema,
-            TableRow<T>,
-            TResult[]
-          >;
-        } else {
-          // For other search types (ilike, like, eq)
-          const searchFilter = filterableQuery[type](
+        } else if (type === "ilike" || type === "like") {
+          searchResult = filterableQuery[type](
             String(column),
-            type === "eq" ? searchQuery : `%${searchQuery}%`
+            `%${searchQuery}%`
           );
-          selectQuery = searchFilter as PostgrestTransformBuilder<
-            PublicSchema,
-            TableRow<T>,
-            TResult[]
-          >;
+        } else if (type === "eq") {
+          searchResult = filterableQuery.eq(String(column), searchQuery);
         }
+
+        selectQuery = searchResult as unknown as PostgrestTransformBuilder<
+          Database["public"],
+          TableRow<T>,
+          TResult[]
+        >;
       }
 
       // Apply sorting - operates on TransformBuilder

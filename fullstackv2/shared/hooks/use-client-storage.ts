@@ -1,5 +1,6 @@
 import { createClient } from "@/shared/supabase/client";
-import { Database, StorageBucketName } from "@/shared/types/index";
+import { Database } from "@/shared/types";
+import { StorageBuckets } from "@/shared/types/hooks";
 import {
   useMutation,
   useQuery,
@@ -80,7 +81,7 @@ interface UseStorageUploadOptions {
  * @returns The result object from `useMutation`. Call `.mutate(variables)` or `.mutateAsync(variables)`.
  */
 export function useStorageUpload(
-  bucket: StorageBucketName,
+  bucket: StorageBuckets,
   options?: UseStorageUploadOptions
 ) {
   const queryClient = useQueryClient();
@@ -136,11 +137,15 @@ export function useStorageUpload(
       invalidateQueryKeys.forEach((key) =>
         queryClient.invalidateQueries({ queryKey: key })
       );
-      mutationOptions.onSuccess?.(result, variables, context);
+      if (mutationOptions.onSuccess) {
+        mutationOptions.onSuccess(result, variables, context);
+      }
     },
     onError: (error, variables, context) => {
       console.error(`Storage upload error (bucket: ${bucket}):`, error);
-      mutationOptions.onError?.(error, variables, context);
+      if (mutationOptions.onError) {
+        mutationOptions.onError(error, variables, context);
+      }
     },
     ...mutationOptions,
   });
@@ -178,7 +183,7 @@ interface UseStorageDeleteOptions {
  * @returns The result object from `useMutation`. Call `.mutate(pathOrPaths)` or `.mutateAsync(pathOrPaths)`.
  */
 export function useStorageDelete(
-  bucket: StorageBucketName,
+  bucket: StorageBuckets,
   options?: UseStorageDeleteOptions
 ) {
   const queryClient = useQueryClient();
@@ -209,11 +214,15 @@ export function useStorageDelete(
       invalidateQueryKeys.forEach((key) =>
         queryClient.invalidateQueries({ queryKey: key })
       );
-      mutationOptions.onSuccess?.(result, variables, context);
+      if (mutationOptions.onSuccess) {
+        mutationOptions.onSuccess(result, variables, context);
+      }
     },
     onError: (error, variables, context) => {
       console.error(`Storage delete error (bucket: ${bucket}):`, error);
-      mutationOptions.onError?.(error, variables, context);
+      if (mutationOptions.onError) {
+        mutationOptions.onError(error, variables, context);
+      }
     },
     ...mutationOptions,
   });
@@ -250,7 +259,7 @@ interface UseStorageListOptions {
  * @returns The result object from `useQuery`.
  */
 export function useStorageList(
-  bucket: StorageBucketName,
+  bucket: StorageBuckets,
   path: string = "",
   options?: UseStorageListOptions
 ) {

@@ -1,11 +1,11 @@
 // FILE: src/shared/hooks/use-client-rpc.ts
 import { createClient } from "@/shared/supabase/client";
+import { Database } from "@/shared/types";
 import {
-  Database,
   FunctionName,
   FunctionArgs,
   FunctionReturns,
-} from "@/shared/types/index";
+} from "@/shared/types/hooks";
 import {
   useQuery,
   useMutation,

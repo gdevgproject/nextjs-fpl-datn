@@ -1,7 +1,13 @@
 "use client";
 
 import type React from "react";
-import { toast as sonnerToast, type ToastOptions } from "sonner";
+import {
+  toast as sonnerToast,
+  ToastOptions as SonnerToastOptions,
+} from "sonner";
+
+// Define our own ToastOptions type to avoid the export issue
+export type ToastOptions = SonnerToastOptions;
 
 // Định nghĩa các loại toast phổ biến
 export type ToastType = "default" | "success" | "error" | "info" | "warning";
@@ -9,40 +15,34 @@ export type ToastType = "default" | "success" | "error" | "info" | "warning";
 // Interface cho hook
 export interface UseSonnerToastReturn {
   // Các phương thức cơ bản
-  toast: (message: string | React.ReactNode, options?: ToastOptions) => string;
+  toast: (message: React.ReactNode, options?: ToastOptions) => string | number;
   success: (
-    message: string | React.ReactNode,
+    message: React.ReactNode,
     options?: ToastOptions
-  ) => string;
-  error: (message: string | React.ReactNode, options?: ToastOptions) => string;
-  info: (message: string | React.ReactNode, options?: ToastOptions) => string;
+  ) => string | number;
+  error: (message: React.ReactNode, options?: ToastOptions) => string | number;
+  info: (message: React.ReactNode, options?: ToastOptions) => string | number;
   warning: (
-    message: string | React.ReactNode,
+    message: React.ReactNode,
     options?: ToastOptions
-  ) => string;
+  ) => string | number;
 
   // Phương thức promise đơn giản hóa
   promise: <Data>(
     promise: Promise<Data>,
     messages: {
-      loading: string | React.ReactNode;
-      success:
-        | string
-        | React.ReactNode
-        | ((data: Data) => React.ReactNode | string);
-      error:
-        | string
-        | React.ReactNode
-        | ((error: unknown) => React.ReactNode | string);
+      loading: React.ReactNode;
+      success: React.ReactNode | ((data: Data) => React.ReactNode);
+      error: React.ReactNode | ((error: unknown) => React.ReactNode);
     },
     options?: ToastOptions
   ) => Promise<Data>;
 
   // Phương thức quản lý cơ bản
-  dismiss: (toastId?: string) => void;
+  dismiss: (toastId?: string | number) => void;
   update: (
-    toastId: string,
-    message: string | React.ReactNode,
+    toastId: string | number,
+    message: React.ReactNode,
     options?: ToastOptions
   ) => void;
 }
@@ -68,37 +68,37 @@ export function useSonnerToast(
 
   // Các phương thức cơ bản
   const showToast = (
-    message: string | React.ReactNode,
+    message: React.ReactNode,
     options?: ToastOptions
-  ): string => {
+  ): string | number => {
     return sonnerToast(message, mergeOptions(options));
   };
 
   const showSuccessToast = (
-    message: string | React.ReactNode,
+    message: React.ReactNode,
     options?: ToastOptions
-  ): string => {
+  ): string | number => {
     return sonnerToast.success(message, mergeOptions(options));
   };
 
   const showErrorToast = (
-    message: string | React.ReactNode,
+    message: React.ReactNode,
     options?: ToastOptions
-  ): string => {
+  ): string | number => {
     return sonnerToast.error(message, mergeOptions(options));
   };
 
   const showInfoToast = (
-    message: string | React.ReactNode,
+    message: React.ReactNode,
     options?: ToastOptions
-  ): string => {
+  ): string | number => {
     return sonnerToast.info(message, mergeOptions(options));
   };
 
   const showWarningToast = (
-    message: string | React.ReactNode,
+    message: React.ReactNode,
     options?: ToastOptions
-  ): string => {
+  ): string | number => {
     return sonnerToast.warning(message, mergeOptions(options));
   };
 
@@ -106,34 +106,31 @@ export function useSonnerToast(
   const promiseToast = <Data,>(
     promise: Promise<Data>,
     messages: {
-      loading: string | React.ReactNode;
-      success:
-        | string
-        | React.ReactNode
-        | ((data: Data) => React.ReactNode | string);
-      error:
-        | string
-        | React.ReactNode
-        | ((error: unknown) => React.ReactNode | string);
+      loading: React.ReactNode;
+      success: React.ReactNode | ((data: Data) => React.ReactNode);
+      error: React.ReactNode | ((error: unknown) => React.ReactNode);
     },
     options?: ToastOptions
   ): Promise<Data> => {
-    return sonnerToast.promise(promise, {
+    const toastPromise = sonnerToast.promise(promise, {
       ...mergeOptions(options),
       loading: messages.loading,
       success: messages.success,
       error: messages.error,
     });
+
+    // Return the original promise to ensure correct typing
+    return promise;
   };
 
   // Phương thức quản lý
-  const dismissToast = (toastId?: string): void => {
+  const dismissToast = (toastId?: string | number): void => {
     sonnerToast.dismiss(toastId);
   };
 
   const updateToast = (
-    toastId: string,
-    message: string | React.ReactNode,
+    toastId: string | number,
+    message: React.ReactNode,
     options?: ToastOptions
   ): void => {
     sonnerToast.update(toastId, { ...mergeOptions(options), message });

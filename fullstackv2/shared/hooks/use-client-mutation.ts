@@ -1,12 +1,11 @@
 import { createClient } from "@/shared/supabase/client";
+import { Database } from "@/shared/types";
 import {
-  Database,
-  PublicSchema,
   TableName,
   TableRow,
   TableInsert,
   TableUpdate,
-} from "@/shared/types/index";
+} from "@/shared/types/hooks";
 import {
   useMutation,
   useQueryClient,
@@ -47,7 +46,9 @@ type MutationContext<T extends TableName> = {
   optimisticUpdateApplied?: boolean;
 };
 
-/** Options for the mutation hook */
+/**
+ * Options for the mutation hook with corrected mutationOptions type
+ */
 type MutationHookOptions<
   T extends TableName,
   TAction extends MutationAction,
@@ -78,24 +79,13 @@ type MutationHookOptions<
       MutationVariables<T, TAction>,
       MutationContext<T>
     >,
-    "mutationFn" | "onMutate" | "onError" | "onSuccess"
+    "mutationFn"
   >;
 };
 
 /**
  * Base hook for performing mutations (insert, update, delete, upsert) on a Supabase table
  * on the client-side using TanStack Query. Strongly typed.
- *
- * @template T TableName - The name of the table to mutate (e.g., 'products').
- * @template TAction The type of mutation ('insert', 'update', 'delete', 'upsert').
- * @template TData The expected type of the data returned by the Supabase client on success.
- * @template TError The type of error expected (defaults to PostgrestError).
- *
- * @param table The name of the Supabase table.
- * @param action The mutation action.
- * @param options Configuration options including `primaryKey`, invalidation, and mutation options.
- *
- * @returns The result object from `useMutation`. Call `.mutate(variables)` or `.mutateAsync(variables)`.
  */
 export function useClientMutate<
   T extends TableName,
@@ -170,15 +160,16 @@ export function useClientMutate<
     MutationContext<T>
   >({
     mutationFn: async (payload): Promise<TData> => {
-      let response: any;
+      let response: { data: unknown; error: PostgrestError | null };
       const pkArray = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
 
       try {
         switch (action) {
           case "insert":
+            // Type assertion needed because Supabase's polymorphic API accepts arrays or single items
             response = await supabase
               .from(table)
-              .insert(payload as any)
+              .insert(payload as any) // Using 'any' here to bypass the strict type checking
               .select();
             break;
           case "update":
@@ -186,7 +177,7 @@ export function useClientMutate<
               processUpdatePayload(payload as object);
             response = await supabase
               .from(table)
-              .update(dataUpdate)
+              .update(dataUpdate as any) // Using 'any' here to bypass the strict type checking
               .match(matchUpdate)
               .select();
             break;
@@ -201,6 +192,7 @@ export function useClientMutate<
             response = await supabase
               .from(table)
               .upsert(payload as any, {
+                // Using 'any' here to bypass the strict type checking
                 onConflict: conflictConstraint,
               })
               .select();
@@ -253,7 +245,8 @@ export function useClientMutate<
         const pkArray = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
         return pkArray.every(
           (key) =>
-            key in vars && item[key] === (vars as any)[key as keyof TableRow<T>]
+            key in vars &&
+            item[key] === (vars as Record<string, unknown>)[key as string]
         );
       };
 
@@ -271,7 +264,10 @@ export function useClientMutate<
               const newItems = Array.isArray(variables)
                 ? variables
                 : [variables];
-              updatedData = [...updatedData, ...(newItems as TableRow<T>[])];
+              updatedData = [
+                ...updatedData,
+                ...(newItems as unknown as TableRow<T>[]),
+              ];
               updatedCount += newItems.length;
               break;
             }
@@ -340,7 +336,10 @@ export function useClientMutate<
         queryClient.invalidateQueries({ queryKey: tableListQueryKey });
       }
 
-      mutationOptions?.onError?.(error, variables, context);
+      // Call the original onError if provided
+      if (mutationOptions?.onError) {
+        mutationOptions.onError(error, variables, context);
+      }
     },
     onSuccess: (data, variables, context) => {
       // Invalidate specified queries or default list query
@@ -354,11 +353,12 @@ export function useClientMutate<
         queryClient.invalidateQueries({ queryKey: key });
       });
 
-      mutationOptions?.onSuccess?.(data, variables, context);
+      // Call the original onSuccess if provided
+      if (mutationOptions?.onSuccess) {
+        mutationOptions.onSuccess(data, variables, context);
+      }
     },
-    onSettled: (data, error, variables, context) => {
-      mutationOptions?.onSettled?.(data, error, variables, context);
-    },
+    onSettled: mutationOptions?.onSettled,
     ...mutationOptions,
   });
 }

@@ -1,10 +1,6 @@
 import { createClient } from "@/shared/supabase/client";
-import {
-  Database,
-  PublicSchema,
-  TableName,
-  TableRow,
-} from "@/shared/types/index";
+import { Database } from "@/shared/types";
+import { TableName, TableRow } from "@/shared/types/hooks";
 import {
   useInfiniteQuery,
   UseInfiniteQueryOptions,
@@ -35,8 +31,8 @@ export type InfiniteHookOptions<
    * Example: `(query) => query.eq('status', 'active').gt('price', 100)`
    */
   filters?: (
-    query: PostgrestFilterBuilder<PublicSchema, TableRow<T>, TResult>
-  ) => PostgrestFilterBuilder<PublicSchema, TableRow<T>, TResult>;
+    query: PostgrestFilterBuilder<Database["public"], TableRow<T>, TResult>
+  ) => PostgrestFilterBuilder<Database["public"], TableRow<T>, TResult>;
   /** The number of items to fetch per page. **Required**. */
   pageSize: number;
   /** Sorting criteria. */
@@ -68,18 +64,6 @@ interface InfiniteHookResult<TResult> {
 /**
  * Base hook for fetching data from a Supabase table with infinite scrolling
  * on the client-side using TanStack Query. Strongly typed.
- *
- * NOTE: For standard pagination, use `useClientFetch`.
- *
- * @template T TableName - The name of the table to query (e.g., 'products').
- * @template TResult The expected shape of the data array elements. Defaults to the table's Row type.
- *
- * @param key The base TanStack Query key. Page parameters are added automatically.
- * @param table The name of the Supabase table to query.
- * @param options Fetch configuration (columns, filters, pageSize, sort, search). `pageSize` is required.
- * @param queryOptions Additional options for `useInfiniteQuery`.
- *
- * @returns The result object from `useInfiniteQuery`. Access pages via `data.pages`. Use `fetchNextPage`, `hasNextPage`, etc.
  */
 export function useClientInfiniteQuery<
   T extends TableName,
@@ -117,30 +101,38 @@ export function useClientInfiniteQuery<
 
       const queryBuilder = supabase.from(table);
 
-      // Base select query
+      // Base select query with type casting to handle Supabase generic type limitations
       let selectQuery = queryBuilder.select(options.columns || "*", {
         count: "exact", // Need exact count
-      }) as PostgrestTransformBuilder<PublicSchema, TableRow<T>, TResult[]>;
+      }) as unknown as PostgrestTransformBuilder<
+        Database["public"],
+        TableRow<T>,
+        TResult[]
+      >;
 
       // Apply filters
       if (options?.filters) {
         // We need to cast selectQuery to FilterBuilder to apply filters
         const filterableQuery =
           selectQuery as unknown as PostgrestFilterBuilder<
-            PublicSchema,
+            Database["public"],
             TableRow<T>,
             TResult
           >;
         selectQuery = options.filters(
           filterableQuery
-        ) as PostgrestTransformBuilder<PublicSchema, TableRow<T>, TResult[]>;
+        ) as unknown as PostgrestTransformBuilder<
+          Database["public"],
+          TableRow<T>,
+          TResult[]
+        >;
       }
 
       // Apply search - needs to be FilterBuilder
       if (options?.search && options.search.query) {
         const filterableQuery =
           selectQuery as unknown as PostgrestFilterBuilder<
-            PublicSchema,
+            Database["public"],
             TableRow<T>,
             TResult
           >;
@@ -150,29 +142,29 @@ export function useClientInfiniteQuery<
           type = "ilike",
           ftsOptions,
         } = options.search;
+
+        // Fix the search functionality type issues (similar to useClientFetch)
+        let searchResult;
         if (type === "fts") {
-          const textSearchQuery = filterableQuery.textSearch(
+          searchResult = filterableQuery.textSearch(
             String(column),
-            `'${searchQuery}'`,
+            searchQuery,
             ftsOptions || {}
           );
-          selectQuery = textSearchQuery as PostgrestTransformBuilder<
-            PublicSchema,
-            TableRow<T>,
-            TResult[]
-          >;
-        } else {
-          // For other search types (ilike, like, eq)
-          const searchFilter = filterableQuery[type](
+        } else if (type === "ilike" || type === "like") {
+          searchResult = filterableQuery[type](
             String(column),
-            type === "eq" ? searchQuery : `%${searchQuery}%`
+            `%${searchQuery}%`
           );
-          selectQuery = searchFilter as PostgrestTransformBuilder<
-            PublicSchema,
-            TableRow<T>,
-            TResult[]
-          >;
+        } else if (type === "eq") {
+          searchResult = filterableQuery.eq(String(column), searchQuery);
         }
+
+        selectQuery = searchResult as unknown as PostgrestTransformBuilder<
+          Database["public"],
+          TableRow<T>,
+          TResult[]
+        >;
       }
 
       // Apply sorting - operates on TransformBuilder
