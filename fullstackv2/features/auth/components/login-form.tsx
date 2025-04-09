@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import Link from "next/link";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
-import { login } from "@/app/(auth)/actions";
+import { login } from "@/features/auth/actions";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
