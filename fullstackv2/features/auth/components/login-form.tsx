@@ -1,12 +1,10 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
-import { login } from "@/features/auth/actions";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,23 +19,26 @@ import {
 } from "@/components/ui/form";
 import { PasswordInput } from "@/components/ui/password-input";
 import { toast } from "sonner";
+import { useAuth } from "@/features/auth/context/auth-context";
 
 const loginSchema = z.object({
   email: z
-    .string({ required_error: "email is required" })
-    .email({ message: "invalid email format" })
-    .min(11),
+    .string({ required_error: "Email is required" })
+    .email({ message: "Invalid email format" })
+    .min(5),
   password: z
-    .string()
+    .string({
+      required_error: "Password is required",
+    })
     .min(8, { message: "Password must be at least 8 characters long" })
     .regex(/\d/, { message: "Password must include at least one number" }),
 });
 
 export default function LoginForm() {
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
-  const queryClient = useQueryClient();
+  const { login } = useAuth();
   const redirectTo = searchParams.get("redirect") || "/";
 
   const form = useForm<z.infer<typeof loginSchema>>({
@@ -49,18 +50,23 @@ export default function LoginForm() {
   });
 
   async function onSubmit(values: z.infer<typeof loginSchema>) {
-    startTransition(async () => {
-      const response = await login(values);
+    setIsPending(true);
+    try {
+      const { error } = await login(values.email, values.password);
 
-      if (response.error) {
-        toast.error("Something went wrong with your creditials!");
+      if (error) {
+        toast.error("Đăng nhập thất bại: " + error.message);
         return;
       }
 
-      queryClient.invalidateQueries({ queryKey: ["user"] }); //invalidate the user
       router.push(redirectTo);
-      toast.success("Welcome Back!");
-    });
+      toast.success("Đăng nhập thành công!");
+    } catch (error) {
+      toast.error("Đã xảy ra lỗi không mong muốn");
+      console.error(error);
+    } finally {
+      setIsPending(false);
+    }
   }
 
   return (
@@ -107,10 +113,10 @@ export default function LoginForm() {
             {isPending ? (
               <div className="flex items-center justify-center gap-1">
                 <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-                <span>verifing...</span>
+                <span>Đang đăng nhập...</span>
               </div>
             ) : (
-              "Verify Now"
+              "Đăng nhập"
             )}
           </Button>
         </form>
@@ -120,11 +126,11 @@ export default function LoginForm() {
           <span className="w-full border-t" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">Or</span>
+          <span className="bg-background px-2 text-muted-foreground">Hoặc</span>
         </div>
       </div>
       <Button variant="outline" asChild>
-        <Link href="/register">Create an account</Link>
+        <Link href="/register">Tạo tài khoản mới</Link>
       </Button>
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
@@ -132,7 +138,7 @@ export default function LoginForm() {
         </div>
         <div className="relative flex justify-center text-xs uppercase">
           <span className="bg-background px-2 text-muted-foreground">
-            Social Login
+            Đăng nhập với
           </span>
         </div>
       </div>

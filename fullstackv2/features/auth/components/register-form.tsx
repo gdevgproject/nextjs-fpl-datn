@@ -1,10 +1,10 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { signup } from "../actions";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -20,37 +20,39 @@ import {
 } from "@/components/ui/form";
 import { PasswordInput } from "@/components/ui/password-input";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useAuth } from "@/features/auth/context/auth-context";
 
 const signupSchema = z.object({
   name: z
     .string()
-    .min(2, { message: "Full name must be at least 2 characters long" })
-    .max(50, { message: "Full name can't exceed 50 characters" }),
+    .min(2, { message: "Tên phải có ít nhất 2 ký tự" })
+    .max(50, { message: "Tên không được vượt quá 50 ký tự" }),
 
-  email: z.string().email({ message: "Invalid email format" }),
+  email: z.string().email({ message: "Email không hợp lệ" }),
 
   phone: z
     .string()
-    .regex(/^\d+$/, { message: "Phone number must contain only digits" })
-    .min(10, { message: "Phone number must be at least 10 digits" })
-    .max(15, { message: "Phone number can't exceed 15 digits" }),
+    .regex(/^\d+$/, { message: "Số điện thoại chỉ được chứa các chữ số" })
+    .min(10, { message: "Số điện thoại phải có ít nhất 10 chữ số" })
+    .max(15, { message: "Số điện thoại không được vượt quá 15 chữ số" })
+    .optional(),
 
   password: z
     .string()
-    .min(8, { message: "Password must be at least 8 characters long" })
+    .min(8, { message: "Mật khẩu phải có ít nhất 8 ký tự" })
     .regex(/[A-Z]/, {
-      message: "Password must include at least one uppercase letter",
+      message: "Mật khẩu phải chứa ít nhất một chữ hoa",
     })
-    .regex(/\d/, { message: "Password must include at least one number" })
+    .regex(/\d/, { message: "Mật khẩu phải chứa ít nhất một chữ số" })
     .regex(/[\W_]/, {
-      message: "Password must include at least one special character",
+      message: "Mật khẩu phải chứa ít nhất một ký tự đặc biệt",
     }),
 });
 
 export default function RegisterForm() {
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
   const router = useRouter();
+  const { register } = useAuth();
 
   const form = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
@@ -63,26 +65,38 @@ export default function RegisterForm() {
   });
 
   async function onSubmit(values: z.infer<typeof signupSchema>) {
-    startTransition(async () => {
-      const response = await signup(values);
+    setIsPending(true);
+    try {
+      const { error, user } = await register({
+        name: values.name,
+        email: values.email,
+        password: values.password,
+        phone: values.phone,
+      });
 
-      if (response.error) {
-        toast.error(
-          "Something went wrong with your credintials! try again later."
-        );
+      if (error) {
+        toast.error("Đăng ký thất bại: " + error.message);
         return;
       }
 
-      toast.success("Just a step away! check your inbox for activation link.");
+      toast.success(
+        "Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản."
+      );
       router.push("/");
-    });
+    } catch (error) {
+      toast.error("Đã xảy ra lỗi không mong muốn");
+      console.error(error);
+    } finally {
+      setIsPending(false);
+    }
   }
+
   return (
     <div className="w-full max-w-md mx-auto space-y-6">
       <div className="grid gap-6">
         <Button variant="outline" type="button" disabled={isPending}>
           <Icons.google className="mr-2 h-4 w-4" />
-          Sign up with Google
+          Đăng ký với Google
         </Button>
         <Separator />
         <Form {...form}>
@@ -93,10 +107,10 @@ export default function RegisterForm() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Name</FormLabel>
+                    <FormLabel>Họ tên</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="my name is..."
+                        placeholder="Nguyễn Văn A"
                         {...field}
                         disabled={isPending}
                       />
@@ -127,10 +141,10 @@ export default function RegisterForm() {
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Pnone</FormLabel>
+                    <FormLabel>Số điện thoại</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="+123456789"
+                        placeholder="0123456789"
                         {...field}
                         disabled={isPending}
                       />
@@ -144,10 +158,10 @@ export default function RegisterForm() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>Mật khẩu</FormLabel>
                     <FormControl>
                       <PasswordInput
-                        placeholder="password"
+                        placeholder="Mật khẩu"
                         type="password"
                         {...field}
                         disabled={isPending}
@@ -158,14 +172,14 @@ export default function RegisterForm() {
                 )}
               />
             </div>
-            <Button className="mt-8 w-full">
+            <Button className="mt-8 w-full" type="submit" disabled={isPending}>
               {isPending ? (
                 <div className="flex items-center justify-center gap-1">
                   <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-                  <span>Becomming a member...</span>
+                  <span>Đang đăng ký...</span>
                 </div>
               ) : (
-                "Become a member"
+                "Đăng ký"
               )}
             </Button>
           </form>
@@ -174,7 +188,7 @@ export default function RegisterForm() {
       <div className="text-center">
         <Link href="/login" className="w-full">
           <Button variant="outline" className="w-full">
-            Back to Login
+            Quay lại đăng nhập
           </Button>
         </Link>
       </div>

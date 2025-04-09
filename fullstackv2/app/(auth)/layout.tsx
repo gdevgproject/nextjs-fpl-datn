@@ -1,7 +1,8 @@
+import type React from "react"
 export default function AuthLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.ReactNode
 }>) {
-  return <div>{children}</div>;
+  return <div>{children}</div>
 }

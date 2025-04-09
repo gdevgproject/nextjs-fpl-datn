@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/features/auth/context/auth-context";
-import React, { useTransition } from "react";
+import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -26,13 +26,13 @@ export default function UserAuthState() {
 
   async function removeUser() {
     startTransision(async () => {
-      const response = await logOut();
-      if (response?.error) {
-        toast.error("Oops Something went wrong!");
-        return;
+      try {
+        await logOut();
+        queryClient.invalidateQueries({ queryKey: ["user"] });
+        toast.success("Đăng xuất thành công!");
+      } catch (error) {
+        toast.error("Đăng xuất thất bại");
       }
-      queryClient.invalidateQueries({ queryKey: ["user"] });
-      toast.success("you're Logged Out!");
     });
   }
 

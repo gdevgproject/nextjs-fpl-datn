@@ -1,9 +1,11 @@
-import { BookOpenText, Github, Package } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import UserAuthState from "@/features/auth/components/user-auth-state";
-import Link from "next/link";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+"use client"
+
+import { BookOpenText, Github, Package } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import UserAuthState from "@/features/auth/components/user-auth-state"
+import Link from "next/link"
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
+import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism"
 
 export default function Home() {
   return (
@@ -29,9 +31,8 @@ export default function Home() {
                   Next.js + Supabase Starter
                 </h1>
                 <p className="mx-auto max-w-[700px] text-gray-500 md:text-xl dark:text-gray-400">
-                  Jumpstart your full-stack project with Next.js and Supabase.
-                  Authentication, database, and API routes - all set up and
-                  ready to go! <br /> best for e-commerce, SaaS, Dashboards.
+                  Jumpstart your full-stack project with Next.js and Supabase. Authentication, database, and API routes
+                  - all set up and ready to go! <br /> best for e-commerce, SaaS, Dashboards.
                 </p>
               </div>
               <div className="space-x-4">
@@ -97,9 +98,7 @@ export default function Home() {
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
                   <path d="m9 12 2 2 4-4" />
                 </svg>
-                <h3 className="text-xl font-bold">
-                  ⚡ Supabase Authentication
-                </h3>
+                <h3 className="text-xl font-bold">⚡ Supabase Authentication</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
                   Pre-configured authentication with Supabase
                 </p>
@@ -143,12 +142,8 @@ export default function Home() {
                   <path d="M8 12h8" />
                   <path d="M8 16h8" />
                 </svg>
-                <h3 className="text-xl font-bold">
-                  ⚡ Tailwind CSS & shadcn/ui
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-                  Styled components ready to use.
-                </p>
+                <h3 className="text-xl font-bold">⚡ Tailwind CSS & shadcn/ui</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center">Styled components ready to use.</p>
               </div>
               <div className="flex flex-col items-center space-y-2 border-gray-800 p-4 rounded-lg">
                 <svg
@@ -173,8 +168,7 @@ export default function Home() {
                 </svg>
                 <h3 className="text-xl font-bold">⚡ React Hook Form</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-                  Efficient and flexible form handling with ZOD validation
-                  integrated.
+                  Efficient and flexible form handling with ZOD validation integrated.
                 </p>
               </div>
               <div className="flex flex-col items-center space-y-2 border-gray-800 p-4 rounded-lg">
@@ -221,9 +215,7 @@ export default function Home() {
                   <path d="M4.93 19.07l2.83-2.83" />
                   <path d="M16.24 7.76l2.83-2.83" />
                 </svg>
-                <h3 className="text-xl font-bold">
-                  ⚡ React Query Integration
-                </h3>
+                <h3 className="text-xl font-bold">⚡ React Query Integration</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
                   Efficient data fetching, caching, and synchronization.
                 </p>
@@ -250,8 +242,7 @@ export default function Home() {
                 </svg>
                 <h3 className="text-xl font-bold">⚡ Built-in Hooks</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-                  Custom hooks for fetching and mutating data with optimistic
-                  updates.
+                  Custom hooks for fetching and mutating data with optimistic updates.
                 </p>
               </div>
               <div className="flex flex-col items-center space-y-2 border-gray-800 p-4 rounded-lg">
@@ -273,8 +264,7 @@ export default function Home() {
                 </svg>
                 <h3 className="text-xl font-bold">⚡ Uses pnpm</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-                  Using pnpm for faster installs and efficient dependency
-                  handling.
+                  Using pnpm for faster installs and efficient dependency handling.
                 </p>
               </div>
             </div>
@@ -287,8 +277,7 @@ export default function Home() {
             </h2>
             <div className="space-y-4 max-w-[600px] mx-auto">
               <p className="text-gray-500 dark:text-gray-400">
-                To get started with this Next.js and Supabase starter, follow
-                these steps to start effortlessly:
+                To get started with this Next.js and Supabase starter, follow these steps to start effortlessly:
               </p>
               <ol className="list-decimal list-inside space-y-5 text-gray-500 dark:text-gray-400">
                 <li>
@@ -299,75 +288,49 @@ export default function Home() {
                 </li>
                 <li>
                   Navigate to your project folder:
-                  <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded block">
-                    cd my-project
-                  </code>
+                  <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded block">cd my-project</code>
                 </li>
                 <li>
                   Set up your environment variables: Rename the{" "}
-                  <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded">
-                    .env.example
-                  </code>
-                  file to{" "}
-                  <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded">
-                    .env.local
-                  </code>{" "}
-                  and update it with your Supabase credentials.
-                  <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded">
-                    NEXT_PUBLIC_SUPABASE_URL
-                  </code>{" "}
-                  ,
-                  <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded">
-                    NEXT_PUBLIC_SUPABASE_ANON_KEY
-                  </code>
+                  <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded">.env.example</code>
+                  file to <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded">.env.local</code> and update it
+                  with your Supabase credentials.
+                  <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded">NEXT_PUBLIC_SUPABASE_URL</code> ,
+                  <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>
                 </li>
                 <li>
                   Install dependencies using pnpm if it&#39;s skipped:
-                  <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded block">
-                    pnpm install
-                  </code>
+                  <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded block">pnpm install</code>
                 </li>
                 <li>
                   Run the development server:
-                  <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded block">
-                    pnpm dev
-                  </code>
+                  <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded block">pnpm dev</code>
                 </li>
               </ol>
               <p className="text-gray-500 dark:text-gray-400">
-                Once the setup is complete, open{" "}
-                <strong>http://localhost:3000</strong> in your browser to
-                explore your project.
+                Once the setup is complete, open <strong>http://localhost:3000</strong> in your browser to explore your
+                project.
               </p>
               <p className="text-gray-500 dark:text-gray-400">
-                For more detailed instructions, check out the README in the
-                GitHub repository.
+                For more detailed instructions, check out the README in the GitHub repository.
               </p>
             </div>
           </div>
         </section>
-        <section
-          id="docs"
-          className="w-full py-12 md:py-24 lg:py-32 bg-gray-50 dark:bg-gray-900"
-        >
+        <section id="docs" className="w-full py-12 md:py-24 lg:py-32 bg-gray-50 dark:bg-gray-900">
           <div className="container px-4 md:px-6 mx-auto">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl text-center mb-8">
               Documentation
             </h2>
             <p className="text-center text-gray-600 dark:text-gray-400 max-w-3xl mx-auto mb-8">
-              Learn how to use the prebuilt components, hooks, and utilities
-              included in this starter. Below are some essential parts of the
-              system to help you quickly integrate and expand upon this project.
+              Learn how to use the prebuilt components, hooks, and utilities included in this starter. Below are some
+              essential parts of the system to help you quickly integrate and expand upon this project.
             </p>
             <div className="space-y-6 max-w-4xl mx-auto">
               <div>
                 <h3 className="text-2xl font-semibold">🔹 Fetching Data</h3>
                 <pre className=" mt-2">
-                  <SyntaxHighlighter
-                    language="tsx"
-                    style={atomDark}
-                    className="rounded-lg"
-                  >
+                  <SyntaxHighlighter language="tsx" style={atomDark} className="rounded-lg">
                     {fetchingData}
                   </SyntaxHighlighter>
                 </pre>
@@ -375,56 +338,31 @@ export default function Home() {
               <div>
                 <h3 className="text-2xl font-semibold">🔹 Mutations</h3>
                 <pre className=" mt-2">
-                  <SyntaxHighlighter
-                    language="tsx"
-                    style={atomDark}
-                    className="rounded-lg"
-                  >
+                  <SyntaxHighlighter language="tsx" style={atomDark} className="rounded-lg">
                     {mutateData}
                   </SyntaxHighlighter>
                 </pre>
               </div>
               <div>
-                <h3 className="text-2xl font-semibold">
-                  🔹 Advanced Hooks Usage
-                </h3>
+                <h3 className="text-2xl font-semibold">🔹 Advanced Hooks Usage</h3>
                 <p className="text-gray-500 dark:text-gray-400">
-                  The starter includes powerful hooks to handle complex use
-                  cases. Here are some advanced examples:
+                  The starter includes powerful hooks to handle complex use cases. Here are some advanced examples:
                 </p>
-                <h4 className="text-xl font-semibold mt-4">
-                  🔸 Fetching Data with Filters
-                </h4>
+                <h4 className="text-xl font-semibold mt-4">🔸 Fetching Data with Filters</h4>
                 <pre className=" mt-2">
-                  <SyntaxHighlighter
-                    language="tsx"
-                    style={atomDark}
-                    className="rounded-lg"
-                  >
+                  <SyntaxHighlighter language="tsx" style={atomDark} className="rounded-lg">
                     {fetchingDataWithFilters}
                   </SyntaxHighlighter>
                 </pre>
-                <h4 className="text-xl font-semibold mt-4">
-                  🔸 Mutating with Optimistic Updates
-                </h4>
+                <h4 className="text-xl font-semibold mt-4">🔸 Mutating with Optimistic Updates</h4>
                 <pre className=" mt-2">
-                  <SyntaxHighlighter
-                    language="tsx"
-                    style={atomDark}
-                    className="rounded-lg"
-                  >
+                  <SyntaxHighlighter language="tsx" style={atomDark} className="rounded-lg">
                     {mutateDataWithOptimistic}
                   </SyntaxHighlighter>
                 </pre>
-                <h4 className="text-xl font-semibold mt-4">
-                  🔸 Subscribing to Real-Time Data
-                </h4>
+                <h4 className="text-xl font-semibold mt-4">🔸 Subscribing to Real-Time Data</h4>
                 <pre className=" mt-2">
-                  <SyntaxHighlighter
-                    language="tsx"
-                    style={atomDark}
-                    className="rounded-lg"
-                  >
+                  <SyntaxHighlighter language="tsx" style={atomDark} className="rounded-lg">
                     {realTimeDataSubscribtion}
                   </SyntaxHighlighter>
                 </pre>
@@ -435,12 +373,11 @@ export default function Home() {
       </main>
       <footer className=" py-6 w-full items-center px-4 md:px-6 border-t">
         <p className="text-xs text-gray-500 dark:text-gray-400 text-center mx-auto">
-          © 2023 Next.js + Supabase Starter. All rights reserved | developed by
-          Mohamed-4rarh.
+          © 2023 Next.js + Supabase Starter. All rights reserved | developed by Mohamed-4rarh.
         </p>
       </footer>
     </div>
-  );
+  )
 }
 
 const fetchingData = `import { useClientFetch } from "@/hooks/useClientFetch";
@@ -457,7 +394,7 @@ const Posts = () => {
       ))}
     </ul>
   );
-};`;
+};`
 
 const mutateData = `import { useClientMutate } from "@/hooks/useClientMutate";
 
@@ -469,7 +406,7 @@ const AddPost = () => {
   };
 
   return <button onClick={handleSubmit}>Add Post</button>;
-};`;
+};`
 
 const fetchingDataWithFilters = `const FilteredUsers = () => {
   const { data, isLoading } = useClientFetch(
@@ -488,7 +425,7 @@ const fetchingDataWithFilters = `const FilteredUsers = () => {
       ))}
     </ul>
   );
-};`;
+};`
 
 const mutateDataWithOptimistic = `import { useClientMutate } from "@/hooks/useClientMutate";
 import { useQueryClient } from "@tanstack/react-query";
@@ -510,7 +447,7 @@ const mutation = useClientMutate("posts", "update", {
     queryClient.invalidateQueries(["posts"]);
   },
 });
-mutation.mutate({ id: 1, name: "Updated Post" });`;
+mutation.mutate({ id: 1, name: "Updated Post" });`
 
 const realTimeDataSubscribtion = `import { useEffect, useState } from "react";
 import { createClient } from "@/supabase/client;
@@ -530,4 +467,4 @@ useEffect(() => {
   return () => {
     supabase.removeSubscription(subscription);
   };
-}, []);`;
+}, []);`
