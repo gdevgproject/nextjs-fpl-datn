@@ -1,346 +1,364 @@
 import { createClient } from "@/shared/supabase/client";
 import {
+  Database,
+  PublicSchema,
+  TableName,
+  TableRow,
+  TableInsert,
+  TableUpdate,
+} from "@/shared/types/index";
+import {
   useMutation,
   useQueryClient,
   UseMutationOptions,
   QueryClient,
+  QueryKey,
 } from "@tanstack/react-query";
-import { GenericSchema } from "@supabase/supabase-js/dist/module/lib/types";
+import { SupabaseClient, PostgrestError } from "@supabase/supabase-js";
+import { FetchHookResult } from "./use-client-fetch";
 
-const supabase = createClient();
+const supabase: SupabaseClient<Database> = createClient();
 
 /** Type definition for mutation actions */
 type MutationAction = "insert" | "update" | "delete" | "upsert";
 
+/** Base type for payload identification (e.g., using primary key) */
+type MatchPayload<T extends TableName> = Partial<TableRow<T>>;
+
 /**
- * Options for configuring the mutation.
- * @template Schema The database schema type.
- * @template TableName The name of the table being mutated.
- * @template TData The type of data returned by the mutation function.
- * @template TError The type of error thrown by the mutation function.
- * @template TVariables The type of variables passed to the mutation function.
- * @template TContext The type of context returned by `onMutate` and passed to `onError` and `onSettled`.
+ * Type for mutation variables, with stronger typing based on action.
  */
-type MutationOptions<
-  Schema extends GenericSchema,
-  TableName extends keyof Schema["Tables"],
-  TData,
-  TError,
-  TVariables,
-  TContext
+type MutationVariables<
+  T extends TableName,
+  TAction extends MutationAction
+> = TAction extends "insert"
+  ? TableInsert<T> | TableInsert<T>[]
+  : TAction extends "update"
+  ? MatchPayload<T> & TableUpdate<T>
+  : TAction extends "delete"
+  ? MatchPayload<T>
+  : TAction extends "upsert"
+  ? TableInsert<T> | TableInsert<T>[]
+  : never;
+
+/** Context for optimistic updates */
+type MutationContext<T extends TableName> = {
+  previousData?: FetchHookResult<TableRow<T>>;
+  optimisticUpdateApplied?: boolean;
+};
+
+/** Options for the mutation hook */
+type MutationHookOptions<
+  T extends TableName,
+  TAction extends MutationAction,
+  TData = TableRow<T>[] | null,
+  TError = PostgrestError
 > = {
+  /** Array of query keys to invalidate upon successful mutation. */
+  invalidateQueries?: QueryKey[];
+  /**
+   * The primary key column name(s). Crucial for 'update' and 'delete' operations,
+   * and for optimistic updates.
+   */
+  primaryKey: keyof TableRow<T> | Array<keyof TableRow<T>>;
   /**
    * Optional custom function for optimistic updates.
    * If provided, it overrides the default optimistic update behavior.
-   * It receives the query key, the new variables, and the query client instance.
    */
   onOptimisticUpdate?: (
-    queryKey: unknown[],
-    newData: TVariables,
-    queryClient: QueryClient
-  ) => TContext | void;
-  /** Array of query keys to invalidate upon successful mutation. */
-  invalidateQueries?: unknown[][];
+    variables: MutationVariables<T, TAction>,
+    queryClient: QueryClient,
+    queryKey: QueryKey
+  ) => MutationContext<T> | void | Promise<MutationContext<T> | void>;
   /** Additional options for the underlying `useMutation` hook. */
   mutationOptions?: Omit<
-    UseMutationOptions<TData, TError, TVariables, TContext>,
+    UseMutationOptions<
+      TData,
+      TError,
+      MutationVariables<T, TAction>,
+      MutationContext<T>
+    >,
     "mutationFn" | "onMutate" | "onError" | "onSuccess"
   >;
 };
 
 /**
  * Base hook for performing mutations (insert, update, delete, upsert) on a Supabase table
- * on the client-side using TanStack Query. Handles optimistic updates and query invalidation.
+ * on the client-side using TanStack Query. Strongly typed.
  *
- * @template Schema The database schema type (e.g., Database).
- * @template TableName The name of the table to mutate (e.g., 'products').
+ * @template T TableName - The name of the table to mutate (e.g., 'products').
+ * @template TAction The type of mutation ('insert', 'update', 'delete', 'upsert').
  * @template TData The expected type of the data returned by the Supabase client on success.
- * @template TError The type of error expected (defaults to Error).
- * @template TVariables The type of the payload/variables required for the mutation (e.g., data for insert/update, id for delete).
- * @template TContext The context type for optimistic updates (defaults to unknown).
+ * @template TError The type of error expected (defaults to PostgrestError).
  *
- * @param table The name of the Supabase table to mutate.
- * @param action The type of mutation ('insert', 'update', 'delete', 'upsert').
- * @param primaryKey The name of the primary key column(s) for the table (defaults to 'id'). Needed for default optimistic updates.
- * @param options Configuration options for the mutation (optimistic updates, invalidation, etc.).
+ * @param table The name of the Supabase table.
+ * @param action The mutation action.
+ * @param options Configuration options including `primaryKey`, invalidation, and mutation options.
  *
- * @returns The result object from `useMutation`. Call `.mutate(variables)` or `.mutateAsync(variables)` to trigger the mutation.
+ * @returns The result object from `useMutation`. Call `.mutate(variables)` or `.mutateAsync(variables)`.
  */
 export function useClientMutate<
-  Schema extends GenericSchema,
-  TableName extends keyof Schema["Tables"] & string,
-  TData = Schema["Tables"][TableName]["Row"][] | null, // Default based on Supabase client return
-  TError = Error,
-  TVariables =
-    | Partial<Schema["Tables"][TableName]["Insert"]>
-    | { id: any }
-    | { ids: any[] }, // Adjust as needed
-  TContext = { previousData?: TData } // Default context for optimistic updates
+  T extends TableName,
+  TAction extends MutationAction,
+  TData = TableRow<T>[] | null,
+  TError = PostgrestError
 >(
-  table: TableName,
-  action: MutationAction,
-  primaryKey: string | string[] = "id", // Allow composite keys
-  options?: MutationOptions<
-    Schema,
-    TableName,
-    TData,
-    TError,
-    TVariables,
-    TContext
-  >
+  table: T,
+  action: TAction,
+  options: MutationHookOptions<T, TAction, TData, TError>
 ) {
   const queryClient = useQueryClient();
-  // Define a stable query key for the table, often used for invalidation or optimistic updates
-  const tableQueryKey = [table];
+  const { primaryKey, invalidateQueries, onOptimisticUpdate, mutationOptions } =
+    options;
+  // Define a stable query key pattern for the table list
+  const tableListQueryKey: QueryKey = [table, "list"];
 
-  return useMutation<TData, TError, TVariables, TContext>({
-    mutationFn: async (payload: TVariables) => {
+  // Helper to extract primary key values and data fields for update
+  const processUpdatePayload = (
+    payload: object
+  ): { match: MatchPayload<T>; data: TableUpdate<T> } => {
+    const match: Record<string, unknown> = {};
+    const data: Record<string, unknown> = {};
+    const pkArray = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
+
+    pkArray.forEach((key) => {
+      if (!(key in payload))
+        throw new Error(
+          `Update payload must contain primary key field: '${String(key)}'`
+        );
+      match[String(key)] = payload[key as keyof typeof payload];
+    });
+
+    Object.entries(payload).forEach(([key, value]) => {
+      if (!pkArray.includes(key as keyof TableRow<T>)) {
+        data[key] = value;
+      }
+    });
+
+    if (Object.keys(data).length === 0) {
+      console.warn(
+        `Update payload for table '${table}' contained only primary key(s). No data fields to update.`
+      );
+    }
+
+    return {
+      match: match as MatchPayload<T>,
+      data: data as TableUpdate<T>,
+    };
+  };
+
+  // Helper to create match object for delete
+  const createMatchObject = (payload: object): MatchPayload<T> => {
+    const match: Record<string, unknown> = {};
+    const pkArray = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
+
+    pkArray.forEach((key) => {
+      if (!(key in payload))
+        throw new Error(
+          `Payload must contain primary key field: '${String(key)}'`
+        );
+      match[String(key)] = payload[key as keyof typeof payload];
+    });
+
+    return match as MatchPayload<T>;
+  };
+
+  return useMutation<
+    TData,
+    TError,
+    MutationVariables<T, TAction>,
+    MutationContext<T>
+  >({
+    mutationFn: async (payload): Promise<TData> => {
       let response: any;
       const pkArray = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
 
-      switch (action) {
-        case "insert":
-          response = await supabase
-            .from(table)
-            .insert(payload as any)
-            .select(); // Often useful to select after insert
-          break;
-        case "update":
-          // Ensure payload is an object
-          if (typeof payload !== "object" || payload === null) {
-            throw new Error("Update payload must be an object.");
-          }
-          // Build match condition dynamically for single or composite keys
-          const matchConditionUpdate: { [key: string]: any } = {};
-          let updateData: any = {};
-          pkArray.forEach((key) => {
-            if (!(key in payload))
-              throw new Error(
-                `Update payload must contain primary key field: '${key}'`
-              );
-            matchConditionUpdate[key] = (payload as any)[key];
-          });
-          // Separate PKs from data to update
-          updateData = Object.keys(payload)
-            .filter((key) => !pkArray.includes(key))
-            .reduce((obj, key) => {
-              obj[key] = (payload as any)[key];
-              return obj;
-            }, {} as any);
-
-          if (Object.keys(updateData).length === 0) {
-            console.warn(
-              "Update payload contained only primary keys. No data fields to update."
-            );
-            // Decide how to handle this: throw error, return early, or proceed (might be valid if only checking existence)
-            // For now, let it proceed, Supabase might handle it gracefully or return an appropriate response.
-          }
-
-          response = await supabase
-            .from(table)
-            .update(updateData)
-            .match(matchConditionUpdate)
-            .select();
-          break;
-        case "delete":
-          // Ensure payload is an object
-          if (typeof payload !== "object" || payload === null) {
-            throw new Error("Delete payload must be an object.");
-          }
-          // Handle single ID or array of IDs
-          if ("ids" in payload && Array.isArray((payload as any).ids)) {
-            if (pkArray.length > 1)
-              throw new Error(
-                "Batch delete with composite keys requires custom logic or RPC."
-              );
+      try {
+        switch (action) {
+          case "insert":
             response = await supabase
               .from(table)
-              .delete()
-              .in(pkArray[0], (payload as any).ids);
-          } else {
-            // Build match condition dynamically for single or composite keys
-            const matchConditionDelete: { [key: string]: any } = {};
-            pkArray.forEach((key) => {
-              if (!(key in payload))
-                throw new Error(
-                  `Delete payload must contain primary key field: '${key}'`
-                );
-              matchConditionDelete[key] = (payload as any)[key];
-            });
+              .insert(payload as any)
+              .select();
+            break;
+          case "update":
+            const { match: matchUpdate, data: dataUpdate } =
+              processUpdatePayload(payload as object);
             response = await supabase
               .from(table)
-              .delete()
-              .match(matchConditionDelete);
-          }
-          break;
-        case "upsert":
-          response = await supabase
-            .from(table)
-            .upsert(payload as any, {
-              onConflict: pkArray.join(","), // Supabase expects comma-separated string for composite keys
-            })
-            .select(); // Often useful to select after upsert
-          break;
-        default:
-          throw new Error(`Unsupported mutation action: ${action}`);
-      }
+              .update(dataUpdate)
+              .match(matchUpdate)
+              .select();
+            break;
+          case "delete":
+            const matchDelete = createMatchObject(payload as object);
+            response = await supabase.from(table).delete().match(matchDelete);
+            break;
+          case "upsert":
+            const conflictConstraint = pkArray
+              .map((key) => String(key))
+              .join(",");
+            response = await supabase
+              .from(table)
+              .upsert(payload as any, {
+                onConflict: conflictConstraint,
+              })
+              .select();
+            break;
+          default:
+            throw new Error(`Unsupported mutation action: ${action}`);
+        }
 
-      if (response.error) {
-        console.error(`Supabase ${action} error:`, response.error);
-        throw response.error;
-      }
-      return response.data as TData;
-    },
-    onMutate: async (newData: TVariables): Promise<TContext> => {
-      // Use custom optimistic update function if provided
-      if (options?.onOptimisticUpdate) {
-        const context = options.onOptimisticUpdate(
-          tableQueryKey,
-          newData,
-          queryClient
+        if (response.error) {
+          throw response.error;
+        }
+
+        // Handle delete case where data is often null
+        if (action === "delete") {
+          return null as TData;
+        }
+
+        return response.data as TData;
+      } catch (error) {
+        console.error(
+          `Supabase mutation error (${action} on ${table}):`,
+          error
         );
-        // Ensure a compatible context is returned, even if the custom function returns void
-        return (context ?? {}) as TContext;
+        throw error instanceof PostgrestError
+          ? error
+          : new Error(String(error));
+      }
+    },
+    onMutate: async (variables): Promise<MutationContext<T>> => {
+      // Custom optimistic update takes precedence
+      if (onOptimisticUpdate) {
+        const context = await onOptimisticUpdate(
+          variables,
+          queryClient,
+          tableListQueryKey
+        );
+        return { ...(context || {}), optimisticUpdateApplied: true };
       }
 
-      // --- Default Optimistic Update Logic ---
-      await queryClient.cancelQueries({ queryKey: tableQueryKey });
-      const previousData = queryClient.getQueryData<{
-        data: any[];
-        count?: number | null;
-      }>(tableQueryKey);
+      // Default Optimistic Update Logic
+      await queryClient.cancelQueries({ queryKey: tableListQueryKey });
+      const previousData =
+        queryClient.getQueryData<FetchHookResult<TableRow<T>>>(
+          tableListQueryKey
+        );
 
-      // Helper to compare primary keys
-      const itemMatches = (item: any, vars: TVariables): boolean => {
+      // Helper to check if an item matches the variables based on PK
+      const itemMatches = (item: TableRow<T>, vars: object): boolean => {
         if (typeof vars !== "object" || vars === null) return false;
-        return Array.isArray(primaryKey)
-          ? primaryKey.every(
-              (key) => key in vars && item[key] === (vars as any)[key]
-            )
-          : primaryKey in vars &&
-              item[primaryKey] === (vars as any)[primaryKey];
+        const pkArray = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
+        return pkArray.every(
+          (key) =>
+            key in vars && item[key] === (vars as any)[key as keyof TableRow<T>]
+        );
       };
 
-      queryClient.setQueryData<{ data: any[]; count?: number | null }>(
-        tableQueryKey,
+      queryClient.setQueryData<FetchHookResult<TableRow<T>>>(
+        tableListQueryKey,
         (old) => {
-          if (!old || !Array.isArray(old.data)) return { data: [], count: 0 }; // Handle undefined/null/non-array initial data
+          if (!old || !Array.isArray(old.data)) return old;
 
-          let updatedData = [...old.data];
-          let updatedCount = old.count ?? old.data.length; // Fallback count
+          let updatedData = [...(old.data as TableRow<T>[])];
+          let updatedCount = old.count ?? old.data.length;
 
           switch (action) {
-            case "insert":
-              // Assume newData is the object being inserted
-              // Use a temporary ID for optimistic UI rendering if PK is generated server-side
-              const tempId = `optimistic-${Date.now()}`;
-              const pkName = Array.isArray(primaryKey)
-                ? primaryKey[0]
-                : primaryKey; // Use first PK for temp ID
-              updatedData.push({ [pkName]: tempId, ...(newData as object) });
-              updatedCount++;
+            case "insert": {
+              // Add new items
+              const newItems = Array.isArray(variables)
+                ? variables
+                : [variables];
+              updatedData = [...updatedData, ...(newItems as TableRow<T>[])];
+              updatedCount += newItems.length;
               break;
-            case "update":
+            }
+            case "update": {
+              // Update matching items
               updatedData = updatedData.map((item) =>
-                itemMatches(item, newData)
-                  ? { ...item, ...(newData as object) }
+                itemMatches(item, variables as object)
+                  ? { ...item, ...(variables as object) }
                   : item
               );
-              // Count doesn't change on update
               break;
-            case "delete":
-              if (
-                "ids" in (newData as any) &&
-                Array.isArray((newData as any).ids)
-              ) {
-                // Batch delete optimistic update
-                const idsToDelete = new Set((newData as any).ids);
-                const pkName = Array.isArray(primaryKey)
-                  ? primaryKey[0]
-                  : primaryKey; // Assumes single PK for batch
-                updatedData = updatedData.filter(
-                  (item) => !idsToDelete.has(item[pkName])
-                );
-                updatedCount -= idsToDelete.size; // Adjust count
-              } else {
-                // Single delete optimistic update
-                updatedData = updatedData.filter(
-                  (item) => !itemMatches(item, newData)
-                );
-                updatedCount--; // Adjust count
-              }
-              break;
-            case "upsert":
-              // More complex: could be insert or update
-              const existingIndex = updatedData.findIndex((item) =>
-                itemMatches(item, newData)
+            }
+            case "delete": {
+              // Remove matching items
+              const initialLength = updatedData.length;
+              updatedData = updatedData.filter(
+                (item) => !itemMatches(item, variables as object)
               );
-              if (existingIndex > -1) {
-                // Update existing
-                updatedData[existingIndex] = {
-                  ...updatedData[existingIndex],
-                  ...(newData as object),
-                };
-              } else {
-                // Insert new (potentially with temp ID if needed)
-                const tempIdUpsert = `optimistic-${Date.now()}`;
-                const pkNameUpsert = Array.isArray(primaryKey)
-                  ? primaryKey[0]
-                  : primaryKey;
-                const newItem = {
-                  [pkNameUpsert]: tempIdUpsert,
-                  ...(newData as object),
-                };
-                // Check if the actual PK was provided in newData, if so, use it
-                if (Array.isArray(primaryKey)) {
-                  primaryKey.forEach((key) => {
-                    if (key in (newData as any))
-                      newItem[key] = (newData as any)[key];
-                  });
-                } else {
-                  if (primaryKey in (newData as any))
-                    newItem[primaryKey] = (newData as any)[primaryKey];
-                }
-                updatedData.push(newItem);
-                updatedCount++;
-              }
+              updatedCount -= initialLength - updatedData.length;
               break;
+            }
+            case "upsert": {
+              // Find and update or insert items
+              const itemsToUpsert = Array.isArray(variables)
+                ? variables
+                : [variables];
+
+              itemsToUpsert.forEach((itemToUpsert) => {
+                const existingIndex = updatedData.findIndex((item) =>
+                  itemMatches(item, itemToUpsert as object)
+                );
+
+                if (existingIndex > -1) {
+                  updatedData[existingIndex] = {
+                    ...updatedData[existingIndex],
+                    ...(itemToUpsert as object),
+                  };
+                } else {
+                  updatedData.push(itemToUpsert as unknown as TableRow<T>);
+                  updatedCount++;
+                }
+              });
+              break;
+            }
           }
 
-          // Ensure count doesn't go below zero
+          // Ensure count is not negative
           updatedCount = Math.max(0, updatedCount);
-
           return { data: updatedData, count: updatedCount };
         }
       );
 
-      // Return context with previous data for potential rollback
-      return { previousData: previousData as any } as TContext;
+      return { previousData, optimisticUpdateApplied: true };
     },
-    onError: (error: TError, variables: TVariables, context?: TContext) => {
+    onError: (error, variables, context) => {
       console.error(`Mutation error (${action} on ${table}):`, error);
-      // Rollback optimistic update if context contains previous data
-      if ((context as any)?.previousData) {
-        queryClient.setQueryData(tableQueryKey, (context as any).previousData);
+
+      // Rollback optimistic update if applied and previous data exists
+      if (context?.optimisticUpdateApplied && context?.previousData) {
+        queryClient.setQueryData(tableListQueryKey, context.previousData);
+        console.log(`Optimistic update rolled back for ${table}.`);
+      } else if (context?.optimisticUpdateApplied) {
+        console.warn(
+          `Optimistic update applied for ${table}, but no previous data found for rollback. Invalidating query.`
+        );
+        queryClient.invalidateQueries({ queryKey: tableListQueryKey });
       }
-      // Optionally call a custom error handler from mutationOptions
-      options?.mutationOptions?.onError?.(error, variables, context);
+
+      mutationOptions?.onError?.(error, variables, context);
     },
-    onSuccess: (data: TData, variables: TVariables, context?: TContext) => {
-      // Invalidate specified queries or default table query
-      const queriesToInvalidate = options?.invalidateQueries ?? [tableQueryKey];
+    onSuccess: (data, variables, context) => {
+      // Invalidate specified queries or default list query
+      const queriesToInvalidate = invalidateQueries ?? [tableListQueryKey];
+      console.log(
+        `Mutation success (${action} on ${table}). Invalidating keys:`,
+        queriesToInvalidate
+      );
+
       queriesToInvalidate.forEach((key) => {
         queryClient.invalidateQueries({ queryKey: key });
       });
-      // Optionally call a custom success handler
-      options?.mutationOptions?.onSuccess?.(data, variables, context);
+
+      mutationOptions?.onSuccess?.(data, variables, context);
     },
     onSettled: (data, error, variables, context) => {
-      // This runs after mutation completes (success or error)
-      // Useful for cleanup or final invalidations regardless of outcome
-      options?.mutationOptions?.onSettled?.(data, error, variables, context);
+      mutationOptions?.onSettled?.(data, error, variables, context);
     },
-    // Spread any remaining useMutation options
-    ...options?.mutationOptions,
+    ...mutationOptions,
   });
 }

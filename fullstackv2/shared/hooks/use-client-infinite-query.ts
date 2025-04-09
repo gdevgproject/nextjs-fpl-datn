@@ -1,7 +1,10 @@
-// NOTE: This hook implements infinite scrolling. While the current requirement is standard pagination,
-// this hook is kept available as it's well-implemented and might be needed in the future.
-// For standard pagination, use `useClientFetch`.
 import { createClient } from "@/shared/supabase/client";
+import {
+  Database,
+  PublicSchema,
+  TableName,
+  TableRow,
+} from "@/shared/types/index";
 import {
   useInfiniteQuery,
   UseInfiniteQueryOptions,
@@ -11,53 +14,43 @@ import {
   PostgrestFilterBuilder,
   PostgrestTransformBuilder,
 } from "@supabase/postgrest-js";
-import { GenericSchema } from "@supabase/supabase-js/dist/module/lib/types";
+import { SupabaseClient, PostgrestError } from "@supabase/supabase-js";
 
-const supabase = createClient();
+// Explicitly type the client
+const supabase: SupabaseClient<Database> = createClient();
 
 /**
- * Options for configuring the infinite fetch query.
- * Similar to FetchOptions but requires pageSize and uses pageParam.
- * @template Schema The database schema type.
- * @template TableName The name of the table being queried.
- * @template Result The expected shape of a single row in the result.
+ * Options for configuring the infinite fetch query, strongly typed.
+ * @template T TableName - The name of the table being queried.
+ * @template TResult The shape of the result (can include joined data). Defaults to the table's Row type.
  */
-type InfiniteQueryOptions<
-  Schema extends GenericSchema,
-  TableName extends keyof Schema["Tables"],
-  Result = Schema["Tables"][TableName]["Row"]
+export type InfiniteHookOptions<
+  T extends TableName,
+  TResult = TableRow<T> // Default result is the row type
 > = {
   /** Select specific columns, potentially with joins. E.g., `"id, name, profiles(*)"`, `"*"` */
   columns?: string;
   /**
-   * Apply filters to the query.
+   * Apply filters to the query. Provides type hints for the table's columns.
    * Example: `(query) => query.eq('status', 'active').gt('price', 100)`
    */
   filters?: (
-    query: PostgrestFilterBuilder<
-      Schema,
-      Schema["Tables"][TableName]["Row"],
-      Result
-    >
-  ) => PostgrestFilterBuilder<
-    Schema,
-    Schema["Tables"][TableName]["Row"],
-    Result
-  >;
-  /** The number of items to fetch per page. **Required** for infinite query. */
+    query: PostgrestFilterBuilder<PublicSchema, TableRow<T>, TResult>
+  ) => PostgrestFilterBuilder<PublicSchema, TableRow<T>, TResult>;
+  /** The number of items to fetch per page. **Required**. */
   pageSize: number;
-  /** Sorting criteria. Applied in the order provided. */
+  /** Sorting criteria. */
   sort?: {
-    column: keyof Result | string;
+    column: keyof TResult | string; // Allow string for potentially joined/computed columns
     ascending?: boolean;
     nullsFirst?: boolean;
-    foreignTable?: string;
+    foreignTable?: string; // Use for sorting joined columns
   }[];
   /** Full-text search or pattern matching configuration. */
   search?: {
-    column: keyof Result | string;
+    column: keyof TResult | string;
     query: string;
-    type?: "ilike" | "like" | "eq" | "fts";
+    type?: "ilike" | "like" | "eq" | "fts"; // Add more as needed
     ftsOptions?: {
       config?: string;
       type?: "plain" | "phrase" | "websearch";
@@ -66,21 +59,20 @@ type InfiniteQueryOptions<
 };
 
 /** Type for the data structure returned by the query function for each page */
-interface InfiniteQueryResult<T> {
-  data: T[];
-  nextPageParam: number | null; // Use page number as cursor
-  totalCount: number | null; // Total count if available
+interface InfiniteHookResult<TResult> {
+  data: TResult[];
+  nextPageParam: number | null; // Page number (0-based) as cursor
+  totalCount: number | null;
 }
 
 /**
  * Base hook for fetching data from a Supabase table with infinite scrolling
- * on the client-side using TanStack Query.
+ * on the client-side using TanStack Query. Strongly typed.
  *
- * NOTE: Consider using `useClientFetch` with standard pagination if infinite scroll is not required.
+ * NOTE: For standard pagination, use `useClientFetch`.
  *
- * @template Schema The database schema type (e.g., Database).
- * @template TableName The name of the table to query (e.g., 'products').
- * @template Result The expected shape of the data array elements. Defaults to the table's Row type.
+ * @template T TableName - The name of the table to query (e.g., 'products').
+ * @template TResult The expected shape of the data array elements. Defaults to the table's Row type.
  *
  * @param key The base TanStack Query key. Page parameters are added automatically.
  * @param table The name of the Supabase table to query.
@@ -90,59 +82,68 @@ interface InfiniteQueryResult<T> {
  * @returns The result object from `useInfiniteQuery`. Access pages via `data.pages`. Use `fetchNextPage`, `hasNextPage`, etc.
  */
 export function useClientInfiniteQuery<
-  Schema extends GenericSchema,
-  TableName extends keyof Schema["Tables"] & string,
-  Result = Schema["Tables"][TableName]["Row"]
+  T extends TableName,
+  TResult = TableRow<T>
 >(
   key: QueryKey, // Base query key
-  table: TableName,
-  options: InfiniteQueryOptions<Schema, TableName, Result>,
+  table: T,
+  options: InfiniteHookOptions<T, TResult>,
   queryOptions?: Omit<
-    UseInfiniteQueryOptions<InfiniteQueryResult<Result>, Error>,
+    UseInfiniteQueryOptions<
+      InfiniteHookResult<TResult>,
+      PostgrestError,
+      InfiniteHookResult<TResult>,
+      InfiniteHookResult<TResult>,
+      QueryKey,
+      number
+    >,
     "queryKey" | "queryFn" | "getNextPageParam" | "initialPageParam"
   >
 ) {
-  const baseQueryKey = key; // Use the provided key directly
+  const { pageSize } = options; // Extract pageSize for use
 
-  return useInfiniteQuery<InfiniteQueryResult<Result>, Error>({
-    queryKey: baseQueryKey, // TanStack Query manages page params internally based on this key
-    queryFn: async ({ pageParam = 0 }) => {
-      // pageParam is the page number (0-based index)
-      const from = pageParam * options.pageSize;
-      const to = from + options.pageSize - 1;
+  return useInfiniteQuery<
+    InfiniteHookResult<TResult>,
+    PostgrestError,
+    InfiniteHookResult<TResult>,
+    QueryKey,
+    number
+  >({
+    queryKey: key,
+    queryFn: async ({ pageParam }): Promise<InfiniteHookResult<TResult>> => {
+      // pageParam is number (page index, 0-based)
+      const from = pageParam * pageSize;
+      const to = from + pageSize - 1;
 
-      let queryBuilder = supabase.from(table);
-      let selectQuery: PostgrestTransformBuilder<
-        Schema,
-        Schema["Tables"][TableName]["Row"],
-        Result[]
-      > = queryBuilder.select(options.columns || "*", {
-        count: "exact", // Need exact count to determine if there are more pages
-      }) as PostgrestTransformBuilder<
-        Schema,
-        Schema["Tables"][TableName]["Row"],
-        Result[]
-      >;
+      const queryBuilder = supabase.from(table);
 
-      let filteredQuery: PostgrestFilterBuilder<
-        Schema,
-        Schema["Tables"][TableName]["Row"],
-        Result
-      > = options.filters
-        ? options.filters(
-            selectQuery as PostgrestFilterBuilder<
-              Schema,
-              Schema["Tables"][TableName]["Row"],
-              Result
-            >
-          )
-        : (selectQuery as PostgrestFilterBuilder<
-            Schema,
-            Schema["Tables"][TableName]["Row"],
-            Result
-          >);
+      // Base select query
+      let selectQuery = queryBuilder.select(options.columns || "*", {
+        count: "exact", // Need exact count
+      }) as PostgrestTransformBuilder<PublicSchema, TableRow<T>, TResult[]>;
 
-      if (options.search && options.search.query) {
+      // Apply filters
+      if (options?.filters) {
+        // We need to cast selectQuery to FilterBuilder to apply filters
+        const filterableQuery =
+          selectQuery as unknown as PostgrestFilterBuilder<
+            PublicSchema,
+            TableRow<T>,
+            TResult
+          >;
+        selectQuery = options.filters(
+          filterableQuery
+        ) as PostgrestTransformBuilder<PublicSchema, TableRow<T>, TResult[]>;
+      }
+
+      // Apply search - needs to be FilterBuilder
+      if (options?.search && options.search.query) {
+        const filterableQuery =
+          selectQuery as unknown as PostgrestFilterBuilder<
+            PublicSchema,
+            TableRow<T>,
+            TResult
+          >;
         const {
           column,
           query: searchQuery,
@@ -150,22 +151,34 @@ export function useClientInfiniteQuery<
           ftsOptions,
         } = options.search;
         if (type === "fts") {
-          filteredQuery = filteredQuery.textSearch(
-            column as string,
+          const textSearchQuery = filterableQuery.textSearch(
+            String(column),
             `'${searchQuery}'`,
             ftsOptions || {}
           );
+          selectQuery = textSearchQuery as PostgrestTransformBuilder<
+            PublicSchema,
+            TableRow<T>,
+            TResult[]
+          >;
         } else {
-          filteredQuery = filteredQuery[type](
-            column as string,
-            `%${searchQuery}%`
+          // For other search types (ilike, like, eq)
+          const searchFilter = filterableQuery[type](
+            String(column),
+            type === "eq" ? searchQuery : `%${searchQuery}%`
           );
+          selectQuery = searchFilter as PostgrestTransformBuilder<
+            PublicSchema,
+            TableRow<T>,
+            TResult[]
+          >;
         }
       }
 
-      if (options.sort && options.sort.length > 0) {
+      // Apply sorting - operates on TransformBuilder
+      if (options?.sort && options.sort.length > 0) {
         options.sort.forEach((sort) => {
-          filteredQuery = filteredQuery.order(sort.column as string, {
+          selectQuery = selectQuery.order(String(sort.column), {
             ascending: sort.ascending ?? true,
             nullsFirst: sort.nullsFirst,
             foreignTable: sort.foreignTable,
@@ -174,12 +187,13 @@ export function useClientInfiniteQuery<
       }
 
       // Apply range for the current page
-      filteredQuery = filteredQuery.range(from, to);
+      selectQuery = selectQuery.range(from, to);
 
-      const { data, error, count } = await filteredQuery;
+      // Execute query
+      const { data, error, count } = await selectQuery;
 
       if (error) {
-        console.error("Supabase infinite fetch error:", error);
+        console.error(`Supabase infinite fetch error (${table}):`, error);
         throw error;
       }
 
@@ -188,14 +202,14 @@ export function useClientInfiniteQuery<
       const nextPageParam = hasMore ? pageParam + 1 : null;
 
       return {
-        data: data as Result[],
+        data: data as TResult[],
         nextPageParam: nextPageParam,
         totalCount: count,
       };
     },
     initialPageParam: 0, // Start fetching from page 0
-    getNextPageParam: (lastPage) => {
-      // Return the next page number or undefined/null if there are no more pages
+    getNextPageParam: (lastPage): number | null | undefined => {
+      // Return the next page number or undefined/null if no more pages
       return lastPage.nextPageParam;
     },
     ...queryOptions,

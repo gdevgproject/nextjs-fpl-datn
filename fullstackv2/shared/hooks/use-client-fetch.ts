@@ -1,177 +1,134 @@
 import { createClient } from "@/shared/supabase/client";
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import {
+  Database,
+  PublicSchema,
+  TableName,
+  TableRow,
+} from "@/shared/types/index";
+import { useQuery, UseQueryOptions, QueryKey } from "@tanstack/react-query";
 import {
   PostgrestFilterBuilder,
   PostgrestTransformBuilder,
+  PostgrestSingleResponse,
 } from "@supabase/postgrest-js";
-import { GenericSchema } from "@supabase/supabase-js/dist/module/lib/types";
+import { SupabaseClient, PostgrestError } from "@supabase/supabase-js";
 
-// Initialize Supabase client
-const supabase = createClient();
+// Explicitly type the client
+const supabase: SupabaseClient<Database> = createClient();
 
 /**
- * Options for configuring the fetch query.
- * @template Schema The database schema type (usually inferred).
- * @template TableName The name of the table being queried.
- * @template RelationName The name of the relation for joins.
- * @template Relationships The relationship definitions for joins.
- * @template Result The expected shape of a single row in the result.
+ * Options for configuring the fetch query, now strongly typed.
+ * @template T TableName - The name of the table being queried.
+ * @template TResult The shape of the result (can include joined data). Defaults to the table's Row type.
  */
-type FetchOptions<
-  Schema extends GenericSchema,
-  TableName extends keyof Schema["Tables"],
-  RelationName extends keyof Schema["Tables"][TableName]["Relationships"][number],
-  Relationships = Schema["Tables"][TableName]["Relationships"],
-  Result = Schema["Tables"][TableName]["Row"]
+export type FetchHookOptions<
+  T extends TableName,
+  TResult = TableRow<T> // Default result is the row type
 > = {
   /** Select specific columns, potentially with joins. E.g., `"id, name, profiles(*)"`, `"*"` */
   columns?: string;
   /**
-   * Apply filters to the query.
+   * Apply filters to the query. Provides type hints for the table's columns.
    * Example: `(query) => query.eq('status', 'active').gt('price', 100)`
-   * Allows chaining complex filters: `.or('cond1,cond2')`, `.in('id', [1,2])`, etc.
    */
   filters?: (
-    query: PostgrestFilterBuilder<
-      Schema,
-      Schema["Tables"][TableName]["Row"],
-      Result
-    >
-  ) => PostgrestFilterBuilder<
-    Schema,
-    Schema["Tables"][TableName]["Row"],
-    Result
-  >;
+    query: PostgrestFilterBuilder<PublicSchema, TableRow<T>, TResult>
+  ) => PostgrestFilterBuilder<PublicSchema, TableRow<T>, TResult>;
   /** Pagination settings. */
   pagination?: {
-    /** The current page number (1-based). */
-    page: number;
-    /** The number of items per page. */
+    page: number; // 1-based
     pageSize: number;
   };
-  /** Sorting criteria. Applied in the order provided. */
+  /** Sorting criteria. */
   sort?: {
-    /** The column name to sort by. */
-    column: keyof Result | string; // Allow string for joined columns
-    /** Sort direction. Defaults to true (ascending). */
+    column: keyof TResult | string; // Allow string for potentially joined/computed columns
     ascending?: boolean;
-    /** Options for sorting nulls ('nullsfirst', 'nullslast'). */
     nullsFirst?: boolean;
-    /** Specify foreign table for sorting on joined columns. */
-    foreignTable?: string;
-  }[];
-  /**
-   * Joins configuration. Use `columns` for more complex joins.
-   * Example: `[{ relation: 'profiles', columns: 'id, display_name' }]`
-   * Note: Type safety on joined columns relies on correct `columns` string.
-   * @deprecated Prefer using joined columns directly in the main `columns` string (e.g., `"*, relation(*)"`). This option is kept for potential specific use cases but might be removed later.
-   */
-  joins?: {
-    relation: RelationName | string; // Allow string for flexibility
-    columns?: string;
+    foreignTable?: string; // Use for sorting joined columns
   }[];
   /** Type of count to perform ('exact', 'planned', 'estimated'). 'exact' required for pagination total. */
   count?: "exact" | "planned" | "estimated";
   /** Full-text search or pattern matching configuration. */
   search?: {
-    /** Column to search against. */
-    column: keyof Result | string;
-    /** Search query string. */
+    column: keyof TResult | string;
     query: string;
-    /** Search type ('ilike' for case-insensitive like, 'fts' for full-text search, etc.). Defaults to 'ilike'. */
     type?: "ilike" | "like" | "eq" | "fts"; // Add more as needed
-    /** Full-text search options */
     ftsOptions?: {
-      /** The text search configuration */
       config?: string;
-      /** The type of query */
       type?: "plain" | "phrase" | "websearch";
     };
   };
+  /** Set to true to fetch a single record (e.g., using .eq('id', ...) and .single()). */
+  single?: boolean;
+};
+
+/**
+ * Type for the data returned by useClientFetch.
+ * @template TData The shape of the data items.
+ */
+export type FetchHookResult<TData> = {
+  data: TData | TData[] | null; // Can be single, array, or null
+  count: number | null;
 };
 
 /**
  * Base hook for fetching data from a Supabase table on the client-side using TanStack Query.
- * Handles selection, filtering, sorting, pagination, and joins.
+ * Strongly typed based on your `Database` schema.
  *
- * @template Schema The database schema type (e.g., Database).
- * @template TableName The name of the table to query (e.g., 'products').
- * @template Result The expected shape of the data array elements. Defaults to the table's Row type.
+ * @template T TableName - The name of the table to query (e.g., 'products').
+ * @template TResult The expected shape of the data array elements. Defaults to the table's Row type.
  *
- * @param key The TanStack Query key. Used for caching.
+ * @param key The TanStack Query key. Used for caching. MUST be unique for the query.
  * @param table The name of the Supabase table to query.
- * @param options Fetch configuration (columns, filters, pagination, sort, joins, count, search).
+ * @param options Fetch configuration (columns, filters, pagination, sort, count, search, single).
  * @param queryOptions Additional options for `useQuery`.
  *
- * @returns The result object from `useQuery`, containing data, status, error, etc.
- *          The `data` property is an object `{ data: Result[]; count?: number }`.
+ * @returns The result object from `useQuery`, containing typed data, status, error, etc.
  */
 export function useClientFetch<
-  Schema extends GenericSchema,
-  TableName extends keyof Schema["Tables"] & string, // Ensure TableName is a string
-  Result = Schema["Tables"][TableName]["Row"]
+  T extends TableName,
+  TResult = TableRow<T> // Default result to the Row type of the table
 >(
-  key: unknown[], // Use unknown[] for query keys as recommended by TanStack Query v5
-  table: TableName,
-  options?: FetchOptions<Schema, TableName, any, any, Result>, // Use 'any' for RelationName/Relationships generics here for simplicity in the base hook signature
+  key: QueryKey,
+  table: T,
+  options?: FetchHookOptions<T, TResult>,
   queryOptions?: Omit<
-    UseQueryOptions<{ data: Result[]; count?: number | null }, Error>,
+    UseQueryOptions<FetchHookResult<TResult>, PostgrestError>,
     "queryKey" | "queryFn"
   >
 ) {
-  const queryKey = key; // Use the provided key directly
+  return useQuery<FetchHookResult<TResult>, PostgrestError>({
+    queryKey: key,
+    queryFn: async (): Promise<FetchHookResult<TResult>> => {
+      const queryBuilder = supabase.from(table);
 
-  return useQuery<{ data: Result[]; count?: number | null }, Error>({
-    queryKey,
-    queryFn: async () => {
-      // Start with select
-      // The initial PostgrestQueryBuilder needs the schema type
-      let queryBuilder = supabase.from(table);
-
-      // Apply select with count
-      // The PostgrestFilterBuilder needs schema, row type, and result type
-      let selectQuery: PostgrestTransformBuilder<
-        Schema,
-        Schema["Tables"][TableName]["Row"],
-        Result[]
-      > = queryBuilder.select(options?.columns || "*", {
+      // Base select query
+      let selectQuery = queryBuilder.select(options?.columns || "*", {
         count: options?.count,
-      }) as PostgrestTransformBuilder<
-        Schema,
-        Schema["Tables"][TableName]["Row"],
-        Result[]
-      >; // Assert type after select
-
-      // Apply joins (Deprecated approach - prefer joins in `columns`)
-      // if (options?.joins && options.joins.length > 0) {
-      //   console.warn("Using the 'joins' option in useClientFetch is deprecated. Prefer specifying joins directly in the 'columns' string (e.g., '*, relation(*)').");
-      //   options.joins.forEach(join => {
-      //     // This syntax is complex to type correctly with generics here, using 'any' for simplicity
-      //     selectQuery = (selectQuery as any).select(`${join.relation}(${join.columns || '*'})`);
-      //   });
-      // }
+      }) as PostgrestTransformBuilder<PublicSchema, TableRow<T>, TResult[]>;
 
       // Apply filters
-      let filteredQuery: PostgrestFilterBuilder<
-        Schema,
-        Schema["Tables"][TableName]["Row"],
-        Result
-      > = options?.filters
-        ? options.filters(
-            selectQuery as PostgrestFilterBuilder<
-              Schema,
-              Schema["Tables"][TableName]["Row"],
-              Result
-            >
-          ) // Apply filters
-        : (selectQuery as PostgrestFilterBuilder<
-            Schema,
-            Schema["Tables"][TableName]["Row"],
-            Result
-          >); // Cast if no filters
+      if (options?.filters) {
+        // We need to cast selectQuery to FilterBuilder to apply filters
+        const filterableQuery =
+          selectQuery as unknown as PostgrestFilterBuilder<
+            PublicSchema,
+            TableRow<T>,
+            TResult
+          >;
+        selectQuery = options.filters(
+          filterableQuery
+        ) as PostgrestTransformBuilder<PublicSchema, TableRow<T>, TResult[]>;
+      }
 
-      // Apply search
+      // Apply search - needs to be FilterBuilder
       if (options?.search && options.search.query) {
+        const filterableQuery =
+          selectQuery as unknown as PostgrestFilterBuilder<
+            PublicSchema,
+            TableRow<T>,
+            TResult
+          >;
         const {
           column,
           query: searchQuery,
@@ -179,23 +136,34 @@ export function useClientFetch<
           ftsOptions,
         } = options.search;
         if (type === "fts") {
-          filteredQuery = filteredQuery.textSearch(
-            column as string,
+          const textSearchQuery = filterableQuery.textSearch(
+            String(column),
             `'${searchQuery}'`,
             ftsOptions || {}
           );
+          selectQuery = textSearchQuery as PostgrestTransformBuilder<
+            PublicSchema,
+            TableRow<T>,
+            TResult[]
+          >;
         } else {
-          filteredQuery = filteredQuery[type](
-            column as string,
-            `%${searchQuery}%`
+          // For other search types (ilike, like, eq)
+          const searchFilter = filterableQuery[type](
+            String(column),
+            type === "eq" ? searchQuery : `%${searchQuery}%`
           );
+          selectQuery = searchFilter as PostgrestTransformBuilder<
+            PublicSchema,
+            TableRow<T>,
+            TResult[]
+          >;
         }
       }
 
-      // Apply sorting
+      // Apply sorting - operates on TransformBuilder
       if (options?.sort && options.sort.length > 0) {
         options.sort.forEach((sort) => {
-          filteredQuery = filteredQuery.order(sort.column as string, {
+          selectQuery = selectQuery.order(String(sort.column), {
             ascending: sort.ascending ?? true,
             nullsFirst: sort.nullsFirst,
             foreignTable: sort.foreignTable,
@@ -203,23 +171,34 @@ export function useClientFetch<
         });
       }
 
-      // Apply pagination
-      if (options?.pagination) {
+      // Apply pagination or single fetch - operates on TransformBuilder
+      let response: PostgrestSingleResponse<TResult | TResult[]>;
+
+      if (options?.single) {
+        response = await selectQuery.single();
+      } else if (options?.pagination) {
         const { page, pageSize } = options.pagination;
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
-        filteredQuery = filteredQuery.range(from, to);
+        response = await selectQuery.range(from, to);
+      } else {
+        // Fetch all (or limited by RLS/PostgREST config)
+        response = await selectQuery;
       }
 
-      // Execute query
-      const { data, error, count } = await filteredQuery;
+      // Handle the response
+      const { data, error, count } = response;
 
-      if (error) {
-        console.error("Supabase fetch error:", error);
-        throw error; // Re-throw the error for TanStack Query to handle
+      if (error && !(options?.single && error.code === "PGRST116")) {
+        // Ignore 'single' error if no rows found
+        console.error(`Supabase fetch error (${table}):`, error);
+        throw error;
       }
 
-      return { data: data as Result[], count };
+      return {
+        data: data as TResult | TResult[] | null,
+        count,
+      };
     },
     ...queryOptions,
   });
