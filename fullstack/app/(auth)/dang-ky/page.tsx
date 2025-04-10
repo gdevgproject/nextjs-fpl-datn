@@ -1,12 +1,12 @@
 import type { Metadata } from "next"
-import { RegisterForm } from "@/components/auth/register-form"
+import { RegisterPage } from "@/features/auth/components/register-page"
 
 export const metadata: Metadata = {
   title: "Đăng ký - MyBeauty",
-  description: "Tạo tài khoản mới để mua sắm tại MyBeauty",
+  description: "Đăng ký tài khoản MyBeauty mới",
 }
 
-export default function RegisterPage() {
-  return <RegisterForm />
+export default function Page() {
+  return <RegisterPage />
 }
 

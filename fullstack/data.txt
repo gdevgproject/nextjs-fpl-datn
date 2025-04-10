@@ -1,0 +1,212 @@
+-- ============================================================================
+-- SEED DATA SCRIPT (VIETNAMESE) - db.txt)
+-- Chạy SAU KHI setup database bằng db.txt. Tạo dữ liệu mẫu tiếng Việt.
+-- **LƯU Ý:** Dùng ON CONFLICT DO NOTHING/UPDATE để an toàn khi chạy lại.
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- Bảng tra cứu cơ bản (Lookup Tables)
+-- ----------------------------------------------------------------------------
+
+-- Genders
+INSERT INTO public.genders (id, name) VALUES (1, 'Nam'), (2, 'Nữ'), (3, 'Unisex')
+ON CONFLICT (id) DO NOTHING;
+SELECT setval(pg_get_serial_sequence('public.genders', 'id'), (SELECT coalesce(max(id), 0) FROM public.genders) + 1, false); -- Reset ID sequence
+
+-- Perfume Types
+INSERT INTO public.perfume_types (id, name) VALUES (1, 'Designer'), (2, 'Niche')
+ON CONFLICT (id) DO NOTHING;
+SELECT setval(pg_get_serial_sequence('public.perfume_types', 'id'), (SELECT coalesce(max(id), 0) FROM public.perfume_types) + 1, false); -- Reset ID sequence
+
+-- Concentrations
+INSERT INTO public.concentrations (id, name, description) VALUES
+(1, 'EDP', 'Eau de Parfum'), (2, 'EDT', 'Eau de Toilette'),
+(3, 'EDC', 'Eau de Cologne'), (4, 'Extrait', 'Extrait de Parfum')
+ON CONFLICT (id) DO NOTHING;
+SELECT setval(pg_get_serial_sequence('public.concentrations', 'id'), (SELECT coalesce(max(id), 0) FROM public.concentrations) + 1, false); -- Reset ID sequence
+
+-- Order Statuses (Trạng thái đơn hàng - Vietnamese)
+INSERT INTO public.order_statuses (id, name) VALUES
+(1, 'Chờ xác nhận'), (2, 'Đã xác nhận'), (3, 'Đang xử lý'), (4, 'Đang giao hàng'),
+(5, 'Đã giao hàng'), (6, 'Đã hủy'), (7, 'Yêu cầu hoàn tiền'), (8, 'Đã hoàn tiền'),
+(9, 'Giao hàng thất bại')
+ON CONFLICT (id) DO NOTHING;
+SELECT setval(pg_get_serial_sequence('public.order_statuses', 'id'), (SELECT coalesce(max(id), 0) FROM public.order_statuses) + 1, false); -- Reset ID sequence
+
+-- Payment Methods (Phương thức thanh toán - Vietnamese)
+INSERT INTO public.payment_methods (id, name, description, is_active) VALUES
+(1, 'Thanh toán khi nhận hàng (COD)', 'Trả tiền mặt trực tiếp cho nhân viên giao hàng.', true),
+(2, 'Ví Momo', 'Thanh toán an toàn và nhanh chóng qua ứng dụng Momo.', true),
+(3, 'Chuyển khoản ngân hàng', 'Thông tin chuyển khoản sẽ được cung cấp sau khi đặt hàng.', true),
+(4, 'Thẻ tín dụng/Ghi nợ (VNPay)', 'Thanh toán online qua cổng VNPay.', false) -- Ví dụ: Tạm thời tắt
+ON CONFLICT (id) DO NOTHING;
+SELECT setval(pg_get_serial_sequence('public.payment_methods', 'id'), (SELECT coalesce(max(id), 0) FROM public.payment_methods) + 1, false); -- Reset ID sequence
+
+-- Product Labels (Nhãn sản phẩm)
+INSERT INTO public.product_labels (id, name, color_code) VALUES
+(1, 'Mới về', '#3498db'),  -- Blue
+(2, 'Bán chạy', '#e74c3c'), -- Red
+(3, 'Giảm giá', '#2ecc71'), -- Green
+(4, 'Limited', '#f1c40f')  -- Yellow
+ON CONFLICT (id) DO NOTHING;
+SELECT setval(pg_get_serial_sequence('public.product_labels', 'id'), (SELECT coalesce(max(id), 0) FROM public.product_labels) + 1, false); -- Reset ID sequence
+
+-- Scents (Mùi hương)
+INSERT INTO public.scents (id, name, description) VALUES
+(1, 'Gỗ Tuyết Tùng', 'Ấm áp, khô ráo, gợi nhớ rừng thông.'),
+(2, 'Cam Bergamot', 'Tươi mát, thanh khiết, hơi đắng nhẹ.'),
+(3, 'Hoa Hồng Damask', 'Nồng nàn, quyến rũ, cổ điển.'),
+(4, 'Xạ Hương Trắng', 'Sạch sẽ, mềm mại, gợi cảm tinh tế.'),
+(5, 'Vani Madagascar', 'Ngọt ngào, béo ngậy, ấm áp.'),
+(6, 'Hoắc Hương', 'Đất, ẩm, hơi ngọt, sâu lắng.'),
+(7, 'Hoa Nhài Sambac', 'Ngọt đậm, quyến rũ, tinh khiết.'),
+(8, 'Chanh Vàng Ý', 'Tươi sáng, sảng khoái, chua thanh.'),
+(9, 'Gỗ Đàn Hương Mysore', 'Mịn, kem, ngọt dịu, sang trọng.')
+ON CONFLICT (id) DO NOTHING;
+SELECT setval(pg_get_serial_sequence('public.scents', 'id'), (SELECT coalesce(max(id), 0) FROM public.scents) + 1, false); -- Reset ID sequence
+
+-- Ingredients (Thành phần)
+INSERT INTO public.ingredients (id, name) VALUES
+(1, 'Alcohol Denat.'), (2, 'Parfum (Fragrance)'), (3, 'Aqua (Water)'), (4, 'Limonene'),
+(5, 'Linalool'), (6, 'Citral'), (7, 'Geraniol'), (8, 'Coumarin')
+ON CONFLICT (id) DO NOTHING;
+SELECT setval(pg_get_serial_sequence('public.ingredients', 'id'), (SELECT coalesce(max(id), 0) FROM public.ingredients) + 1, false); -- Reset ID sequence
+
+-- ----------------------------------------------------------------------------
+-- Brands (Thương hiệu)
+-- ----------------------------------------------------------------------------
+INSERT INTO public.brands (id, name, description, logo_url) VALUES
+(1, 'Chanel', 'Thương hiệu thời trang và nước hoa cao cấp từ Pháp.', 'logos/chanel-logo.png'), -- path trong bucket 'logos'
+(2, 'Creed', 'Nhà nước hoa Niche danh tiếng với lịch sử lâu đời.', 'logos/creed-logo.png'),
+(3, 'Calvin Klein', 'Thương hiệu thời trang Mỹ tối giản, hiện đại.', 'logos/ck-logo.png')
+ON CONFLICT (id) DO NOTHING;
+SELECT setval(pg_get_serial_sequence('public.brands', 'id'), (SELECT coalesce(max(id), 0) FROM public.brands) + 1, false); -- Reset ID sequence
+
+-- ----------------------------------------------------------------------------
+-- Categories (Danh mục sản phẩm)
+-- ----------------------------------------------------------------------------
+INSERT INTO public.categories (id, name, slug, description, image_url, is_featured, display_order, parent_category_id) VALUES
+(1, 'Nước hoa Nam', 'nuoc-hoa-nam', 'Bộ sưu tập nước hoa cho phái mạnh.', 'categories/nam.jpg', true, 1, NULL), -- path trong bucket 'categories'
+(2, 'Nước hoa Nữ', 'nuoc-hoa-nu', 'Khám phá hương thơm quyến rũ cho phái đẹp.', 'categories/nu.jpg', true, 2, NULL),
+(3, 'Nước hoa Unisex', 'nuoc-hoa-unisex', 'Hương thơm độc đáo cho cả nam và nữ.', 'categories/unisex.jpg', true, 3, NULL),
+(4, 'Nước hoa Niche', 'nuoc-hoa-niche', 'Sáng tạo hương thơm từ các nhà chế tác độc lập.', 'categories/niche.jpg', false, 4, NULL),
+(5, 'Nước hoa Designer', 'nuoc-hoa-designer', 'Nước hoa từ các thương hiệu thời trang nổi tiếng.', 'categories/designer.jpg', false, 5, NULL)
+ON CONFLICT (id) DO NOTHING;
+SELECT setval(pg_get_serial_sequence('public.categories', 'id'), (SELECT coalesce(max(id), 0) FROM public.categories) + 1, false); -- Reset ID sequence
+
+-- ----------------------------------------------------------------------------
+-- Products (Sản phẩm)
+-- ----------------------------------------------------------------------------
+INSERT INTO public.products (id, name, slug, product_code, short_description, long_description, brand_id, gender_id, perfume_type_id, concentration_id, origin_country, release_year, style, sillage, longevity) VALUES
+(1, 'Bleu de Chanel EDP', 'bleu-de-chanel-edp', 'CHABDCE1', 'Hương gỗ thơm nam tính, lịch lãm.', 'Bleu de Chanel Eau de Parfum là tuyệt tác hương gỗ cho người đàn ông tự do. Phiên bản EDP sâu lắng và gợi cảm hơn EDT.', 1, 1, 1, 1, 'Pháp', 2014, 'Lịch lãm, Nam tính, Hiện đại', 'Tỏa hương Gần - Trung bình', 'Lâu - 7 đến 12 giờ'),
+(2, 'Creed Aventus for Her', 'creed-aventus-for-her', 'CRDAFH1', 'Hương trái cây SÍP quyền lực, nữ tính.', 'Lấy cảm hứng từ những người phụ nữ mạnh mẽ, Aventus for Her là mùi hương hoa quả Chypre mê hoặc, tươi mới và sâu sắc.', 2, 2, 2, 1, 'Pháp', 2016, 'Quyền lực, Nữ tính, Tự tin', 'Tỏa hương Tốt - Xa', 'Rất lâu - Trên 12 giờ'),
+(3, 'CK One EDT', 'ck-one-edt', 'CKONE1', 'Hương cam chanh tươi mát, tự do.', 'CK One là mùi hương kinh điển, phá vỡ rào cản giới tính. Sự hòa quyện của cam bergamot, trà xanh, đu đủ và xạ hương tạo cảm giác sạch sẽ, tươi mới.', 3, 3, 1, 2, 'Mỹ', 1994, 'Tươi mát, Trẻ trung, Tự do', 'Tỏa hương Trung bình', 'Trung bình - 3 đến 6 giờ')
+ON CONFLICT (id) DO NOTHING;
+SELECT setval(pg_get_serial_sequence('public.products', 'id'), (SELECT coalesce(max(id), 0) FROM public.products) + 1, false); -- Reset ID sequence
+
+-- ----------------------------------------------------------------------------
+-- Product Variants (Các phiên bản/dung tích sản phẩm)
+-- ----------------------------------------------------------------------------
+INSERT INTO public.product_variants (id, product_id, volume_ml, price, sale_price, sku, stock_quantity) VALUES
+(1, 1, 50, 2800000, NULL, 'CHABDCE1-50', 25),
+(2, 1, 100, 3900000, 3750000, 'CHABDCE1-100', 15), -- Giá sale
+(3, 2, 30, 4500000, NULL, 'CRDAFH1-30', 10),
+(4, 2, 75, 7200000, NULL, 'CRDAFH1-75', 5),
+(5, 3, 100, 1200000, 990000, 'CKONE1-100', 50),    -- Giá sale
+(6, 3, 200, 1800000, 1550000, 'CKONE1-200', 30)     -- Giá sale
+ON CONFLICT (id) DO NOTHING; -- Assuming manual ID for variants too
+SELECT setval(pg_get_serial_sequence('public.product_variants', 'id'), (SELECT coalesce(max(id), 0) FROM public.product_variants) + 1, false); -- Reset ID sequence
+
+-- ----------------------------------------------------------------------------
+-- Product Images (Hình ảnh sản phẩm)
+-- ----------------------------------------------------------------------------
+INSERT INTO public.product_images (id, product_id, image_url, alt_text, is_main, display_order) VALUES
+(1, 1, 'products/bleu-chanel-edp-main.jpg', 'Chai Bleu de Chanel EDP', true, 0), -- Ảnh chính
+(2, 1, 'products/bleu-chanel-edp-box.jpg', 'Hộp Bleu de Chanel EDP', false, 1),
+(3, 1, 'products/bleu-chanel-edp-angle.jpg', 'Chai Bleu de Chanel EDP nghiêng', false, 2),
+(4, 2, 'products/creed-aventus-her-main.jpg', 'Chai Creed Aventus for Her', true, 0), -- Ảnh chính
+(5, 3, 'products/ck-one-main.jpg', 'Chai CK One EDT', true, 0)                     -- Ảnh chính
+ON CONFLICT (id) DO NOTHING;
+SELECT setval(pg_get_serial_sequence('public.product_images', 'id'), (SELECT coalesce(max(id), 0) FROM public.product_images) + 1, false); -- Reset ID sequence
+
+-- ----------------------------------------------------------------------------
+-- Product Scents (Liên kết Sản phẩm - Mùi hương theo tầng)
+-- ----------------------------------------------------------------------------
+INSERT INTO public.product_scents (product_id, scent_id, scent_type) VALUES
+(1, 2, 'top'), (1, 8, 'top'), (1, 1, 'middle'), (1, 7, 'middle'), (1, 6, 'base'), (1, 9, 'base'), -- Bleu de Chanel
+(2, 2, 'top'), (2, 3, 'middle'), (2, 4, 'base'),                                                  -- Aventus for Her
+(3, 2, 'top'), (3, 8, 'top'), (3, 4, 'base')                                                       -- CK One
+ON CONFLICT (product_id, scent_id, scent_type) DO NOTHING;
+-- No manual ID insertion, no sequence reset needed for product_scents if ID is default identity
+
+-- ----------------------------------------------------------------------------
+-- Product Ingredients (Liên kết Sản phẩm - Thành phần)
+-- ----------------------------------------------------------------------------
+INSERT INTO public.product_ingredients(product_id, ingredient_id) VALUES
+(1, 1), (1, 2), (1, 3), (1, 4), (1, 5), -- BdC
+(2, 1), (2, 2), (2, 3), (2, 5), (2, 7), -- Aventus Her
+(3, 1), (3, 2), (3, 3), (3, 4), (3, 6)  -- CK One
+ON CONFLICT (product_id, ingredient_id) DO NOTHING;
+-- No manual ID insertion, no sequence reset needed for product_ingredients if ID is default identity
+
+-- ----------------------------------------------------------------------------
+-- Product Categories (Liên kết Sản phẩm - Danh mục)
+-- ----------------------------------------------------------------------------
+INSERT INTO public.product_categories (product_id, category_id) VALUES
+(1, 1), (1, 5), -- Bleu de Chanel -> Nam, Designer
+(2, 2), (2, 4), -- Aventus for Her -> Nữ, Niche
+(3, 3), (3, 5)  -- CK One -> Unisex, Designer
+ON CONFLICT (product_id, category_id) DO NOTHING;
+-- No manual ID insertion, no sequence reset needed for product_categories if ID is default identity
+
+-- ----------------------------------------------------------------------------
+-- Product Label Assignments (Gán nhãn cho sản phẩm)
+-- ----------------------------------------------------------------------------
+INSERT INTO public.product_label_assignments (product_id, label_id, valid_until) VALUES
+(1, 1, NULL),                             -- Bleu de Chanel -> Mới về (Luôn hiển thị)
+(2, 2, NULL),                             -- Aventus for Her -> Bán chạy (Luôn hiển thị)
+(3, 3, '2025-12-31 23:59:59+07'),         -- CK One -> Giảm giá (Hết hạn cuối 2025)
+(2, 4, '2025-06-30 23:59:59+07')          -- Aventus for Her -> Limited (Hết hạn T6/2025)
+ON CONFLICT (product_id, label_id) DO NOTHING;
+-- No manual ID insertion, no sequence reset needed for product_label_assignments if ID is default identity
+
+-- ----------------------------------------------------------------------------
+-- Discounts (Mã giảm giá)
+-- ----------------------------------------------------------------------------
+INSERT INTO public.discounts (id, code, description, start_date, end_date, max_uses, remaining_uses, min_order_value, max_discount_amount, discount_percentage, is_active) VALUES
+(1, 'CHAOBAN', 'Giảm 10% cho đơn hàng đầu tiên', NOW() - interval '1 day', '2025-12-31 23:59:59+07', 1000, 1000, 500000, NULL, 10, true),
+(2, 'HE2025', 'Mừng hè sang - Giảm 15% tối đa 200k', '2025-06-01 00:00:00+07', '2025-07-31 23:59:59+07', 500, 500, NULL, 200000, 15, true),
+(3, 'FIX50K', 'Giảm thẳng 50k cho đơn từ 1 triệu', '2025-08-01 00:00:00+07', '2025-08-31 23:59:59+07', NULL, NULL, 1000000, 50000, NULL, true), -- Giảm cố định (percentage=NULL)
+(4, 'EXPIREDCODE', 'Mã giảm giá đã hết hạn', '2024-01-01 00:00:00+07', '2024-03-31 23:59:59+07', 100, 10, NULL, NULL, 5, true) -- Đã hết hạn
+ON CONFLICT (id) DO NOTHING; -- Assuming manual ID for discounts
+SELECT setval(pg_get_serial_sequence('public.discounts', 'id'), (SELECT coalesce(max(id), 0) FROM public.discounts) + 1, false); -- Reset ID sequence
+
+-- ----------------------------------------------------------------------------
+-- Banners (Quảng cáo)
+-- ----------------------------------------------------------------------------
+INSERT INTO public.banners (id, title, subtitle, image_url, link_url, is_active, display_order, start_date, end_date) VALUES
+(1, 'Chào Hè Rực Rỡ 2025', 'Giảm giá đến 15% bộ sưu tập hè', 'banners/summer-sale-2025.jpg', '/khuyen-mai/he-2025', true, 0, '2025-06-01 00:00:00+07', '2025-07-31 23:59:59+07'),
+(2, 'Khám Phá Thế Giới Niche', 'Những mùi hương độc bản', 'banners/niche-perfumes-explore.jpg', '/danh-muc/nuoc-hoa-niche', true, 1, NULL, NULL), -- Luôn hiển thị
+(3, 'Bleu de Chanel - Biểu Tượng Lịch Lãm', 'Hương thơm nam tính cuốn hút', 'banners/bleu-chanel-focus.jpg', '/san-pham/bleu-de-chanel-edp', true, 2, NULL, NULL) -- Luôn hiển thị
+ON CONFLICT (id) DO NOTHING;
+SELECT setval(pg_get_serial_sequence('public.banners', 'id'), (SELECT coalesce(max(id), 0) FROM public.banners) + 1, false); -- Reset ID sequence
+
+-- ----------------------------------------------------------------------------
+-- Shop Settings (Cài đặt cửa hàng - Chỉ có 1 dòng id=1)
+-- ----------------------------------------------------------------------------
+INSERT INTO public.shop_settings (id, shop_name, shop_logo_url, contact_email, contact_phone, address, facebook_url, messenger_url, zalo_url, instagram_url, tiktok_url, youtube_url, refund_policy_text, shipping_policy_text, privacy_policy_text, terms_conditions_text, default_shipping_fee) VALUES
+(1, 'MyBeauty Perfume', 'logos/shop-logo-main.png', 'hotro.mybeauty@email.com', '0363625119', 'Số 22 Đường Văn Quán, P.Văn Quán, Q.Hà Đông, TP.Hà Nội', 'https://facebook.com/mybeautyperfume', 'https://m.me/mybeautyperfume', 'https://zalo.me/0363625119', 'https://instagram.com/mybeautyperfume', 'https://tiktok.com/@mybeautyperfume', 'https://youtube.com/@mybeautyperfume', '<h1>Chính sách đổi trả</h1><p>...</p>', '<h1>Chính sách vận chuyển</h1><p>Miễn phí ship đơn từ 500k.</p>', '<h1>Chính sách bảo mật</h1><p>...</p>', '<h1>Điều khoản và Điều kiện</h1><p>...</p>', 30000)
+ON CONFLICT (id) DO UPDATE SET -- Luôn UPDATE dòng id=1 nếu tồn tại
+    shop_name = EXCLUDED.shop_name, shop_logo_url = EXCLUDED.shop_logo_url, contact_email = EXCLUDED.contact_email,
+    contact_phone = EXCLUDED.contact_phone, address = EXCLUDED.address, facebook_url = EXCLUDED.facebook_url,
+    messenger_url = EXCLUDED.messenger_url, zalo_url = EXCLUDED.zalo_url, instagram_url = EXCLUDED.instagram_url,
+    tiktok_url = EXCLUDED.tiktok_url, youtube_url = EXCLUDED.youtube_url, refund_policy_text = EXCLUDED.refund_policy_text,
+    shipping_policy_text = EXCLUDED.shipping_policy_text, privacy_policy_text = EXCLUDED.privacy_policy_text,
+    terms_conditions_text = EXCLUDED.terms_conditions_text, default_shipping_fee = EXCLUDED.default_shipping_fee,
+    updated_at = NOW(); -- Cập nhật timestamp
+-- No sequence reset needed for shop_settings as ID is fixed at 1.
+
+-- ============================================================================
+-- END OF SEED DATA SCRIPT (VIETNAMESE)
+-- ============================================================================
+
