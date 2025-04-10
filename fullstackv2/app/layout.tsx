@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   title: "Next + Supabase Starter",
   description:
     "Next.js 15 Supabase Starter CLI tool that bootstraps a Next.js 15 project with Supabase, React Query, and built-in authentication for rapid development. 🚀",
-    generator: 'v0.dev'
+  generator: "v0.dev",
 }
 
 export default function RootLayout({
@@ -34,6 +34,3 @@ export default function RootLayout({
     </html>
   )
 }
-
-
-import './globals.css'

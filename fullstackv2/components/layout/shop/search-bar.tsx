@@ -1,30 +1,25 @@
-"use client";
+"use client"
 
-import { useRouter } from "next/navigation";
-import { Search, Package, ChevronDown } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useState } from "react";
+import { useRouter } from "next/navigation"
+import { Search, Package, ChevronDown } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
+import { useForm, Controller } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { useState } from "react"
 
 // Define the search form schema with Zod
 const searchSchema = z.object({
   query: z.string().min(1, "Please enter a search term"),
-});
+})
 
-type SearchFormValues = z.infer<typeof searchSchema>;
+type SearchFormValues = z.infer<typeof searchSchema>
 
 export function SearchBar() {
-  const router = useRouter();
-  const [searchMode, setSearchMode] = useState<"product" | "order">("product");
+  const router = useRouter()
+  const [searchMode, setSearchMode] = useState<"product" | "order">("product")
 
   // Initialize React Hook Form with Zod validation
   const {
@@ -36,16 +31,16 @@ export function SearchBar() {
     defaultValues: {
       query: "",
     },
-  });
+  })
 
   // Form submission handler
   const onSubmit = (data: SearchFormValues) => {
     if (searchMode === "product") {
-      router.push(`/san-pham?search=${encodeURIComponent(data.query)}`);
+      router.push(`/san-pham?search=${encodeURIComponent(data.query)}`)
     } else {
-      router.push(`/tra-cuu-don-hang?token=${encodeURIComponent(data.query)}`);
+      router.push(`/tra-cuu-don-hang?token=${encodeURIComponent(data.query)}`)
     }
-  };
+  }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="w-full">
@@ -81,35 +76,18 @@ export function SearchBar() {
             <Input
               {...field}
               type="search"
-              placeholder={
-                searchMode === "product"
-                  ? "Tìm kiếm sản phẩm..."
-                  : "Nhập mã đơn hàng..."
-              }
-              className={`w-full pl-[110px] pr-10 ${
-                errors.query ? "border-destructive" : ""
-              }`}
+              placeholder={searchMode === "product" ? "Tìm kiếm sản phẩm..." : "Nhập mã đơn hàng..."}
+              className={`w-full pl-[110px] pr-10 ${errors.query ? "border-destructive" : ""}`}
               aria-invalid={errors.query ? "true" : "false"}
             />
           )}
         />
 
-        <Button
-          type="submit"
-          size="icon"
-          variant="ghost"
-          className="absolute right-0 h-full"
-        >
-          {searchMode === "product" ? (
-            <Search className="h-4 w-4" />
-          ) : (
-            <Package className="h-4 w-4" />
-          )}
+        <Button type="submit" size="icon" variant="ghost" className="absolute right-0 h-full">
+          {searchMode === "product" ? <Search className="h-4 w-4" /> : <Package className="h-4 w-4" />}
         </Button>
       </div>
-      {errors.query && (
-        <p className="text-xs text-destructive mt-1">{errors.query.message}</p>
-      )}
+      {errors.query && <p className="text-xs text-destructive mt-1">{errors.query.message}</p>}
     </form>
-  );
+  )
 }

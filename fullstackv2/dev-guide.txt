@@ -1,0 +1,499 @@
+### MyBeauty Developer Documentation
+
+## Table of Contents
+
+1. Project Overview
+2. Project Architecture
+3. TanStack Query Usage and Optimization
+4. Role-Based Access Control (RBAC) and Authentication
+5. Providers and Contexts
+6. Shared Components and Hooks
+7. Database Interaction and Supabase Integration
+8. Middleware and Session Management
+9. Performance Optimization
+10. Deployment and Environment Configuration
+11. Contributing Guidelines
+
+
+---
+
+## 1. Project Overview
+
+MyBeauty is an e-commerce platform for beauty products, specifically perfumes, built with Next.js 15 (App Router), TypeScript, Tailwind CSS, ShadCN UI, React Query, and Supabase. The application supports user authentication, product browsing, cart management, checkout, and order management with role-based access control for customers, staff, shippers, and administrators.
+
+### Tech Stack
+
+- **Frontend**: Next.js 15 (App Router), React, TypeScript
+- **Styling**: Tailwind CSS, ShadCN UI (Radix UI)
+- **State Management**: TanStack Query (React Query), Context API
+- **Form Handling**: React Hook Form, Zod
+- **Backend**: Supabase (PostgreSQL, Authentication, Storage)
+- **Deployment**: Vercel
+
+
+---
+
+## 2. Project Architecture
+
+The project follows a feature-based architecture, organizing code by domain rather than technical concerns. This approach improves maintainability, scalability, and developer experience.
+
+### Directory Structure
+
+```plaintext
+/
+├── app/                    # Next.js App Router pages
+│   ├── (auth)/             # Authentication routes (login, register)
+│   ├── (shop)/             # Customer-facing shop routes
+│   ├── (backoffice)/       # Admin and shipper routes
+│   └── layout.tsx          # Root layout
+├── components/             # Shared UI components
+│   ├── layout/             # Layout components (header, footer)
+│   ├── ui/                 # ShadCN UI components
+│   └── theme-toggle.tsx    # Theme toggle component
+├── features/               # Feature modules
+│   ├── auth/               # Authentication feature
+│   │   ├── actions.ts      # Server actions
+│   │   ├── components/     # Auth-specific components
+│   │   └── context/        # Auth context
+│   └── shop/               # Shop features
+│       ├── cart/           # Cart functionality
+│       ├── checkout/       # Checkout functionality
+│       └── home/           # Home page functionality
+├── shared/                 # Shared utilities and hooks
+│   ├── hooks/              # Custom hooks
+│   ├── lib/                # Utility functions
+│   ├── providers/          # Context providers
+│   ├── supabase/           # Supabase clients and utilities
+│   └── types/              # TypeScript type definitions
+└── middleware.ts           # Next.js middleware
+```
+
+### Feature-Based Organization
+
+Each feature module contains:
+
+- **Components**: UI components specific to the feature
+- **Context**: State management for the feature
+- **Hooks**: Custom hooks for the feature
+- **Types**: TypeScript types for the feature
+- **Utils**: Utility functions for the feature
+- **Actions**: Server actions for the feature (when applicable)
+
+
+This organization ensures that related code is co-located, making it easier to understand, maintain, and extend features.
+
+---
+
+## 3. TanStack Query Usage and Optimization
+
+TanStack Query (React Query) is used for server state management, providing a consistent approach to data fetching, caching, and synchronization.
+
+### Custom Query Hooks
+
+The project implements several custom hooks that wrap TanStack Query functionality:
+
+- **useClientFetch**: For fetching data from Supabase tables
+- **useClientMutation**: For mutations (insert, update, delete)
+- **useClientBatchMutation**: For batch mutations
+- **useClientRpcQuery/useClientRpcMutation**: For Supabase RPC functions
+- **useClientInfiniteQuery**: For infinite scrolling/pagination
+- **useStorageUpload/useStorageDelete/useStorageList**: For Supabase Storage operations
+
+
+### Best Practices
+
+1. **Query Keys**: Use consistent, hierarchical query keys to ensure proper cache invalidation:
+
+1. Table-based keys: `[tableName, 'list']`
+2. Item-based keys: `[tableName, itemId]`
+3. Filtered keys: `[tableName, 'filtered', filterParams]`
+
+
+
+2. **Stale Time**: Configure appropriate stale times based on data volatility:
+
+1. Frequently changing data: shorter stale times (e.g., 1 minute)
+2. Relatively static data: longer stale times (e.g., 5-10 minutes)
+
+
+
+3. **Prefetching**: Prefetch data for anticipated user actions:
+
+1. Prefetch product details when hovering over product cards
+2. Prefetch next page of results for pagination
+
+
+
+4. **Optimistic Updates**: Implement optimistic updates for better UX:
+
+1. Update UI immediately on user action
+2. Revert to previous state if the mutation fails
+
+
+
+5. **Error Handling**: Implement consistent error handling:
+
+1. Display toast notifications for errors
+2. Provide retry mechanisms for failed queries
+3. Log errors for debugging
+
+
+
+
+
+### Performance Optimization
+
+1. **Selective Fetching**: Only fetch the data you need:
+
+1. Use the `columns` parameter in `useClientFetch` to select specific columns
+2. Use filters to limit the amount of data returned
+
+
+
+2. **Deduplication**: Avoid duplicate requests by using the same query key for identical queries
+3. **Background Refetching**: Configure background refetching to keep data fresh without blocking the UI
+4. **Query Cancellation**: Cancel in-flight queries when they're no longer needed
+5. **Pagination/Infinite Scrolling**: Use pagination or infinite scrolling for large datasets
+
+
+---
+
+## 4. Role-Based Access Control (RBAC) and Authentication
+
+The application implements role-based access control using Supabase Auth and custom middleware.
+
+### User Roles
+
+- **Anonymous**: Unauthenticated users with limited access
+- **Authenticated**: Regular authenticated users (customers)
+- **Staff**: Staff members with access to product management
+- **Shipper**: Delivery personnel with access to assigned orders
+- **Admin**: Administrators with full access to all features
+
+
+### Authentication Flow
+
+1. **Registration**: Users register with email/password or OAuth providers
+2. **Login**: Users authenticate to receive a session token
+3. **Session Management**: Sessions are managed by Supabase and refreshed automatically
+4. **Logout**: Sessions are terminated on logout
+
+
+### Role Assignment
+
+Roles are stored in Supabase Auth user metadata (`raw_app_meta_data.role`) and can be:
+
+- Set during user creation by administrators
+- Updated through the admin interface
+
+
+### Access Control Implementation
+
+1. **Server-Side**: Next.js middleware checks user authentication and role for protected routes
+2. **Client-Side**: The `useAuth` hook provides role information for conditional rendering
+3. **Database**: Supabase Row Level Security (RLS) policies restrict data access based on user ID and role
+
+
+### Using the Auth Context
+
+```typescript
+// Example of using the Auth context
+const { user, isAdmin, isStaff, isShipper } = useAuth();
+
+// Conditional rendering based on role
+if (isAdmin) {
+  // Show admin-only UI
+} else if (isStaff) {
+  // Show staff UI
+} else if (user) {
+  // Show authenticated user UI
+} else {
+  // Show guest UI
+}
+```
+
+---
+
+## 5. Providers and Contexts
+
+The application uses several context providers to manage global state and provide functionality across components.
+
+### Provider Structure
+
+Providers are nested in the following order (from outermost to innermost):
+
+1. `ThemeProvider`: Manages light/dark theme
+2. `QueryProvider`: Configures TanStack Query
+3. `AuthProvider`: Manages authentication state
+4. `CartProvider`: Manages shopping cart state
+5. `ToastProvider`: Configures Sonner toast notifications
+
+
+### Key Contexts
+
+1. **Auth Context**
+
+1. Manages user authentication state
+2. Provides user information and role-based helpers
+3. Handles login, logout, and registration
+4. Exposes methods: `login`, `register`, `logout`, `refreshUser`
+
+
+
+2. **Cart Context**
+
+1. Manages shopping cart state
+2. Handles cart operations: add, update, remove items
+3. Synchronizes cart between local storage and database
+4. Supports guest carts with local storage
+5. Merges guest cart with user cart on login
+
+
+
+3. **Theme Context**
+
+1. Manages light/dark theme preference
+2. Persists theme preference in local storage
+3. Provides theme toggle functionality
+
+
+
+
+
+### Best Practices
+
+1. **Context Composition**: Break down complex state into smaller, focused contexts
+2. **Memoization**: Use `useMemo` and `useCallback` to prevent unnecessary re-renders
+3. **Selective Updates**: Only update context when necessary to avoid re-renders
+4. **Error Boundaries**: Wrap contexts with error boundaries to prevent cascading failures
+5. **Loading States**: Provide loading states to handle asynchronous operations
+
+
+---
+
+## 6. Shared Components and Hooks
+
+The application includes reusable components and hooks to promote code reuse and consistency.
+
+### Shared Components
+
+1. **UI Components**: ShadCN UI components (Button, Card, Dialog, etc.)
+2. **Layout Components**: Header, Footer, Sidebar, etc.
+3. **Form Components**: Input, Select, Checkbox, etc.
+4. **Feedback Components**: Toast, Alert, etc.
+
+
+### Custom Hooks
+
+1. **Data Fetching Hooks**
+
+1. `useClientFetch`: Fetches data from Supabase tables
+2. `useClientMutation`: Performs mutations on Supabase tables
+3. `useClientBatchMutation`: Performs batch mutations
+4. `useClientRpcQuery/useClientRpcMutation`: Interacts with Supabase RPC functions
+5. `useClientInfiniteQuery`: Implements infinite scrolling
+
+
+
+2. **UI Hooks**
+
+1. `useSonnerToast`: Wrapper for Sonner toast notifications
+2. `useTheme`: Access to theme context
+
+
+
+3. **Feature-Specific Hooks**
+
+1. `useAuth`: Authentication utilities
+2. `useCart`: Shopping cart operations
+3. `useCartTotals`: Cart total calculations
+4. `useDiscountCode`: Discount code validation and application
+
+
+
+
+
+### Best Practices
+
+1. **Hook Composition**: Compose hooks to build more complex functionality
+2. **Type Safety**: Ensure hooks are properly typed with TypeScript
+3. **Error Handling**: Implement consistent error handling in hooks
+4. **Loading States**: Provide loading states for asynchronous operations
+5. **Memoization**: Use memoization to optimize performance
+
+
+---
+
+## 7. Database Interaction and Supabase Integration
+
+The application uses Supabase for database, authentication, and storage services.
+
+### Database Schema
+
+The database schema is defined in `db.txt` and includes tables for:
+
+- Users and profiles
+- Products, variants, categories, brands
+- Orders, order items, payments
+- Shopping carts and cart items
+- Reviews and replies
+- Discounts and promotions
+
+
+### Supabase Clients
+
+The application uses three Supabase clients:
+
+1. **Browser Client**: For client-side operations (`shared/supabase/client.ts`)
+2. **Server Client**: For server-side operations (`shared/supabase/server.ts`)
+3. **Service Role Client**: For privileged operations (`shared/supabase/serviceRoleClient.ts`)
+
+
+### Data Access Patterns
+
+1. **Client-Side**: Use custom hooks (`useClientFetch`, etc.) for data access
+2. **Server-Side**: Use server actions and the server client for secure operations
+3. **RPC Functions**: Use Supabase RPC functions for complex operations
+
+
+### Row Level Security (RLS)
+
+Supabase RLS policies control data access based on user roles:
+
+- Public data: Accessible to all users
+- User data: Accessible only to the owning user
+- Admin data: Accessible only to admins and staff
+
+
+### Storage
+
+Supabase Storage is used for file storage with buckets for:
+
+- Product images
+- User avatars
+- Brand logos
+- Category images
+- Banners
+
+
+### Best Practices
+
+1. **Type Safety**: Use generated TypeScript types for database tables
+2. **Transactions**: Use transactions for operations that modify multiple tables
+3. **Optimistic Concurrency Control**: Use version numbers or timestamps for conflict resolution
+4. **Soft Deletes**: Use soft deletes (`deleted_at`) instead of hard deletes
+5. **Indexing**: Create appropriate indexes for frequently queried columns
+
+
+---
+
+## 8. Middleware and Session Management
+
+The application uses Next.js middleware for authentication, session management, and route protection.
+
+### Middleware Architecture
+
+The project uses two separate middleware files:
+
+1. **Root Middleware** (`middleware.ts`):
+   - Handles route protection and redirects
+   - Checks authentication status and user roles
+   - Calls `updateSession` from the Supabase middleware
+
+2. **Supabase Middleware** (`shared/supabase/middleware.ts`):
+   - Focuses on Supabase session management
+   - Handles cookies and authentication tokens
+   - Provides the `updateSession` function used by the root middleware
+
+This approach separates concerns, making the code more maintainable and allowing for better unit testing.
+
+
+### Session Management
+
+Sessions are managed by Supabase Auth and stored in cookies:
+
+1. **Session Creation**: On login or registration
+2. **Session Refresh**: Automatic refresh of expired tokens
+3. **Session Termination**: On logout
+
+
+### Protected Routes
+
+Routes are protected based on authentication status and user role:
+
+- Public routes: Accessible to all users
+- Authenticated routes: Require login
+- Role-specific routes: Require specific roles (admin, staff, shipper)
+
+
+### Best Practices
+
+1. **Minimal Middleware**: Keep middleware lightweight to avoid performance issues
+2. **Error Handling**: Implement proper error handling in middleware
+3. **Logging**: Log important events for debugging
+4. **Caching**: Use caching headers appropriately
+5. **Testing**: Test middleware thoroughly with different scenarios
+
+
+---
+
+## 9. Performance Optimization
+
+The application implements several performance optimization strategies.
+
+### Code Splitting
+
+1. **Route-Based Splitting**: Next.js automatically splits code by route
+2. **Component-Level Splitting**: Use dynamic imports for large components
+3. **Library Splitting**: Split large libraries into separate chunks
+
+
+### Memoization
+
+1. **Component Memoization**: Use `React.memo` for expensive components
+2. **Hook Memoization**: Use `useMemo` and `useCallback` for expensive calculations
+3. **Selector Memoization**: Use selectors to derive state efficiently
+
+
+### Rendering Optimization
+
+1. **Server Components**: Use React Server Components for static content
+2. **Client Components**: Use Client Components only when necessary
+3. **Suspense**: Use Suspense for loading states
+4. **Streaming**: Use streaming for progressive rendering
+
+
+### Data Fetching Optimization
+
+1. **Selective Fetching**: Only fetch the data you need
+2. **Parallel Fetching**: Fetch data in parallel when possible
+3. **Prefetching**: Prefetch data for anticipated user actions
+4. **Caching**: Use appropriate cache strategies
+
+
+### Image Optimization
+
+1. **Next.js Image**: Use Next.js Image component for automatic optimization
+2. **Responsive Images**: Use responsive images for different screen sizes
+3. **Lazy Loading**: Lazy load images below the fold
+4. **Format Optimization**: Use modern formats (WebP, AVIF)
+
+
+---
+
+## 10. Deployment and Environment Configuration
+
+The application is configured for deployment on Vercel with environment variables for different environments.
+
+### Environment Variables
+
+The application uses the following environment variables:
+
+- **Supabase**: URL, API keys, JWT secret
+- **PostgreSQL**: Connection strings, credentials
+- **Site**: URLs, authentication settings
+- **Logging**: Log levels, environments
+
+---
+
+This documentation provides a comprehensive overview of the MyBeauty project, covering key aspects of the architecture, implementation, and best practices. New developers should refer to this guide to understand the project structure and contribute effectively.

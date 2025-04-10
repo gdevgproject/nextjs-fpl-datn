@@ -8,10 +8,10 @@ const PasswordInput = React.forwardRef<
   React.ComponentProps<"input">
 >(({ className, ...props }, ref) => {
   const [showPassword, setShowPassword] = React.useState<boolean>(false);
-
+  
   // Loại bỏ các props không hợp lệ cho thẻ input
   const { children, dangerouslySetInnerHTML, ...inputProps } = props;
-
+  
   return (
     <div className="flex h-9 items-center justify-between gap-1 rounded-md border border-input bg-transparent px-3 py-1 shadow-sm transition-colors">
       <input
@@ -23,7 +23,10 @@ const PasswordInput = React.forwardRef<
         ref={ref}
         {...inputProps}
       />
-      <button onClick={() => setShowPassword((prev) => !prev)} type="button">
+      <button
+        onClick={() => setShowPassword((prev) => !prev)}
+        type="button"
+      >
         {showPassword ? (
           <Eye className="w-4 h-4" />
         ) : (
