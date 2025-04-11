@@ -15,3 +15,12 @@ export function formatDate(dateString: string): string {
     minute: "2-digit",
   }).format(date)
 }
+
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount)
+}
