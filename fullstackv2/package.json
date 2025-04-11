@@ -61,11 +61,11 @@
     "@supabase/supabase-js": "latest",
     "react-syntax-highlighter": "latest",
     "@tanstack/react-query": "latest",
+    "react-color": "latest",
     "@supabase/postgrest-js": "latest",
     "uuid": "latest",
     "@supabase/storage-js": "latest",
-    "@supabase/ssr": "latest",
-    "react-color": "latest"
+    "@supabase/ssr": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

@@ -39,7 +39,7 @@ The project follows a feature-based architecture, organizing code by domain rath
 
 ### Directory Structure
 
-```plaintext
+\`\`\`plaintext
 /
 ├── app/                    # Next.js App Router pages
 │   ├── (auth)/             # Authentication routes (login, register)
@@ -66,7 +66,7 @@ The project follows a feature-based architecture, organizing code by domain rath
 │   ├── supabase/           # Supabase clients and utilities
 │   └── types/              # TypeScript type definitions
 └── middleware.ts           # Next.js middleware
-```
+\`\`\`
 
 ### Feature-Based Organization
 
@@ -196,7 +196,7 @@ Roles are stored in Supabase Auth user metadata (`raw_app_meta_data.role`) and c
 
 ### Using the Auth Context
 
-```typescript
+\`\`\`typescript
 // Example of using the Auth context
 const { user, isAdmin, isStaff, isShipper } = useAuth();
 
@@ -210,7 +210,7 @@ if (isAdmin) {
 } else {
   // Show guest UI
 }
-```
+\`\`\`
 
 ---
 
