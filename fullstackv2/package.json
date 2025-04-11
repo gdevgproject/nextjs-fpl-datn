@@ -64,7 +64,8 @@
     "@supabase/postgrest-js": "latest",
     "uuid": "latest",
     "@supabase/storage-js": "latest",
-    "@supabase/ssr": "latest"
+    "@supabase/ssr": "latest",
+    "react-color": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

@@ -993,102 +993,274 @@ BEFORE UPDATE OF order_status_id ON public.orders -- Chỉ chạy khi cột orde
 FOR EACH ROW EXECUTE PROCEDURE public.prevent_invalid_status_transitions();
 
 
--- FUNCTION: Ghi log hoạt động của Admin/Staff
-DROP FUNCTION IF EXISTS public.log_admin_activity();
+-- ============================================================================
+-- SECTION: FUNCTIONS & TRIGGERS (Tự động hóa & Hàm hỗ trợ)
+-- BAO GỒM LOGGING HOÀN CHỈNH V3.1 - Dành cho file db.txt chạy 1 lần
+-- ============================================================================
+
+-- ... (Các functions và triggers khác như handle_new_user, handle_updated_at, get_auth_role, etc. giữ nguyên từ db.txt gốc) ...
+
+-- FUNCTION: Ghi log hoạt động của Admin/Staff (Cải tiến V3.1 - Chi tiết & Mở rộng)
+-- Sử dụng CREATE OR REPLACE để đảm bảo tính đúng đắn khi chạy script nhiều lần hoặc cập nhật
+DROP FUNCTION IF EXISTS public.log_admin_activity(); -- Vẫn nên giữ DROP IF EXISTS phòng trường hợp script chạy không hoàn chỉnh trước đó
 CREATE OR REPLACE FUNCTION public.log_admin_activity()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   act_type text; descrip text; ent_type text; ent_id text; dets jsonb; role text;
   old_j jsonb; new_j jsonb; old_status_name text; new_status_name text; affected_user_email text;
-  old_shipper_email text; new_shipper_email text;
+  old_shipper_email text; new_shipper_email text; action_verb text; entity_name text; entity_id_val text;
+  admin_user_info text; -- Để hiển thị email hoặc ID của admin/staff
 BEGIN
   -- Lấy vai trò người dùng hiện tại
   role := public.get_auth_role();
   -- Chỉ ghi log nếu hành động được thực hiện bởi Admin hoặc Staff
   IF role NOT IN ('admin', 'staff') THEN RETURN NULL; END IF;
 
+  -- Lấy thông tin người dùng thực hiện hành động để log rõ hơn
+  SELECT coalesce(email, auth.uid()::text) INTO admin_user_info FROM auth.users WHERE id = auth.uid();
+
   ent_type := TG_TABLE_NAME; -- Tên bảng bị tác động
+  action_verb := CASE TG_OP
+                    WHEN 'INSERT' THEN 'Tạo mới'
+                    WHEN 'UPDATE' THEN 'Cập nhật'
+                    WHEN 'DELETE' THEN 'Xóa'
+                    ELSE TG_OP -- Giữ nguyên nếu là loại khác (ít xảy ra)
+                 END;
 
   -- Chuẩn bị dữ liệu chi tiết (details) dạng JSON
   IF TG_OP = 'UPDATE' THEN
     old_j := to_jsonb(OLD); new_j := to_jsonb(NEW);
-    -- Loại bỏ cột updated_at khỏi log để tránh nhiễu
-    dets := jsonb_build_object('old', old_j - 'updated_at', 'new', new_j - 'updated_at');
-    ent_id := OLD.id::text;
+    -- Loại bỏ cột có thể gây nhiễu hoặc không cần thiết
+    dets := jsonb_build_object('old', old_j - 'updated_at' - 'created_at', 'new', new_j - 'updated_at' - 'created_at');
+    -- Cố gắng lấy ID từ OLD trước, nếu không có (trường hợp đặc biệt) thì lấy từ NEW
+    entity_id_val := coalesce(OLD.id::text, NEW.id::text);
   ELSIF TG_OP = 'DELETE' THEN
-    old_j := to_jsonb(OLD); dets := jsonb_build_object('deleted', old_j); ent_id := OLD.id::text;
+    old_j := to_jsonb(OLD);
+    dets := jsonb_build_object('deleted', old_j - 'updated_at' - 'created_at');
+    entity_id_val := OLD.id::text;
   ELSIF TG_OP = 'INSERT' THEN
-    new_j := to_jsonb(NEW); dets := jsonb_build_object('created', new_j); ent_id := NEW.id::text;
+    new_j := to_jsonb(NEW);
+    dets := jsonb_build_object('created', new_j - 'updated_at' - 'created_at');
+    entity_id_val := NEW.id::text; -- Lấy ID từ bản ghi mới khi INSERT
   END IF;
 
   -- Xác định loại hành động và mô tả dựa trên bảng và thao tác
-  IF ent_type = 'products' THEN act_type := 'PRODUCT_' || TG_OP; descrip := TG_OP || ' sản phẩm: ' || coalesce(NEW.name, OLD.name);
-  ELSIF ent_type = 'categories' THEN act_type := 'CATEGORY_' || TG_OP; descrip := TG_OP || ' danh mục: ' || coalesce(NEW.name, OLD.name);
-  ELSIF ent_type = 'brands' THEN act_type := 'BRAND_' || TG_OP; descrip := TG_OP || ' thương hiệu: ' || coalesce(NEW.name, OLD.name);
-  ELSIF ent_type = 'discounts' THEN act_type := 'DISCOUNT_' || TG_OP; descrip := TG_OP || ' mã giảm giá: ' || coalesce(NEW.code, OLD.code);
-  ELSIF ent_type = 'product_variants' THEN act_type := 'PRODUCT_VARIANT_' || TG_OP; descrip := TG_OP || ' biến thể sản phẩm (ID: ' || coalesce(NEW.id::text, OLD.id::text) || ')';
+  act_type := upper(ent_type) || '_' || TG_OP; -- Tạo activity_type chuẩn hóa
+
+  -- Log cho các bảng thuộc tính cơ bản
+  IF ent_type IN ('brands', 'categories', 'genders', 'perfume_types', 'concentrations', 'ingredients', 'scents', 'product_labels', 'order_statuses', 'payment_methods') THEN
+      entity_name := coalesce(NEW.name, OLD.name);
+      descrip := format('%s %s: "%s" (ID: %s)', action_verb,
+                        CASE ent_type
+                            WHEN 'brands' THEN 'thương hiệu'
+                            WHEN 'categories' THEN 'danh mục'
+                            WHEN 'genders' THEN 'giới tính'
+                            WHEN 'perfume_types' THEN 'loại nước hoa'
+                            WHEN 'concentrations' THEN 'nồng độ'
+                            WHEN 'ingredients' THEN 'thành phần'
+                            WHEN 'scents' THEN 'nhóm hương'
+                            WHEN 'product_labels' THEN 'nhãn sản phẩm'
+                            WHEN 'order_statuses' THEN 'trạng thái đơn hàng'
+                            WHEN 'payment_methods' THEN 'phương thức thanh toán'
+                            ELSE ent_type -- Fallback
+                        END,
+                        entity_name, entity_id_val);
+  -- Log cho sản phẩm
+  ELSIF ent_type = 'products' THEN
+    entity_name := coalesce(NEW.name, OLD.name);
+    descrip := format('%s sản phẩm: "%s" (ID: %s)', action_verb, entity_name, entity_id_val);
+    IF TG_OP = 'UPDATE' AND OLD.deleted_at IS DISTINCT FROM NEW.deleted_at THEN
+        descrip := descrip || format('. Trạng thái: %s.', CASE WHEN NEW.deleted_at IS NULL THEN 'Đã khôi phục' ELSE 'Đã xóa mềm' END);
+        act_type := 'PRODUCT_' || CASE WHEN NEW.deleted_at IS NULL THEN 'RESTORE' ELSE 'SOFT_DELETE' END;
+    END IF;
+  -- Log cho biến thể sản phẩm
+  ELSIF ent_type = 'product_variants' THEN
+    descrip := format('%s biến thể sản phẩm (ID: %s, ProductID: %s)', action_verb, entity_id_val, coalesce(NEW.product_id::text, OLD.product_id::text));
+    IF TG_OP = 'UPDATE' AND OLD.deleted_at IS DISTINCT FROM NEW.deleted_at THEN
+        descrip := descrip || format('. Trạng thái: %s.', CASE WHEN NEW.deleted_at IS NULL THEN 'Đã khôi phục' ELSE 'Đã xóa mềm' END);
+        act_type := 'PRODUCT_VARIANT_' || CASE WHEN NEW.deleted_at IS NULL THEN 'RESTORE' ELSE 'SOFT_DELETE' END;
+    END IF;
+  -- Log cho mã giảm giá
+  ELSIF ent_type = 'discounts' THEN
+    entity_name := coalesce(NEW.code, OLD.code);
+    descrip := format('%s mã giảm giá: "%s" (ID: %s)', action_verb, entity_name, entity_id_val);
+    IF TG_OP = 'UPDATE' AND OLD.is_active IS DISTINCT FROM NEW.is_active THEN
+        descrip := descrip || format('. Trạng thái hoạt động: %s.', CASE WHEN NEW.is_active THEN 'Kích hoạt' ELSE 'Vô hiệu hóa' END);
+    END IF;
+  -- Log cho Banner
+  ELSIF ent_type = 'banners' THEN
+      entity_name := coalesce(NEW.title, OLD.title);
+      descrip := format('%s banner: "%s" (ID: %s)', action_verb, entity_name, entity_id_val);
+      IF TG_OP = 'UPDATE' AND OLD.is_active IS DISTINCT FROM NEW.is_active THEN
+          descrip := descrip || format('. Trạng thái hiển thị: %s.', CASE WHEN NEW.is_active THEN 'Bật' ELSE 'Tắt' END);
+      END IF;
+  -- Log cho Ảnh sản phẩm
+   ELSIF ent_type = 'product_images' THEN
+       descrip := format('%s ảnh (ID: %s) cho sản phẩm ID %s',
+                         action_verb,
+                         entity_id_val,
+                         coalesce(NEW.product_id::text, OLD.product_id::text));
+       IF TG_OP = 'UPDATE' AND OLD.is_main IS DISTINCT FROM NEW.is_main THEN
+           descrip := descrip || format('. Đặt làm ảnh chính: %s.', NEW.is_main);
+       END IF;
+   -- Log cho liên kết Thành phần - Sản phẩm - Tầng hương
+   ELSIF ent_type = 'product_ingredients' THEN
+       descrip := format('%s liên kết Thành phần ID %s (Tầng: %s) vào Sản phẩm ID %s',
+                        action_verb,
+                        coalesce(NEW.ingredient_id::text, OLD.ingredient_id::text),
+                        coalesce(NEW.scent_type, OLD.scent_type),
+                        coalesce(NEW.product_id::text, OLD.product_id::text));
+       act_type := 'PRODUCT_INGREDIENT_LINK_' || TG_OP;
+   -- Log cho liên kết Danh mục - Sản phẩm
+   ELSIF ent_type = 'product_categories' THEN
+       descrip := format('%s liên kết Danh mục ID %s vào Sản phẩm ID %s',
+                        action_verb,
+                        coalesce(NEW.category_id::text, OLD.category_id::text),
+                        coalesce(NEW.product_id::text, OLD.product_id::text));
+       act_type := 'PRODUCT_CATEGORY_LINK_' || TG_OP;
+   -- Log cho Gán nhãn sản phẩm
+   ELSIF ent_type = 'product_label_assignments' THEN
+       descrip := format('%s gán Nhãn ID %s cho Sản phẩm ID %s',
+                        action_verb,
+                        coalesce(NEW.label_id::text, OLD.label_id::text),
+                        coalesce(NEW.product_id::text, OLD.product_id::text));
+       IF TG_OP = 'UPDATE' AND OLD.valid_until IS DISTINCT FROM NEW.valid_until THEN
+           descrip := descrip || format('. Cập nhật hạn sử dụng thành: %s.', NEW.valid_until);
+       END IF;
+       act_type := 'PRODUCT_LABEL_ASSIGNMENT_' || TG_OP;
   -- Log chi tiết hơn cho Orders
   ELSIF ent_type = 'orders' AND TG_OP = 'UPDATE' THEN
-     -- Log thay đổi trạng thái đơn hàng bởi Admin/Staff
      IF OLD.order_status_id IS DISTINCT FROM NEW.order_status_id THEN
         SELECT name INTO old_status_name FROM public.order_statuses WHERE id = OLD.order_status_id;
         SELECT name INTO new_status_name FROM public.order_statuses WHERE id = NEW.order_status_id;
-        -- Trường hợp Admin/Staff hủy đơn (được ghi nhận qua cancelled_by_user_id)
         IF new_status_name = 'Đã hủy' AND NEW.cancelled_by = 'admin' THEN
             SELECT email INTO affected_user_email FROM auth.users WHERE id = NEW.cancelled_by_user_id;
             act_type := 'ORDER_CANCELLED_BY_ADMIN';
-            descrip := 'Admin/Staff (' || coalesce(affected_user_email, NEW.cancelled_by_user_id::text) || ') hủy đơn hàng #' || NEW.id || '. Lý do: ' || coalesce(NEW.cancellation_reason, 'Không rõ');
+            descrip := format('Đơn hàng #%s: Bị hủy bởi Admin/Staff (%s). Lý do: %s',
+                              NEW.id, coalesce(affected_user_email, NEW.cancelled_by_user_id::text), coalesce(NEW.cancellation_reason, 'Không rõ'));
             dets := dets || jsonb_build_object('cancellation_reason', NEW.cancellation_reason, 'cancelled_by_user_id', NEW.cancelled_by_user_id, 'old_status', old_status_name, 'new_status', new_status_name);
-        ELSE -- Trường hợp thay đổi trạng thái khác
+        ELSE
             act_type := 'ORDER_STATUS_CHANGE_BY_ADMIN';
-            descrip := 'Đơn hàng #' || NEW.id || ' trạng thái đổi từ "' || coalesce(old_status_name,'NULL') || '" sang "' || coalesce(new_status_name,'NULL') || '" bởi Admin/Staff.';
+            descrip := format('Đơn hàng #%s: Trạng thái đổi từ "%s" sang "%s" bởi Admin/Staff (%s).',
+                              NEW.id, coalesce(old_status_name,'NULL'), coalesce(new_status_name,'NULL'), admin_user_info);
             dets := dets || jsonb_build_object('old_status', old_status_name, 'new_status', new_status_name);
         END IF;
-     -- Log thay đổi người giao hàng
      ELSIF OLD.assigned_shipper_id IS DISTINCT FROM NEW.assigned_shipper_id THEN
         SELECT email INTO old_shipper_email FROM auth.users WHERE id = OLD.assigned_shipper_id;
         SELECT email INTO new_shipper_email FROM auth.users WHERE id = NEW.assigned_shipper_id;
         act_type := 'ORDER_SHIPPER_ASSIGNMENT';
-        descrip := 'Đơn hàng #' || NEW.id || ' đổi người giao hàng từ "' || coalesce(old_shipper_email, OLD.assigned_shipper_id::text, 'Chưa gán') || '" sang "' || coalesce(new_shipper_email, NEW.assigned_shipper_id::text, 'Bỏ gán') || '" bởi Admin/Staff.';
+        descrip := format('Đơn hàng #%s: Đổi người giao hàng từ "%s" sang "%s" bởi Admin/Staff (%s).',
+                          NEW.id, coalesce(old_shipper_email, OLD.assigned_shipper_id::text, 'Chưa gán'), coalesce(new_shipper_email, NEW.assigned_shipper_id::text, 'Bỏ gán'), admin_user_info);
         dets := dets || jsonb_build_object('old_shipper_id', OLD.assigned_shipper_id, 'new_shipper_id', NEW.assigned_shipper_id);
-     -- Log thay đổi trạng thái thanh toán thủ công
      ELSIF OLD.payment_status IS DISTINCT FROM NEW.payment_status THEN
         act_type := 'ORDER_PAYMENT_STATUS_UPDATE_BY_ADMIN';
-        descrip := 'Admin/Staff cập nhật trạng thái thanh toán đơn hàng #' || NEW.id || ' từ "' || OLD.payment_status || '" thành "' || NEW.payment_status || '".';
+        descrip := format('Đơn hàng #%s: Admin/Staff (%s) cập nhật trạng thái thanh toán từ "%s" thành "%s".',
+                           NEW.id, admin_user_info, OLD.payment_status, NEW.payment_status);
         dets := dets || jsonb_build_object('old_payment_status', OLD.payment_status, 'new_payment_status', NEW.payment_status);
+     ELSE
+        act_type := 'ORDER_INFO_UPDATE_BY_ADMIN';
+        descrip := format('Đơn hàng #%s: Admin/Staff (%s) cập nhật thông tin khác.', NEW.id, admin_user_info);
      END IF;
   -- Log duyệt/xóa đánh giá
   ELSIF ent_type = 'reviews' THEN
-    IF TG_OP = 'UPDATE' AND OLD.is_approved IS DISTINCT FROM NEW.is_approved THEN act_type := 'REVIEW_' || (CASE WHEN NEW.is_approved THEN 'APPROVE' ELSE 'UNAPPROVE' END); descrip := act_type || ' đánh giá #' || NEW.id;
-    ELSIF TG_OP = 'DELETE' THEN act_type := 'REVIEW_DELETE'; descrip := 'Xóa đánh giá #' || OLD.id; END IF;
+    IF TG_OP = 'UPDATE' THEN
+        IF OLD.is_approved IS DISTINCT FROM NEW.is_approved THEN
+            act_type := 'REVIEW_' || (CASE WHEN NEW.is_approved THEN 'APPROVE' ELSE 'UNAPPROVE' END);
+            descrip := format('%s đánh giá #%s bởi Admin/Staff (%s)',
+                              (CASE WHEN NEW.is_approved THEN 'Duyệt' ELSE 'Bỏ duyệt' END), entity_id_val, admin_user_info);
+        ELSE
+            act_type := 'REVIEW_UPDATE_BY_ADMIN';
+            descrip := format('Cập nhật nội dung đánh giá #%s bởi Admin/Staff (%s)', entity_id_val, admin_user_info);
+        END IF;
+    ELSIF TG_OP = 'DELETE' THEN
+        act_type := 'REVIEW_DELETE';
+        descrip := format('Xóa đánh giá #%s bởi Admin/Staff (%s)', entity_id_val, admin_user_info);
+    END IF;
   -- Log phản hồi đánh giá
-  ELSIF ent_type = 'review_replies' THEN act_type := 'REVIEW_REPLY_' || TG_OP; descrip := TG_OP || ' phản hồi cho đánh giá #' || coalesce(NEW.review_id, OLD.review_id);
+  ELSIF ent_type = 'review_replies' THEN
+    descrip := format('%s phản hồi (ID: %s) cho đánh giá #%s bởi Admin/Staff (%s)',
+                     action_verb, entity_id_val, coalesce(NEW.review_id, OLD.review_id), admin_user_info);
   -- Log cập nhật cài đặt shop
-  ELSIF ent_type = 'shop_settings' AND TG_OP = 'UPDATE' THEN act_type := 'SHOP_SETTINGS_UPDATE'; descrip := 'Cập nhật cài đặt cửa hàng';
-  -- Thêm các loại log khác nếu cần... (vd: inventory được log qua RPC adjust_stock)
+  ELSIF ent_type = 'shop_settings' AND TG_OP = 'UPDATE' THEN
+    act_type := 'SHOP_SETTINGS_UPDATE';
+    descrip := format('Cập nhật cài đặt cửa hàng bởi Admin/Staff (%s)', admin_user_info);
+  -- Log cho payments
+  ELSIF ent_type = 'payments' THEN
+      descrip := format('%s giao dịch thanh toán (ID: %s) cho đơn hàng #%s bởi Admin/Staff (%s)',
+                       action_verb, entity_id_val, coalesce(NEW.order_id::text, OLD.order_id::text), admin_user_info);
+  -- Log cho user profiles
+  ELSIF ent_type = 'profiles' THEN
+      SELECT email INTO affected_user_email FROM auth.users WHERE id = coalesce(OLD.id, NEW.id); -- Sử dụng coalesce để hoạt động cho cả INSERT
+      descrip := format('%s hồ sơ người dùng "%s" (ID: %s) bởi Admin/Staff (%s)',
+                       action_verb, coalesce(affected_user_email, coalesce(OLD.id::text, NEW.id::text)), entity_id_val, admin_user_info);
+  -- Log cho addresses
+  ELSIF ent_type = 'addresses' THEN
+      SELECT email INTO affected_user_email FROM auth.users WHERE id = coalesce(OLD.user_id, NEW.user_id); -- Sử dụng coalesce
+      descrip := format('%s địa chỉ (ID: %s) của người dùng "%s" bởi Admin/Staff (%s)',
+                       action_verb, entity_id_val, coalesce(affected_user_email, coalesce(OLD.user_id::text, NEW.user_id::text)), admin_user_info);
+  -- Fallback cho các bảng khác chưa được định nghĩa rõ
+  ELSE
+      -- Cố gắng lấy cột 'name' hoặc 'id' để log, nếu không có thì dùng entity_id_val
+      entity_name := coalesce(
+          CASE WHEN TG_OP != 'DELETE' THEN (to_jsonb(NEW)->>'name')::text ELSE NULL END,
+          CASE WHEN TG_OP != 'INSERT' THEN (to_jsonb(OLD)->>'name')::text ELSE NULL END,
+          entity_id_val
+      );
+      descrip := format('%s bản ghi trong bảng "%s" ("%s") bởi Admin/Staff (%s)',
+                       action_verb, ent_type, entity_name, admin_user_info);
   END IF;
 
-  -- Chèn vào bảng log nếu có hành động được xác định
-  IF act_type IS NOT NULL THEN
+  -- Chèn vào bảng log nếu có hành động được xác định và mô tả
+  IF act_type IS NOT NULL AND descrip IS NOT NULL THEN
      INSERT INTO public.admin_activity_log (admin_user_id, activity_type, description, entity_type, entity_id, details)
-     VALUES (auth.uid(), act_type, descrip, ent_type, ent_id, dets);
+     VALUES (auth.uid(), act_type, descrip, ent_type, entity_id_val, dets);
   END IF;
 
   RETURN NULL; -- Trigger AFTER không cần trả về bản ghi
 END; $$;
-comment on function public.log_admin_activity is '[V3] Tự động ghi lại các hành động INSERT, UPDATE, DELETE quan trọng do người dùng có vai trò "admin" hoặc "staff" thực hiện vào bảng `admin_activity_log`.';
+comment on function public.log_admin_activity is '[V3.1 Single Run] Tự động ghi lại các hành động INSERT, UPDATE, DELETE quan trọng do Admin/Staff thực hiện. Nội dung log chi tiết và bao phủ nhiều bảng hơn.';
 
--- TRIGGERS: Gọi hàm log_admin_activity sau khi có thay đổi trên các bảng quan trọng
-DROP TRIGGER IF EXISTS trigger_log_admin_activity_products ON public.products; CREATE TRIGGER trigger_log_admin_activity_products AFTER INSERT OR UPDATE OR DELETE ON public.products FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
-DROP TRIGGER IF EXISTS trigger_log_admin_activity_categories ON public.categories; CREATE TRIGGER trigger_log_admin_activity_categories AFTER INSERT OR UPDATE OR DELETE ON public.categories FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
-DROP TRIGGER IF EXISTS trigger_log_admin_activity_brands ON public.brands; CREATE TRIGGER trigger_log_admin_activity_brands AFTER INSERT OR UPDATE OR DELETE ON public.brands FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
-DROP TRIGGER IF EXISTS trigger_log_admin_activity_product_variants ON public.product_variants; CREATE TRIGGER trigger_log_admin_activity_product_variants AFTER INSERT OR UPDATE OR DELETE ON public.product_variants FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
-DROP TRIGGER IF EXISTS trigger_log_admin_activity_discounts ON public.discounts; CREATE TRIGGER trigger_log_admin_activity_discounts AFTER INSERT OR UPDATE OR DELETE ON public.discounts FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
-DROP TRIGGER IF EXISTS trigger_log_admin_activity_orders ON public.orders; CREATE TRIGGER trigger_log_admin_activity_orders AFTER UPDATE ON public.orders FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity(); -- Log thay đổi trạng thái, gán shipper,... bởi admin/staff
-DROP TRIGGER IF EXISTS trigger_log_admin_activity_reviews ON public.reviews; CREATE TRIGGER trigger_log_admin_activity_reviews AFTER UPDATE OR DELETE ON public.reviews FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity(); -- Log duyệt/xóa đánh giá
-DROP TRIGGER IF EXISTS trigger_log_admin_activity_review_replies ON public.review_replies; CREATE TRIGGER trigger_log_admin_activity_review_replies AFTER INSERT OR UPDATE OR DELETE ON public.review_replies FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
-DROP TRIGGER IF EXISTS trigger_log_admin_activity_shop_settings ON public.shop_settings; CREATE TRIGGER trigger_log_admin_activity_shop_settings AFTER UPDATE ON public.shop_settings FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
--- Thêm trigger cho các bảng khác nếu cần log (vd: payment_methods, ingredients...)
+
+-- TRIGGERS: Gọi hàm log_admin_activity sau khi có thay đổi trên TẤT CẢ các bảng quản lý bởi Admin/Staff
+
+-- Bảng thuộc tính & cấu hình
+CREATE TRIGGER trigger_log_admin_activity_brands AFTER INSERT OR UPDATE OR DELETE ON public.brands FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+CREATE TRIGGER trigger_log_admin_activity_categories AFTER INSERT OR UPDATE OR DELETE ON public.categories FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+CREATE TRIGGER trigger_log_admin_activity_genders AFTER INSERT OR UPDATE OR DELETE ON public.genders FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+CREATE TRIGGER trigger_log_admin_activity_perfume_types AFTER INSERT OR UPDATE OR DELETE ON public.perfume_types FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+CREATE TRIGGER trigger_log_admin_activity_concentrations AFTER INSERT OR UPDATE OR DELETE ON public.concentrations FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+CREATE TRIGGER trigger_log_admin_activity_ingredients AFTER INSERT OR UPDATE OR DELETE ON public.ingredients FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+CREATE TRIGGER trigger_log_admin_activity_scents AFTER INSERT OR UPDATE OR DELETE ON public.scents FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+CREATE TRIGGER trigger_log_admin_activity_product_labels AFTER INSERT OR UPDATE OR DELETE ON public.product_labels FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+CREATE TRIGGER trigger_log_admin_activity_order_statuses AFTER INSERT OR UPDATE OR DELETE ON public.order_statuses FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+CREATE TRIGGER trigger_log_admin_activity_payment_methods AFTER INSERT OR UPDATE OR DELETE ON public.payment_methods FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+CREATE TRIGGER trigger_log_admin_activity_shop_settings AFTER UPDATE ON public.shop_settings FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+CREATE TRIGGER trigger_log_admin_activity_banners AFTER INSERT OR UPDATE OR DELETE ON public.banners FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+
+-- Bảng sản phẩm và liên quan
+CREATE TRIGGER trigger_log_admin_activity_products AFTER INSERT OR UPDATE OR DELETE ON public.products FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+CREATE TRIGGER trigger_log_admin_activity_product_variants AFTER INSERT OR UPDATE OR DELETE ON public.product_variants FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+CREATE TRIGGER trigger_log_admin_activity_product_images AFTER INSERT OR UPDATE OR DELETE ON public.product_images FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+CREATE TRIGGER trigger_log_admin_activity_product_ingredients AFTER INSERT OR DELETE ON public.product_ingredients FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+CREATE TRIGGER trigger_log_admin_activity_product_categories AFTER INSERT OR DELETE ON public.product_categories FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+CREATE TRIGGER trigger_log_admin_activity_product_label_assignments AFTER INSERT OR UPDATE OR DELETE ON public.product_label_assignments FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+
+-- Bảng đơn hàng & thanh toán
+CREATE TRIGGER trigger_log_admin_activity_orders AFTER UPDATE ON public.orders FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+CREATE TRIGGER trigger_log_admin_activity_payments AFTER INSERT OR UPDATE OR DELETE ON public.payments FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+
+-- Bảng giảm giá
+CREATE TRIGGER trigger_log_admin_activity_discounts AFTER INSERT OR UPDATE OR DELETE ON public.discounts FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+
+-- Bảng đánh giá & phản hồi
+CREATE TRIGGER trigger_log_admin_activity_reviews AFTER UPDATE OR DELETE ON public.reviews FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+CREATE TRIGGER trigger_log_admin_activity_review_replies AFTER INSERT OR UPDATE OR DELETE ON public.review_replies FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+
+-- Bảng người dùng (Nếu Admin/Staff được phép sửa)
+CREATE TRIGGER trigger_log_admin_activity_profiles AFTER UPDATE ON public.profiles FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+CREATE TRIGGER trigger_log_admin_activity_addresses AFTER INSERT OR UPDATE OR DELETE ON public.addresses FOR EACH ROW EXECUTE PROCEDURE public.log_admin_activity();
+
+-- Các bảng không cần log admin tự động: inventory, shopping_carts, cart_items, wishlists, order_items
 
 -- FUNCTION: Đảm bảo chỉ có 1 ảnh chính cho mỗi sản phẩm
 DROP FUNCTION IF EXISTS public.enforce_single_main_image();
