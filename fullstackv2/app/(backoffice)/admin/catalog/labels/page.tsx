@@ -30,11 +30,11 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Plus, Search, MoreHorizontal, Pencil, Trash2, ArrowUpDown, Loader2 } from "lucide-react"
-import { useProductLabels } from "./hooks/use-product-labels"
-import { useDeleteProductLabel } from "./hooks/use-delete-product-label"
+import { useProductLabels } from "../../../../../features/admin/labels/hooks/use-product-labels"
+import { useDeleteProductLabel } from "../../../../../features/admin/labels/hooks/use-delete-product-label"
 import { useSonnerToast } from "@/shared/hooks/use-sonner-toast"
-import { useDebounce } from "./hooks/use-debounce"
-import { ProductLabelDialog } from "./components/product-label-dialog"
+import { useDebounce } from "../../../../../features/admin/labels/hooks/use-debounce"
+import { ProductLabelDialog } from "../../../../../features/admin/labels/components/product-label-dialog"
 import { formatDate } from "@/shared/lib/utils"
 
 export default function ProductLabelsPage() {

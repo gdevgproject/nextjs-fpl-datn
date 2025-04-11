@@ -28,11 +28,11 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Plus, Search, MoreHorizontal, Pencil, Trash2, ArrowUpDown, Loader2 } from "lucide-react"
-import { useConcentrations } from "./hooks/use-concentrations"
-import { useDeleteConcentration } from "./hooks/use-delete-concentration"
+import { useConcentrations } from "../../../../../../features/admin/concentrations/hooks/use-concentrations"
+import { useDeleteConcentration } from "../../../../../../features/admin/concentrations/hooks/use-delete-concentration"
 import { useSonnerToast } from "@/shared/hooks/use-sonner-toast"
-import { useDebounce } from "./hooks/use-debounce"
-import { ConcentrationDialog } from "./components/concentration-dialog"
+import { useDebounce } from "../../../../../../features/admin/concentrations/hooks/use-debounce"
+import { ConcentrationDialog } from "../../../../../../features/admin/concentrations/components/concentration-dialog"
 import { formatDate } from "@/shared/lib/utils"
 
 export default function ConcentrationsPage() {

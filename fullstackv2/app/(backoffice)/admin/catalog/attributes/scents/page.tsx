@@ -28,11 +28,11 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Plus, Search, MoreHorizontal, Pencil, Trash2, ArrowUpDown, Loader2 } from "lucide-react"
-import { useScents } from "./hooks/use-scents"
-import { useDeleteScent } from "./hooks/use-delete-scent"
+import { useScents } from "../../../../../../features/admin/scents/hooks/use-scents"
+import { useDeleteScent } from "../../../../../../features/admin/scents/hooks/use-delete-scent"
 import { useSonnerToast } from "@/shared/hooks/use-sonner-toast"
-import { useDebounce } from "./hooks/use-debounce"
-import { ScentDialog } from "./components/scent-dialog"
+import { useDebounce } from "../../../../../../features/admin/scents/hooks/use-debounce"
+import { ScentDialog } from "../../../../../../features/admin/scents/components/scent-dialog"
 import { formatDate } from "@/shared/lib/utils"
 
 export default function ScentsPage() {

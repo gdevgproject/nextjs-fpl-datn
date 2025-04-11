@@ -28,11 +28,11 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Plus, Search, MoreHorizontal, Pencil, Trash2, ArrowUpDown, Loader2 } from "lucide-react"
-import { usePerfumeTypes } from "./hooks/use-perfume-types"
-import { useDeletePerfumeType } from "./hooks/use-delete-perfume-type"
+import { usePerfumeTypes } from "../../../../../../features/admin/perfume-types/hooks/use-perfume-types"
+import { useDeletePerfumeType } from "../../../../../../features/admin/perfume-types/hooks/use-delete-perfume-type"
 import { useSonnerToast } from "@/shared/hooks/use-sonner-toast"
-import { useDebounce } from "./hooks/use-debounce"
-import { PerfumeTypeDialog } from "./components/perfume-type-dialog"
+import { useDebounce } from "../../../../../../features/admin/perfume-types/hooks/use-debounce"
+import { PerfumeTypeDialog } from "../../../../../../features/admin/perfume-types/components/perfume-type-dialog"
 import { formatDate } from "@/shared/lib/utils"
 
 export default function PerfumeTypesPage() {

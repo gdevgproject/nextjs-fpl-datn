@@ -28,11 +28,11 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Plus, Search, MoreHorizontal, Pencil, Trash2, ArrowUpDown, Loader2 } from "lucide-react"
-import { useGenders } from "./hooks/use-genders"
-import { useDeleteGender } from "./hooks/use-delete-gender"
+import { useGenders } from "../../../../../../features/admin/genders/hooks/use-genders"
+import { useDeleteGender } from "../../../../../../features/admin/genders/hooks/use-delete-gender"
 import { useSonnerToast } from "@/shared/hooks/use-sonner-toast"
-import { useDebounce } from "./hooks/use-debounce"
-import { GenderDialog } from "./components/gender-dialog"
+import { useDebounce } from "../../../../../../features/admin/genders/hooks/use-debounce"
+import { GenderDialog } from "../../../../../../features/admin/genders/components/gender-dialog"
 import { formatDate } from "@/shared/lib/utils"
 
 export default function GendersPage() {

@@ -28,11 +28,11 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Plus, Search, MoreHorizontal, Pencil, Trash2, ArrowUpDown, Loader2 } from "lucide-react"
-import { useIngredients } from "./hooks/use-ingredients"
-import { useDeleteIngredient } from "./hooks/use-delete-ingredient"
+import { useIngredients } from "../../../../../../features/admin/ingredients/hooks/use-ingredients"
+import { useDeleteIngredient } from "../../../../../../features/admin/ingredients/hooks/use-delete-ingredient"
 import { useSonnerToast } from "@/shared/hooks/use-sonner-toast"
-import { useDebounce } from "./hooks/use-debounce"
-import { IngredientDialog } from "./components/ingredient-dialog"
+import { useDebounce } from "../../../../../../features/admin/ingredients/hooks/use-debounce"
+import { IngredientDialog } from "../../../../../../features/admin/ingredients/components/ingredient-dialog"
 import { formatDate } from "@/shared/lib/utils"
 
 export default function IngredientsPage() {
