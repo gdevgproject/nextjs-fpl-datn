@@ -1993,6 +1993,104 @@ DROP POLICY IF EXISTS "Admins can manage shop settings" ON public.shop_settings;
 
 
 -- ============================================================================
+-- SECTION: AUTH.USERS RLS POLICIES (V1.1 - Enhanced for Admin/Staff/User)
+-- PURPOSE: Define fine-grained access control for the auth.users table.
+-- RUN AFTER: Initial db.txt setup.
+-- ============================================================================
+
+-- Enable RLS on auth.users (if not already enabled by default - defensive check)
+ALTER TABLE auth.users ENABLE ROW LEVEL SECURITY;
+
+-- ----------------------------------------------------------------------------
+-- ADMIN POLICIES
+-- ----------------------------------------------------------------------------
+
+-- Policy: Admins can view all user records
+-- Needed for user listing in the admin panel.
+DROP POLICY IF EXISTS "Admin can select all users" ON auth.users;
+CREATE POLICY "Admin can select all users" ON auth.users
+    FOR SELECT
+    USING (public.is_admin());
+
+-- Policy: Admins can update user records (Primarily for role management in metadata)
+-- CRITICAL: This policy is necessary for Admins to assign roles (staff, shipper)
+-- by updating raw_app_meta_data. It grants broad update access on the row;
+-- ensure the Admin role is tightly controlled. Actual updates to sensitive fields
+-- like email or password should ideally use Supabase Auth APIs/methods.
+DROP POLICY IF EXISTS "Admin can update user metadata" ON auth.users;
+CREATE POLICY "Admin can update user metadata" ON auth.users
+    FOR UPDATE -- Allows UPDATE operations initiated by an admin
+    USING (public.is_admin()) -- Ensures only admins can attempt the update on any row
+    WITH CHECK (public.is_admin()); -- Ensures the check passes if the user is an admin
+
+-- Policy: Admins can delete users (Use with extreme caution!)
+-- Optional: Uncomment ONLY if admins should be able to permanently delete users
+-- directly via SQL/API bypassing application logic. Deleting users can have
+-- significant side effects (orphaned data, etc.). Consider soft-delete or
+-- application-level deactivation instead.
+-- DROP POLICY IF EXISTS "Admin can delete users" ON auth.users;
+-- CREATE POLICY "Admin can delete users" ON auth.users
+--     FOR DELETE
+--     USING (public.is_admin());
+
+-- ----------------------------------------------------------------------------
+-- STAFF POLICIES
+-- ----------------------------------------------------------------------------
+
+-- Policy: Staff can view all user records (Read-only)
+-- Useful for customer support, order verification, etc. Staff includes Admins.
+DROP POLICY IF EXISTS "Staff can select all users" ON auth.users;
+CREATE POLICY "Staff can select all users" ON auth.users
+    FOR SELECT
+    USING (public.is_staff()); -- is_staff() checks for 'staff' or 'admin'
+
+-- NOTE: Staff typically should NOT have direct UPDATE/DELETE permissions on auth.users.
+-- Role changes or sensitive updates should be handled by Admins.
+DROP POLICY IF EXISTS "Staff can update users" ON auth.users; -- Explicitly drop/ensure no update policy for staff
+DROP POLICY IF EXISTS "Staff can delete users" ON auth.users; -- Explicitly drop/ensure no delete policy for staff
+
+
+-- ----------------------------------------------------------------------------
+-- AUTHENTICATED USER POLICIES (Self-Access)
+-- ----------------------------------------------------------------------------
+
+-- Policy: Users can view their own user record
+-- Allows users to fetch their own basic auth details if needed.
+DROP POLICY IF EXISTS "Users can select their own data" ON auth.users;
+CREATE POLICY "Users can select their own data" ON auth.users
+    FOR SELECT
+    USING (auth.uid() = id);
+
+-- Policy: Users update their own metadata (REMOVED / COMMENTED OUT)
+-- Rationale: Direct updates to auth.users metadata by the user via SQL/API
+-- are generally discouraged. Password/email changes should use Supabase Auth
+-- specific methods (e.g., updatePassword, updateUser). Profile information
+-- (name, avatar, etc.) should be managed via the dedicated public.profiles table.
+-- Uncomment ONLY if there's a specific, safe use case for direct user metadata updates via RLS.
+DROP POLICY IF EXISTS "Users can update their own metadata" ON auth.users;
+-- CREATE POLICY "Users can update their own metadata" ON auth.users
+--    FOR UPDATE
+--    USING (auth.uid() = id)
+--    WITH CHECK (auth.uid() = id);
+
+-- NOTE: Users cannot delete their own accounts via this RLS policy.
+-- Account deletion should be a controlled process within the application,
+-- likely involving calling specific Supabase admin functions or server-side logic.
+DROP POLICY IF EXISTS "Users can delete their own account" ON auth.users; -- Explicitly drop/ensure no self-delete policy
+
+
+-- ----------------------------------------------------------------------------
+-- Fallback / Default Deny
+-- ----------------------------------------------------------------------------
+-- By enabling RLS and only defining permissive policies (USING clause evaluates to true),
+-- any access attempt not matching one of the defined policies will be implicitly denied.
+-- No explicit DENY policy is strictly needed unless you want to override a permissive one.
+
+-- ============================================================================
+-- END OF AUTH.USERS RLS POLICIES
+-- ============================================================================
+
+-- ============================================================================
 -- SECTION: STORAGE BUCKETS & POLICIES (Lưu trữ File) V3
 -- Định nghĩa các "thư mục" (buckets) để lưu file và chính sách truy cập.
 -- ============================================================================

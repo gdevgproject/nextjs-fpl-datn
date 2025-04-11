@@ -1,18 +1,11 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { AdminLayout } from "@/components/layout/backoffice/admin-layout";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { AdminLayout } from "@/components/layout/backoffice/admin-layout"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Pagination,
   PaginationContent,
@@ -21,13 +14,8 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from "@/components/ui/pagination";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/components/ui/pagination"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,47 +25,39 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import {
-  Plus,
-  Search,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  ArrowUpDown,
-  Loader2,
-} from "lucide-react";
-import { useBrands } from "@/features/admin/brands/hooks/use-brands";
-import { useDeleteBrand } from "@/features/admin/brands/hooks/use-delete-brand";
-import { useSonnerToast } from "@/shared/hooks/use-sonner-toast";
-import { useDebounce } from "@/features/admin/brands/hooks/use-debounce";
-import { BrandDialog } from "@/features/admin/brands/components/brand-dialog";
-import { formatDate } from "@/shared/lib/utils";
+} from "@/components/ui/alert-dialog"
+import { Card, CardContent } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, ArrowUpDown, Loader2 } from "lucide-react"
+import { useBrands } from "../../../../../../features/admin/brands/hooks/use-brands"
+import { useDeleteBrand } from "../../../../../../features/admin/brands/hooks/use-delete-brand"
+import { useSonnerToast } from "@/shared/hooks/use-sonner-toast"
+import { useDebounce } from "../../../../../../features/admin/brands/hooks/use-debounce"
+import { BrandDialog } from "../../../../../../features/admin/brands/components/brand-dialog"
+import { formatDate } from "@/shared/lib/utils"
 
 export default function BrandsPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const toast = useSonnerToast();
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const toast = useSonnerToast()
 
   // State for search, pagination, and sorting
-  const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearch = useDebounce(searchQuery, 500);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10);
-  const [sortColumn, setSortColumn] = useState<string>("name");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [searchQuery, setSearchQuery] = useState("")
+  const debouncedSearch = useDebounce(searchQuery, 500)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(10)
+  const [sortColumn, setSortColumn] = useState<string>("name")
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
   // State for brand dialog and delete confirmation
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedBrand, setSelectedBrand] = useState<any>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [selectedBrand, setSelectedBrand] = useState<any>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Fetch brands with pagination, search, and sorting
   const {
@@ -88,69 +68,65 @@ export default function BrandsPage() {
   } = useBrands(
     { search: debouncedSearch },
     { page: currentPage, pageSize },
-    { column: sortColumn, direction: sortDirection }
-  );
+    { column: sortColumn, direction: sortDirection },
+  )
 
   // Delete brand mutation
-  const deleteBrandMutation = useDeleteBrand();
+  const deleteBrandMutation = useDeleteBrand()
 
   // Handle sort toggle
   const handleSort = (column: string) => {
     if (sortColumn === column) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
     } else {
-      setSortColumn(column);
-      setSortDirection("asc");
+      setSortColumn(column)
+      setSortDirection("asc")
     }
-  };
+  }
 
   // Handle brand edit
   const handleEdit = (brand: any) => {
-    setSelectedBrand(brand);
-    setIsEditDialogOpen(true);
-  };
+    setSelectedBrand(brand)
+    setIsEditDialogOpen(true)
+  }
 
   // Handle brand delete
   const handleDelete = (brand: any) => {
-    setSelectedBrand(brand);
-    setIsDeleteDialogOpen(true);
-  };
+    setSelectedBrand(brand)
+    setIsDeleteDialogOpen(true)
+  }
 
   // Confirm brand deletion
   const confirmDelete = async () => {
-    if (!selectedBrand) return;
+    if (!selectedBrand) return
 
     try {
-      setIsDeleting(true);
-      await deleteBrandMutation.mutateAsync({ id: selectedBrand.id });
+      setIsDeleting(true)
+      await deleteBrandMutation.mutateAsync({ id: selectedBrand.id })
 
       // Đóng dialog trước khi hiển thị toast
-      setIsDeleteDialogOpen(false);
+      setIsDeleteDialogOpen(false)
 
       // Refetch data sau khi xóa thành công
-      await refetch();
+      await refetch()
 
-      toast.success("Thương hiệu đã được xóa thành công");
+      toast.success("Thương hiệu đã được xóa thành công")
     } catch (error) {
-      console.error("Error deleting brand:", error);
-      toast.error(
-        `Lỗi khi xóa thương hiệu: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
+      console.error("Error deleting brand:", error)
+      toast.error(`Lỗi khi xóa thương hiệu: ${error instanceof Error ? error.message : "Unknown error"}`)
     } finally {
-      setIsDeleting(false);
+      setIsDeleting(false)
     }
-  };
+  }
 
   // Calculate total pages
-  const totalItems = brandsData?.count || 0;
-  const totalPages = Math.ceil(totalItems / pageSize);
+  const totalItems = brandsData?.count || 0
+  const totalPages = Math.ceil(totalItems / pageSize)
 
   // Generate pagination items
   const generatePaginationItems = () => {
-    const items = [];
-    const maxVisiblePages = 5;
+    const items = []
+    const maxVisiblePages = 5
 
     // Always show first page
     items.push(
@@ -158,47 +134,43 @@ export default function BrandsPage() {
         <PaginationLink
           href="#"
           onClick={(e) => {
-            e.preventDefault();
-            setCurrentPage(1);
+            e.preventDefault()
+            setCurrentPage(1)
           }}
           isActive={currentPage === 1}
         >
           1
         </PaginationLink>
-      </PaginationItem>
-    );
+      </PaginationItem>,
+    )
 
     // Show ellipsis if needed
     if (currentPage > 3) {
       items.push(
         <PaginationItem key="ellipsis-1">
           <PaginationEllipsis />
-        </PaginationItem>
-      );
+        </PaginationItem>,
+      )
     }
 
     // Show pages around current page
-    for (
-      let i = Math.max(2, currentPage - 1);
-      i <= Math.min(totalPages - 1, currentPage + 1);
-      i++
-    ) {
-      if (i <= 1 || i >= totalPages) continue;
+    for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+      if (i <= 1 || i >= totalPages) continue
 
       items.push(
         <PaginationItem key={i}>
           <PaginationLink
             href="#"
             onClick={(e) => {
-              e.preventDefault();
-              setCurrentPage(i);
+              e.preventDefault()
+              setCurrentPage(i)
             }}
             isActive={currentPage === i}
           >
             {i}
           </PaginationLink>
-        </PaginationItem>
-      );
+        </PaginationItem>,
+      )
     }
 
     // Show ellipsis if needed
@@ -206,8 +178,8 @@ export default function BrandsPage() {
       items.push(
         <PaginationItem key="ellipsis-2">
           <PaginationEllipsis />
-        </PaginationItem>
-      );
+        </PaginationItem>,
+      )
     }
 
     // Always show last page if there's more than one page
@@ -217,30 +189,26 @@ export default function BrandsPage() {
           <PaginationLink
             href="#"
             onClick={(e) => {
-              e.preventDefault();
-              setCurrentPage(totalPages);
+              e.preventDefault()
+              setCurrentPage(totalPages)
             }}
             isActive={currentPage === totalPages}
           >
             {totalPages}
           </PaginationLink>
-        </PaginationItem>
-      );
+        </PaginationItem>,
+      )
     }
 
-    return items;
-  };
+    return items
+  }
 
   return (
     <AdminLayout>
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">
-            Quản lý thương hiệu
-          </h1>
-          <p className="text-muted-foreground">
-            Quản lý danh sách các thương hiệu nước hoa trong hệ thống
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">Quản lý thương hiệu</h1>
+          <p className="text-muted-foreground">Quản lý danh sách các thương hiệu nước hoa trong hệ thống</p>
         </div>
 
         <Tabs defaultValue="list" className="space-y-4">
@@ -275,34 +243,20 @@ export default function BrandsPage() {
                     <TableRow>
                       <TableHead className="w-[80px]">ID</TableHead>
                       <TableHead className="w-[80px]">Logo</TableHead>
-                      <TableHead
-                        className="cursor-pointer"
-                        onClick={() => handleSort("name")}
-                      >
+                      <TableHead className="cursor-pointer" onClick={() => handleSort("name")}>
                         <div className="flex items-center">
                           Tên thương hiệu
                           {sortColumn === "name" && (
-                            <ArrowUpDown
-                              className={`ml-2 h-4 w-4 ${
-                                sortDirection === "desc" ? "rotate-180" : ""
-                              }`}
-                            />
+                            <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === "desc" ? "rotate-180" : ""}`} />
                           )}
                         </div>
                       </TableHead>
                       <TableHead>Mô tả</TableHead>
-                      <TableHead
-                        className="cursor-pointer"
-                        onClick={() => handleSort("created_at")}
-                      >
+                      <TableHead className="cursor-pointer" onClick={() => handleSort("created_at")}>
                         <div className="flex items-center">
                           Ngày tạo
                           {sortColumn === "created_at" && (
-                            <ArrowUpDown
-                              className={`ml-2 h-4 w-4 ${
-                                sortDirection === "desc" ? "rotate-180" : ""
-                              }`}
-                            />
+                            <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === "desc" ? "rotate-180" : ""}`} />
                           )}
                         </div>
                       </TableHead>
@@ -335,14 +289,8 @@ export default function BrandsPage() {
                       ))
                     ) : error ? (
                       <TableRow>
-                        <TableCell
-                          colSpan={6}
-                          className="text-center text-red-500"
-                        >
-                          Lỗi khi tải dữ liệu:{" "}
-                          {error instanceof Error
-                            ? error.message
-                            : "Unknown error"}
+                        <TableCell colSpan={6} className="text-center text-red-500">
+                          Lỗi khi tải dữ liệu: {error instanceof Error ? error.message : "Unknown error"}
                         </TableCell>
                       </TableRow>
                     ) : brandsData?.data?.length === 0 ? (
@@ -357,23 +305,12 @@ export default function BrandsPage() {
                           <TableCell>{brand.id}</TableCell>
                           <TableCell>
                             <Avatar className="h-10 w-10">
-                              {brand.logo_url ? (
-                                <AvatarImage
-                                  src={brand.logo_url}
-                                  alt={brand.name}
-                                />
-                              ) : null}
-                              <AvatarFallback>
-                                {brand.name.charAt(0).toUpperCase()}
-                              </AvatarFallback>
+                              {brand.logo_url ? <AvatarImage src={brand.logo_url} alt={brand.name} /> : null}
+                              <AvatarFallback>{brand.name.charAt(0).toUpperCase()}</AvatarFallback>
                             </Avatar>
                           </TableCell>
-                          <TableCell className="font-medium">
-                            {brand.name}
-                          </TableCell>
-                          <TableCell className="max-w-xs truncate">
-                            {brand.description || "—"}
-                          </TableCell>
+                          <TableCell className="font-medium">{brand.name}</TableCell>
+                          <TableCell className="max-w-xs truncate">{brand.description || "—"}</TableCell>
                           <TableCell>{formatDate(brand.created_at)}</TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
@@ -384,9 +321,7 @@ export default function BrandsPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() => handleEdit(brand)}
-                                >
+                                <DropdownMenuItem onClick={() => handleEdit(brand)}>
                                   <Pencil className="mr-2 h-4 w-4" />
                                   Chỉnh sửa
                                 </DropdownMenuItem>
@@ -416,15 +351,11 @@ export default function BrandsPage() {
                     <PaginationPrevious
                       href="#"
                       onClick={(e) => {
-                        e.preventDefault();
-                        if (currentPage > 1) setCurrentPage(currentPage - 1);
+                        e.preventDefault()
+                        if (currentPage > 1) setCurrentPage(currentPage - 1)
                       }}
                       aria-disabled={currentPage === 1}
-                      className={
-                        currentPage === 1
-                          ? "pointer-events-none opacity-50"
-                          : ""
-                      }
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
                     />
                   </PaginationItem>
 
@@ -434,16 +365,11 @@ export default function BrandsPage() {
                     <PaginationNext
                       href="#"
                       onClick={(e) => {
-                        e.preventDefault();
-                        if (currentPage < totalPages)
-                          setCurrentPage(currentPage + 1);
+                        e.preventDefault()
+                        if (currentPage < totalPages) setCurrentPage(currentPage + 1)
                       }}
                       aria-disabled={currentPage === totalPages}
-                      className={
-                        currentPage === totalPages
-                          ? "pointer-events-none opacity-50"
-                          : ""
-                      }
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
                     />
                   </PaginationItem>
                 </PaginationContent>
@@ -468,13 +394,10 @@ export default function BrandsPage() {
                 ))
               ) : error ? (
                 <div className="col-span-full text-center text-red-500">
-                  Lỗi khi tải dữ liệu:{" "}
-                  {error instanceof Error ? error.message : "Unknown error"}
+                  Lỗi khi tải dữ liệu: {error instanceof Error ? error.message : "Unknown error"}
                 </div>
               ) : brandsData?.data?.length === 0 ? (
-                <div className="col-span-full text-center">
-                  Không có thương hiệu nào. Hãy thêm thương hiệu mới.
-                </div>
+                <div className="col-span-full text-center">Không có thương hiệu nào. Hãy thêm thương hiệu mới.</div>
               ) : (
                 brandsData?.data?.map((brand: any) => (
                   <Card key={brand.id} className="overflow-hidden">
@@ -500,16 +423,9 @@ export default function BrandsPage() {
                         {brand.description || "Không có mô tả"}
                       </p>
                       <div className="flex items-center justify-between mt-4">
-                        <span className="text-xs text-muted-foreground">
-                          {formatDate(brand.created_at)}
-                        </span>
+                        <span className="text-xs text-muted-foreground">{formatDate(brand.created_at)}</span>
                         <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleEdit(brand)}
-                          >
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(brand)}>
                             <Pencil className="h-4 w-4" />
                             <span className="sr-only">Chỉnh sửa</span>
                           </Button>
@@ -538,15 +454,11 @@ export default function BrandsPage() {
                     <PaginationPrevious
                       href="#"
                       onClick={(e) => {
-                        e.preventDefault();
-                        if (currentPage > 1) setCurrentPage(currentPage - 1);
+                        e.preventDefault()
+                        if (currentPage > 1) setCurrentPage(currentPage - 1)
                       }}
                       aria-disabled={currentPage === 1}
-                      className={
-                        currentPage === 1
-                          ? "pointer-events-none opacity-50"
-                          : ""
-                      }
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
                     />
                   </PaginationItem>
 
@@ -556,16 +468,11 @@ export default function BrandsPage() {
                     <PaginationNext
                       href="#"
                       onClick={(e) => {
-                        e.preventDefault();
-                        if (currentPage < totalPages)
-                          setCurrentPage(currentPage + 1);
+                        e.preventDefault()
+                        if (currentPage < totalPages) setCurrentPage(currentPage + 1)
                       }}
                       aria-disabled={currentPage === totalPages}
-                      className={
-                        currentPage === totalPages
-                          ? "pointer-events-none opacity-50"
-                          : ""
-                      }
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
                     />
                   </PaginationItem>
                 </PaginationContent>
@@ -576,38 +483,24 @@ export default function BrandsPage() {
       </div>
 
       {/* Create Brand Dialog */}
-      <BrandDialog
-        open={isCreateDialogOpen}
-        onOpenChange={setIsCreateDialogOpen}
-        mode="create"
-      />
+      <BrandDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} mode="create" />
 
       {/* Edit Brand Dialog */}
       {selectedBrand && (
-        <BrandDialog
-          open={isEditDialogOpen}
-          onOpenChange={setIsEditDialogOpen}
-          mode="edit"
-          brand={selectedBrand}
-        />
+        <BrandDialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} mode="edit" brand={selectedBrand} />
       )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-      >
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Bạn có chắc chắn muốn xóa?</AlertDialogTitle>
             <AlertDialogDescription>
-              Thao tác này sẽ xóa thương hiệu "{selectedBrand?.name}" và không
-              thể hoàn tác.
+              Thao tác này sẽ xóa thương hiệu "{selectedBrand?.name}" và không thể hoàn tác.
               {selectedBrand?.product_count > 0 && (
                 <span className="text-destructive font-medium block mt-2">
-                  Cảnh báo: Thương hiệu này đang được sử dụng bởi{" "}
-                  {selectedBrand.product_count} sản phẩm. Việc xóa có thể ảnh
-                  hưởng đến dữ liệu liên quan.
+                  Cảnh báo: Thương hiệu này đang được sử dụng bởi {selectedBrand.product_count} sản phẩm. Việc xóa có
+                  thể ảnh hưởng đến dữ liệu liên quan.
                 </span>
               )}
             </AlertDialogDescription>
@@ -632,5 +525,5 @@ export default function BrandsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </AdminLayout>
-  );
+  )
 }

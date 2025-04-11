@@ -234,10 +234,10 @@ export function AdminSidebar({ onNavClick }: AdminSidebarProps) {
               onClick={handleClick}
             />
             <SidebarItem
-              href="/admin/marketing/discounts"
+              href="/admin/discounts"
               icon={<BadgePercent className="h-4 w-4" />}
               label="Mã giảm giá"
-              active={isActive("/admin/marketing/discounts")}
+              active={isActive("/admin/discounts")}
               onClick={handleClick}
             />
           </SidebarGroup>
