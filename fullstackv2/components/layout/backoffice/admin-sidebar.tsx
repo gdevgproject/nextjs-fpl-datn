@@ -137,7 +137,7 @@ export function AdminSidebar({ onNavClick }: AdminSidebarProps) {
               onClick={handleClick}
             />
             <SidebarItem
-              href="/admin/admin/catalog/inventory"
+              href="/admin/catalog/inventory"
               icon={<ClipboardList className="h-4 w-4" />}
               label="Kho hàng"
               active={isActive("/admin/catalog/inventory")}
