@@ -20,7 +20,6 @@ import {
   Layers,
   Boxes,
   Palette,
-  BadgePercent,
   ImageIcon,
   ClipboardList,
   FileText,
@@ -138,7 +137,7 @@ export function AdminSidebar({ onNavClick }: AdminSidebarProps) {
               onClick={handleClick}
             />
             <SidebarItem
-              href="/admin/catalog/inventory"
+              href="/admin/admin/catalog/inventory"
               icon={<ClipboardList className="h-4 w-4" />}
               label="Kho hàng"
               active={isActive("/admin/catalog/inventory")}
@@ -222,7 +221,7 @@ export function AdminSidebar({ onNavClick }: AdminSidebarProps) {
 
           {/* Marketing */}
           <SidebarGroup
-            icon={<BadgePercent className="h-4 w-4" />}
+            icon={<ImageIcon className="h-4 w-4" />}
             label="Marketing"
             defaultOpen={pathname.includes("/admin/marketing")}
           >
@@ -235,7 +234,7 @@ export function AdminSidebar({ onNavClick }: AdminSidebarProps) {
             />
             <SidebarItem
               href="/admin/discounts"
-              icon={<BadgePercent className="h-4 w-4" />}
+              icon={<ImageIcon className="h-4 w-4" />}
               label="Mã giảm giá"
               active={isActive("/admin/discounts")}
               onClick={handleClick}
@@ -260,13 +259,6 @@ export function AdminSidebar({ onNavClick }: AdminSidebarProps) {
               icon={<CreditCard className="h-4 w-4" />}
               label="Phương thức thanh toán"
               active={isActive("/admin/settings/payment-methods")}
-              onClick={handleClick}
-            />
-            <SidebarItem
-              href="/admin/settings/statuses"
-              icon={<ClipboardList className="h-4 w-4" />}
-              label="Trạng thái đơn hàng"
-              active={isActive("/admin/settings/statuses")}
               onClick={handleClick}
             />
             <SidebarItem
