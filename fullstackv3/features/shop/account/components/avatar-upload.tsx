@@ -1,28 +1,28 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useRef, memo } from "react"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useToast } from "@/hooks/use-toast"
-import { useAuth } from "@/lib/providers/auth-context"
-import { Camera, Loader2, X } from "lucide-react"
-import { uploadAvatar } from "../actions"
-import { DEFAULT_AVATAR_URL } from "@/lib/constants"
+import { useState, useRef, memo } from "react";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/features/auth/auth-context";
+import { Camera, Loader2, X } from "lucide-react";
+import { uploadAvatar } from "../actions";
+import { DEFAULT_AVATAR_URL } from "@/lib/constants";
 
 // Using memo to prevent unnecessary re-renders
 export const AvatarUpload = memo(function AvatarUpload() {
-  const { profile, refreshProfile, profileImageUrl } = useAuth()
-  const [isUploading, setIsUploading] = useState(false)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const { toast } = useToast()
+  const { profile, refreshProfile, profileImageUrl } = useAuth();
+  const [isUploading, setIsUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   // Handle file selection with validation and preview
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const file = e.target.files?.[0];
+    if (!file) return;
 
     // Validate file type - only allow images
     if (!file.type.match(/image\/(jpeg|png|webp|gif)/)) {
@@ -30,8 +30,8 @@ export const AvatarUpload = memo(function AvatarUpload() {
         title: "File không hợp lệ",
         description: "Vui lòng chọn file hình ảnh (JPEG, PNG, WebP, GIF)",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
     // Validate file size - max 5MB
@@ -40,74 +40,77 @@ export const AvatarUpload = memo(function AvatarUpload() {
         title: "File quá lớn",
         description: "Kích thước file tối đa là 5MB",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
     // Create preview
-    const reader = new FileReader()
+    const reader = new FileReader();
     reader.onload = (event) => {
-      setPreviewUrl(event.target?.result as string)
-    }
-    reader.readAsDataURL(file)
+      setPreviewUrl(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
 
     // Upload file - with error handling
-    setIsUploading(true)
+    setIsUploading(true);
     try {
       if (!profile?.id) {
-        throw new Error("Bạn cần đăng nhập để thực hiện hành động này")
+        throw new Error("Bạn cần đăng nhập để thực hiện hành động này");
       }
 
-      const result = await uploadAvatar(profile.id, file)
+      const result = await uploadAvatar(profile.id, file);
 
       if (result.error) {
-        throw new Error(result.error)
+        throw new Error(result.error);
       }
 
       // Successfully uploaded - refresh profile to get updated avatar URL
-      await refreshProfile()
+      await refreshProfile();
 
       toast({
         title: "Cập nhật thành công",
         description: "Ảnh đại diện của bạn đã được cập nhật",
-      })
+      });
     } catch (error) {
       toast({
         title: "Cập nhật thất bại",
-        description: error instanceof Error ? error.message : "Đã xảy ra lỗi khi cập nhật ảnh đại diện",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Đã xảy ra lỗi khi cập nhật ảnh đại diện",
         variant: "destructive",
-      })
+      });
       // Reset preview on error
-      setPreviewUrl(null)
+      setPreviewUrl(null);
     } finally {
-      setIsUploading(false)
+      setIsUploading(false);
       // Reset file input
       if (fileInputRef.current) {
-        fileInputRef.current.value = ""
+        fileInputRef.current.value = "";
       }
     }
-  }
+  };
 
   // Handle cancel preview
   const handleCancelPreview = () => {
-    setPreviewUrl(null)
+    setPreviewUrl(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""
+      fileInputRef.current.value = "";
     }
-  }
+  };
 
   // Trigger file input click
   const handleUploadClick = () => {
     if (fileInputRef.current && !isUploading) {
-      fileInputRef.current.click()
+      fileInputRef.current.click();
     }
-  }
+  };
 
   // Use preview URL if available, otherwise use profile image URL
-  const currentImageUrl = previewUrl || profileImageUrl || DEFAULT_AVATAR_URL
+  const currentImageUrl = previewUrl || profileImageUrl || DEFAULT_AVATAR_URL;
 
   // Get first letter of display name for fallback
-  const nameInitial = profile?.display_name?.charAt(0)?.toUpperCase() || "U"
+  const nameInitial = profile?.display_name?.charAt(0)?.toUpperCase() || "U";
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -119,8 +122,8 @@ export const AvatarUpload = memo(function AvatarUpload() {
             className="object-cover"
             onError={(e) => {
               // Handle image load errors
-              const target = e.currentTarget as HTMLImageElement
-              target.src = DEFAULT_AVATAR_URL
+              const target = e.currentTarget as HTMLImageElement;
+              target.src = DEFAULT_AVATAR_URL;
             }}
           />
           <AvatarFallback className="text-4xl">{nameInitial}</AvatarFallback>
@@ -171,12 +174,17 @@ export const AvatarUpload = memo(function AvatarUpload() {
           Đang tải lên...
         </Button>
       ) : (
-        <Button type="button" variant="outline" size="sm" onClick={handleUploadClick} disabled={isUploading}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleUploadClick}
+          disabled={isUploading}
+        >
           <Camera className="mr-2 h-4 w-4" />
           Cập nhật ảnh
         </Button>
       )}
     </div>
-  )
-})
-
+  );
+});

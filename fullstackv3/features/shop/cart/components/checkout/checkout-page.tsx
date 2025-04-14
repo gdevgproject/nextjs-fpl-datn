@@ -10,7 +10,7 @@ import { AddressStep } from "./address-step";
 import { PaymentStep } from "./payment-step";
 import { ReviewStep } from "./review-step";
 import { OrderSummary } from "../../../orders/components/order-summary";
-import { useAuth } from "@/lib/providers/auth-context";
+import { useAuth } from "@/features/auth/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { EmptyCart } from "@/features/shop/cart/components/empty-cart";
 

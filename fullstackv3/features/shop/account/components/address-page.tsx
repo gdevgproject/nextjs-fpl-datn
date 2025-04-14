@@ -1,55 +1,63 @@
-"use client"
+"use client";
 
-import { useState, useCallback } from "react"
-import { useUserAddresses } from "../queries"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { PlusCircle } from "lucide-react"
-import { AddressForm } from "./address-form"
-import { AddressList } from "./address-list"
-import { useAuth } from "@/lib/providers/auth-context"
-import { Skeleton } from "@/components/ui/skeleton"
-import { motion, AnimatePresence } from "framer-motion"
+import { useState, useCallback } from "react";
+import { useUserAddresses } from "../queries";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { PlusCircle } from "lucide-react";
+import { AddressForm } from "./address-form";
+import { AddressList } from "./address-list";
+import { useAuth } from "@/features/auth/auth-context";
+import { Skeleton } from "@/components/ui/skeleton";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function AddressPage() {
-  const { isAuthenticated } = useAuth()
-  const { data: addresses, isLoading } = useUserAddresses()
-  const [isAddingNew, setIsAddingNew] = useState(false)
-  const [editingAddressId, setEditingAddressId] = useState<number | null>(null)
+  const { isAuthenticated } = useAuth();
+  const { data: addresses, isLoading } = useUserAddresses();
+  const [isAddingNew, setIsAddingNew] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState<number | null>(null);
 
   // Handle adding a new address
   const handleAddNew = useCallback(() => {
-    setIsAddingNew(true)
-    setEditingAddressId(null)
-  }, [])
+    setIsAddingNew(true);
+    setEditingAddressId(null);
+  }, []);
 
   // Handle canceling add/edit
   const handleCancel = useCallback(() => {
-    setIsAddingNew(false)
-    setEditingAddressId(null)
-  }, [])
+    setIsAddingNew(false);
+    setEditingAddressId(null);
+  }, []);
 
   // Handle editing an address
   const handleEdit = useCallback((addressId: number) => {
-    setEditingAddressId(addressId)
-    setIsAddingNew(false)
-  }, [])
+    setEditingAddressId(addressId);
+    setIsAddingNew(false);
+  }, []);
 
   // Handle successful add/edit
   const handleSuccess = useCallback(() => {
-    setIsAddingNew(false)
-    setEditingAddressId(null)
-  }, [])
+    setIsAddingNew(false);
+    setEditingAddressId(null);
+  }, []);
 
   if (!isAuthenticated) {
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Địa chỉ giao hàng</h1>
-          <p className="text-muted-foreground">Vui lòng đăng nhập để quản lý địa chỉ giao hàng</p>
+          <p className="text-muted-foreground">
+            Vui lòng đăng nhập để quản lý địa chỉ giao hàng
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -57,7 +65,9 @@ export function AddressPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Địa chỉ giao hàng</h1>
-          <p className="text-muted-foreground">Quản lý địa chỉ giao hàng của bạn</p>
+          <p className="text-muted-foreground">
+            Quản lý địa chỉ giao hàng của bạn
+          </p>
         </div>
         {!isAddingNew && !editingAddressId && (
           <Button onClick={handleAddNew} className="flex items-center gap-1">
@@ -79,10 +89,15 @@ export function AddressPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Thêm địa chỉ mới</CardTitle>
-                <CardDescription>Nhập thông tin địa chỉ giao hàng mới của bạn</CardDescription>
+                <CardDescription>
+                  Nhập thông tin địa chỉ giao hàng mới của bạn
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <AddressForm onCancel={handleCancel} onSuccess={handleSuccess} />
+                <AddressForm
+                  onCancel={handleCancel}
+                  onSuccess={handleSuccess}
+                />
               </CardContent>
             </Card>
           </motion.div>
@@ -99,11 +114,15 @@ export function AddressPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Chỉnh sửa địa chỉ</CardTitle>
-                <CardDescription>Cập nhật thông tin địa chỉ giao hàng của bạn</CardDescription>
+                <CardDescription>
+                  Cập nhật thông tin địa chỉ giao hàng của bạn
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <AddressForm
-                  address={addresses.find((addr) => addr.id === editingAddressId)}
+                  address={addresses.find(
+                    (addr) => addr.id === editingAddressId
+                  )}
                   onCancel={handleCancel}
                   onSuccess={handleSuccess}
                 />
@@ -142,6 +161,5 @@ export function AddressPage() {
         )}
       </AnimatePresence>
     </div>
-  )
+  );
 }
-

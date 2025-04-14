@@ -1,32 +1,33 @@
-"use client"
+"use client";
 
-import { useCheckout } from "../../providers/checkout-provider"
-import { useCartContext } from "../../providers/cart-provider"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { Loader2, MapPin, User, CreditCard, FileText } from "lucide-react"
-import { formatCurrency } from "@/lib/utils/format"
-import { useAuth } from "@/lib/providers/auth-context"
+import { useCheckout } from "../../providers/checkout-provider";
+import { useCartContext } from "../../providers/cart-provider";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Loader2, MapPin, User, CreditCard, FileText } from "lucide-react";
+import { formatCurrency } from "@/lib/utils/format";
+import { useAuth } from "@/features/auth/auth-context";
 
 export function ReviewStep() {
-  const { isAuthenticated } = useAuth()
-  const { formData, placeOrderHandler, isProcessing, goToPreviousStep } = useCheckout()
-  const { appliedDiscount } = useCartContext()
+  const { isAuthenticated } = useAuth();
+  const { formData, placeOrderHandler, isProcessing, goToPreviousStep } =
+    useCheckout();
+  const { appliedDiscount } = useCartContext();
 
   // Get payment method name
   const getPaymentMethodName = (id?: number) => {
     switch (id) {
       case 1:
-        return "Thanh toán khi nhận hàng (COD)"
+        return "Thanh toán khi nhận hàng (COD)";
       case 2:
-        return "Chuyển khoản ngân hàng"
+        return "Chuyển khoản ngân hàng";
       case 3:
-        return "Thanh toán qua ví điện tử"
+        return "Thanh toán qua ví điện tử";
       default:
-        return "Chưa chọn phương thức thanh toán"
+        return "Chưa chọn phương thức thanh toán";
     }
-  }
+  };
 
   return (
     <Card>
@@ -44,7 +45,8 @@ export function ReviewStep() {
             <p className="font-medium">{formData.fullName}</p>
             <p>{formData.phoneNumber}</p>
             <p>
-              {formData.address}, {formData.ward}, {formData.district}, {formData.province}
+              {formData.address}, {formData.ward}, {formData.district},{" "}
+              {formData.province}
             </p>
           </div>
         </div>
@@ -64,7 +66,8 @@ export function ReviewStep() {
                 <span className="font-medium">Email:</span> {formData.email}
               </p>
               <p>
-                <span className="font-medium">Số điện thoại:</span> {formData.phoneNumber}
+                <span className="font-medium">Số điện thoại:</span>{" "}
+                {formData.phoneNumber}
               </p>
             </div>
           </div>
@@ -100,10 +103,12 @@ export function ReviewStep() {
             <h3 className="font-medium">Mã giảm giá</h3>
             <div className="bg-muted p-3 rounded-md text-sm">
               <p>
-                <span className="font-medium">{appliedDiscount.code}</span> - Giảm {appliedDiscount.discount_percentage}
-                %
+                <span className="font-medium">{appliedDiscount.code}</span> -
+                Giảm {appliedDiscount.discount_percentage}%
                 {appliedDiscount.max_discount_amount
-                  ? ` (tối đa ${formatCurrency(appliedDiscount.max_discount_amount)})`
+                  ? ` (tối đa ${formatCurrency(
+                      appliedDiscount.max_discount_amount
+                    )})`
                   : ""}
               </p>
             </div>
@@ -114,7 +119,11 @@ export function ReviewStep() {
 
         {/* Action Buttons */}
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-          <Button variant="outline" onClick={goToPreviousStep} disabled={isProcessing}>
+          <Button
+            variant="outline"
+            onClick={goToPreviousStep}
+            disabled={isProcessing}
+          >
             Quay lại
           </Button>
           <Button onClick={placeOrderHandler} disabled={isProcessing}>
@@ -130,6 +139,5 @@ export function ReviewStep() {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
-

@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { useAuth } from "@/lib/providers/auth-context";
+import { useAuth } from "@/features/auth/auth-context";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { CartButton } from "@/features/shop/cart/components/cart-button";
 import { Skeleton } from "@/components/ui/skeleton";

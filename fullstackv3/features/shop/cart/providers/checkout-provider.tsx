@@ -4,7 +4,7 @@ import type React from "react";
 import { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useCartContext } from "./cart-provider";
-import { useAuth } from "@/lib/providers/auth-context";
+import { useAuth } from "@/features/auth/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { securedPlaceOrder } from "../actions/secure-place-order";

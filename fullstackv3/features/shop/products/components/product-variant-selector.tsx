@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/lib/providers/auth-context";
+import { useAuth } from "@/features/auth/auth-context";
 import { useCartContext } from "@/features/shop/cart/providers/cart-provider";
 import { useWishlistContext } from "@/features/shop/wishlist/providers/wishlist-provider";
 import { formatPrice } from "@/lib/utils";

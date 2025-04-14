@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useWishlistContext } from "../providers/wishlist-provider"
-import { useAuth } from "@/lib/providers/auth-context"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { useState } from "react";
+import { useWishlistContext } from "../providers/wishlist-provider";
+import { useAuth } from "@/features/auth/auth-context";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Pagination,
   PaginationContent,
@@ -12,39 +12,41 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from "@/components/ui/pagination"
-import { Heart } from "lucide-react"
-import Link from "next/link"
-import { WishlistItem } from "./wishlist-item"
-import { EmptyWishlist } from "./empty-wishlist"
-import { WishlistFilter } from "./wishlist-filter"
-import { Skeleton } from "@/components/ui/skeleton"
+} from "@/components/ui/pagination";
+import { Heart } from "lucide-react";
+import Link from "next/link";
+import { WishlistItem } from "./wishlist-item";
+import { EmptyWishlist } from "./empty-wishlist";
+import { WishlistFilter } from "./wishlist-filter";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function WishlistPage() {
-  const { wishlistItems, isLoading } = useWishlistContext()
-  const { isAuthenticated } = useAuth()
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 8
+  const { wishlistItems, isLoading } = useWishlistContext();
+  const { isAuthenticated } = useAuth();
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   // Tính toán phân trang
-  const totalItems = wishlistItems.length
-  const totalPages = Math.ceil(totalItems / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = Math.min(startIndex + itemsPerPage, totalItems)
-  const currentItems = wishlistItems.slice(startIndex, endIndex)
+  const totalItems = wishlistItems.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const currentItems = wishlistItems.slice(startIndex, endIndex);
 
   // Xử lý chuyển trang
   const handlePageChange = (page: number) => {
-    setCurrentPage(page)
-    window.scrollTo({ top: 0, behavior: "smooth" })
-  }
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   if (!isAuthenticated) {
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Sản phẩm yêu thích</h1>
-          <p className="text-muted-foreground">Vui lòng đăng nhập để xem danh sách sản phẩm yêu thích của bạn</p>
+          <p className="text-muted-foreground">
+            Vui lòng đăng nhập để xem danh sách sản phẩm yêu thích của bạn
+          </p>
         </div>
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-10">
@@ -54,12 +56,14 @@ export function WishlistPage() {
               Đăng nhập để xem và quản lý danh sách sản phẩm yêu thích của bạn
             </p>
             <Button asChild className="mt-4">
-              <Link href="/dang-nhap?redirect=/tai-khoan/yeu-thich">Đăng nhập ngay</Link>
+              <Link href="/dang-nhap?redirect=/tai-khoan/yeu-thich">
+                Đăng nhập ngay
+              </Link>
             </Button>
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   if (isLoading) {
@@ -67,7 +71,9 @@ export function WishlistPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Sản phẩm yêu thích</h1>
-          <p className="text-muted-foreground">Quản lý danh sách sản phẩm yêu thích của bạn</p>
+          <p className="text-muted-foreground">
+            Quản lý danh sách sản phẩm yêu thích của bạn
+          </p>
         </div>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -86,14 +92,16 @@ export function WishlistPage() {
           ))}
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Sản phẩm yêu thích</h1>
-        <p className="text-muted-foreground">Quản lý danh sách sản phẩm yêu thích của bạn</p>
+        <p className="text-muted-foreground">
+          Quản lý danh sách sản phẩm yêu thích của bạn
+        </p>
       </div>
 
       <WishlistFilter />
@@ -115,10 +123,12 @@ export function WishlistPage() {
                   <PaginationPrevious
                     href="#"
                     onClick={(e) => {
-                      e.preventDefault()
-                      if (currentPage > 1) handlePageChange(currentPage - 1)
+                      e.preventDefault();
+                      if (currentPage > 1) handlePageChange(currentPage - 1);
                     }}
-                    className={currentPage <= 1 ? "pointer-events-none opacity-50" : ""}
+                    className={
+                      currentPage <= 1 ? "pointer-events-none opacity-50" : ""
+                    }
                   />
                 </PaginationItem>
 
@@ -127,8 +137,8 @@ export function WishlistPage() {
                     <PaginationLink
                       href="#"
                       onClick={(e) => {
-                        e.preventDefault()
-                        handlePageChange(i + 1)
+                        e.preventDefault();
+                        handlePageChange(i + 1);
                       }}
                       isActive={currentPage === i + 1}
                     >
@@ -141,10 +151,15 @@ export function WishlistPage() {
                   <PaginationNext
                     href="#"
                     onClick={(e) => {
-                      e.preventDefault()
-                      if (currentPage < totalPages) handlePageChange(currentPage + 1)
+                      e.preventDefault();
+                      if (currentPage < totalPages)
+                        handlePageChange(currentPage + 1);
                     }}
-                    className={currentPage >= totalPages ? "pointer-events-none opacity-50" : ""}
+                    className={
+                      currentPage >= totalPages
+                        ? "pointer-events-none opacity-50"
+                        : ""
+                    }
                   />
                 </PaginationItem>
               </PaginationContent>
@@ -153,6 +168,5 @@ export function WishlistPage() {
         </>
       )}
     </div>
-  )
+  );
 }
-

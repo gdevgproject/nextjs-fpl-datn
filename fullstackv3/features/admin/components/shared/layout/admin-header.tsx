@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { LogOut, User } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { useAuth } from "@/lib/providers/auth-context"
+import Link from "next/link";
+import { LogOut, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { useAuth } from "@/features/auth/auth-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,13 +12,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 
 // Thêm import Image từ next/image
-import Image from "next/image"
+import Image from "next/image";
 
 export function AdminHeader() {
-  const { profile, signOut } = useAuth()
+  const { profile, signOut } = useAuth();
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background">
@@ -26,7 +26,13 @@ export function AdminHeader() {
         <div className="flex items-center gap-6 md:gap-10">
           {/* Thay thế phần link logo */}
           <Link href="/admin" className="flex items-center space-x-2">
-            <Image src="/images/logo.png" alt="MyBeauty Logo" width={120} height={40} className="h-10 w-auto" />
+            <Image
+              src="/images/logo.png"
+              alt="MyBeauty Logo"
+              width={120}
+              height={40}
+              className="h-10 w-auto"
+            />
             <span className="text-xl font-bold">Admin</span>
           </Link>
         </div>
@@ -58,6 +64,5 @@ export function AdminHeader() {
         </div>
       </div>
     </header>
-  )
+  );
 }
-

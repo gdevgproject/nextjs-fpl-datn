@@ -1,10 +1,18 @@
-"use client"
+"use client";
 
-import { memo } from "react"
-import Link from "next/link"
-import { useAuth } from "@/lib/providers/auth-context"
-import { CircleUser, LogIn, LogOut, Package, Heart, User, LayoutDashboard } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { memo } from "react";
+import Link from "next/link";
+import { useAuth } from "@/features/auth/auth-context";
+import {
+  CircleUser,
+  LogIn,
+  LogOut,
+  Package,
+  Heart,
+  User,
+  LayoutDashboard,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,46 +21,47 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useQueryClient } from "@tanstack/react-query"
-import { useToast } from "@/hooks/use-toast"
-import { DEFAULT_AVATAR_URL } from "@/lib/constants"
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { DEFAULT_AVATAR_URL } from "@/lib/constants";
 
 // Using memo to prevent unnecessary re-renders
 export const UserNav = memo(function UserNav() {
-  const { isAuthenticated, profile, signOut, profileImageUrl, role } = useAuth()
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
+  const { isAuthenticated, profile, signOut, profileImageUrl, role } =
+    useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Handle logout with proper state cleanup
   const handleSignOut = async () => {
     try {
       // Pre-emptively clear cache
       if (profile?.id) {
-        queryClient.removeQueries({ queryKey: ["profile"] })
-        queryClient.removeQueries({ queryKey: ["addresses"] })
-        queryClient.removeQueries({ queryKey: ["orders"] })
-        queryClient.removeQueries({ queryKey: ["cart"] })
-        queryClient.removeQueries({ queryKey: ["wishlist"] })
+        queryClient.removeQueries({ queryKey: ["profile"] });
+        queryClient.removeQueries({ queryKey: ["addresses"] });
+        queryClient.removeQueries({ queryKey: ["orders"] });
+        queryClient.removeQueries({ queryKey: ["cart"] });
+        queryClient.removeQueries({ queryKey: ["wishlist"] });
       }
 
       // Call the auth context signOut function
-      await signOut()
+      await signOut();
 
       toast({
         title: "Đăng xuất thành công",
         description: "Bạn đã đăng xuất khỏi tài khoản.",
-      })
+      });
     } catch (error) {
-      console.error("Logout error:", error)
+      console.error("Logout error:", error);
       toast({
         title: "Lỗi đăng xuất",
         description: "Có lỗi xảy ra khi đăng xuất. Vui lòng thử lại.",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   // Show login button if not authenticated
   if (!isAuthenticated) {
@@ -63,7 +72,7 @@ export const UserNav = memo(function UserNav() {
           <span className="sr-only">Đăng nhập</span>
         </Button>
       </Link>
-    )
+    );
   }
 
   // Display dropdown menu for authenticated users
@@ -76,8 +85,8 @@ export const UserNav = memo(function UserNav() {
               src={profileImageUrl}
               alt={profile?.display_name || "Avatar"}
               onError={(e) => {
-                const target = e.currentTarget as HTMLImageElement
-                target.src = DEFAULT_AVATAR_URL
+                const target = e.currentTarget as HTMLImageElement;
+                target.src = DEFAULT_AVATAR_URL;
               }}
             />
             <AvatarFallback>
@@ -89,8 +98,12 @@ export const UserNav = memo(function UserNav() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{profile?.display_name || "Người dùng"}</p>
-            <p className="text-xs leading-none text-muted-foreground">{profile?.phone_number || ""}</p>
+            <p className="text-sm font-medium leading-none">
+              {profile?.display_name || "Người dùng"}
+            </p>
+            <p className="text-xs leading-none text-muted-foreground">
+              {profile?.phone_number || ""}
+            </p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -133,6 +146,5 @@ export const UserNav = memo(function UserNav() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
-})
-
+  );
+});

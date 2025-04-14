@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { createContext, useContext, useEffect, useState } from "react";
-import { useAuth } from "@/lib/providers/auth-context";
+import { useAuth } from "@/features/auth/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import type { CartItem, CartState, Discount } from "../types";
 import {
