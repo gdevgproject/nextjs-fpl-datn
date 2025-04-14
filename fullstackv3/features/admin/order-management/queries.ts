@@ -1,8 +1,14 @@
-"use client"
+"use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import type { OrderFilter, PaginatedOrders, OrderDetails, OrderActivityLog, OrderStats } from "./types"
-import type { PaymentStatus } from "@/features/orders/types"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type {
+  OrderFilter,
+  PaginatedOrders,
+  OrderDetails,
+  OrderActivityLog,
+  OrderStats,
+} from "./types";
+import type { PaymentStatus } from "@/features/shop/orders/types";
 import {
   getOrdersList,
   getOrderDetails,
@@ -12,7 +18,7 @@ import {
   getOrderActivityLog,
   getOrderStats,
   getOrderStatuses,
-} from "./actions"
+} from "./actions";
 
 // Query keys
 export const orderKeys = {
@@ -24,7 +30,7 @@ export const orderKeys = {
   activityLog: (id: number) => [...orderKeys.detail(id), "activity"] as const,
   statuses: () => [...orderKeys.all, "statuses"] as const,
   stats: () => [...orderKeys.all, "stats"] as const,
-}
+};
 
 /**
  * Hook to fetch paginated orders with filtering
@@ -35,7 +41,7 @@ export function useOrders(filter: OrderFilter) {
     queryFn: () => getOrdersList(filter),
     select: (response) => response.data as PaginatedOrders,
     staleTime: 1000 * 60, // 1 minute
-  })
+  });
 }
 
 /**
@@ -48,7 +54,7 @@ export function useOrderDetails(orderId: number) {
     select: (response) => response.data as OrderDetails,
     enabled: !!orderId,
     staleTime: 1000 * 60, // 1 minute
-  })
+  });
 }
 
 /**
@@ -61,7 +67,7 @@ export function useOrderActivityLog(orderId: number) {
     select: (response) => response.data as OrderActivityLog[],
     enabled: !!orderId,
     staleTime: 1000 * 60, // 1 minute
-  })
+  });
 }
 
 /**
@@ -73,7 +79,7 @@ export function useOrderStats() {
     queryFn: () => getOrderStats(),
     select: (response) => response.data as OrderStats,
     staleTime: 1000 * 60 * 5, // 5 minutes
-  })
+  });
 }
 
 /**
@@ -85,95 +91,94 @@ export function useOrderStatuses() {
     queryFn: () => getOrderStatuses(),
     select: (response) => response.data as Array<{ id: number; name: string }>,
     staleTime: 1000 * 60 * 60, // 1 hour
-  })
+  });
 }
 
 /**
  * Hook to update order status
  */
 export function useUpdateOrderStatus() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({
       orderId,
       statusId,
     }: {
-      orderId: number
-      statusId: number
+      orderId: number;
+      statusId: number;
     }) => updateOrderStatus(orderId, statusId),
     onSuccess: (_, variables) => {
       // Invalidate specific order detail
       queryClient.invalidateQueries({
         queryKey: orderKeys.detail(variables.orderId),
-      })
+      });
       // Invalidate order lists
-      queryClient.invalidateQueries({ queryKey: orderKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
       // Invalidate stats
-      queryClient.invalidateQueries({ queryKey: orderKeys.stats() })
+      queryClient.invalidateQueries({ queryKey: orderKeys.stats() });
       // Invalidate activity log
       queryClient.invalidateQueries({
         queryKey: orderKeys.activityLog(variables.orderId),
-      })
+      });
     },
-  })
+  });
 }
 
 /**
  * Hook to update order tracking number
  */
 export function useUpdateOrderTracking() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({
       orderId,
       trackingNumber,
     }: {
-      orderId: number
-      trackingNumber: string
+      orderId: number;
+      trackingNumber: string;
     }) => updateOrderTracking(orderId, trackingNumber),
     onSuccess: (_, variables) => {
       // Invalidate specific order detail
       queryClient.invalidateQueries({
         queryKey: orderKeys.detail(variables.orderId),
-      })
+      });
       // Invalidate order lists
-      queryClient.invalidateQueries({ queryKey: orderKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
       // Invalidate activity log
       queryClient.invalidateQueries({
         queryKey: orderKeys.activityLog(variables.orderId),
-      })
+      });
     },
-  })
+  });
 }
 
 /**
  * Hook to update payment status
  */
 export function useUpdatePaymentStatus() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({
       orderId,
       paymentStatus,
     }: {
-      orderId: number
-      paymentStatus: PaymentStatus
+      orderId: number;
+      paymentStatus: PaymentStatus;
     }) => updatePaymentStatus(orderId, paymentStatus),
     onSuccess: (_, variables) => {
       // Invalidate specific order detail
       queryClient.invalidateQueries({
         queryKey: orderKeys.detail(variables.orderId),
-      })
+      });
       // Invalidate order lists
-      queryClient.invalidateQueries({ queryKey: orderKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
       // Invalidate activity log
       queryClient.invalidateQueries({
         queryKey: orderKeys.activityLog(variables.orderId),
-      })
+      });
     },
-  })
+  });
 }
-

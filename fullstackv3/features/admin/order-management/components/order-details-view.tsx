@@ -1,12 +1,29 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Image from "next/image"
-import { ArrowLeft, PackageCheck, UserIcon, Truck, Receipt, Clock, CreditCard, DollarSign, Loader2 } from "lucide-react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import {
+  ArrowLeft,
+  PackageCheck,
+  UserIcon,
+  Truck,
+  Receipt,
+  Clock,
+  CreditCard,
+  DollarSign,
+  Loader2,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -15,34 +32,54 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Separator } from "@/components/ui/separator"
-import { PaymentStatusBadge, StatusBadge } from "@/features/shared/ui/status-badges"
-import { useToast } from "@/hooks/use-toast"
-import { formatCurrency, formatDate, formatPhoneNumber } from "@/lib/utils/format"
-import type { OrderDetails, OrderActivityLog } from "../types"
-import type { PaymentStatus } from "@/features/orders/types"
-import { DEFAULT_AVATAR_URL } from "@/lib/constants"
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Separator } from "@/components/ui/separator";
+import {
+  PaymentStatusBadge,
+  StatusBadge,
+} from "@/features/shop/shared/ui/status-badges";
+import { useToast } from "@/hooks/use-toast";
+import {
+  formatCurrency,
+  formatDate,
+  formatPhoneNumber,
+} from "@/lib/utils/format";
+import type { OrderDetails, OrderActivityLog } from "../types";
+import type { PaymentStatus } from "@/features/shop/orders/types";
+import { DEFAULT_AVATAR_URL } from "@/lib/constants";
 
 interface OrderDetailsViewProps {
-  order: OrderDetails
-  orderStatuses: Array<{ id: number; name: string }>
-  activityLog?: OrderActivityLog[]
-  isAdmin: boolean
+  order: OrderDetails;
+  orderStatuses: Array<{ id: number; name: string }>;
+  activityLog?: OrderActivityLog[];
+  isAdmin: boolean;
   updateOrderStatus: (
     orderId: number,
-    statusId: number,
-  ) => Promise<{ success: boolean; message?: string; error?: string }>
+    statusId: number
+  ) => Promise<{ success: boolean; message?: string; error?: string }>;
   updateOrderTracking: (
     orderId: number,
-    trackingNumber: string,
-  ) => Promise<{ success: boolean; message?: string; error?: string }>
+    trackingNumber: string
+  ) => Promise<{ success: boolean; message?: string; error?: string }>;
   updatePaymentStatus: (
     orderId: number,
-    status: PaymentStatus,
-  ) => Promise<{ success: boolean; message?: string; error?: string }>
+    status: PaymentStatus
+  ) => Promise<{ success: boolean; message?: string; error?: string }>;
 }
 
 export default function OrderDetailsView({
@@ -54,128 +91,133 @@ export default function OrderDetailsView({
   updateOrderTracking,
   updatePaymentStatus,
 }: OrderDetailsViewProps) {
-  const router = useRouter()
-  const { toast } = useToast()
+  const router = useRouter();
+  const { toast } = useToast();
 
   // State for editable fields
-  const [selectedStatus, setSelectedStatus] = useState<number>(order.orderStatusId)
-  const [trackingNumber, setTrackingNumber] = useState<string>(order.trackingNumber || "")
-  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<PaymentStatus>(order.paymentStatus)
+  const [selectedStatus, setSelectedStatus] = useState<number>(
+    order.orderStatusId
+  );
+  const [trackingNumber, setTrackingNumber] = useState<string>(
+    order.trackingNumber || ""
+  );
+  const [selectedPaymentStatus, setSelectedPaymentStatus] =
+    useState<PaymentStatus>(order.paymentStatus);
 
   // Loading states
-  const [updatingStatus, setUpdatingStatus] = useState(false)
-  const [updatingTracking, setUpdatingTracking] = useState(false)
-  const [updatingPayment, setUpdatingPayment] = useState(false)
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [updatingTracking, setUpdatingTracking] = useState(false);
+  const [updatingPayment, setUpdatingPayment] = useState(false);
 
   // Update order status
   const handleStatusUpdate = async () => {
-    if (selectedStatus === order.orderStatusId) return
+    if (selectedStatus === order.orderStatusId) return;
 
-    setUpdatingStatus(true)
+    setUpdatingStatus(true);
     try {
-      const result = await updateOrderStatus(order.id, selectedStatus)
+      const result = await updateOrderStatus(order.id, selectedStatus);
 
       if (result.success) {
         toast({
           title: "Cập nhật thành công",
           description: result.message,
-        })
+        });
       } else {
         toast({
           title: "Cập nhật thất bại",
           description: result.error || "Đã xảy ra lỗi",
           variant: "destructive",
-        })
+        });
       }
     } catch (error) {
       toast({
         title: "Cập nhật thất bại",
         description: "Đã xảy ra lỗi không mong muốn",
         variant: "destructive",
-      })
+      });
     } finally {
-      setUpdatingStatus(false)
+      setUpdatingStatus(false);
     }
-  }
+  };
 
   // Update tracking number
   const handleTrackingUpdate = async () => {
-    if (trackingNumber === order.trackingNumber) return
+    if (trackingNumber === order.trackingNumber) return;
 
-    setUpdatingTracking(true)
+    setUpdatingTracking(true);
     try {
-      const result = await updateOrderTracking(order.id, trackingNumber)
+      const result = await updateOrderTracking(order.id, trackingNumber);
 
       if (result.success) {
         toast({
           title: "Cập nhật thành công",
           description: result.message,
-        })
+        });
       } else {
         toast({
           title: "Cập nhật thất bại",
           description: result.error || "Đã xảy ra lỗi",
           variant: "destructive",
-        })
+        });
       }
     } catch (error) {
       toast({
         title: "Cập nhật thất bại",
         description: "Đã xảy ra lỗi không mong muốn",
         variant: "destructive",
-      })
+      });
     } finally {
-      setUpdatingTracking(false)
+      setUpdatingTracking(false);
     }
-  }
+  };
 
   // Update payment status
   const handlePaymentStatusUpdate = async () => {
-    if (selectedPaymentStatus === order.paymentStatus) return
+    if (selectedPaymentStatus === order.paymentStatus) return;
 
-    setUpdatingPayment(true)
+    setUpdatingPayment(true);
     try {
-      const result = await updatePaymentStatus(order.id, selectedPaymentStatus)
+      const result = await updatePaymentStatus(order.id, selectedPaymentStatus);
 
       if (result.success) {
         toast({
           title: "Cập nhật thành công",
           description: result.message,
-        })
+        });
       } else {
         toast({
           title: "Cập nhật thất bại",
           description: result.error || "Đã xảy ra lỗi",
           variant: "destructive",
-        })
+        });
       }
     } catch (error) {
       toast({
         title: "Cập nhật thất bại",
         description: "Đã xảy ra lỗi không mong muốn",
         variant: "destructive",
-      })
+      });
     } finally {
-      setUpdatingPayment(false)
+      setUpdatingPayment(false);
     }
-  }
+  };
 
   // Helper to format activity timestamp
   const formatActivityTime = (timestamp: string) => {
-    const date = new Date(timestamp)
+    const date = new Date(timestamp);
     return date.toLocaleString("vi-VN", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
-    })
-  }
+    });
+  };
 
   // Helper to get badge for payment status
   const getPaymentStatusBadge = (status: PaymentStatus) => {
-    return <PaymentStatusBadge status={status} />
-  }
+    return <PaymentStatusBadge status={status} />;
+  };
 
   return (
     <div className="space-y-6">
@@ -201,32 +243,49 @@ export default function OrderDetailsView({
               <UserIcon className="h-5 w-5" />
               <span>Thông tin khách hàng</span>
             </CardTitle>
-            <CardDescription>{order.isGuest ? "Khách không đăng nhập" : "Khách hàng đã đăng ký"}</CardDescription>
+            <CardDescription>
+              {order.isGuest
+                ? "Khách không đăng nhập"
+                : "Khách hàng đã đăng ký"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center space-x-4 pb-4">
               <div className="relative h-12 w-12 overflow-hidden rounded-full">
-                <Image src={DEFAULT_AVATAR_URL} alt="Avatar" fill className="object-cover" />
+                <Image
+                  src={DEFAULT_AVATAR_URL}
+                  alt="Avatar"
+                  fill
+                  className="object-cover"
+                />
               </div>
               <div>
                 <p className="font-medium">{order.customerName}</p>
-                <p className="text-sm text-muted-foreground">{order.isGuest ? "Khách vãng lai" : "Thành viên"}</p>
+                <p className="text-sm text-muted-foreground">
+                  {order.isGuest ? "Khách vãng lai" : "Thành viên"}
+                </p>
               </div>
             </div>
             <div className="space-y-2">
               {order.customerEmail && (
                 <div>
                   <p className="text-sm font-medium">Email</p>
-                  <p className="text-sm text-muted-foreground">{order.customerEmail}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {order.customerEmail}
+                  </p>
                 </div>
               )}
               <div>
                 <p className="text-sm font-medium">Số điện thoại</p>
-                <p className="text-sm text-muted-foreground">{formatPhoneNumber(order.customerPhone)}</p>
+                <p className="text-sm text-muted-foreground">
+                  {formatPhoneNumber(order.customerPhone)}
+                </p>
               </div>
               <div>
                 <p className="text-sm font-medium">Ngày đặt hàng</p>
-                <p className="text-sm text-muted-foreground">{formatDate(order.orderDate)}</p>
+                <p className="text-sm text-muted-foreground">
+                  {formatDate(order.orderDate)}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -245,19 +304,23 @@ export default function OrderDetailsView({
               <div>
                 <p className="text-sm font-medium">Người nhận</p>
                 <p className="text-sm text-muted-foreground">
-                  {order.recipientName} - {formatPhoneNumber(order.recipientPhone)}
+                  {order.recipientName} -{" "}
+                  {formatPhoneNumber(order.recipientPhone)}
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium">Địa chỉ giao hàng</p>
                 <p className="text-sm text-muted-foreground">
-                  {order.streetAddress}, {order.ward}, {order.district}, {order.provinceCity}
+                  {order.streetAddress}, {order.ward}, {order.district},{" "}
+                  {order.provinceCity}
                 </p>
               </div>
               {order.deliveryNotes && (
                 <div>
                   <p className="text-sm font-medium">Ghi chú giao hàng</p>
-                  <p className="text-sm text-muted-foreground">{order.deliveryNotes}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {order.deliveryNotes}
+                  </p>
                 </div>
               )}
               <div>
@@ -272,9 +335,16 @@ export default function OrderDetailsView({
                   <Button
                     size="sm"
                     onClick={handleTrackingUpdate}
-                    disabled={trackingNumber === order.trackingNumber || updatingTracking}
+                    disabled={
+                      trackingNumber === order.trackingNumber ||
+                      updatingTracking
+                    }
                   >
-                    {updatingTracking ? <Loader2 className="h-4 w-4 animate-spin" /> : "Lưu"}
+                    {updatingTracking ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Lưu"
+                    )}
                   </Button>
                 </div>
               </div>
@@ -297,14 +367,19 @@ export default function OrderDetailsView({
                 <div className="mt-1 flex items-center space-x-2">
                   <Select
                     value={selectedStatus.toString()}
-                    onValueChange={(value) => setSelectedStatus(Number.parseInt(value))}
+                    onValueChange={(value) =>
+                      setSelectedStatus(Number.parseInt(value))
+                    }
                   >
                     <SelectTrigger className="h-8 w-full">
                       <SelectValue placeholder="Chọn trạng thái" />
                     </SelectTrigger>
                     <SelectContent>
                       {orderStatuses.map((status) => (
-                        <SelectItem key={status.id} value={status.id.toString()}>
+                        <SelectItem
+                          key={status.id}
+                          value={status.id.toString()}
+                        >
                           {status.name}
                         </SelectItem>
                       ))}
@@ -313,16 +388,24 @@ export default function OrderDetailsView({
                   <Button
                     size="sm"
                     onClick={handleStatusUpdate}
-                    disabled={selectedStatus === order.orderStatusId || updatingStatus}
+                    disabled={
+                      selectedStatus === order.orderStatusId || updatingStatus
+                    }
                   >
-                    {updatingStatus ? <Loader2 className="h-4 w-4 animate-spin" /> : "Lưu"}
+                    {updatingStatus ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Lưu"
+                    )}
                   </Button>
                 </div>
               </div>
 
               <div>
                 <p className="text-sm font-medium">Phương thức thanh toán</p>
-                <p className="text-sm text-muted-foreground">{order.paymentMethodName || "Không xác định"}</p>
+                <p className="text-sm text-muted-foreground">
+                  {order.paymentMethodName || "Không xác định"}
+                </p>
               </div>
 
               <div>
@@ -330,7 +413,9 @@ export default function OrderDetailsView({
                 <div className="mt-1 flex items-center space-x-2">
                   <Select
                     value={selectedPaymentStatus}
-                    onValueChange={(value) => setSelectedPaymentStatus(value as PaymentStatus)}
+                    onValueChange={(value) =>
+                      setSelectedPaymentStatus(value as PaymentStatus)
+                    }
                   >
                     <SelectTrigger className="h-8 w-full">
                       <SelectValue placeholder="Chọn trạng thái" />
@@ -345,9 +430,16 @@ export default function OrderDetailsView({
                   <Button
                     size="sm"
                     onClick={handlePaymentStatusUpdate}
-                    disabled={selectedPaymentStatus === order.paymentStatus || updatingPayment}
+                    disabled={
+                      selectedPaymentStatus === order.paymentStatus ||
+                      updatingPayment
+                    }
                   >
-                    {updatingPayment ? <Loader2 className="h-4 w-4 animate-spin" /> : "Lưu"}
+                    {updatingPayment ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Lưu"
+                    )}
                   </Button>
                 </div>
               </div>
@@ -364,7 +456,8 @@ export default function OrderDetailsView({
             <span>Chi tiết đơn hàng</span>
           </CardTitle>
           <CardDescription>
-            {order.items.length} sản phẩm, tổng: {formatCurrency(order.totalAmount)}
+            {order.items.length} sản phẩm, tổng:{" "}
+            {formatCurrency(order.totalAmount)}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -384,10 +477,17 @@ export default function OrderDetailsView({
                   <TableCell>
                     <div className="relative h-12 w-12 overflow-hidden rounded-md">
                       {item.productImage ? (
-                        <Image src={item.productImage} alt={item.productName} fill className="object-cover" />
+                        <Image
+                          src={item.productImage}
+                          alt={item.productName}
+                          fill
+                          className="object-cover"
+                        />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center bg-muted">
-                          <span className="text-xs text-muted-foreground">No image</span>
+                          <span className="text-xs text-muted-foreground">
+                            No image
+                          </span>
                         </div>
                       )}
                     </div>
@@ -395,12 +495,18 @@ export default function OrderDetailsView({
                   <TableCell>
                     <div>
                       <p className="font-medium">{item.productName}</p>
-                      <p className="text-sm text-muted-foreground">{item.variantVolumeMl}ml</p>
+                      <p className="text-sm text-muted-foreground">
+                        {item.variantVolumeMl}ml
+                      </p>
                     </div>
                   </TableCell>
-                  <TableCell className="text-right font-medium">{formatCurrency(item.unitPrice)}</TableCell>
+                  <TableCell className="text-right font-medium">
+                    {formatCurrency(item.unitPrice)}
+                  </TableCell>
                   <TableCell className="text-center">{item.quantity}</TableCell>
-                  <TableCell className="text-right font-medium">{formatCurrency(item.totalPrice)}</TableCell>
+                  <TableCell className="text-right font-medium">
+                    {formatCurrency(item.totalPrice)}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -441,7 +547,9 @@ export default function OrderDetailsView({
         </CardHeader>
         <CardContent>
           {!order.payments || order.payments.length === 0 ? (
-            <p className="text-muted-foreground py-4">Không tìm thấy giao dịch thanh toán nào</p>
+            <p className="text-muted-foreground py-4">
+              Không tìm thấy giao dịch thanh toán nào
+            </p>
           ) : (
             <Table>
               <TableHeader>
@@ -461,8 +569,12 @@ export default function OrderDetailsView({
                     <TableCell>{formatDate(payment.paymentDate)}</TableCell>
                     <TableCell>{payment.paymentMethodName}</TableCell>
                     <TableCell>{payment.transactionId || "N/A"}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(payment.amount)}</TableCell>
-                    <TableCell>{getPaymentStatusBadge(payment.status)}</TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(payment.amount)}
+                    </TableCell>
+                    <TableCell>
+                      {getPaymentStatusBadge(payment.status)}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -482,22 +594,23 @@ export default function OrderDetailsView({
                 <DialogHeader>
                   <DialogTitle>Xác nhận thanh toán</DialogTitle>
                   <DialogDescription>
-                    Bạn có chắc muốn đánh dấu đơn hàng #{order.id} là đã thanh toán không?
+                    Bạn có chắc muốn đánh dấu đơn hàng #{order.id} là đã thanh
+                    toán không?
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
                   <Button
                     variant="outline"
                     onClick={() => {
-                      setSelectedPaymentStatus(order.paymentStatus)
+                      setSelectedPaymentStatus(order.paymentStatus);
                     }}
                   >
                     Hủy
                   </Button>
                   <Button
                     onClick={() => {
-                      setSelectedPaymentStatus("Paid")
-                      handlePaymentStatusUpdate()
+                      setSelectedPaymentStatus("Paid");
+                      handlePaymentStatusUpdate();
                     }}
                     disabled={updatingPayment}
                   >
@@ -534,8 +647,12 @@ export default function OrderDetailsView({
                   <div className="relative mt-1 h-2 w-2 rounded-full bg-primary" />
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">{activity.description}</p>
-                      <p className="text-xs text-muted-foreground">{formatActivityTime(activity.timestamp)}</p>
+                      <p className="text-sm font-medium">
+                        {activity.description}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatActivityTime(activity.timestamp)}
+                      </p>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Thực hiện bởi: {activity.adminUserName || "Hệ thống"}
@@ -548,6 +665,5 @@ export default function OrderDetailsView({
         </Card>
       )}
     </div>
-  )
+  );
 }
-

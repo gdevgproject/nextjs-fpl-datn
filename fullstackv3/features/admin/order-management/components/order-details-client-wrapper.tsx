@@ -1,14 +1,18 @@
-"use client"
-import OrderDetailsView from "./order-details-view"
-import type { OrderDetails, OrderActivityLog } from "../types"
-import type { PaymentStatus } from "@/features/orders/types"
-import { useUpdateOrderStatus, useUpdateOrderTracking, useUpdatePaymentStatus } from "../queries"
+"use client";
+import OrderDetailsView from "./order-details-view";
+import type { OrderDetails, OrderActivityLog } from "../types";
+import type { PaymentStatus } from "@/features/shop/orders/types";
+import {
+  useUpdateOrderStatus,
+  useUpdateOrderTracking,
+  useUpdatePaymentStatus,
+} from "../queries";
 
 interface OrderDetailsClientWrapperProps {
-  order: OrderDetails
-  orderStatuses: Array<{ id: number; name: string }>
-  activityLog: OrderActivityLog[]
-  isAdmin: boolean
+  order: OrderDetails;
+  orderStatuses: Array<{ id: number; name: string }>;
+  activityLog: OrderActivityLog[];
+  isAdmin: boolean;
 }
 
 export function OrderDetailsClientWrapper({
@@ -18,24 +22,30 @@ export function OrderDetailsClientWrapper({
   isAdmin,
 }: OrderDetailsClientWrapperProps) {
   // Mutation hooks
-  const updateOrderStatusMutation = useUpdateOrderStatus()
-  const updateOrderTrackingMutation = useUpdateOrderTracking()
-  const updatePaymentStatusMutation = useUpdatePaymentStatus()
+  const updateOrderStatusMutation = useUpdateOrderStatus();
+  const updateOrderTrackingMutation = useUpdateOrderTracking();
+  const updatePaymentStatusMutation = useUpdatePaymentStatus();
 
   // Handle order status update
   const handleUpdateOrderStatus = async (orderId: number, statusId: number) => {
-    return updateOrderStatusMutation.mutateAsync({ orderId, statusId })
-  }
+    return updateOrderStatusMutation.mutateAsync({ orderId, statusId });
+  };
 
   // Handle tracking number update
-  const handleUpdateTracking = async (orderId: number, trackingNumber: string) => {
-    return updateOrderTrackingMutation.mutateAsync({ orderId, trackingNumber })
-  }
+  const handleUpdateTracking = async (
+    orderId: number,
+    trackingNumber: string
+  ) => {
+    return updateOrderTrackingMutation.mutateAsync({ orderId, trackingNumber });
+  };
 
   // Handle payment status update
-  const handleUpdatePaymentStatus = async (orderId: number, paymentStatus: PaymentStatus) => {
-    return updatePaymentStatusMutation.mutateAsync({ orderId, paymentStatus })
-  }
+  const handleUpdatePaymentStatus = async (
+    orderId: number,
+    paymentStatus: PaymentStatus
+  ) => {
+    return updatePaymentStatusMutation.mutateAsync({ orderId, paymentStatus });
+  };
 
   return (
     <OrderDetailsView
@@ -47,6 +57,5 @@ export function OrderDetailsClientWrapper({
       updateOrderTracking={handleUpdateTracking}
       updatePaymentStatus={handleUpdatePaymentStatus}
     />
-  )
+  );
 }
-

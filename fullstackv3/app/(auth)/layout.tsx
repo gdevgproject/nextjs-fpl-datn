@@ -1,7 +1,6 @@
-import type React from "react"
-import { AuthLayout } from "@/features/auth/components/auth-layout"
+import type React from "react";
+import { AuthLayout } from "@/features/shop/auth/components/auth-layout";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <AuthLayout>{children}</AuthLayout>
+  return <AuthLayout>{children}</AuthLayout>;
 }
-

@@ -1,30 +1,40 @@
-"use server"
+"use server";
 
-import { getSupabaseServerClient } from "@/lib/supabase/server"
-import { createServiceRoleClient } from "@/lib/supabase/server"
-import { createErrorResponse, createSuccessResponse } from "@/lib/utils/error-utils"
-import { getUserRoleFromMetadata } from "@/lib/utils/auth-utils"
-import type { OrderFilter, PaginatedOrders, OrderDetails, OrderStats } from "./types"
-import type { PaymentStatus } from "@/features/orders/types"
+import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/server";
+import {
+  createErrorResponse,
+  createSuccessResponse,
+} from "@/lib/utils/error-utils";
+import { getUserRoleFromMetadata } from "@/lib/utils/auth-utils";
+import type {
+  OrderFilter,
+  PaginatedOrders,
+  OrderDetails,
+  OrderStats,
+} from "./types";
+import type { PaymentStatus } from "@/features/shop/orders/types";
 
 /**
  * Get a paginated list of orders with filtering and sorting
  */
-export async function getOrdersList(filter: OrderFilter): Promise<{ data?: PaginatedOrders; error?: string }> {
+export async function getOrdersList(
+  filter: OrderFilter
+): Promise<{ data?: PaginatedOrders; error?: string }> {
   try {
     // Verify user is staff or admin
-    const supabase = await getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient();
     const {
       data: { session },
-    } = await supabase.auth.getSession()
+    } = await supabase.auth.getSession();
 
     if (!session) {
-      return createErrorResponse("Unauthorized", "unauthorized")
+      return createErrorResponse("Unauthorized", "unauthorized");
     }
 
-    const role = getUserRoleFromMetadata(session.user)
+    const role = getUserRoleFromMetadata(session.user);
     if (role !== "admin" && role !== "staff") {
-      return createErrorResponse("Forbidden", "forbidden")
+      return createErrorResponse("Forbidden", "forbidden");
     }
 
     // Default values
@@ -38,10 +48,10 @@ export async function getOrdersList(filter: OrderFilter): Promise<{ data?: Pagin
       search,
       sortBy = "orderDate",
       sortOrder = "desc",
-    } = filter
+    } = filter;
 
     // Use service client to avoid RLS
-    const serviceClient = await createServiceRoleClient()
+    const serviceClient = await createServiceRoleClient();
 
     // Start building query
     let query = serviceClient.from("orders").select(
@@ -57,44 +67,47 @@ export async function getOrdersList(filter: OrderFilter): Promise<{ data?: Pagin
         order_status:order_statuses(id, name),
         order_items:order_items(id)
       `,
-      { count: "exact" },
-    )
+      { count: "exact" }
+    );
 
     // Apply filters
     if (orderStatusId) {
-      query = query.eq("order_status_id", orderStatusId)
+      query = query.eq("order_status_id", orderStatusId);
     }
 
     if (paymentStatus) {
-      query = query.eq("payment_status", paymentStatus)
+      query = query.eq("payment_status", paymentStatus);
     }
 
     if (startDate) {
-      query = query.gte("order_date", startDate)
+      query = query.gte("order_date", startDate);
     }
 
     if (endDate) {
-      query = query.lte("order_date", `${endDate}T23:59:59`)
+      query = query.lte("order_date", `${endDate}T23:59:59`);
     }
 
     if (search) {
       query = query.or(
         `recipient_name.ilike.%${search}%,recipient_phone.ilike.%${search}%,guest_name.ilike.%${search}%,guest_email.ilike.%${search}%,id.eq.${
           !isNaN(Number.parseInt(search)) ? Number.parseInt(search) : 0
-        }`,
-      )
+        }`
+      );
     }
 
     // Get total count first
-    const { count, error: countError } = await query
+    const { count, error: countError } = await query;
 
     if (countError) {
-      console.error("Error getting order count:", countError)
-      return createErrorResponse("Không thể lấy danh sách đơn hàng", "database_error")
+      console.error("Error getting order count:", countError);
+      return createErrorResponse(
+        "Không thể lấy danh sách đơn hàng",
+        "database_error"
+      );
     }
 
     // Apply pagination and sorting
-    query = query.range((page - 1) * pageSize, page * pageSize - 1)
+    query = query.range((page - 1) * pageSize, page * pageSize - 1);
 
     // Handle different sort fields
     const sortFieldMap: Record<string, string> = {
@@ -102,17 +115,20 @@ export async function getOrdersList(filter: OrderFilter): Promise<{ data?: Pagin
       totalAmount: "total_amount",
       customerName: "recipient_name",
       id: "id",
-    }
+    };
 
-    const dbSortField = sortFieldMap[sortBy] || "order_date"
-    query = query.order(dbSortField, { ascending: sortOrder === "asc" })
+    const dbSortField = sortFieldMap[sortBy] || "order_date";
+    query = query.order(dbSortField, { ascending: sortOrder === "asc" });
 
     // Execute query
-    const { data, error } = await query
+    const { data, error } = await query;
 
     if (error) {
-      console.error("Error fetching orders:", error)
-      return createErrorResponse("Không thể lấy danh sách đơn hàng", "database_error")
+      console.error("Error fetching orders:", error);
+      return createErrorResponse(
+        "Không thể lấy danh sách đơn hàng",
+        "database_error"
+      );
     }
 
     // Format results
@@ -126,7 +142,7 @@ export async function getOrdersList(filter: OrderFilter): Promise<{ data?: Pagin
       paymentStatus: order.payment_status as PaymentStatus,
       trackingNumber: order.tracking_number || null,
       itemCount: order.order_items?.length || 0,
-    }))
+    }));
 
     return createSuccessResponse({
       orders,
@@ -134,35 +150,40 @@ export async function getOrdersList(filter: OrderFilter): Promise<{ data?: Pagin
       page,
       pageSize,
       totalPages: Math.ceil((count || 0) / pageSize),
-    })
+    });
   } catch (error) {
-    console.error("Error in getOrdersList:", error)
-    return createErrorResponse("Không thể lấy danh sách đơn hàng", "server_error")
+    console.error("Error in getOrdersList:", error);
+    return createErrorResponse(
+      "Không thể lấy danh sách đơn hàng",
+      "server_error"
+    );
   }
 }
 
 /**
  * Get a single order with detailed information
  */
-export async function getOrderDetails(orderId: number): Promise<{ data?: OrderDetails; error?: string }> {
+export async function getOrderDetails(
+  orderId: number
+): Promise<{ data?: OrderDetails; error?: string }> {
   try {
     // Verify user is staff or admin
-    const supabase = await getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient();
     const {
       data: { session },
-    } = await supabase.auth.getSession()
+    } = await supabase.auth.getSession();
 
     if (!session) {
-      return createErrorResponse("Unauthorized", "unauthorized")
+      return createErrorResponse("Unauthorized", "unauthorized");
     }
 
-    const role = getUserRoleFromMetadata(session.user)
+    const role = getUserRoleFromMetadata(session.user);
     if (role !== "admin" && role !== "staff") {
-      return createErrorResponse("Forbidden", "forbidden")
+      return createErrorResponse("Forbidden", "forbidden");
     }
 
     // Use service client to avoid RLS
-    const serviceClient = await createServiceRoleClient()
+    const serviceClient = await createServiceRoleClient();
 
     // Get order with details
     const { data: order, error: orderError } = await serviceClient
@@ -194,14 +215,14 @@ export async function getOrderDetails(orderId: number): Promise<{ data?: OrderDe
         total_amount,
         payment_method:payment_methods(id, name),
         order_status:order_statuses(id, name)
-      `,
+      `
       )
       .eq("id", orderId)
-      .single()
+      .single();
 
     if (orderError) {
-      console.error("Error getting order:", orderError)
-      return createErrorResponse("Không tìm thấy đơn hàng", "not_found")
+      console.error("Error getting order:", orderError);
+      return createErrorResponse("Không tìm thấy đơn hàng", "not_found");
     }
 
     // Get order items
@@ -221,13 +242,16 @@ export async function getOrderDetails(orderId: number): Promise<{ data?: OrderDe
             product_images(image_url, is_main)
           )
         )
-      `,
+      `
       )
-      .eq("order_id", orderId)
+      .eq("order_id", orderId);
 
     if (itemsError) {
-      console.error("Error getting order items:", itemsError)
-      return createErrorResponse("Không thể lấy chi tiết đơn hàng", "database_error")
+      console.error("Error getting order items:", itemsError);
+      return createErrorResponse(
+        "Không thể lấy chi tiết đơn hàng",
+        "database_error"
+      );
     }
 
     // Get payment records
@@ -243,23 +267,26 @@ export async function getOrderDetails(orderId: number): Promise<{ data?: OrderDe
         status,
         payment_details,
         payment_method:payment_methods(id, name)
-      `,
+      `
       )
-      .eq("order_id", orderId)
+      .eq("order_id", orderId);
 
     if (paymentsError) {
-      console.error("Error getting payments:", paymentsError)
-      return createErrorResponse("Không thể lấy thông tin thanh toán", "database_error")
+      console.error("Error getting payments:", paymentsError);
+      return createErrorResponse(
+        "Không thể lấy thông tin thanh toán",
+        "database_error"
+      );
     }
 
     // Format items with images
     const formattedItems = items.map((item) => {
       // Find main image or first image
-      let productImage = null
+      let productImage = null;
       if (item.product_images?.images?.product_images?.length > 0) {
-        const images = item.product_images.images.product_images
-        const mainImage = images.find((img: any) => img.is_main)
-        productImage = mainImage?.image_url || images[0]?.image_url
+        const images = item.product_images.images.product_images;
+        const mainImage = images.find((img: any) => img.is_main);
+        productImage = mainImage?.image_url || images[0]?.image_url;
       }
 
       return {
@@ -271,8 +298,8 @@ export async function getOrderDetails(orderId: number): Promise<{ data?: OrderDe
         unitPrice: item.unit_price_at_order,
         totalPrice: item.unit_price_at_order * item.quantity,
         productImage,
-      }
-    })
+      };
+    });
 
     // Format payments
     const formattedPayments = payments.map((payment) => ({
@@ -284,10 +311,10 @@ export async function getOrderDetails(orderId: number): Promise<{ data?: OrderDe
       amount: payment.amount,
       status: payment.status as PaymentStatus,
       paymentDetails: payment.payment_details,
-    }))
+    }));
 
     // Create shipping address
-    const shippingAddress = `${order.street_address}, ${order.ward}, ${order.district}, ${order.province_city}`
+    const shippingAddress = `${order.street_address}, ${order.ward}, ${order.district}, ${order.province_city}`;
 
     // Format order details
     const orderDetails: OrderDetails = {
@@ -331,12 +358,15 @@ export async function getOrderDetails(orderId: number): Promise<{ data?: OrderDe
       // Related items
       items: formattedItems,
       payments: formattedPayments,
-    }
+    };
 
-    return createSuccessResponse(orderDetails)
+    return createSuccessResponse(orderDetails);
   } catch (error) {
-    console.error("Error in getOrderDetails:", error)
-    return createErrorResponse("Không thể lấy chi tiết đơn hàng", "server_error")
+    console.error("Error in getOrderDetails:", error);
+    return createErrorResponse(
+      "Không thể lấy chi tiết đơn hàng",
+      "server_error"
+    );
   }
 }
 
@@ -345,55 +375,64 @@ export async function getOrderDetails(orderId: number): Promise<{ data?: OrderDe
  */
 export async function updateOrderStatus(
   orderId: number,
-  statusId: number,
+  statusId: number
 ): Promise<{ success: boolean; message: string; error?: string }> {
   try {
     // Verify user is staff or admin
-    const supabase = await getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient();
     const {
       data: { session },
-    } = await supabase.auth.getSession()
+    } = await supabase.auth.getSession();
 
     if (!session) {
-      return createErrorResponse("Unauthorized", "unauthorized")
+      return createErrorResponse("Unauthorized", "unauthorized");
     }
 
-    const role = getUserRoleFromMetadata(session.user)
+    const role = getUserRoleFromMetadata(session.user);
     if (role !== "admin" && role !== "staff") {
-      return createErrorResponse("Forbidden", "forbidden")
+      return createErrorResponse("Forbidden", "forbidden");
     }
 
     // Use service client to avoid RLS
-    const serviceClient = await createServiceRoleClient()
+    const serviceClient = await createServiceRoleClient();
 
     // Validate status exists
     const { data: statusData, error: statusError } = await serviceClient
       .from("order_statuses")
       .select("id, name")
       .eq("id", statusId)
-      .single()
+      .single();
 
     if (statusError || !statusData) {
-      return createErrorResponse("Trạng thái đơn hàng không hợp lệ", "invalid_status")
+      return createErrorResponse(
+        "Trạng thái đơn hàng không hợp lệ",
+        "invalid_status"
+      );
     }
 
     // Update order status
     const { error: updateError } = await serviceClient
       .from("orders")
       .update({ order_status_id: statusId })
-      .eq("id", orderId)
+      .eq("id", orderId);
 
     if (updateError) {
-      console.error("Error updating order status:", updateError)
-      return createErrorResponse("Không thể cập nhật trạng thái đơn hàng", "database_error")
+      console.error("Error updating order status:", updateError);
+      return createErrorResponse(
+        "Không thể cập nhật trạng thái đơn hàng",
+        "database_error"
+      );
     }
 
     return createSuccessResponse({
       message: `Đã cập nhật trạng thái đơn hàng thành ${statusData.name}`,
-    })
+    });
   } catch (error) {
-    console.error("Error in updateOrderStatus:", error)
-    return createErrorResponse("Không thể cập nhật trạng thái đơn hàng", "server_error")
+    console.error("Error in updateOrderStatus:", error);
+    return createErrorResponse(
+      "Không thể cập nhật trạng thái đơn hàng",
+      "server_error"
+    );
   }
 }
 
@@ -402,36 +441,39 @@ export async function updateOrderStatus(
  */
 export async function updateOrderTracking(
   orderId: number,
-  trackingNumber: string,
+  trackingNumber: string
 ): Promise<{ success: boolean; message: string; error?: string }> {
   try {
     // Verify user is staff or admin
-    const supabase = await getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient();
     const {
       data: { session },
-    } = await supabase.auth.getSession()
+    } = await supabase.auth.getSession();
 
     if (!session) {
-      return createErrorResponse("Unauthorized", "unauthorized")
+      return createErrorResponse("Unauthorized", "unauthorized");
     }
 
-    const role = getUserRoleFromMetadata(session.user)
+    const role = getUserRoleFromMetadata(session.user);
     if (role !== "admin" && role !== "staff") {
-      return createErrorResponse("Forbidden", "forbidden")
+      return createErrorResponse("Forbidden", "forbidden");
     }
 
     // Use service client to avoid RLS
-    const serviceClient = await createServiceRoleClient()
+    const serviceClient = await createServiceRoleClient();
 
     // Update tracking number
     const { error: updateError } = await serviceClient
       .from("orders")
       .update({ tracking_number: trackingNumber })
-      .eq("id", orderId)
+      .eq("id", orderId);
 
     if (updateError) {
-      console.error("Error updating tracking number:", updateError)
-      return createErrorResponse("Không thể cập nhật mã vận đơn", "database_error")
+      console.error("Error updating tracking number:", updateError);
+      return createErrorResponse(
+        "Không thể cập nhật mã vận đơn",
+        "database_error"
+      );
     }
 
     // Log activity
@@ -442,14 +484,14 @@ export async function updateOrderTracking(
       entity_type: "order",
       entity_id: orderId.toString(),
       details: { tracking_number: trackingNumber },
-    })
+    });
 
     return createSuccessResponse({
       message: "Đã cập nhật mã vận đơn thành công",
-    })
+    });
   } catch (error) {
-    console.error("Error in updateOrderTracking:", error)
-    return createErrorResponse("Không thể cập nhật mã vận đơn", "server_error")
+    console.error("Error in updateOrderTracking:", error);
+    return createErrorResponse("Không thể cập nhật mã vận đơn", "server_error");
   }
 }
 
@@ -458,42 +500,53 @@ export async function updateOrderTracking(
  */
 export async function updatePaymentStatus(
   orderId: number,
-  paymentStatus: PaymentStatus,
+  paymentStatus: PaymentStatus
 ): Promise<{ success: boolean; message: string; error?: string }> {
   try {
     // Verify user is staff or admin
-    const supabase = await getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient();
     const {
       data: { session },
-    } = await supabase.auth.getSession()
+    } = await supabase.auth.getSession();
 
     if (!session) {
-      return createErrorResponse("Unauthorized", "unauthorized")
+      return createErrorResponse("Unauthorized", "unauthorized");
     }
 
-    const role = getUserRoleFromMetadata(session.user)
+    const role = getUserRoleFromMetadata(session.user);
     if (role !== "admin" && role !== "staff") {
-      return createErrorResponse("Forbidden", "forbidden")
+      return createErrorResponse("Forbidden", "forbidden");
     }
 
     // Validate payment status
-    const validStatuses: PaymentStatus[] = ["Pending", "Paid", "Failed", "Refunded"]
+    const validStatuses: PaymentStatus[] = [
+      "Pending",
+      "Paid",
+      "Failed",
+      "Refunded",
+    ];
     if (!validStatuses.includes(paymentStatus)) {
-      return createErrorResponse("Trạng thái thanh toán không hợp lệ", "invalid_status")
+      return createErrorResponse(
+        "Trạng thái thanh toán không hợp lệ",
+        "invalid_status"
+      );
     }
 
     // Use service client to avoid RLS
-    const serviceClient = await createServiceRoleClient()
+    const serviceClient = await createServiceRoleClient();
 
     // Update payment status
     const { error: updateError } = await serviceClient
       .from("orders")
       .update({ payment_status: paymentStatus })
-      .eq("id", orderId)
+      .eq("id", orderId);
 
     if (updateError) {
-      console.error("Error updating payment status:", updateError)
-      return createErrorResponse("Không thể cập nhật trạng thái thanh toán", "database_error")
+      console.error("Error updating payment status:", updateError);
+      return createErrorResponse(
+        "Không thể cập nhật trạng thái thanh toán",
+        "database_error"
+      );
     }
 
     // Get existing payments
@@ -502,13 +555,16 @@ export async function updatePaymentStatus(
       .select("id, status")
       .eq("order_id", orderId)
       .order("id", { ascending: false })
-      .limit(1)
+      .limit(1);
 
     // Also update the latest payment if exists
     if (payments && payments.length > 0) {
-      const paymentId = payments[0].id
+      const paymentId = payments[0].id;
 
-      await serviceClient.from("payments").update({ status: paymentStatus }).eq("id", paymentId)
+      await serviceClient
+        .from("payments")
+        .update({ status: paymentStatus })
+        .eq("id", paymentId);
     }
 
     // Log activity
@@ -519,39 +575,47 @@ export async function updatePaymentStatus(
       entity_type: "order",
       entity_id: orderId.toString(),
       details: { payment_status: paymentStatus },
-    })
+    });
 
     return createSuccessResponse({
       message: `Đã cập nhật trạng thái thanh toán thành ${paymentStatus}`,
-    })
+    });
   } catch (error) {
-    console.error("Error in updatePaymentStatus:", error)
-    return createErrorResponse("Không thể cập nhật trạng thái thanh toán", "server_error")
+    console.error("Error in updatePaymentStatus:", error);
+    return createErrorResponse(
+      "Không thể cập nhật trạng thái thanh toán",
+      "server_error"
+    );
   }
 }
 
 /**
  * Get order activity log (admin only)
  */
-export async function getOrderActivityLog(orderId: number): Promise<{ data?: any[]; error?: string }> {
+export async function getOrderActivityLog(
+  orderId: number
+): Promise<{ data?: any[]; error?: string }> {
   try {
     // Verify user is admin (not staff)
-    const supabase = await getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient();
     const {
       data: { session },
-    } = await supabase.auth.getSession()
+    } = await supabase.auth.getSession();
 
     if (!session) {
-      return createErrorResponse("Unauthorized", "unauthorized")
+      return createErrorResponse("Unauthorized", "unauthorized");
     }
 
-    const role = getUserRoleFromMetadata(session.user)
+    const role = getUserRoleFromMetadata(session.user);
     if (role !== "admin") {
-      return createErrorResponse("Chỉ Admin mới có quyền xem nhật ký hoạt động", "forbidden")
+      return createErrorResponse(
+        "Chỉ Admin mới có quyền xem nhật ký hoạt động",
+        "forbidden"
+      );
     }
 
     // Use service client to avoid RLS
-    const serviceClient = await createServiceRoleClient()
+    const serviceClient = await createServiceRoleClient();
 
     // Get activity log
     const { data, error } = await serviceClient
@@ -565,15 +629,18 @@ export async function getOrderActivityLog(orderId: number): Promise<{ data?: any
         timestamp,
         details,
         profiles:admin_user_id(display_name)
-      `,
+      `
       )
       .eq("entity_type", "order")
       .eq("entity_id", orderId.toString())
-      .order("timestamp", { ascending: false })
+      .order("timestamp", { ascending: false });
 
     if (error) {
-      console.error("Error fetching activity log:", error)
-      return createErrorResponse("Không thể lấy nhật ký hoạt động", "database_error")
+      console.error("Error fetching activity log:", error);
+      return createErrorResponse(
+        "Không thể lấy nhật ký hoạt động",
+        "database_error"
+      );
     }
 
     // Format activity log
@@ -585,12 +652,15 @@ export async function getOrderActivityLog(orderId: number): Promise<{ data?: any
       description: entry.description,
       timestamp: entry.timestamp,
       details: entry.details,
-    }))
+    }));
 
-    return createSuccessResponse(formattedLog)
+    return createSuccessResponse(formattedLog);
   } catch (error) {
-    console.error("Error in getOrderActivityLog:", error)
-    return createErrorResponse("Không thể lấy nhật ký hoạt động", "server_error")
+    console.error("Error in getOrderActivityLog:", error);
+    return createErrorResponse(
+      "Không thể lấy nhật ký hoạt động",
+      "server_error"
+    );
   }
 }
 
@@ -598,89 +668,106 @@ export async function getOrderActivityLog(orderId: number): Promise<{ data?: any
  * Get order statistics
  */
 export async function getOrderStats(): Promise<{
-  data?: OrderStats
-  error?: string
+  data?: OrderStats;
+  error?: string;
 }> {
   try {
     // Verify user is staff or admin
-    const supabase = await getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient();
     const {
       data: { session },
-    } = await supabase.auth.getSession()
+    } = await supabase.auth.getSession();
 
     if (!session) {
-      return createErrorResponse("Unauthorized", "unauthorized")
+      return createErrorResponse("Unauthorized", "unauthorized");
     }
 
-    const role = getUserRoleFromMetadata(session.user)
+    const role = getUserRoleFromMetadata(session.user);
     if (role !== "admin" && role !== "staff") {
-      return createErrorResponse("Forbidden", "forbidden")
+      return createErrorResponse("Forbidden", "forbidden");
     }
 
     // Use service client to avoid RLS
-    const serviceClient = await createServiceRoleClient()
+    const serviceClient = await createServiceRoleClient();
 
     // Get order statuses first
-    const { data: statuses, error: statusesError } = await serviceClient.from("order_statuses").select("id, name")
+    const { data: statuses, error: statusesError } = await serviceClient
+      .from("order_statuses")
+      .select("id, name");
 
     if (statusesError) {
-      console.error("Error fetching order statuses:", statusesError)
-      return createErrorResponse("Không thể lấy thống kê đơn hàng", "database_error")
+      console.error("Error fetching order statuses:", statusesError);
+      return createErrorResponse(
+        "Không thể lấy thống kê đơn hàng",
+        "database_error"
+      );
     }
 
     // Create a map for status names to their IDs
-    const statusMap: Record<string, number> = {}
+    const statusMap: Record<string, number> = {};
     statuses.forEach((status) => {
-      statusMap[status.name.toLowerCase()] = status.id
-    })
+      statusMap[status.name.toLowerCase()] = status.id;
+    });
 
     // Get total orders count
     const { count: totalOrders, error: totalError } = await serviceClient
       .from("orders")
-      .select("*", { count: "exact", head: true })
+      .select("*", { count: "exact", head: true });
 
     if (totalError) {
-      console.error("Error counting orders:", totalError)
-      return createErrorResponse("Không thể lấy thống kê đơn hàng", "database_error")
+      console.error("Error counting orders:", totalError);
+      return createErrorResponse(
+        "Không thể lấy thống kê đơn hàng",
+        "database_error"
+      );
     }
 
     // Get counts for each status
-    const statusCounts: any = {}
+    const statusCounts: any = {};
     for (const status of statuses) {
       const { count, error } = await serviceClient
         .from("orders")
         .select("*", { count: "exact", head: true })
-        .eq("order_status_id", status.id)
+        .eq("order_status_id", status.id);
 
       if (error) {
-        console.error(`Error counting orders with status ${status.name}:`, error)
-        continue
+        console.error(
+          `Error counting orders with status ${status.name}:`,
+          error
+        );
+        continue;
       }
 
-      statusCounts[status.name.toLowerCase()] = count
+      statusCounts[status.name.toLowerCase()] = count;
     }
 
     // Calculate revenue metrics
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    const startOfWeek = new Date(today)
-    startOfWeek.setDate(today.getDate() - today.getDay()) // Start of week (Sunday)
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
 
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
     // Total revenue (from completed orders only)
-    const completedStatusIds = [statusMap["shipped"] || 0, statusMap["delivered"] || 0].filter((id) => id !== 0)
+    const completedStatusIds = [
+      statusMap["shipped"] || 0,
+      statusMap["delivered"] || 0,
+    ].filter((id) => id !== 0);
 
-    let totalRevenue = 0
+    let totalRevenue = 0;
     if (completedStatusIds.length > 0) {
       const { data: revenueData, error: revenueError } = await serviceClient
         .from("orders")
         .select("total_amount")
-        .in("order_status_id", completedStatusIds)
+        .in("order_status_id", completedStatusIds);
 
       if (!revenueError && revenueData) {
-        totalRevenue = revenueData.reduce((sum, order) => sum + order.total_amount, 0)
+        totalRevenue = revenueData.reduce(
+          (sum, order) => sum + order.total_amount,
+          0
+        );
       }
     }
 
@@ -688,25 +775,34 @@ export async function getOrderStats(): Promise<{
     const { data: todayData, error: todayError } = await serviceClient
       .from("orders")
       .select("total_amount")
-      .gte("order_date", today.toISOString())
+      .gte("order_date", today.toISOString());
 
-    const todayRevenue = !todayError && todayData ? todayData.reduce((sum, order) => sum + order.total_amount, 0) : 0
+    const todayRevenue =
+      !todayError && todayData
+        ? todayData.reduce((sum, order) => sum + order.total_amount, 0)
+        : 0;
 
     // This week's revenue
     const { data: weekData, error: weekError } = await serviceClient
       .from("orders")
       .select("total_amount")
-      .gte("order_date", startOfWeek.toISOString())
+      .gte("order_date", startOfWeek.toISOString());
 
-    const weekRevenue = !weekError && weekData ? weekData.reduce((sum, order) => sum + order.total_amount, 0) : 0
+    const weekRevenue =
+      !weekError && weekData
+        ? weekData.reduce((sum, order) => sum + order.total_amount, 0)
+        : 0;
 
     // This month's revenue
     const { data: monthData, error: monthError } = await serviceClient
       .from("orders")
       .select("total_amount")
-      .gte("order_date", startOfMonth.toISOString())
+      .gte("order_date", startOfMonth.toISOString());
 
-    const monthRevenue = !monthError && monthData ? monthData.reduce((sum, order) => sum + order.total_amount, 0) : 0
+    const monthRevenue =
+      !monthError && monthData
+        ? monthData.reduce((sum, order) => sum + order.total_amount, 0)
+        : 0;
 
     // Compile statistics
     const stats: OrderStats = {
@@ -722,12 +818,15 @@ export async function getOrderStats(): Promise<{
         thisWeek: weekRevenue,
         thisMonth: monthRevenue,
       },
-    }
+    };
 
-    return createSuccessResponse(stats)
+    return createSuccessResponse(stats);
   } catch (error) {
-    console.error("Error in getOrderStats:", error)
-    return createErrorResponse("Không thể lấy thống kê đơn hàng", "server_error")
+    console.error("Error in getOrderStats:", error);
+    return createErrorResponse(
+      "Không thể lấy thống kê đơn hàng",
+      "server_error"
+    );
   }
 }
 
@@ -735,39 +834,47 @@ export async function getOrderStats(): Promise<{
  * Get all order statuses
  */
 export async function getOrderStatuses(): Promise<{
-  data?: Array<{ id: number; name: string }>
-  error?: string
+  data?: Array<{ id: number; name: string }>;
+  error?: string;
 }> {
   try {
     // Verify user is staff or admin
-    const supabase = await getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient();
     const {
       data: { session },
-    } = await supabase.auth.getSession()
+    } = await supabase.auth.getSession();
 
     if (!session) {
-      return createErrorResponse("Unauthorized", "unauthorized")
+      return createErrorResponse("Unauthorized", "unauthorized");
     }
 
-    const role = getUserRoleFromMetadata(session.user)
+    const role = getUserRoleFromMetadata(session.user);
     if (role !== "admin" && role !== "staff") {
-      return createErrorResponse("Forbidden", "forbidden")
+      return createErrorResponse("Forbidden", "forbidden");
     }
 
     // Use service client to avoid RLS
-    const serviceClient = await createServiceRoleClient()
+    const serviceClient = await createServiceRoleClient();
 
-    const { data, error } = await serviceClient.from("order_statuses").select("id, name").order("id")
+    const { data, error } = await serviceClient
+      .from("order_statuses")
+      .select("id, name")
+      .order("id");
 
     if (error) {
-      console.error("Error fetching order statuses:", error)
-      return createErrorResponse("Không thể lấy danh sách trạng thái đơn hàng", "database_error")
+      console.error("Error fetching order statuses:", error);
+      return createErrorResponse(
+        "Không thể lấy danh sách trạng thái đơn hàng",
+        "database_error"
+      );
     }
 
-    return createSuccessResponse(data)
+    return createSuccessResponse(data);
   } catch (error) {
-    console.error("Error in getOrderStatuses:", error)
-    return createErrorResponse("Không thể lấy danh sách trạng thái đơn hàng", "server_error")
+    console.error("Error in getOrderStatuses:", error);
+    return createErrorResponse(
+      "Không thể lấy danh sách trạng thái đơn hàng",
+      "server_error"
+    );
   }
 }
-

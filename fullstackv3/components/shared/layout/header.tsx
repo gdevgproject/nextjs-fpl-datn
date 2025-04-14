@@ -1,20 +1,20 @@
-"use client"
+"use client";
 
-import { memo, useEffect, useState } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { usePathname } from "next/navigation"
-import { Menu } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { useAuth } from "@/lib/providers/auth-context"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { CartButton } from "@/features/cart/components/cart-button"
-import { Skeleton } from "@/components/ui/skeleton"
-import { SearchForm } from "./search-form"
-import { UserNav } from "./user-nav"
-import { useShopSettings } from "@/features/shared/hooks/use-shop-settings"
-import { LogOut } from "lucide-react"
+import { memo, useEffect, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import { Menu } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { useAuth } from "@/lib/providers/auth-context";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { CartButton } from "@/features/shop/cart/components/cart-button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SearchForm } from "./search-form";
+import { UserNav } from "./user-nav";
+import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings";
+import { LogOut } from "lucide-react";
 
 // Navigation items memoized to prevent re-renders
 const mainNavItems = [
@@ -24,23 +24,23 @@ const mainNavItems = [
   { title: "Khuyến mãi", href: "/khuyen-mai" },
   { title: "Giới thiệu", href: "/gioi-thieu" },
   { title: "Liên hệ", href: "/lien-he" },
-]
+];
 
 // Memoized header component to prevent unnecessary re-renders
 export const Header = memo(function Header() {
-  const pathname = usePathname()
+  const pathname = usePathname();
   // Destructure exactly what we need to ensure proper re-renders
-  const { signOut, isAuthenticated, isLoading: isAuthLoading } = useAuth()
-  const [mounted, setMounted] = useState(false)
-  const { settings, isLoading: isLoadingSettings } = useShopSettings()
+  const { signOut, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const [mounted, setMounted] = useState(false);
+  const { settings, isLoading: isLoadingSettings } = useShopSettings();
 
   // Client-side only mounting to prevent hydration errors
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
   // Get shop name from settings with fallback
-  const shopName = settings?.shop_name || "MyBeauty"
+  const shopName = settings?.shop_name || "MyBeauty";
 
   // Loading skeleton for the header when not mounted yet or auth is loading
   if (!mounted || isAuthLoading) {
@@ -50,7 +50,13 @@ export const Header = memo(function Header() {
           <div className="flex items-center gap-6 md:gap-10">
             <Link href="/" className="flex items-center space-x-2">
               <div className="rounded-lg overflow-hidden">
-                <Image src="/images/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10 object-contain" />
+                <Image
+                  src="/images/logo.png"
+                  alt="Logo"
+                  width={40}
+                  height={40}
+                  className="h-10 w-10 object-contain"
+                />
               </div>
               <span className="font-bold text-xl hidden sm:inline-block">
                 <Skeleton className="h-6 w-24" />
@@ -69,7 +75,7 @@ export const Header = memo(function Header() {
           </div>
         </div>
       </header>
-    )
+    );
   }
 
   // Render the actual header
@@ -98,7 +104,9 @@ export const Header = memo(function Header() {
                 key={item.href}
                 href={item.href}
                 className={`text-sm font-medium transition-colors hover:text-primary ${
-                  pathname === item.href ? "text-primary" : "text-muted-foreground"
+                  pathname === item.href
+                    ? "text-primary"
+                    : "text-muted-foreground"
                 }`}
               >
                 {item.title}
@@ -113,7 +121,12 @@ export const Header = memo(function Header() {
           <ThemeToggle />
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden" aria-label="Menu">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden"
+                aria-label="Menu"
+              >
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
@@ -130,7 +143,11 @@ export const Header = memo(function Header() {
                     />
                   </div>
                   <span className="font-bold text-xl">
-                    {isLoadingSettings ? <Skeleton className="h-6 w-24" /> : shopName}
+                    {isLoadingSettings ? (
+                      <Skeleton className="h-6 w-24" />
+                    ) : (
+                      shopName
+                    )}
                   </span>
                 </Link>
                 {mainNavItems.map((item) => (
@@ -138,14 +155,21 @@ export const Header = memo(function Header() {
                     key={item.href}
                     href={item.href}
                     className={`text-sm font-medium transition-colors hover:text-primary ${
-                      pathname === item.href ? "text-primary" : "text-muted-foreground"
+                      pathname === item.href
+                        ? "text-primary"
+                        : "text-muted-foreground"
                     }`}
                   >
                     {item.title}
                   </Link>
                 ))}
                 {isAuthenticated && (
-                  <Button variant="ghost" onClick={signOut} className="justify-start px-0" disabled={isAuthLoading}>
+                  <Button
+                    variant="ghost"
+                    onClick={signOut}
+                    className="justify-start px-0"
+                    disabled={isAuthLoading}
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     Đăng xuất
                   </Button>
@@ -156,6 +180,5 @@ export const Header = memo(function Header() {
         </div>
       </div>
     </header>
-  )
-})
-
+  );
+});
