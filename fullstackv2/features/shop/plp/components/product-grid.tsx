@@ -1,15 +1,27 @@
 "use client"
 
-import type { ProductListItem } from "../types/plp-types"
-import ProductCard from "@/features/shop/shared/components/product-card"
+import type { Product } from "../hooks/use-products"
+import { ProductCard } from "@/features/shop/shared/components/product-card"
+import { ProductCardSkeleton } from "./product-card-skeleton"
 
 interface ProductGridProps {
-  products: ProductListItem[]
+  products: Product[]
+  isLoading: boolean
 }
 
-export default function ProductGrid({ products }: ProductGridProps) {
+export function ProductGrid({ products, isLoading }: ProductGridProps) {
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+        {Array.from({ length: 9 }).map((_, i) => (
+          <ProductCardSkeleton key={i} />
+        ))}
+      </div>
+    )
+  }
+
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
       {products.map((product) => (
         <ProductCard
           key={product.id}
@@ -18,14 +30,14 @@ export default function ProductGrid({ products }: ProductGridProps) {
           name={product.name}
           brand_name={product.brand_name || undefined}
           image_url={product.main_image_url || undefined}
-          price={product.min_price}
-          sale_price={product.min_sale_price || undefined}
-          variant_id={undefined} // We don't have variant_id in the list view
-          stock_quantity={product.is_in_stock ? 1 : 0} // Use is_in_stock as a proxy
-          showAddToCart={false} // Don't show add to cart in list view
-          gender_name={product.gender_name || undefined}
-          concentration_name={product.concentration_name || undefined}
-          perfume_type_name={product.perfume_type_name || undefined}
+          price={product.display_price || 0}
+          sale_price={product.is_on_sale ? product.sale_price || 0 : undefined}
+          variant_id={product.variant_id || undefined}
+          stock_quantity={product.stock_quantity || 0}
+          gender_name={product.gender_name}
+          concentration_name={product.concentration_name}
+          perfume_type_name={product.perfume_type_name}
+          discount_percentage={product.discount_percentage || undefined}
         />
       ))}
     </div>

@@ -1,24 +1,17 @@
 "use client"
 
-import { usePlpFilters } from "../hooks/use-plp-filters"
-import {
-  Pagination as PaginationRoot,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
+import { Button } from "@/components/ui/button"
+import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
 
-interface PaginationProps {
+export function Pagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
   currentPage: number
   totalPages: number
-}
-
-export default function Pagination({ currentPage, totalPages }: PaginationProps) {
-  const { updatePage } = usePlpFilters()
-
+  onPageChange: (page: number) => void
+}) {
   // Generate page numbers to display
   const getPageNumbers = () => {
     const pageNumbers = []
@@ -27,34 +20,25 @@ export default function Pagination({ currentPage, totalPages }: PaginationProps)
     pageNumbers.push(1)
 
     // Calculate range around current page
-    let rangeStart = Math.max(2, currentPage - 1)
-    let rangeEnd = Math.min(totalPages - 1, currentPage + 1)
+    const startPage = Math.max(2, currentPage - 1)
+    const endPage = Math.min(totalPages - 1, currentPage + 1)
 
-    // Adjust range to always show 3 pages if possible
-    if (rangeEnd - rangeStart < 2 && totalPages > 3) {
-      if (rangeStart === 2) {
-        rangeEnd = Math.min(totalPages - 1, rangeEnd + 1)
-      } else if (rangeEnd === totalPages - 1) {
-        rangeStart = Math.max(2, rangeStart - 1)
-      }
+    // Add ellipsis after first page if needed
+    if (startPage > 2) {
+      pageNumbers.push("ellipsis-start")
     }
 
-    // Add ellipsis before range if needed
-    if (rangeStart > 2) {
-      pageNumbers.push("ellipsis1")
-    }
-
-    // Add range pages
-    for (let i = rangeStart; i <= rangeEnd; i++) {
+    // Add pages around current page
+    for (let i = startPage; i <= endPage; i++) {
       pageNumbers.push(i)
     }
 
-    // Add ellipsis after range if needed
-    if (rangeEnd < totalPages - 1) {
-      pageNumbers.push("ellipsis2")
+    // Add ellipsis before last page if needed
+    if (endPage < totalPages - 1) {
+      pageNumbers.push("ellipsis-end")
     }
 
-    // Always show last page if more than 1 page
+    // Always show last page if there is more than one page
     if (totalPages > 1) {
       pageNumbers.push(totalPages)
     }
@@ -65,59 +49,61 @@ export default function Pagination({ currentPage, totalPages }: PaginationProps)
   const pageNumbers = getPageNumbers()
 
   return (
-    <PaginationRoot>
-      <PaginationContent>
-        <PaginationItem>
-          <PaginationPrevious
-            href="#"
-            onClick={(e) => {
-              e.preventDefault()
-              if (currentPage > 1) {
-                updatePage(currentPage - 1)
-              }
-            }}
-            className={currentPage <= 1 ? "pointer-events-none opacity-50" : ""}
-          />
-        </PaginationItem>
+    <nav className="flex justify-center">
+      <ul className="flex items-center gap-1">
+        {/* Previous page button */}
+        <li>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            aria-label="Trang trước"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        </li>
 
+        {/* Page numbers */}
         {pageNumbers.map((page, index) => {
-          if (page === "ellipsis1" || page === "ellipsis2") {
+          if (page === "ellipsis-start" || page === "ellipsis-end") {
             return (
-              <PaginationItem key={`ellipsis-${index}`}>
-                <PaginationEllipsis />
-              </PaginationItem>
+              <li key={`ellipsis-${index}`}>
+                <Button variant="ghost" size="icon" disabled>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </li>
             )
           }
 
           return (
-            <PaginationItem key={`page-${page}`}>
-              <PaginationLink
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault()
-                  updatePage(page as number)
-                }}
-                isActive={page === currentPage}
+            <li key={`page-${page}`}>
+              <Button
+                variant={currentPage === page ? "default" : "outline"}
+                size="icon"
+                onClick={() => onPageChange(page as number)}
+                aria-label={`Trang ${page}`}
+                aria-current={currentPage === page ? "page" : undefined}
               >
                 {page}
-              </PaginationLink>
-            </PaginationItem>
+              </Button>
+            </li>
           )
         })}
 
-        <PaginationItem>
-          <PaginationNext
-            href="#"
-            onClick={(e) => {
-              e.preventDefault()
-              if (currentPage < totalPages) {
-                updatePage(currentPage + 1)
-              }
-            }}
-            className={currentPage >= totalPages ? "pointer-events-none opacity-50" : ""}
-          />
-        </PaginationItem>
-      </PaginationContent>
-    </PaginationRoot>
+        {/* Next page button */}
+        <li>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            aria-label="Trang sau"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </li>
+      </ul>
+    </nav>
   )
 }

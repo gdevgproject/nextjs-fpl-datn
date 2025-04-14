@@ -1,346 +1,278 @@
 "use client"
 
-import { useCallback, useEffect, useMemo } from "react"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useDebounce } from "@/features/admin/brands/hooks/use-debounce"
-import type { ProductFilters, SortOption, SortOrder } from "../types/plp-types"
+import { useState, useCallback, useMemo } from "react"
+import { useRouter, usePathname } from "next/navigation"
 
-// Default values
-const DEFAULT_PAGE = 1
-const DEFAULT_PAGE_SIZE = 24
-const DEFAULT_SORT_BY: SortOption = "popularity"
-const DEFAULT_SORT_ORDER: SortOrder = "desc"
+// Define types based on the filter_products RPC
+export type SortOption = "created_at" | "name" | "display_price" | "popularity"
+export type SortOrder = "asc" | "desc"
 
-export function usePlpFilters() {
+export interface PlpFilters {
+  brandIds: number[]
+  categoryIds: number[]
+  genderIds: number[]
+  ingredientIds: number[]
+  labelIds: number[]
+  priceRange: {
+    min: number | null
+    max: number | null
+  }
+  volumeRange: {
+    min: number | null
+    max: number | null
+  }
+  releaseYearRange: {
+    min: number | null
+    max: number | null
+  }
+  onSale: boolean | null
+  inStock: boolean | null
+  originCountry: string | null
+  searchTerm: string | null
+  sortBy: SortOption
+  sortOrder: SortOrder
+  page: number
+  pageSize: number
+}
+
+// Default filter values
+const defaultFilters: PlpFilters = {
+  brandIds: [],
+  categoryIds: [],
+  genderIds: [],
+  ingredientIds: [],
+  labelIds: [],
+  priceRange: {
+    min: null,
+    max: null,
+  },
+  volumeRange: {
+    min: null,
+    max: null,
+  },
+  releaseYearRange: {
+    min: null,
+    max: null,
+  },
+  onSale: null,
+  inStock: null,
+  originCountry: null,
+  searchTerm: null,
+  sortBy: "created_at",
+  sortOrder: "desc",
+  page: 1,
+  pageSize: 12,
+}
+
+// Parse search params to filter state
+const parseSearchParams = (searchParams: { [key: string]: string | string[] | undefined }): PlpFilters => {
+  const filters = { ...defaultFilters }
+
+  // Parse array params
+  const parseArrayParam = (param: string | string[] | undefined): number[] => {
+    if (!param) return []
+    if (typeof param === "string")
+      return param
+        .split(",")
+        .map(Number)
+        .filter((n) => !isNaN(n))
+    return param.map(Number).filter((n) => !isNaN(n))
+  }
+
+  // Parse number params
+  const parseNumberParam = (param: string | string[] | undefined): number | null => {
+    if (!param) return null
+    const value = typeof param === "string" ? param : param[0]
+    const parsed = Number(value)
+    return isNaN(parsed) ? null : parsed
+  }
+
+  // Parse boolean params
+  const parseBooleanParam = (param: string | string[] | undefined): boolean | null => {
+    if (!param) return null
+    const value = typeof param === "string" ? param : param[0]
+    if (value === "true") return true
+    if (value === "false") return false
+    return null
+  }
+
+  // Parse string params
+  const parseStringParam = (param: string | string[] | undefined): string | null => {
+    if (!param) return null
+    return typeof param === "string" ? param : param[0] || null
+  }
+
+  // Parse sort params
+  const parseSortParam = (param: string | string[] | undefined): SortOption => {
+    const value = parseStringParam(param)
+    const validOptions: SortOption[] = ["created_at", "name", "display_price", "popularity"]
+    return validOptions.includes(value as SortOption) ? (value as SortOption) : defaultFilters.sortBy
+  }
+
+  const parseSortOrderParam = (param: string | string[] | undefined): SortOrder => {
+    const value = parseStringParam(param)
+    return value === "asc" ? "asc" : "desc"
+  }
+
+  // Apply all params
+  filters.brandIds = parseArrayParam(searchParams.brands)
+  filters.categoryIds = parseArrayParam(searchParams.categories)
+  filters.genderIds = parseArrayParam(searchParams.genders)
+  filters.ingredientIds = parseArrayParam(searchParams.ingredients)
+  filters.labelIds = parseArrayParam(searchParams.labels)
+
+  filters.priceRange.min = parseNumberParam(searchParams.minPrice)
+  filters.priceRange.max = parseNumberParam(searchParams.maxPrice)
+
+  filters.volumeRange.min = parseNumberParam(searchParams.minVolume)
+  filters.volumeRange.max = parseNumberParam(searchParams.maxVolume)
+
+  filters.releaseYearRange.min = parseNumberParam(searchParams.releaseYearMin)
+  filters.releaseYearRange.max = parseNumberParam(searchParams.releaseYearMax)
+
+  filters.onSale = parseBooleanParam(searchParams.onSale)
+  filters.inStock = parseBooleanParam(searchParams.inStock)
+
+  filters.originCountry = parseStringParam(searchParams.originCountry)
+  filters.searchTerm = parseStringParam(searchParams.q)
+
+  filters.sortBy = parseSortParam(searchParams.sortBy)
+  filters.sortOrder = parseSortOrderParam(searchParams.sortOrder)
+
+  filters.page = parseNumberParam(searchParams.page) || defaultFilters.page
+  filters.pageSize = parseNumberParam(searchParams.pageSize) || defaultFilters.pageSize
+
+  return filters
+}
+
+export function usePlpFilters(searchParams: { [key: string]: string | string[] | undefined }) {
   const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
+  const [filters, setFilters] = useState<PlpFilters>(() => parseSearchParams(searchParams))
 
-  // Parse current search params
-  const page = Number(searchParams.get("page") || DEFAULT_PAGE)
-  const pageSize = Number(searchParams.get("pageSize") || DEFAULT_PAGE_SIZE)
-  const sortBy = (searchParams.get("sortBy") as SortOption) || DEFAULT_SORT_BY
-  const sortOrder = (searchParams.get("sortOrder") as SortOrder) || DEFAULT_SORT_ORDER
-
-  // Parse filter values from URL
-  const filters: ProductFilters = useMemo(() => {
-    const result: ProductFilters = {}
-
-    // Array parameters
-    const arrayParams = ["brand_ids", "category_ids", "gender_ids", "ingredient_ids", "label_ids"]
-    arrayParams.forEach((param) => {
-      const value = searchParams.get(param)
-      if (value) {
-        result[param as keyof ProductFilters] = value.split(",").map(Number)
-      }
-    })
-
-    // Number parameters
-    const numberParams = ["min_price", "max_price", "min_volume", "max_volume", "release_year_min", "release_year_max"]
-    numberParams.forEach((param) => {
-      const value = searchParams.get(param)
-      if (value) {
-        result[param as keyof ProductFilters] = Number(value)
-      }
-    })
-
-    // Boolean parameters
-    const booleanParams = ["on_sale", "in_stock"]
-    booleanParams.forEach((param) => {
-      const value = searchParams.get(param)
-      if (value !== null) {
-        result[param as keyof ProductFilters] = value === "true"
-      }
-    })
-
-    // String parameters
-    const stringParams = ["search_term", "origin_country"]
-    stringParams.forEach((param) => {
-      const value = searchParams.get(param)
-      if (value) {
-        result[param as keyof ProductFilters] = value
-      }
-    })
-
-    return result
-  }, [searchParams])
-
-  // Debounce search term to avoid excessive URL updates
-  const debouncedSearchTerm = useDebounce(filters.search_term || "", 500)
-
-  // Update URL when debounced search term changes
-  useEffect(() => {
-    if (filters.search_term !== debouncedSearchTerm) {
-      updateFilters({ ...filters, search_term: debouncedSearchTerm || undefined })
-    }
-  }, [debouncedSearchTerm])
-
-  // Create URL search params from current state
-  const createSearchParams = useCallback(
-    (
-      newFilters: ProductFilters,
-      newPage = page,
-      newPageSize = pageSize,
-      newSortBy = sortBy,
-      newSortOrder = sortOrder,
-    ) => {
-      const params = new URLSearchParams()
-
-      // Add pagination and sorting
-      if (newPage !== DEFAULT_PAGE) params.set("page", newPage.toString())
-      if (newPageSize !== DEFAULT_PAGE_SIZE) params.set("pageSize", newPageSize.toString())
-      if (newSortBy !== DEFAULT_SORT_BY) params.set("sortBy", newSortBy)
-      if (newSortOrder !== DEFAULT_SORT_ORDER) params.set("sortOrder", newSortOrder)
-
-      // Add array filters
-      if (newFilters.brand_ids?.length) params.set("brand_ids", newFilters.brand_ids.join(","))
-      if (newFilters.category_ids?.length) params.set("category_ids", newFilters.category_ids.join(","))
-      if (newFilters.gender_ids?.length) params.set("gender_ids", newFilters.gender_ids.join(","))
-      if (newFilters.ingredient_ids?.length) params.set("ingredient_ids", newFilters.ingredient_ids.join(","))
-      if (newFilters.label_ids?.length) params.set("label_ids", newFilters.label_ids.join(","))
-
-      // Add number filters
-      if (newFilters.min_price !== undefined) params.set("min_price", newFilters.min_price.toString())
-      if (newFilters.max_price !== undefined) params.set("max_price", newFilters.max_price.toString())
-      if (newFilters.min_volume !== undefined) params.set("min_volume", newFilters.min_volume.toString())
-      if (newFilters.max_volume !== undefined) params.set("max_volume", newFilters.max_volume.toString())
-      if (newFilters.release_year_min !== undefined)
-        params.set("release_year_min", newFilters.release_year_min.toString())
-      if (newFilters.release_year_max !== undefined)
-        params.set("release_year_max", newFilters.release_year_max.toString())
-
-      // Add boolean filters
-      if (newFilters.on_sale !== undefined) params.set("on_sale", newFilters.on_sale.toString())
-      if (newFilters.in_stock !== undefined) params.set("in_stock", newFilters.in_stock.toString())
-
-      // Add string filters
-      if (newFilters.search_term) params.set("search_term", newFilters.search_term)
-      if (newFilters.origin_country) params.set("origin_country", newFilters.origin_country)
-
-      return params
-    },
-    [page, pageSize, sortBy, sortOrder],
-  )
-
-  // Update filters in URL
-  const updateFilters = useCallback(
-    (newFilters: ProductFilters, resetPage = true) => {
-      const newPage = resetPage ? DEFAULT_PAGE : page
-      const params = createSearchParams(newFilters, newPage, pageSize, sortBy, sortOrder)
-      router.push(`${pathname}?${params.toString()}`)
-    },
-    [pathname, router, createSearchParams, page, pageSize, sortBy, sortOrder],
-  )
-
-  // Update pagination
-  const updatePage = useCallback(
-    (newPage: number) => {
-      const params = createSearchParams(filters, newPage, pageSize, sortBy, sortOrder)
-      router.push(`${pathname}?${params.toString()}`)
-    },
-    [pathname, router, createSearchParams, filters, pageSize, sortBy, sortOrder],
-  )
-
-  // Update page size
-  const updatePageSize = useCallback(
-    (newPageSize: number) => {
-      const params = createSearchParams(filters, DEFAULT_PAGE, newPageSize, sortBy, sortOrder)
-      router.push(`${pathname}?${params.toString()}`)
-    },
-    [pathname, router, createSearchParams, filters, sortBy, sortOrder],
-  )
-
-  // Update sorting
-  const updateSort = useCallback(
-    (newSortBy: SortOption, newSortOrder: SortOrder) => {
-      const params = createSearchParams(filters, page, pageSize, newSortBy, newSortOrder)
-      router.push(`${pathname}?${params.toString()}`)
-    },
-    [pathname, router, createSearchParams, filters, page, pageSize],
-  )
-
-  // Toggle a single filter value
-  const toggleFilter = useCallback(
-    (key: keyof ProductFilters, value: any) => {
-      const newFilters = { ...filters }
-
-      // Handle array filters
-      if (
-        ["brand_ids", "category_ids", "gender_ids", "ingredient_ids", "label_ids"].includes(key) &&
-        Array.isArray(newFilters[key])
-      ) {
-        const array = newFilters[key] as number[]
-        const index = array.indexOf(value)
-        if (index >= 0) {
-          array.splice(index, 1)
-        } else {
-          array.push(value)
-        }
-        if (array.length === 0) {
-          delete newFilters[key]
-        }
-      }
-      // Handle boolean filters
-      else if (["on_sale", "in_stock"].includes(key)) {
-        if (newFilters[key] === value) {
-          delete newFilters[key]
-        } else {
-          newFilters[key] = value
-        }
-      }
-      // Handle other filters
-      else {
-        if (newFilters[key] === value) {
-          delete newFilters[key]
-        } else {
-          newFilters[key] = value
-        }
-      }
-
-      updateFilters(newFilters)
-    },
-    [filters, updateFilters],
-  )
-
-  // Set a range filter
-  const setRangeFilter = useCallback(
-    (minKey: keyof ProductFilters, maxKey: keyof ProductFilters, minValue?: number, maxValue?: number) => {
-      const newFilters = { ...filters }
-
-      if (minValue !== undefined) {
-        newFilters[minKey] = minValue
-      } else {
-        delete newFilters[minKey]
-      }
-
-      if (maxValue !== undefined) {
-        newFilters[maxKey] = maxValue
-      } else {
-        delete newFilters[maxKey]
-      }
-
-      updateFilters(newFilters)
-    },
-    [filters, updateFilters],
-  )
-
-  // Clear all filters
-  const clearFilters = useCallback(() => {
-    const params = createSearchParams({}, DEFAULT_PAGE, pageSize, sortBy, sortOrder)
-    router.push(`${pathname}?${params.toString()}`)
-  }, [pathname, router, createSearchParams, pageSize, sortBy, sortOrder])
-
-  // Remove a single filter
-  const removeFilter = useCallback(
-    (key: keyof ProductFilters, value?: any) => {
-      const newFilters = { ...filters }
-
-      // For array filters, remove specific value
-      if (
-        ["brand_ids", "category_ids", "gender_ids", "ingredient_ids", "label_ids"].includes(key) &&
-        Array.isArray(newFilters[key]) &&
-        value !== undefined
-      ) {
-        const array = newFilters[key] as number[]
-        const index = array.indexOf(value)
-        if (index >= 0) {
-          array.splice(index, 1)
-          if (array.length === 0) {
-            delete newFilters[key]
-          }
-        }
-      }
-      // For other filters, remove the entire key
-      else {
-        delete newFilters[key]
-      }
-
-      updateFilters(newFilters)
-    },
-    [filters, updateFilters],
-  )
-
-  // Check if a filter is active
-  const isFilterActive = useCallback(
-    (key: keyof ProductFilters, value?: any): boolean => {
-      if (!filters[key]) return false
-
-      // For array filters, check if value is in array
-      if (
-        ["brand_ids", "category_ids", "gender_ids", "ingredient_ids", "label_ids"].includes(key) &&
-        value !== undefined
-      ) {
-        return (filters[key] as number[]).includes(value)
-      }
-
-      // For boolean filters
-      if (["on_sale", "in_stock"].includes(key)) {
-        return filters[key] === true
-      }
-
-      // For other filters, just check if they exist
-      return filters[key] !== undefined
-    },
-    [filters],
-  )
-
-  // Count active filters
+  // Count active filters (excluding pagination and sorting)
   const activeFilterCount = useMemo(() => {
     let count = 0
 
-    // Count array filters
-    const arrayFilters = ["brand_ids", "category_ids", "gender_ids", "ingredient_ids", "label_ids"]
-    arrayFilters.forEach((key) => {
-      const array = filters[key as keyof ProductFilters] as number[] | undefined
-      if (array?.length) count += array.length
-    })
+    count += filters.brandIds.length
+    count += filters.categoryIds.length
+    count += filters.genderIds.length
+    count += filters.ingredientIds.length
+    count += filters.labelIds.length
 
-    // Count range filters (min/max pairs count as 1)
-    if (filters.min_price !== undefined || filters.max_price !== undefined) count++
-    if (filters.min_volume !== undefined || filters.max_volume !== undefined) count++
-    if (filters.release_year_min !== undefined || filters.release_year_max !== undefined) count++
+    if (filters.priceRange.min !== null) count++
+    if (filters.priceRange.max !== null) count++
 
-    // Count boolean filters
-    if (filters.on_sale !== undefined) count++
-    if (filters.in_stock !== undefined) count++
+    if (filters.volumeRange.min !== null) count++
+    if (filters.volumeRange.max !== null) count++
 
-    // Count string filters
-    if (filters.search_term) count++
-    if (filters.origin_country) count++
+    if (filters.releaseYearRange.min !== null) count++
+    if (filters.releaseYearRange.max !== null) count++
+
+    if (filters.onSale !== null) count++
+    if (filters.inStock !== null) count++
+
+    if (filters.originCountry) count++
+    if (filters.searchTerm) count++
 
     return count
   }, [filters])
 
-  // Prepare RPC parameters
-  const rpcParams = useMemo(() => {
+  // Reset filters to default
+  const resetFilters = useCallback(() => {
+    setFilters({
+      ...defaultFilters,
+      searchTerm: filters.searchTerm, // Preserve search term
+    })
+  }, [filters.searchTerm])
+
+  // Construct RPC filter params from filter state
+  const constructRpcFilterParams = useCallback(() => {
+    const p_filters: Record<string, any> = {}
+
+    // Only add non-empty array filters
+    if (filters.brandIds.length > 0) p_filters.brand_ids = filters.brandIds
+    if (filters.categoryIds.length > 0) p_filters.category_ids = filters.categoryIds
+    if (filters.genderIds.length > 0) p_filters.gender_ids = filters.genderIds
+    if (filters.ingredientIds.length > 0) p_filters.ingredient_ids = filters.ingredientIds
+    if (filters.labelIds.length > 0) p_filters.label_ids = filters.labelIds
+
+    // Only add non-null numeric filters
+    if (filters.priceRange.min !== null) p_filters.min_price = filters.priceRange.min
+    if (filters.priceRange.max !== null) p_filters.max_price = filters.priceRange.max
+
+    if (filters.volumeRange.min !== null) p_filters.min_volume = filters.volumeRange.min
+    if (filters.volumeRange.max !== null) p_filters.max_volume = filters.volumeRange.max
+
+    if (filters.releaseYearRange.min !== null) p_filters.release_year_min = filters.releaseYearRange.min
+    if (filters.releaseYearRange.max !== null) p_filters.release_year_max = filters.releaseYearRange.max
+
+    // Only add non-null boolean filters
+    if (filters.onSale !== null) p_filters.on_sale = filters.onSale
+    if (filters.inStock !== null) p_filters.in_stock = filters.inStock
+
+    // Only add non-empty string filters
+    if (filters.originCountry) p_filters.origin_country = filters.originCountry
+    if (filters.searchTerm) p_filters.search_term = filters.searchTerm
+
     return {
-      p_filters: filters,
-      p_page: page - 1, // Convert to 0-based for backend
-      p_page_size: pageSize,
-      p_sort_by: sortBy,
-      p_sort_order: sortOrder,
+      p_filters,
+      p_page: filters.page,
+      p_page_size: filters.pageSize,
+      p_sort_by: filters.sortBy,
+      p_sort_order: filters.sortOrder,
     }
-  }, [filters, page, pageSize, sortBy, sortOrder])
+  }, [filters])
+
+  // Update URL based on current filters
+  const updateUrl = useCallback(() => {
+    const params = new URLSearchParams()
+
+    // Add array params
+    if (filters.brandIds.length > 0) params.set("brands", filters.brandIds.join(","))
+    if (filters.categoryIds.length > 0) params.set("categories", filters.categoryIds.join(","))
+    if (filters.genderIds.length > 0) params.set("genders", filters.genderIds.join(","))
+    if (filters.ingredientIds.length > 0) params.set("ingredients", filters.ingredientIds.join(","))
+    if (filters.labelIds.length > 0) params.set("labels", filters.labelIds.join(","))
+
+    // Add numeric params
+    if (filters.priceRange.min !== null) params.set("minPrice", filters.priceRange.min.toString())
+    if (filters.priceRange.max !== null) params.set("maxPrice", filters.priceRange.max.toString())
+
+    if (filters.volumeRange.min !== null) params.set("minVolume", filters.volumeRange.min.toString())
+    if (filters.volumeRange.max !== null) params.set("maxVolume", filters.volumeRange.max.toString())
+
+    if (filters.releaseYearRange.min !== null) params.set("releaseYearMin", filters.releaseYearRange.min.toString())
+    if (filters.releaseYearRange.max !== null) params.set("releaseYearMax", filters.releaseYearRange.max.toString())
+
+    // Add boolean params
+    if (filters.onSale !== null) params.set("onSale", filters.onSale.toString())
+    if (filters.inStock !== null) params.set("inStock", filters.inStock.toString())
+
+    // Add string params
+    if (filters.originCountry) params.set("originCountry", filters.originCountry)
+    if (filters.searchTerm) params.set("q", filters.searchTerm)
+
+    // Add sort params
+    if (filters.sortBy !== defaultFilters.sortBy) params.set("sortBy", filters.sortBy)
+    if (filters.sortOrder !== defaultFilters.sortOrder) params.set("sortOrder", filters.sortOrder)
+
+    // Add pagination params
+    if (filters.page !== defaultFilters.page) params.set("page", filters.page.toString())
+    if (filters.pageSize !== defaultFilters.pageSize) params.set("pageSize", filters.pageSize.toString())
+
+    const queryString = params.toString()
+    const url = queryString ? `${pathname}?${queryString}` : pathname
+
+    router.replace(url, { scroll: false })
+  }, [filters, pathname, router])
 
   return {
-    // Current state
     filters,
-    page,
-    pageSize,
-    sortBy,
-    sortOrder,
+    setFilters,
+    resetFilters,
+    constructRpcFilterParams,
+    updateUrl,
     activeFilterCount,
-    rpcParams,
-
-    // Actions
-    updateFilters,
-    updatePage,
-    updatePageSize,
-    updateSort,
-    toggleFilter,
-    setRangeFilter,
-    clearFilters,
-    removeFilter,
-    isFilterActive,
   }
 }

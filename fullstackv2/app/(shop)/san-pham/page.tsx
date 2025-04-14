@@ -1,11 +1,14 @@
-import ProductListPage from "@/features/shop/plp/components/product-list-page"
-import type { Metadata } from "next"
+import { ProductListingPage } from "@/features/shop/plp/components/product-listing-page"
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "Sản phẩm | MyBeauty",
-  description: "Khám phá bộ sưu tập nước hoa đa dạng của chúng tôi với các thương hiệu cao cấp và mùi hương độc đáo.",
+  description: "Khám phá các sản phẩm nước hoa cao cấp tại MyBeauty",
 }
 
-export default function ProductsPage() {
-  return <ProductListPage />
+export default function ProductsPage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined }
+}) {
+  return <ProductListingPage searchParams={searchParams} />
 }
