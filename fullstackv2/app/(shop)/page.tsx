@@ -1,16 +1,16 @@
-import { createClient } from "@/shared/supabase/server"
-import HeroBanner from "@/features/shop/home/components/hero-banner"
-import FeaturedCategoriesSection from "@/features/shop/home/components/featured-categories-section"
-import NewArrivalsSection from "@/features/shop/home/components/new-arrivals-section"
-import BestSellersSection from "@/features/shop/home/components/best-sellers-section"
-import OnSaleSection from "@/features/shop/home/components/on-sale-section"
-import BrandsSection from "@/features/shop/home/components/brands-section"
+import { createClient } from "@/shared/supabase/server";
+import HeroBanner from "@/features/shop/home/components/hero-banner";
+import FeaturedCategoriesSection from "@/features/shop/home/components/featured-categories-section";
+import NewArrivalsSection from "@/features/shop/home/components/new-arrivals-section";
+import BestSellersSection from "@/features/shop/home/components/best-sellers-section";
+import OnSaleSection from "@/features/shop/home/components/on-sale-section";
+import BrandsSection from "@/features/shop/home/components/brands-section";
 
-export const revalidate = 3600 // Revalidate every hour
+export const revalidate = 3600; // Revalidate every hour
 
 async function getBanners() {
-  const supabase = await createClient()
-  const now = new Date().toISOString()
+  const supabase = await createClient();
+  const now = new Date().toISOString();
 
   const { data, error } = await supabase
     .from("banners")
@@ -19,34 +19,39 @@ async function getBanners() {
     .or(`start_date.is.null,start_date.lte.${now}`)
     .or(`end_date.is.null,end_date.gte.${now}`)
     .order("display_order", { ascending: true })
-    .limit(10)
+    .limit(10);
 
   if (error) {
-    console.error("Error fetching banners:", error)
-    return []
+    console.error("Error fetching banners:", error);
+    return [];
   }
 
-  return data || []
+  return data || [];
 }
 
 async function getFeaturedCategories() {
-  const supabase = await createClient()
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("categories")
-    .select("id, name, slug, image_url, description, is_featured, display_order")
+    .select(
+      "id, name, slug, image_url, description, is_featured, display_order"
+    )
     .eq("is_featured", true)
-    .order("display_order")
+    .order("display_order");
 
   if (error) {
-    console.error("Error fetching categories:", error)
-    return []
+    console.error("Error fetching categories:", error);
+    return [];
   }
 
-  return data || []
+  return data || [];
 }
 
 export default async function HomePage() {
-  const [banners, featuredCategories] = await Promise.all([getBanners(), getFeaturedCategories()])
+  const [banners, featuredCategories] = await Promise.all([
+    getBanners(),
+    getFeaturedCategories(),
+  ]);
 
   return (
     <div className="flex flex-col pb-16">
@@ -70,5 +75,5 @@ export default async function HomePage() {
         <BrandsSection />
       </div>
     </div>
-  )
+  );
 }
