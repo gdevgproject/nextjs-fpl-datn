@@ -15,32 +15,38 @@ import { PasswordInput } from "@/components/ui/password-input"
 import { toast } from "sonner"
 import { useAuth } from "@/features/auth/context/auth-context"
 
-const signupSchema = z.object({
-  name: z
-    .string()
-    .min(2, { message: "Tên phải có ít nhất 2 ký tự" })
-    .max(50, { message: "Tên không được vượt quá 50 ký tự" }),
+const signupSchema = z
+  .object({
+    name: z
+      .string()
+      .min(2, { message: "Tên phải có ít nhất 2 ký tự" })
+      .max(50, { message: "Tên không được vượt quá 50 ký tự" }),
 
-  email: z.string().email({ message: "Email không hợp lệ" }),
+    email: z.string().email({ message: "Email không hợp lệ" }),
 
-  phone: z
-    .string()
-    .regex(/^\d+$/, { message: "Số điện thoại chỉ được chứa các chữ số" })
-    .min(10, { message: "Số điện thoại phải có ít nhất 10 chữ số" })
-    .max(15, { message: "Số điện thoại không được vượt quá 15 chữ số" })
-    .optional(),
+    phone: z
+      .string()
+      .regex(/^\d+$/, { message: "Số điện thoại chỉ được chứa các chữ số" })
+      .min(10, { message: "Số điện thoại phải có ít nhất 10 chữ số" })
+      .max(15, { message: "Số điện thoại không được vượt quá 15 chữ số" })
+      .optional(),
 
-  password: z
-    .string()
-    .min(8, { message: "Mật khẩu phải có ít nhất 8 ký tự" })
-    .regex(/[A-Z]/, {
-      message: "Mật khẩu phải chứa ít nhất một chữ hoa",
-    })
-    .regex(/\d/, { message: "Mật khẩu phải chứa ít nhất một chữ số" })
-    .regex(/[\W_]/, {
-      message: "Mật khẩu phải chứa ít nhất một ký tự đặc biệt",
-    }),
-})
+    password: z
+      .string()
+      .min(8, { message: "Mật khẩu phải có ít nhất 8 ký tự" })
+      .regex(/[A-Z]/, {
+        message: "Mật khẩu phải chứa ít nhất một chữ hoa",
+      })
+      .regex(/\d/, { message: "Mật khẩu phải chứa ít nhất một chữ số" })
+      .regex(/[\W_]/, {
+        message: "Mật khẩu phải chứa ít nhất một ký tự đặc biệt",
+      }),
+    confirmPassword: z.string().min(8, { message: "Mật khẩu phải có ít nhất 8 ký tự" }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Mật khẩu không khớp",
+    path: ["confirmPassword"],
+  })
 
 export default function RegisterForm() {
   const [isPending, setIsPending] = useState(false)
@@ -54,6 +60,7 @@ export default function RegisterForm() {
       email: "",
       phone: "",
       password: "",
+      confirmPassword: "",
     },
   })
 
@@ -124,7 +131,7 @@ export default function RegisterForm() {
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Số điện thoại</FormLabel>
+                    <FormLabel>Số điện thoại (tùy chọn)</FormLabel>
                     <FormControl>
                       <Input placeholder="0123456789" {...field} disabled={isPending} />
                     </FormControl>
@@ -139,7 +146,20 @@ export default function RegisterForm() {
                   <FormItem>
                     <FormLabel>Mật khẩu</FormLabel>
                     <FormControl>
-                      <PasswordInput placeholder="Mật khẩu" type="password" {...field} disabled={isPending} />
+                      <PasswordInput placeholder="Mật khẩu" {...field} disabled={isPending} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Xác nhận mật khẩu</FormLabel>
+                    <FormControl>
+                      <PasswordInput placeholder="Xác nhận mật khẩu" {...field} disabled={isPending} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -165,6 +185,32 @@ export default function RegisterForm() {
             Quay lại đăng nhập
           </Button>
         </Link>
+      </div>
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-2 text-muted-foreground">Đăng nhập với</span>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-6">
+        <Button variant="outline" disabled={isPending}>
+          {isPending ? (
+            <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Icons.google className="mr-2 h-4 w-4" />
+          )}{" "}
+          Google
+        </Button>
+        <Button variant="outline" disabled={isPending}>
+          {isPending ? (
+            <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Icons.gitHub className="mr-2 h-4 w-4" />
+          )}{" "}
+          GitHub
+        </Button>
       </div>
     </div>
   )

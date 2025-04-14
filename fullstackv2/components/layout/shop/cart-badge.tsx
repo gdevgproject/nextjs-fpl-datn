@@ -5,10 +5,10 @@ import Link from "next/link"
 import { ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { useCart } from "@/features/shop/cart/context/cart-context"
+import { useCart as useCartContext } from "@/features/shop/cart/context/cart-context"
 
 function CartBadgeComponent() {
-  const { itemCount, isLoading } = useCart()
+  const { itemCount, isLoading } = useCartContext()
   const [animateCount, setAnimateCount] = useState(false)
 
   // Track previous count to animate when it changes

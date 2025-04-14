@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { useCart } from "../context/cart-context"
+import { useCart as useCartContext } from "../context/cart-context"
 import { calculateCartTotals } from "../utils/cart-calculations"
 import { useDiscountCode } from "./use-discount-code"
 
@@ -10,7 +10,7 @@ interface UseCartTotalsOptions {
 }
 
 export function useCartTotals(options: UseCartTotalsOptions = {}) {
-  const { items } = useCart()
+  const { items } = useCartContext()
   const { appliedDiscount, calculateDiscountAmount } = useDiscountCode()
   const { shippingFee = 0 } = options
 

@@ -1,14 +1,14 @@
 import Link from "next/link"
 import { ShoppingCart, ArrowRight, LogIn } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useCart } from "../context/cart-context"
+import { useCart as useCartContext } from "@/features/shop/cart/context/cart-context"
 
 interface EmptyCartProps {
   hasInteracted?: boolean
 }
 
 export function EmptyCart({ hasInteracted }: EmptyCartProps) {
-  const { isGuest, hasInteracted: contextHasInteracted } = useCart()
+  const { isGuest, hasInteracted: contextHasInteracted } = useCartContext()
 
   // Use prop if provided, otherwise use context value
   const userHasInteracted = hasInteracted !== undefined ? hasInteracted : contextHasInteracted

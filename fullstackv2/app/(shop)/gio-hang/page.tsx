@@ -1,6 +1,6 @@
 "use client"
 
-import { useCart } from "@/features/shop/cart/context/cart-context"
+import { useCart as useCartContext } from "@/features/shop/cart/context/cart-context"
 import { CartItem } from "@/features/shop/cart/components/cart-item"
 import { EmptyCart } from "@/features/shop/cart/components/empty-cart"
 import { DiscountCodeInput } from "@/features/shop/cart/components/discount-code-input"
@@ -13,7 +13,7 @@ import Link from "next/link"
 import { useAuth } from "@/features/auth/context/auth-context"
 
 export default function CartPage() {
-  const { items, isLoading, isEmpty, clearCart } = useCart()
+  const { items, isLoading, isEmpty, clearCart } = useCartContext()
   const { user } = useAuth()
   const isGuest = !user
   const { subtotal, discountAmount, shippingFee, total } = useCartTotals({
