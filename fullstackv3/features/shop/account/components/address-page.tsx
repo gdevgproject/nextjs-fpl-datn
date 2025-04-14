@@ -13,12 +13,13 @@ import {
 import { PlusCircle } from "lucide-react";
 import { AddressForm } from "./address-form";
 import { AddressList } from "./address-list";
-import { useAuth } from "@/features/auth/context/auth-context";
+import { useAuthQuery } from "@/features/auth/hooks";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function AddressPage() {
-  const { isAuthenticated } = useAuth();
+  const { data: session } = useAuthQuery();
+  const isAuthenticated = !!session?.user;
   const { data: addresses, isLoading } = useUserAddresses();
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState<number | null>(null);

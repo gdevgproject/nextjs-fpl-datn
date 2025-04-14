@@ -6,14 +6,18 @@ import { useState, useRef, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/features/auth/context/auth-context";
 import { Camera, Loader2, X } from "lucide-react";
 import { uploadAvatar } from "../actions";
 import { DEFAULT_AVATAR_URL } from "@/lib/constants";
+import { useAuthQuery, useProfileQuery } from "@/features/auth/hooks";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Using memo to prevent unnecessary re-renders
 export const AvatarUpload = memo(function AvatarUpload() {
-  const { profile, refreshProfile, profileImageUrl } = useAuth();
+  const { data: session } = useAuthQuery();
+  const userId = session?.user?.id;
+  const { data: profile } = useProfileQuery(userId);
+  const queryClient = useQueryClient();
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -54,18 +58,18 @@ export const AvatarUpload = memo(function AvatarUpload() {
     // Upload file - with error handling
     setIsUploading(true);
     try {
-      if (!profile?.id) {
+      if (!userId) {
         throw new Error("Bạn cần đăng nhập để thực hiện hành động này");
       }
 
-      const result = await uploadAvatar(profile.id, file);
+      const result = await uploadAvatar(userId, file);
 
       if (result.error) {
         throw new Error(result.error);
       }
 
-      // Successfully uploaded - refresh profile to get updated avatar URL
-      await refreshProfile();
+      // Refresh profile query
+      await queryClient.invalidateQueries({ queryKey: ["profile", userId] });
 
       toast({
         title: "Cập nhật thành công",
@@ -107,7 +111,8 @@ export const AvatarUpload = memo(function AvatarUpload() {
   };
 
   // Use preview URL if available, otherwise use profile image URL
-  const currentImageUrl = previewUrl || profileImageUrl || DEFAULT_AVATAR_URL;
+  const currentImageUrl =
+    previewUrl || profile?.profile_image_url || DEFAULT_AVATAR_URL;
 
   // Get first letter of display name for fallback
   const nameInitial = profile?.display_name?.charAt(0)?.toUpperCase() || "U";

@@ -2,24 +2,23 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { useAuth } from "@/features/auth/context/auth-context";
 import { QUERY_STALE_TIME } from "@/lib/hooks/use-query-config";
 import type { Order, OrderFilter, OrdersResponse } from "./types";
 import { cancelOrder } from "./actions";
 
 // Lấy danh sách đơn hàng của người dùng
 export function useUserOrders(
+  userId: string | undefined,
   page = 1,
   pageSize = 5,
   filter: OrderFilter = {}
 ) {
-  const { user } = useAuth();
   const supabase = getSupabaseBrowserClient();
 
   return useQuery({
-    queryKey: ["orders", user?.id, page, pageSize, filter],
+    queryKey: ["orders", userId, page, pageSize, filter],
     queryFn: async (): Promise<OrdersResponse> => {
-      if (!user) throw new Error("Unauthorized");
+      if (!userId) throw new Error("Unauthorized");
 
       // Tạo query cơ bản
       let query = supabase
@@ -32,7 +31,7 @@ export function useUserOrders(
         `,
           { count: "exact" }
         )
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .order("order_date", { ascending: false });
 
       // Áp dụng filter nếu có
@@ -62,20 +61,19 @@ export function useUserOrders(
         count: count || 0,
       };
     },
-    enabled: !!user,
+    enabled: !!userId,
     staleTime: QUERY_STALE_TIME.ORDER,
   });
 }
 
 // Lấy chi tiết đơn hàng
-export function useOrderDetail(orderId: number) {
-  const { user } = useAuth();
+export function useOrderDetail(userId: string | undefined, orderId: number) {
   const supabase = getSupabaseBrowserClient();
 
   return useQuery({
-    queryKey: ["order", orderId, user?.id],
+    queryKey: ["order", orderId, userId],
     queryFn: async () => {
-      if (!user) throw new Error("Unauthorized");
+      if (!userId) throw new Error("Unauthorized");
 
       // Lấy thông tin đơn hàng
       const { data: order, error: orderError } = await supabase
@@ -88,7 +86,7 @@ export function useOrderDetail(orderId: number) {
         `
         )
         .eq("id", orderId)
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .single();
 
       if (orderError) throw orderError;
@@ -119,19 +117,18 @@ export function useOrderDetail(orderId: number) {
         items: orderItems,
       } as Order;
     },
-    enabled: !!user && !!orderId,
+    enabled: !!userId && !!orderId,
     staleTime: QUERY_STALE_TIME.ORDER,
   });
 }
 
 // Hook để hủy đơn hàng
-export function useCancelOrder() {
-  const { user } = useAuth();
+export function useCancelOrder(userId: string | undefined) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (orderId: number) => {
-      if (!user) throw new Error("Unauthorized");
+      if (!userId) throw new Error("Unauthorized");
 
       const result = await cancelOrder(orderId);
 
@@ -145,19 +142,19 @@ export function useCancelOrder() {
     onMutate: async (orderId) => {
       // Hủy các queries đang chạy để tránh ghi đè
       await queryClient.cancelQueries({
-        queryKey: ["order", orderId, user?.id],
+        queryKey: ["order", orderId, userId],
       });
 
       // Lưu trữ state trước đó để có thể rollback nếu có lỗi
       const previousOrder = queryClient.getQueryData<Order>([
         "order",
         orderId,
-        user?.id,
+        userId,
       ]);
 
       // Cập nhật cache ngay lập tức
       if (previousOrder) {
-        queryClient.setQueryData<Order>(["order", orderId, user?.id], (old) => {
+        queryClient.setQueryData<Order>(["order", orderId, userId], (old) => {
           if (!old) return previousOrder;
 
           // Cập nhật trạng thái đơn hàng thành "Cancelled"
@@ -179,15 +176,15 @@ export function useCancelOrder() {
     onError: (error, variables, context) => {
       if (context?.previousOrder) {
         queryClient.setQueryData(
-          ["order", variables, user?.id],
+          ["order", variables, userId],
           context.previousOrder
         );
       }
     },
     // Sau khi mutation thành công, invalidate queries để fetch lại dữ liệu mới
     onSuccess: (data, orderId) => {
-      queryClient.invalidateQueries({ queryKey: ["order", orderId, user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["orders", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["order", orderId, userId] });
+      queryClient.invalidateQueries({ queryKey: ["orders", userId] });
     },
   });
 }

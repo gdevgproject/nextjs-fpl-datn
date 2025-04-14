@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { useAuth } from "@/features/auth/context/auth-context";
+import { useAuthQuery, useProfileQuery } from "@/features/auth/hooks";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Card,
@@ -18,7 +18,8 @@ import { ProfileForm } from "./profile-form";
 import { useToast } from "@/hooks/use-toast";
 
 export function AccountPage() {
-  const { profile } = useAuth();
+  const { data: session } = useAuthQuery();
+  const { data: profile } = useProfileQuery(session?.user?.id);
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("profile");
   const { toast } = useToast();

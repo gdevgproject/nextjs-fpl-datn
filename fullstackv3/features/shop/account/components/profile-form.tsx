@@ -23,11 +23,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/features/auth/context/auth-context";
 import { useUpdateUserProfile } from "../queries";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuthQuery, useProfileQuery } from "@/features/auth/hooks";
 
 // Define form validation schema with proper error messages
 const profileFormSchema = z.object({
@@ -49,7 +49,9 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 // Using memo to prevent unnecessary re-renders
 const ProfileForm = memo(function ProfileForm() {
-  const { profile, refreshProfile, user } = useAuth();
+  const { data: session } = useAuthQuery();
+  const user = session?.user;
+  const { data: profile } = useProfileQuery(user?.id);
   const { toast } = useToast();
   const router = useRouter();
   const updateProfileMutation = useUpdateUserProfile();
@@ -100,14 +102,13 @@ const ProfileForm = memo(function ProfileForm() {
       updateProfileMutation.mutate(data, {
         onSuccess: async () => {
           // Perform a full refresh of profile data
-          await refreshProfile(true);
+          await queryClient.invalidateQueries({
+            queryKey: ["profile", user.id],
+          });
 
           // Broadcast the update to all components
           if (user?.id) {
-            queryClient.invalidateQueries({
-              queryKey: ["profile", user.id],
-              refetchType: "all",
-            });
+            queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
 
             // Force refetch of active profile queries to ensure header updates
             queryClient.refetchQueries({
@@ -121,7 +122,7 @@ const ProfileForm = memo(function ProfileForm() {
         },
         onError: (error) => {
           // Revert optimistic update on error
-          refreshProfile(false);
+          queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
 
           toast({
             title: "Cập nhật thất bại",
@@ -134,14 +135,7 @@ const ProfileForm = memo(function ProfileForm() {
         },
       });
     },
-    [
-      updateProfileMutation,
-      refreshProfile,
-      router,
-      toast,
-      user?.id,
-      queryClient,
-    ]
+    [updateProfileMutation, router, toast, user?.id, queryClient]
   );
 
   // Quick check if form is dirty (has changes)

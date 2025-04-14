@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { CreditCard, Heart, LogOut, Package, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/features/auth/context/auth-context";
-import { useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuthQuery, useProfileQuery, useLogoutMutation } from "@/features/auth/hooks";
+import { useState, useMemo } from "react";
 
 const accountNavItems = [
   { title: "Thông tin tài khoản", href: "/tai-khoan", icon: User },
@@ -19,35 +19,27 @@ const accountNavItems = [
 export function AccountSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { profile, profileImageUrl, signOut } = useAuth();
+  const { data: session } = useAuthQuery();
+  const { data: profile } = useProfileQuery(session?.user?.id);
+  const logoutMutation = useLogoutMutation();
+  const signOut = () => logoutMutation.mutate();
   const { toast } = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const queryClient = useQueryClient();
 
-  // Improved logout handler - use context signOut instead of server action directly
   async function handleLogout() {
     try {
       setIsLoggingOut(true);
-
-      // Immediately clear React Query cache for user data
-      // This prevents queries from firing during logout process
-      if (profile?.id) {
-        queryClient.removeQueries({ queryKey: ["profile"] });
-        queryClient.removeQueries({ queryKey: ["addresses"] });
-        queryClient.removeQueries({ queryKey: ["orders"] });
-        queryClient.removeQueries({ queryKey: ["cart"] });
-        queryClient.removeQueries({ queryKey: ["wishlist"] });
-      }
-
-      // Use the auth context's signOut which handles state cleanup properly
-      await signOut();
-
+      queryClient.removeQueries({ queryKey: ["profile"] });
+      queryClient.removeQueries({ queryKey: ["addresses"] });
+      queryClient.removeQueries({ queryKey: ["orders"] });
+      queryClient.removeQueries({ queryKey: ["cart"] });
+      queryClient.removeQueries({ queryKey: ["wishlist"] });
+      signOut();
       toast({
         title: "Đăng xuất thành công",
         description: "Bạn đã đăng xuất khỏi tài khoản.",
       });
-
-      // No longer need to use router.push as signOut already handles redirection
     } catch (error) {
       console.error("Logout error:", error);
       toast({
@@ -60,7 +52,6 @@ export function AccountSidebar() {
     }
   }
 
-  // Memoize the navigation items to prevent unnecessary re-renders
   const navigationItems = useMemo(() => {
     return accountNavItems.map((item) => (
       <Link
@@ -81,9 +72,8 @@ export function AccountSidebar() {
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-center gap-2 rounded-lg border p-4 text-center">
           <div className="relative h-20 w-20 overflow-hidden rounded-full bg-muted">
-            {/* Use optimized image loading */}
             <img
-              src={profileImageUrl}
+              src={profile?.profile_image_url || "/images/default-avatar.png"}
               alt={profile?.display_name || "Avatar"}
               className="h-full w-full object-cover"
               loading="eager"
