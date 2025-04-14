@@ -1,177 +1,182 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
-import Image from "next/image"
-import { useAuth } from "@/lib/providers/auth-context"
+
+import { useState, useRef, memo } from "react"
 import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/lib/providers/auth-context"
+import { Camera, Loader2, X } from "lucide-react"
 import { uploadAvatar } from "../actions"
 import { DEFAULT_AVATAR_URL } from "@/lib/constants"
-import { Loader2, Upload, Check } from "lucide-react"
 
-export function AvatarUpload() {
+// Using memo to prevent unnecessary re-renders
+export const AvatarUpload = memo(function AvatarUpload() {
   const { profile, refreshProfile, profileImageUrl } = useAuth()
-  const { toast } = useToast()
   const [isUploading, setIsUploading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { toast } = useToast()
 
-  // Xóa preview khi profileImageUrl thay đổi
-  useEffect(() => {
-    if (profileImageUrl) {
-      setPreviewUrl(null)
-      setSelectedFile(null)
-    }
-  }, [profileImageUrl])
-
-  // Xử lý khi người dùng chọn file
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle file selection with validation and preview
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !profile) return
+    if (!file) return
 
-    // Kiểm tra kích thước file (tối đa 5MB)
+    // Validate file type - only allow images
+    if (!file.type.match(/image\/(jpeg|png|webp|gif)/)) {
+      toast({
+        title: "File không hợp lệ",
+        description: "Vui lòng chọn file hình ảnh (JPEG, PNG, WebP, GIF)",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate file size - max 5MB
     if (file.size > 5 * 1024 * 1024) {
       toast({
-        title: "Lỗi",
-        description: "Kích thước file không được vượt quá 5MB",
+        title: "File quá lớn",
+        description: "Kích thước file tối đa là 5MB",
         variant: "destructive",
       })
       return
     }
 
-    // Kiểm tra loại file
-    if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Lỗi",
-        description: "Chỉ chấp nhận file hình ảnh",
-        variant: "destructive",
-      })
-      return
+    // Create preview
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      setPreviewUrl(event.target?.result as string)
     }
+    reader.readAsDataURL(file)
 
-    // Tạo preview URL và lưu file đã chọn
-    const objectUrl = URL.createObjectURL(file)
-    setPreviewUrl(objectUrl)
-    setSelectedFile(file)
-  }
-
-  // Sửa hàm handleUpload để xử lý lỗi tốt hơn và đảm bảo isUploading được reset
-  const handleUpload = async () => {
-    if (!selectedFile || !profile) return
-
+    // Upload file - with error handling
     setIsUploading(true)
-
     try {
-      console.log("Bắt đầu tải ảnh lên...")
-      const result = await uploadAvatar(profile.id, selectedFile)
+      if (!profile?.id) {
+        throw new Error("Bạn cần đăng nhập để thực hiện hành động này")
+      }
 
-      console.log("Kết quả tải lên:", result)
+      const result = await uploadAvatar(profile.id, file)
 
       if (result.error) {
-        console.error("Lỗi từ server:", result.error)
-        toast({
-          title: "Lỗi",
-          description: result.error,
-          variant: "destructive",
-        })
-        setIsUploading(false)
-        return
+        throw new Error(result.error)
       }
 
-      // Xóa file đã chọn và preview sau khi tải lên thành công
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl)
-      }
-      setSelectedFile(null)
-      setPreviewUrl(null)
+      // Successfully uploaded - refresh profile to get updated avatar URL
+      await refreshProfile()
 
-      // Hiển thị toast trước khi refresh profile
       toast({
-        title: "Thành công",
-        description: "Ảnh đại diện đã được cập nhật",
+        title: "Cập nhật thành công",
+        description: "Ảnh đại diện của bạn đã được cập nhật",
       })
-
-      // Refresh profile để cập nhật avatar mới
-      try {
-        await refreshProfile()
-        console.log("Profile đã được refresh")
-      } catch (refreshError) {
-        console.error("Lỗi khi refresh profile:", refreshError)
-        // Không hiển thị lỗi này cho người dùng vì ảnh đã được tải lên thành công
-      }
     } catch (error) {
-      console.error("Lỗi khi tải lên ảnh đại diện:", error)
       toast({
-        title: "Lỗi",
-        description: "Đã xảy ra lỗi khi tải lên ảnh đại diện",
+        title: "Cập nhật thất bại",
+        description: error instanceof Error ? error.message : "Đã xảy ra lỗi khi cập nhật ảnh đại diện",
         variant: "destructive",
       })
+      // Reset preview on error
+      setPreviewUrl(null)
     } finally {
-      // Đảm bảo isUploading luôn được đặt lại thành false
       setIsUploading(false)
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
     }
   }
 
-  // Xử lý hủy chọn ảnh
-  const handleCancel = () => {
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl)
-    }
+  // Handle cancel preview
+  const handleCancelPreview = () => {
     setPreviewUrl(null)
-    setSelectedFile(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
   }
 
-  // Sử dụng previewUrl nếu có, nếu không thì sử dụng profileImageUrl
-  const displayImageUrl = previewUrl || profileImageUrl || DEFAULT_AVATAR_URL
+  // Trigger file input click
+  const handleUploadClick = () => {
+    if (fileInputRef.current && !isUploading) {
+      fileInputRef.current.click()
+    }
+  }
+
+  // Use preview URL if available, otherwise use profile image URL
+  const currentImageUrl = previewUrl || profileImageUrl || DEFAULT_AVATAR_URL
+
+  // Get first letter of display name for fallback
+  const nameInitial = profile?.display_name?.charAt(0)?.toUpperCase() || "U"
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <div className="relative h-32 w-32 overflow-hidden rounded-full border-2 border-primary/20">
-        <Image
-          src={displayImageUrl || "/placeholder.svg"}
-          alt={profile?.display_name || "Avatar"}
-          fill
-          className="object-cover"
-          sizes="128px"
-          priority
-        />
-        {isUploading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-            <Loader2 className="h-8 w-8 animate-spin text-white" />
-          </div>
+      <div className="relative">
+        <Avatar className="h-40 w-40">
+          <AvatarImage
+            src={currentImageUrl}
+            alt={profile?.display_name || "Avatar"}
+            className="object-cover"
+            onError={(e) => {
+              // Handle image load errors
+              const target = e.currentTarget as HTMLImageElement
+              target.src = DEFAULT_AVATAR_URL
+            }}
+          />
+          <AvatarFallback className="text-4xl">{nameInitial}</AvatarFallback>
+        </Avatar>
+
+        {/* Upload button overlay */}
+        <Button
+          type="button"
+          size="icon"
+          onClick={handleUploadClick}
+          disabled={isUploading}
+          className="absolute bottom-0 right-0 rounded-full bg-primary p-2 text-primary-foreground shadow-md hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Camera className="h-5 w-5" />
+          <span className="sr-only">Tải lên ảnh đại diện</span>
+        </Button>
+
+        {/* Show cancel button when previewing */}
+        {previewUrl && (
+          <Button
+            type="button"
+            size="icon"
+            variant="destructive"
+            onClick={handleCancelPreview}
+            className="absolute top-0 right-0 rounded-full p-1 shadow-md"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Hủy</span>
+          </Button>
         )}
       </div>
 
-      <div className="flex flex-col gap-2">
-        {selectedFile ? (
-          <div className="flex gap-2">
-            <Button onClick={handleUpload} size="sm" disabled={isUploading} className="flex items-center gap-2">
-              {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-              <span>Xác nhận</span>
-            </Button>
-            <Button onClick={handleCancel} variant="outline" size="sm" disabled={isUploading}>
-              Hủy
-            </Button>
-          </div>
-        ) : (
-          <Button asChild variant="outline" size="sm" disabled={isUploading}>
-            <label className="flex cursor-pointer items-center gap-2">
-              <Upload className="h-4 w-4" />
-              <span>Chọn ảnh</span>
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileChange}
-                disabled={isUploading}
-              />
-            </label>
-          </Button>
-        )}
-        <p className="text-xs text-muted-foreground">Định dạng: JPG, PNG. Tối đa: 5MB</p>
-      </div>
+      {/* Hidden file input */}
+      <input
+        type="file"
+        id="avatar-upload"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        className="hidden"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        disabled={isUploading}
+        aria-label="Upload avatar"
+      />
+
+      {isUploading ? (
+        <Button disabled variant="outline" size="sm">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Đang tải lên...
+        </Button>
+      ) : (
+        <Button type="button" variant="outline" size="sm" onClick={handleUploadClick} disabled={isUploading}>
+          <Camera className="mr-2 h-4 w-4" />
+          Cập nhật ảnh
+        </Button>
+      )}
     </div>
   )
-}
+})
 

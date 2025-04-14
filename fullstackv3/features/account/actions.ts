@@ -6,7 +6,7 @@ import { createErrorResponse, createSuccessResponse } from "@/lib/utils/error-ut
 
 // Các actions đã có trước đó
 export async function updateProfileInfo(userId: string, data: any) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     const { error } = await supabase.from("profiles").update(data).eq("id", userId)
@@ -23,7 +23,7 @@ export async function updateProfileInfo(userId: string, data: any) {
 }
 
 export async function uploadAvatar(userId: string, file: File) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Lấy thông tin profile hiện tại để kiểm tra avatar_url cũ
@@ -97,7 +97,7 @@ export async function uploadAvatar(userId: string, file: File) {
 
 // Cải thiện action đặt địa chỉ mặc định
 export async function setDefaultAddress(addressId: number) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Lấy thông tin session để kiểm tra user_id

@@ -1,6 +1,6 @@
 "use server"
 
-import { getSupabaseServiceClient } from "@/lib/supabase/service"
+import { createServiceRoleClient } from "@/lib/supabase/server"
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils/error-utils"
 import { getUserRoleFromMetadata } from "@/lib/utils/auth-utils"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
@@ -9,7 +9,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server"
 export async function updateUserRole(userId: string, newRole: "admin" | "staff" | "authenticated") {
   try {
     // Kiểm tra quyền của người dùng hiện tại
-    const supabase = getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient()
     const {
       data: { session },
     } = await supabase.auth.getSession()
@@ -26,10 +26,12 @@ export async function updateUserRole(userId: string, newRole: "admin" | "staff" 
     }
 
     // Sử dụng service client để cập nhật app_metadata
-    const serviceClient = getSupabaseServiceClient()
+    const serviceClient = await createServiceRoleClient()
 
     // Cập nhật app_metadata của user
-    const { error } = await serviceClient.auth.admin.updateUserById(userId, { app_metadata: { role: newRole } })
+    const { error } = await serviceClient.auth.admin.updateUserById(userId, {
+      app_metadata: { role: newRole },
+    })
 
     if (error) {
       return createErrorResponse(error.message)

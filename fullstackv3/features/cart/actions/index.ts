@@ -8,7 +8,7 @@ import type { CartItem, Discount, OrderData, OrderResponse } from "../types"
  * Get the current user's cart items
  */
 export async function getCartItems() {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   // Get user session
   const {
@@ -134,7 +134,7 @@ export async function getCartItems() {
  * Add an item to the cart
  */
 export async function addItemToCart(variantId: number, quantity: number) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   // Get user session
   const {
@@ -184,7 +184,7 @@ export async function addItemToCart(variantId: number, quantity: number) {
  * Update cart item quantity
  */
 export async function updateCartItemQuantity(variantId: number, quantity: number) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   // Get user session
   const {
@@ -220,7 +220,7 @@ export async function updateCartItemQuantity(variantId: number, quantity: number
  * Remove an item from the cart
  */
 export async function removeCartItem(variantId: number) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   // Get user session
   const {
@@ -247,7 +247,7 @@ export async function removeCartItem(variantId: number) {
  * Apply discount code
  */
 export async function applyDiscountCode(code: string, subtotal = 0) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   // Get user session
   const {
@@ -343,7 +343,7 @@ export async function applyDiscountCode(code: string, subtotal = 0) {
  * Remove applied discount code
  */
 export async function removeDiscountCode() {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   // Get user session
   const {
@@ -376,7 +376,7 @@ export async function removeDiscountCode() {
  * Create a new order
  */
 export async function createOrder(orderData: OrderData): Promise<OrderResponse> {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   // Get user session if authenticated
   const {

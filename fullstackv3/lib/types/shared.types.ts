@@ -19,3 +19,5 @@ export interface ShopSettings {
   updated_at: string
 }
 
+export type UserRole = "admin" | "staff" | "authenticated" | "anon"
+

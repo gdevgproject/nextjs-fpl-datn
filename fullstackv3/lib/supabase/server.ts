@@ -1,8 +1,12 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr"
-import { cookies } from "next/headers"
 import { createClient as createServiceClient } from "@supabase/supabase-js"
 
-export const createClient = (cookieStore = cookies()) => {
+// This is a helper for server components only
+export const createServerComponentClient = async () => {
+  // Import cookies dynamically to prevent it from being included in client bundles
+  const { cookies } = await import("next/headers")
+  const cookieStore = await cookies()
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
@@ -19,7 +23,6 @@ export const createClient = (cookieStore = cookies()) => {
         try {
           cookieStore.set({ name, value, ...options })
         } catch (error) {
-          // Handle errors when cookies can't be set (e.g. during static rendering)
           console.warn("Cookie couldn't be set:", error)
         }
       },
@@ -27,7 +30,6 @@ export const createClient = (cookieStore = cookies()) => {
         try {
           cookieStore.set({ name, value: "", ...options })
         } catch (error) {
-          // Handle errors when cookies can't be removed
           console.warn("Cookie couldn't be removed:", error)
         }
       },
@@ -35,12 +37,8 @@ export const createClient = (cookieStore = cookies()) => {
   })
 }
 
-/**
- * Create a service role client that bypasses RLS policies
- * IMPORTANT: This should ONLY be used in trusted server actions for
- * operations that require elevated privileges
- */
-export const createServiceRoleClient = () => {
+// Hàm tạo client với Service Role (quyền admin, bypass RLS)
+export const createServiceRoleClient = async () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -56,6 +54,8 @@ export const createServiceRoleClient = () => {
   })
 }
 
-// Keep the old function for backward compatibility
-export const getSupabaseServerClient = createClient
+// Helper cho server actions dùng dễ (server-side only)
+export const getSupabaseServerClient = async () => {
+  return createServerComponentClient()
+}
 

@@ -10,7 +10,7 @@ import type { Address } from "@/features/account/types"
  * Add a product to the cart
  */
 export async function addToCart(variantId: number, quantity: number) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Ensure user is authenticated
@@ -122,7 +122,7 @@ export async function addToCart(variantId: number, quantity: number) {
  * Update the quantity of a cart item
  */
 export async function updateCartItemQuantity(itemId: string, quantity: number) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Ensure user is authenticated
@@ -206,7 +206,7 @@ export async function updateCartItemQuantity(itemId: string, quantity: number) {
  * Remove an item from the cart
  */
 export async function removeCartItem(itemId: string) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Ensure user is authenticated
@@ -263,7 +263,7 @@ export async function removeCartItem(itemId: string) {
  * Clear all items from the cart
  */
 export async function clearCart() {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Ensure user is authenticated
@@ -314,7 +314,7 @@ export async function clearCart() {
  * Apply a discount code to the cart
  */
 export async function applyDiscountCode(code: string, subtotal: number) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Find the discount code
@@ -423,7 +423,7 @@ export async function placeOrder({
   total: number
   guestInfo?: GuestCheckoutInfo | null
 }) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Get user session
@@ -555,7 +555,7 @@ export async function placeOrder({
  * without actually applying it to the database yet
  */
 export async function validateDiscountCode(code: string, subtotal = 0) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   if (!code.trim()) {
     return { success: false, error: "Vui lòng nhập mã giảm giá" }
@@ -623,13 +623,14 @@ export async function validateDiscountCode(code: string, subtotal = 0) {
  * Get product variant details
  */
 export async function getProductVariantDetails(variantId: number) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Get variant details with product info
     const { data, error } = await supabase
       .from("product_variants")
-      .select(`
+      .select(
+        `
         id,
         product_id,
         price,
@@ -646,7 +647,8 @@ export async function getProductVariantDetails(variantId: number) {
             is_main
           )
         )
-      `)
+      `,
+      )
       .eq("id", variantId)
       .single()
 

@@ -2,7 +2,7 @@
 
 import type { z } from "zod"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
-import { getSupabaseServiceClient } from "@/lib/supabase/service"
+import { createServiceRoleClient } from "@/lib/supabase/server"
 import type { loginSchema, registerSchema } from "./validators"
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils/error-utils"
 
@@ -13,8 +13,8 @@ type LoginParams = z.infer<typeof loginSchema> & {
 
 // Đăng ký
 export async function register(values: z.infer<typeof registerSchema>) {
-  const supabase = getSupabaseServerClient()
-  const serviceClient = getSupabaseServiceClient()
+  const supabase = await getSupabaseServerClient()
+  const serviceClient = await createServiceRoleClient()
 
   try {
     // Kiểm tra xem email đã tồn tại chưa
@@ -84,7 +84,7 @@ export async function register(values: z.infer<typeof registerSchema>) {
 
 // Cải thiện hàm login để xử lý đăng nhập hiệu quả hơn
 export async function login(values: LoginParams) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Đảm bảo persistSession luôn được đặt đúng
@@ -146,21 +146,25 @@ export async function login(values: LoginParams) {
   }
 }
 
-// Đăng xuất
+// Đăng xuất - server action
 export async function logout() {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
+    // Simply sign out on the server side
     await supabase.auth.signOut()
-    return createSuccessResponse()
+
+    // Return success to allow client-side code to handle redirection
+    return { success: true, redirect: "/" }
   } catch (error) {
+    console.error("Logout error:", error)
     return createErrorResponse(error)
   }
 }
 
 // Xác nhận email
 export async function verifyOtp(token: string) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     const { error } = await supabase.auth.verifyOtp({
@@ -180,7 +184,7 @@ export async function verifyOtp(token: string) {
 
 // Cập nhật profile
 export async function updateProfile(userId: string, data: Partial<any>) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     const { error } = await supabase.from("profiles").update(data).eq("id", userId)

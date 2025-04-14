@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { useUserAddresses } from "../queries"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,6 +9,7 @@ import { AddressForm } from "./address-form"
 import { AddressList } from "./address-list"
 import { useAuth } from "@/lib/providers/auth-context"
 import { Skeleton } from "@/components/ui/skeleton"
+import { motion, AnimatePresence } from "framer-motion"
 
 export function AddressPage() {
   const { isAuthenticated } = useAuth()
@@ -16,29 +17,29 @@ export function AddressPage() {
   const [isAddingNew, setIsAddingNew] = useState(false)
   const [editingAddressId, setEditingAddressId] = useState<number | null>(null)
 
-  // Xử lý khi thêm địa chỉ mới
-  const handleAddNew = () => {
+  // Handle adding a new address
+  const handleAddNew = useCallback(() => {
     setIsAddingNew(true)
     setEditingAddressId(null)
-  }
+  }, [])
 
-  // Xử lý khi hủy thêm/sửa
-  const handleCancel = () => {
+  // Handle canceling add/edit
+  const handleCancel = useCallback(() => {
     setIsAddingNew(false)
     setEditingAddressId(null)
-  }
+  }, [])
 
-  // Xử lý khi sửa địa chỉ
-  const handleEdit = (addressId: number) => {
+  // Handle editing an address
+  const handleEdit = useCallback((addressId: number) => {
     setEditingAddressId(addressId)
     setIsAddingNew(false)
-  }
+  }, [])
 
-  // Xử lý khi thêm/sửa thành công
-  const handleSuccess = () => {
+  // Handle successful add/edit
+  const handleSuccess = useCallback(() => {
     setIsAddingNew(false)
     setEditingAddressId(null)
-  }
+  }, [])
 
   if (!isAuthenticated) {
     return (
@@ -66,47 +67,80 @@ export function AddressPage() {
         )}
       </div>
 
-      {isAddingNew && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Thêm địa chỉ mới</CardTitle>
-            <CardDescription>Nhập thông tin địa chỉ giao hàng mới của bạn</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AddressForm onCancel={handleCancel} onSuccess={handleSuccess} />
-          </CardContent>
-        </Card>
-      )}
+      <AnimatePresence mode="wait">
+        {isAddingNew && (
+          <motion.div
+            key="add-form"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle>Thêm địa chỉ mới</CardTitle>
+                <CardDescription>Nhập thông tin địa chỉ giao hàng mới của bạn</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AddressForm onCancel={handleCancel} onSuccess={handleSuccess} />
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
-      {editingAddressId && addresses && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Chỉnh sửa địa chỉ</CardTitle>
-            <CardDescription>Cập nhật thông tin địa chỉ giao hàng của bạn</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AddressForm
-              address={addresses.find((addr) => addr.id === editingAddressId)}
-              onCancel={handleCancel}
-              onSuccess={handleSuccess}
+        {editingAddressId && addresses && (
+          <motion.div
+            key="edit-form"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle>Chỉnh sửa địa chỉ</CardTitle>
+                <CardDescription>Cập nhật thông tin địa chỉ giao hàng của bạn</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AddressForm
+                  address={addresses.find((addr) => addr.id === editingAddressId)}
+                  onCancel={handleCancel}
+                  onSuccess={handleSuccess}
+                />
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {isLoading ? (
+          <motion.div
+            key="loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-4"
+          >
+            <Skeleton className="h-32 w-full rounded-lg" />
+            <Skeleton className="h-32 w-full rounded-lg" />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="address-list"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <AddressList
+              addresses={addresses || []}
+              onEdit={handleEdit}
+              isEditing={!!editingAddressId}
+              isAdding={isAddingNew}
             />
-          </CardContent>
-        </Card>
-      )}
-
-      {isLoading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-32 w-full rounded-lg" />
-          <Skeleton className="h-32 w-full rounded-lg" />
-        </div>
-      ) : (
-        <AddressList
-          addresses={addresses || []}
-          onEdit={handleEdit}
-          isEditing={!!editingAddressId}
-          isAdding={isAddingNew}
-        />
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

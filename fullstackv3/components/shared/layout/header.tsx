@@ -1,30 +1,22 @@
 "use client"
 
+import { memo, useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { User, Menu, LogOut, Settings, Package, Heart, LayoutDashboard } from "lucide-react"
+import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/lib/providers/auth-context"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { CartButton } from "@/features/cart/components/cart-button"
-import { DEFAULT_AVATAR_URL } from "@/lib/constants"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useEffect, useState } from "react"
 import { SearchForm } from "./search-form"
+import { UserNav } from "./user-nav"
 import { useShopSettings } from "@/features/shared/hooks/use-shop-settings"
+import { LogOut } from "lucide-react"
 
+// Navigation items memoized to prevent re-renders
 const mainNavItems = [
   { title: "Trang chủ", href: "/" },
   { title: "Sản phẩm", href: "/san-pham" },
@@ -34,27 +26,24 @@ const mainNavItems = [
   { title: "Liên hệ", href: "/lien-he" },
 ]
 
-export function Header() {
+// Memoized header component to prevent unnecessary re-renders
+export const Header = memo(function Header() {
   const pathname = usePathname()
-  const { user, profile, signOut, isAuthenticated, isLoading, profileImageUrl, role } = useAuth()
+  // Destructure exactly what we need to ensure proper re-renders
+  const { signOut, isAuthenticated, isLoading: isAuthLoading } = useAuth()
   const [mounted, setMounted] = useState(false)
   const { settings, isLoading: isLoadingSettings } = useShopSettings()
 
-  // Đảm bảo component chỉ render ở client-side
+  // Client-side only mounting to prevent hydration errors
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // Xử lý đăng xuất
-  const handleSignOut = async () => {
-    await signOut()
-  }
-
-  // Lấy tên shop từ settings hoặc dùng giá trị mặc định
+  // Get shop name from settings with fallback
   const shopName = settings?.shop_name || "MyBeauty"
 
-  // Nếu chưa mounted, hiển thị skeleton
-  if (!mounted) {
+  // Loading skeleton for the header when not mounted yet or auth is loading
+  if (!mounted || isAuthLoading) {
     return (
       <header className="sticky top-0 z-40 w-full border-b bg-background">
         <div className="container flex h-16 items-center justify-between">
@@ -83,6 +72,7 @@ export function Header() {
     )
   }
 
+  // Render the actual header
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background">
       <div className="container flex h-16 items-center justify-between">
@@ -95,6 +85,7 @@ export function Header() {
                 width={40}
                 height={40}
                 className="h-10 w-10 object-contain"
+                priority
               />
             </div>
             <span className="font-bold text-xl hidden sm:inline-block">
@@ -118,91 +109,12 @@ export function Header() {
         <div className="flex items-center gap-2">
           <SearchForm />
           <CartButton />
-
-          {isAuthenticated ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative h-8 w-8 rounded-full">
-                  {isLoading ? (
-                    <Skeleton className="h-8 w-8 rounded-full" />
-                  ) : (
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage
-                        src={profileImageUrl}
-                        alt={profile?.display_name || "Avatar"}
-                        className="object-cover"
-                        onError={(e) => {
-                          const target = e.currentTarget as HTMLImageElement
-                          target.src = DEFAULT_AVATAR_URL
-                        }}
-                      />
-                      <AvatarFallback>{profile?.display_name?.charAt(0) || "U"}</AvatarFallback>
-                    </Avatar>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{profile?.display_name || "Người dùng"}</p>
-                    <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  {/* Thêm lựa chọn trang quản trị cho admin và staff */}
-                  {(role === "admin" || role === "staff") && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/admin">
-                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                        <span>Trang quản trị</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem asChild>
-                    <Link href="/tai-khoan">
-                      <User className="mr-2 h-4 w-4" />
-                      <span>Tài khoản</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/tai-khoan/don-hang">
-                      <Package className="mr-2 h-4 w-4" />
-                      <span>Đơn hàng</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/tai-khoan/yeu-thich">
-                      <Heart className="mr-2 h-4 w-4" />
-                      <span>Yêu thích</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/tai-khoan/cai-dat">
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Cài đặt</span>
-                    </Link>
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Đăng xuất</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/dang-nhap">Đăng nhập</Link>
-            </Button>
-          )}
-
+          <UserNav />
           <ThemeToggle />
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
+              <Button variant="ghost" size="icon" className="md:hidden" aria-label="Menu">
                 <Menu className="h-5 w-5" />
-                <span className="sr-only">Menu</span>
               </Button>
             </SheetTrigger>
             <SheetContent side="right">
@@ -233,7 +145,7 @@ export function Header() {
                   </Link>
                 ))}
                 {isAuthenticated && (
-                  <Button variant="ghost" onClick={handleSignOut} className="justify-start px-0">
+                  <Button variant="ghost" onClick={signOut} className="justify-start px-0" disabled={isAuthLoading}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Đăng xuất
                   </Button>
@@ -245,5 +157,5 @@ export function Header() {
       </div>
     </header>
   )
-}
+})
 

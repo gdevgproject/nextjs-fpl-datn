@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 
 export async function GET() {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Get user session
@@ -36,7 +36,8 @@ export async function GET() {
     // Get cart items with product info
     const { data: items, error: itemsError } = await supabase
       .from("cart_items")
-      .select(`
+      .select(
+        `
         id,
         variant_id,
         quantity,
@@ -58,7 +59,8 @@ export async function GET() {
             )
           )
         )
-      `)
+      `,
+      )
       .eq("cart_id", cartId)
 
     if (itemsError) {

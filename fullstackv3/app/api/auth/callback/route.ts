@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient, type CookieOptions } from "@supabase/ssr"
-import type { Database } from "@/lib/types/database.types"
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
@@ -9,7 +8,7 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const cookieStore = request.cookies
-    const supabase = createServerClient<Database>(
+    const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
@@ -27,35 +26,26 @@ export async function GET(request: NextRequest) {
       },
     )
 
-    try {
-      // Exchange code for session
-      const { error } = await supabase.auth.exchangeCodeForSession(code)
+    // Exchange the code for a session
+    await supabase.auth.exchangeCodeForSession(code)
 
-      if (error) {
-        console.error("Error exchanging code for session:", error)
-        // Redirect to login with error
-        const redirectUrl = new URL("/dang-nhap", requestUrl.origin)
-        redirectUrl.searchParams.set("auth_error", encodeURIComponent(error.message))
-        return NextResponse.redirect(redirectUrl)
-      }
-
-      // Redirect to login page with success message
-      const redirectUrl = new URL("/dang-nhap", requestUrl.origin)
-
-      // Add auth_action param based on the type of verification
-      if (type === "signup") {
-        redirectUrl.searchParams.set("auth_action", "email_confirmed")
-      } else if (type === "recovery") {
-        redirectUrl.searchParams.set("auth_action", "password_reset")
-      }
-
-      return NextResponse.redirect(redirectUrl)
-    } catch (err) {
-      console.error("Error processing callback:", err)
+    // Handle redirects based on the authentication type
+    if (type === "signup") {
+      // Redirect to login with email confirmed param
+      return NextResponse.redirect(new URL(`/dang-nhap?auth_action=email_confirmed`, requestUrl.origin))
+    } else if (type === "recovery") {
+      // Redirect to login with password reset param
+      return NextResponse.redirect(new URL(`/dang-nhap?auth_action=password_reset`, requestUrl.origin))
+    } else if (type === "invite") {
+      // Redirect to account settings
+      return NextResponse.redirect(new URL(`/tai-khoan/cai-dat`, requestUrl.origin))
     }
+
+    // Default redirect to the account page
+    return NextResponse.redirect(new URL(`/tai-khoan`, requestUrl.origin))
   }
 
-  // If there's no code or any other error, redirect to login
-  return NextResponse.redirect(new URL("/dang-nhap", requestUrl.origin))
+  // If no code, redirect to home
+  return NextResponse.redirect(new URL("/", requestUrl.origin))
 }
 

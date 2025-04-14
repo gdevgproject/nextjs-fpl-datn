@@ -9,22 +9,40 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CheckCircle2 } from "lucide-react"
 import { AvatarUpload } from "./avatar-upload"
 import { ProfileForm } from "./profile-form"
+import { useToast } from "@/hooks/use-toast"
 
 export function AccountPage() {
   const { profile } = useAuth()
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState("profile")
+  const { toast } = useToast()
 
-  // Kiểm tra xem người dùng vừa xác nhận email không
+  // Check if user just confirmed email
   const isNewConfirmation = searchParams.get("auth_action") === "email_confirmed"
 
-  // Cập nhật tab active từ URL nếu có
+  // Update active tab from URL if present
   useEffect(() => {
     const tab = searchParams.get("tab")
     if (tab && ["profile", "security"].includes(tab)) {
       setActiveTab(tab)
     }
   }, [searchParams])
+
+  // Show toast notification on profile update success
+  useEffect(() => {
+    const status = searchParams.get("status")
+    if (status === "profile_updated") {
+      toast({
+        title: "Cập nhật thành công",
+        description: "Thông tin cá nhân của bạn đã được cập nhật",
+      })
+    } else if (status === "avatar_updated") {
+      toast({
+        title: "Cập nhật thành công",
+        description: "Ảnh đại diện của bạn đã được cập nhật",
+      })
+    }
+  }, [searchParams, toast])
 
   return (
     <div className="space-y-6">

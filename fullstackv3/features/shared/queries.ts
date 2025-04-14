@@ -1,13 +1,11 @@
-import { createClient } from "@supabase/supabase-js"
 import type { ShopSettings } from "@/lib/types/shared.types"
 
-// Tạo Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-// Fetch shop settings
+// Fetch shop settings - only for server components
 export async function getShopSettings(): Promise<ShopSettings> {
+  // Dynamically import the server client to prevent it from being included in client bundles
+  const { getSupabaseServerClient } = await import("@/lib/supabase/server")
+  const supabase = await getSupabaseServerClient()
+
   const { data, error } = await supabase.from("shop_settings").select("*").single()
 
   if (error) {

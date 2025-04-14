@@ -31,8 +31,8 @@ const initialCartState: CartState = {
 // Context type
 type CartContextType = CartState & {
   addToCart: (variantId: number, quantity: number, productId?: string) => Promise<void>
-  updateCartItemQuantity: (variantId: number, quantity: number) => Promise<void>
-  removeCartItem: (variantId: number) => Promise<void>
+  updateCartItemQuantity: (variantId: number, quantity: number, itemId?: string) => Promise<void>
+  removeCartItem: (variantId: number, itemId?: string) => Promise<void>
   clearCart: () => Promise<void>
   applyDiscount: (code: string, discount: Discount, amount: number) => void
   removeDiscount: () => Promise<void>
@@ -291,7 +291,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Update cart item quantity
-  const updateCartItemQuantity = async (variantId: number, quantity: number) => {
+  const updateCartItemQuantity = async (variantId: number, quantity: number, itemId?: string) => {
     try {
       setState((prev) => ({ ...prev, isUpdatingCart: true }))
 
@@ -320,10 +320,26 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
 
       // For authenticated users
-      const result = await updateCartItemQuantityAction(String(variantId), quantity)
+      // If we have the actual cart item ID, use it directly
+      if (itemId) {
+        const result = await updateCartItemQuantityAction(itemId, quantity)
 
-      if (result.error) {
-        throw new Error(result.error)
+        if (result.error) {
+          throw new Error(result.error)
+        }
+      } else {
+        // Otherwise, find the cart item with matching variant ID
+        const cartItem = state.cartItems.find((item) => item.variant_id === variantId)
+
+        if (!cartItem) {
+          throw new Error("Cart item not found")
+        }
+
+        const result = await updateCartItemQuantityAction(String(cartItem.id), quantity)
+
+        if (result.error) {
+          throw new Error(result.error)
+        }
       }
 
       // Refresh cart items after updating
@@ -353,7 +369,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Remove from cart
-  const removeCartItem = async (variantId: number) => {
+  const removeCartItem = async (variantId: number, itemId?: string) => {
     try {
       setState((prev) => ({ ...prev, isUpdatingCart: true }))
 
@@ -379,10 +395,26 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
 
       // For authenticated users
-      const result = await removeCartItemAction(String(variantId))
+      // If we have the actual cart item ID, use it directly
+      if (itemId) {
+        const result = await removeCartItemAction(itemId)
 
-      if (result.error) {
-        throw new Error(result.error)
+        if (result.error) {
+          throw new Error(result.error)
+        }
+      } else {
+        // Otherwise, find the cart item with matching variant ID
+        const cartItem = state.cartItems.find((item) => item.variant_id === variantId)
+
+        if (!cartItem) {
+          throw new Error("Cart item not found")
+        }
+
+        const result = await removeCartItemAction(String(cartItem.id))
+
+        if (result.error) {
+          throw new Error(result.error)
+        }
       }
 
       // Refresh cart items after removing

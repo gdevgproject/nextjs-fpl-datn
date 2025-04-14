@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient, type CookieOptions } from "@supabase/ssr"
-import type { Database } from "../types/database.types"
 
 export async function createSupabaseMiddlewareClient(req: NextRequest) {
   const res = NextResponse.next()
@@ -11,7 +10,7 @@ export async function createSupabaseMiddlewareClient(req: NextRequest) {
     throw new Error("Missing Supabase environment variables")
   }
 
-  const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       get(name: string) {
         return req.cookies.get(name)?.value

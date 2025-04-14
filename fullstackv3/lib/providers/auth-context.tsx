@@ -11,6 +11,7 @@ import { handleApiError } from "../utils/error-utils"
 import { getUserRoleFromMetadata } from "../utils/auth-utils"
 import type { UserRole } from "@/features/auth/types"
 import { DEFAULT_AVATAR_URL } from "../constants"
+import { QUERY_STALE_TIME } from "../hooks/use-query-config"
 
 type AuthState = {
   user: User | null
@@ -29,7 +30,7 @@ type AuthContextType = {
   isAuthenticated: boolean
   role: UserRole
   signOut: () => Promise<void>
-  refreshProfile: () => Promise<void>
+  refreshProfile: () => Promise<Profile | null>
   updateProfile: (data: Partial<Profile>) => Promise<{ success: boolean; error?: string }>
 }
 
@@ -42,7 +43,7 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   role: "anon",
   signOut: async () => {},
-  refreshProfile: async () => {},
+  refreshProfile: async () => null,
   updateProfile: async () => ({ success: false }),
 })
 
@@ -63,28 +64,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient()
   const router = useRouter()
 
-  // Sử dụng React Query để fetch profile data
+  // Fix the profile query to prevent fetching when user is logged out
   const { data: profile, refetch } = useQuery({
     queryKey: ["profile", state.user?.id],
     queryFn: async () => {
-      if (!state.user) return null
+      // Only fetch if there's a user AND the user is authenticated
+      if (!state.user || !state.isAuthenticated) return null
 
       try {
-        // Thêm tham số cache-busting
-        const timestamp = Date.now()
         const { data, error } = await supabase.from("profiles").select("*").eq("id", state.user.id).single()
 
         if (error) throw error
 
         return data as Profile
       } catch (error) {
-        console.error("Error fetching profile:", error)
-        throw new Error(handleApiError(error))
+        // Only log error if user is still authenticated
+        if (state.isAuthenticated) {
+          console.error("Error fetching profile:", error)
+          throw new Error(handleApiError(error))
+        }
+        return null
       }
     },
-    enabled: !!state.user && mounted, // Chỉ fetch khi đã mounted
-    staleTime: 0, // Giảm staleTime để luôn fetch dữ liệu mới
-    refetchOnWindowFocus: true, // Refetch khi focus lại window
+    // Only run query if user exists, is authenticated, and component is mounted
+    enabled: !!state.user && !!state.isAuthenticated && mounted,
+    staleTime: QUERY_STALE_TIME.USER,
+    gcTime: QUERY_STALE_TIME.USER * 2,
+    // Only refetch on focus/mount if still authenticated
+    refetchOnWindowFocus: state.isAuthenticated,
+    refetchOnMount: state.isAuthenticated,
   })
 
   // Tính toán profileImageUrl từ profile
@@ -160,8 +168,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initAuth()
 
-    // Update the auth state change listener to better handle automatic login
-
     // Set up auth state change listener
     const {
       data: { subscription },
@@ -199,6 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               // Force refresh to ensure UI is updated
               queryClient.invalidateQueries({
                 queryKey: ["profile", session.user.id],
+                refetchType: "all",
               })
             }
           } catch (error) {
@@ -235,10 +242,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [supabase, queryClient, fetchUserData, mounted])
 
-  // Sign out function
+  // Enhanced sign out function with immediate state updates before Supabase call
   const signOut = useCallback(async () => {
     try {
-      await supabase.auth.signOut()
+      // 1. First immediately update local state to trigger UI updates right away
       setState({
         user: null,
         session: null,
@@ -247,67 +254,153 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: "anon",
       })
 
-      // Clear user-related queries
+      // 2. Clear all client-side cache related to authenticated state
       queryClient.removeQueries({ queryKey: ["profile"] })
       queryClient.removeQueries({ queryKey: ["addresses"] })
       queryClient.removeQueries({ queryKey: ["orders"] })
       queryClient.removeQueries({ queryKey: ["cart"] })
       queryClient.removeQueries({ queryKey: ["wishlist"] })
 
-      // Force refresh page để đảm bảo UI được cập nhật
+      // 3. Call Supabase to sign out (this can take a moment)
+      await supabase.auth.signOut()
+
+      // 4. Redirect to homepage to ensure complete reset
       window.location.href = "/"
     } catch (error) {
       console.error("Error signing out:", error)
+
+      // Even if sign out fails, ensure client state is reset
+      setState({
+        user: null,
+        session: null,
+        isLoading: false,
+        isAuthenticated: false,
+        role: "anon",
+      })
+
+      // Force a full cache reset in case of error to ensure clean state
+      queryClient.clear()
+
+      // Force redirect to home page
+      window.location.href = "/"
     }
   }, [supabase, queryClient])
 
-  // Refresh profile data
-  const refreshProfile = useCallback(async () => {
-    if (!state.user) return
+  // Improved refreshProfile function with broader cache invalidation
+  const refreshProfile = useCallback(
+    async (broadcastUpdate = true) => {
+      // Check authentication state first - don't refresh if not authenticated
+      if (!state.user || !state.isAuthenticated) return null
 
-    try {
-      console.log("Bắt đầu refresh profile cho user:", state.user.id)
+      try {
+        // Add cache-busting with fresh fetch
+        const { data, error } = await supabase.from("profiles").select("*").eq("id", state.user.id).single()
 
-      // Thêm tham số cache-busting
-      const timestamp = Date.now()
+        if (error) {
+          console.error("Error refreshing profile:", error)
+          throw error
+        }
 
-      // Fetch profile trực tiếp từ Supabase thay vì dùng refetch
-      const { data, error } = await supabase.from("profiles").select("*").eq("id", state.user.id).single()
+        // Immediately update React Query cache with new profile data
+        queryClient.setQueryData(["profile", state.user.id], data)
 
-      if (error) {
-        console.error("Lỗi khi fetch profile:", error)
-        throw error
+        // Force a global re-fetch of profile data if broadcastUpdate is true
+        if (broadcastUpdate) {
+          await queryClient.invalidateQueries({
+            queryKey: ["profile", state.user.id],
+            refetchType: "all",
+          })
+
+          // Also invalidate any related queries that might depend on profile data
+          queryClient.invalidateQueries({
+            queryKey: ["addresses", state.user.id],
+          })
+          queryClient.invalidateQueries({ queryKey: ["user-settings"] })
+
+          // Force refetch of any active profile queries to ensure UI updates
+          queryClient.refetchQueries({
+            queryKey: ["profile", state.user.id],
+            type: "active",
+          })
+        }
+
+        return data as Profile
+      } catch (error) {
+        // Only log/handle error if still authenticated
+        if (state.isAuthenticated) {
+          console.error("Error refreshing profile:", error)
+
+          // Only attempt to refetch if still authenticated
+          if (state.isAuthenticated) {
+            refetch().catch((refetchError) => {
+              console.error("Error during refetch after refresh failure:", refetchError)
+            })
+          }
+        }
+
+        return null
       }
+    },
+    [state.user, state.isAuthenticated, supabase, queryClient, refetch],
+  )
 
-      // Cập nhật cache React Query với profile data mới
-      queryClient.setQueryData(["profile", state.user.id], data)
-
-      // Force invalidate để đảm bảo UI được cập nhật
-      queryClient.invalidateQueries({ queryKey: ["profile", state.user.id] })
-
-      console.log("Profile đã được refresh thành công:", data)
-
-      return data
-    } catch (error) {
-      console.error("Lỗi khi refresh profile:", error)
-      throw error
-    }
-  }, [state.user, supabase, queryClient])
-
-  // Update profile data
+  // Enhanced update profile function with optimistic updates
   const updateProfile = async (data: Partial<Profile>) => {
     if (!state.user) return { success: false, error: "Không có người dùng đăng nhập" }
 
     try {
+      // Get current profile before update for optimistic updates
+      const currentProfile = queryClient.getQueryData<Profile>(["profile", state.user.id])
+
+      // Apply optimistic update immediately
+      if (currentProfile) {
+        queryClient.setQueryData(["profile", state.user.id], {
+          ...currentProfile,
+          ...data,
+          // Add temporary flag to indicate this is an optimistic update
+          _optimisticUpdate: true,
+        })
+      }
+
+      // Perform the actual update
       const { error } = await supabase.from("profiles").update(data).eq("id", state.user.id)
 
       if (error) throw error
 
-      // Invalidate profile query để fetch lại profile data
-      queryClient.invalidateQueries({ queryKey: ["profile", state.user.id] })
+      // Fetch the latest data after successful update
+      const { data: updatedProfile, error: fetchError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", state.user.id)
+        .single()
+
+      if (fetchError) {
+        console.warn("Failed to fetch updated profile, using optimistic data", fetchError)
+      } else if (updatedProfile) {
+        // Update cache with actual server data
+        queryClient.setQueryData(["profile", state.user.id], updatedProfile)
+      }
+
+      // Force invalidate to ensure all components re-render with the new data
+      queryClient.invalidateQueries({
+        queryKey: ["profile", state.user.id],
+        refetchType: "all",
+      })
+
       return { success: true }
     } catch (error) {
       console.error("Error updating profile:", error)
+
+      // Revert optimistic update if there's an error
+      if (state.user) {
+        refreshProfile(false).then(() => {
+          queryClient.invalidateQueries({
+            queryKey: ["profile", state.user.id],
+            refetchType: "all",
+          })
+        })
+      }
+
       return { success: false, error: handleApiError(error) }
     }
   }

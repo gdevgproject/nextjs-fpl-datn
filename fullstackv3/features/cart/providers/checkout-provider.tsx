@@ -269,7 +269,13 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Redirect to order confirmation page
-      router.push(`/xac-nhan-don-hang?orderId=${result.orderId}`)
+      if (!isAuthenticated && result.accessToken) {
+        // For guest users, use the access token for security
+        router.push(`/xac-nhan-don-hang?token=${result.accessToken}`)
+      } else {
+        // For authenticated users, the orderId is sufficient due to RLS
+        router.push(`/xac-nhan-don-hang?orderId=${result.orderId}`)
+      }
     } catch (error) {
       console.error("Error placing order:", error)
       toast({

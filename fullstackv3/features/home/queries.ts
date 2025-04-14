@@ -6,7 +6,7 @@ import type { Banner, Brand, Category, Product } from "./types"
  * Sử dụng RLS policy "Product label assignments are viewable by everyone"
  */
 export async function getFeaturedProducts(limit = 8): Promise<Product[]> {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Trước tiên, kiểm tra xem có sản phẩm nào không
@@ -149,7 +149,7 @@ export async function getFeaturedProducts(limit = 8): Promise<Product[]> {
  * Sử dụng RLS policy "Products are viewable by everyone"
  */
 export async function getNewArrivals(limit = 8): Promise<Product[]> {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     const { data, error } = await supabase
@@ -234,7 +234,7 @@ export async function getNewArrivals(limit = 8): Promise<Product[]> {
  * Kết hợp sản phẩm có nhãn "Sale" và sản phẩm có variant giảm giá
  */
 export async function getProductsOnSale(limit = 8): Promise<Product[]> {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Kiểm tra xem có sản phẩm nào không
@@ -417,7 +417,7 @@ export async function getProductsOnSale(limit = 8): Promise<Product[]> {
  * Sử dụng function get_best_selling_products từ function.txt
  */
 export async function getBestSellingProducts(limit = 8): Promise<Product[]> {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Kiểm tra xem có sản phẩm nào không
@@ -550,7 +550,7 @@ export async function getBestSellingProducts(limit = 8): Promise<Product[]> {
  * Phương thức dự phòng để lấy sản phẩm bán chạy khi function không hoạt động
  */
 async function getFallbackBestSellingProducts(limit = 8): Promise<Product[]> {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     console.log("Using fallback method for best selling products")
@@ -739,7 +739,7 @@ async function getFallbackBestSellingProducts(limit = 8): Promise<Product[]> {
  * Lấy danh mục nổi bật
  */
 export async function getFeaturedCategories(limit = 6): Promise<Category[]> {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Kiểm tra xem có bảng categories không
@@ -798,7 +798,7 @@ export async function getFeaturedCategories(limit = 6): Promise<Category[]> {
  * Lấy thương hiệu nổi bật
  */
 export async function getFeaturedBrands(limit = 8): Promise<Brand[]> {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Kiểm tra xem có bảng brands không
@@ -859,7 +859,7 @@ export async function getFeaturedBrands(limit = 8): Promise<Brand[]> {
  * Lọc theo ngày hiệu lực
  */
 export async function getActiveBanners(): Promise<Banner[]> {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Kiểm tra xem có bảng banners không

@@ -3,7 +3,7 @@ import type { Brand } from "./types"
 
 // Hàm server-side để lấy tất cả thương hiệu
 export async function getAllBrands(): Promise<Brand[]> {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Kiểm tra xem có bảng brands không
@@ -39,7 +39,7 @@ export async function getAllBrands(): Promise<Brand[]> {
 
 // Hàm để đếm số sản phẩm trong mỗi thương hiệu
 export async function getBrandProductCounts(): Promise<Record<number, number>> {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     const { data, error } = await supabase.from("products").select("brand_id").is("deleted_at", null)

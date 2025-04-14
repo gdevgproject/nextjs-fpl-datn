@@ -14,7 +14,7 @@ export async function submitProductReview({
   rating: number
   comment: string
 }) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Kiểm tra session
@@ -76,7 +76,9 @@ export async function submitProductReview({
       }
 
       revalidatePath(`/san-pham/${productId}`)
-      return createSuccessResponse({ message: "Đánh giá đã được cập nhật và đang chờ duyệt" })
+      return createSuccessResponse({
+        message: "Đánh giá đã được cập nhật và đang chờ duyệt",
+      })
     } else {
       // Tạo đánh giá mới
       const { error: insertError } = await supabase.from("reviews").insert({
@@ -93,7 +95,9 @@ export async function submitProductReview({
       }
 
       revalidatePath(`/san-pham/${productId}`)
-      return createSuccessResponse({ message: "Đánh giá đã được gửi và đang chờ duyệt" })
+      return createSuccessResponse({
+        message: "Đánh giá đã được gửi và đang chờ duyệt",
+      })
     }
   } catch (error) {
     console.error("Error submitting review:", error)

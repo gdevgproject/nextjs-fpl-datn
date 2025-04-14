@@ -1,6 +1,6 @@
 import { Separator } from "@/components/ui/separator"
 import { formatCurrency } from "@/lib/utils/format"
-import { useCartContext } from "../../providers/cart-provider"
+import { useCartContext } from "../../cart/providers/cart-provider"
 
 export function OrderSummary() {
   const { cartItems, subtotal, discount, shippingFee, cartTotal, appliedDiscount } = useCartContext()

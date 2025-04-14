@@ -32,7 +32,10 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   // Load wishlist items from database when user is authenticated
   useEffect(() => {
     const fetchWishlistItems = async () => {
-      if (!isAuthenticated || !user) return
+      if (!isAuthenticated || !user) {
+        setIsLoading(false)
+        return
+      }
 
       try {
         const { data, error } = await supabase.from("wishlists").select("product_id").eq("user_id", user.id)
@@ -42,6 +45,8 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         setWishlistItems(data.map((item) => item.product_id))
       } catch (error) {
         console.error("Error fetching wishlist items:", error)
+      } finally {
+        setIsLoading(false)
       }
     }
 

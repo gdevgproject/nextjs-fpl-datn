@@ -11,96 +11,93 @@ import { AlertCircle, MapPin, Plus } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useUserAddresses } from "@/features/account/queries"
+import { LoaderCircle } from "lucide-react"
 
 export function AddressStep() {
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated } = useAuth()
   const { formData, updateFormData, errors, goToNextStep } = useCheckout()
 
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
   const [showAddressForm, setShowAddressForm] = useState(!isAuthenticated)
 
+  // Remove unnecessary initialized state which causes delay in showing content
   const { data: addresses, isLoading } = useUserAddresses()
 
-  // Fetch user addresses if authenticated
+  // Improved address initialization logic
   useEffect(() => {
-    async function fetchAddresses() {
-      if (!isAuthenticated) {
-        setShowAddressForm(true)
-        return
-      }
-
-      if (!addresses) {
-        return
-      }
-
-      if (addresses.length === 0) {
-        setShowAddressForm(true)
-        return
-      }
-
-      try {
-        // Pre-select default address if exists
-        const defaultAddress = addresses.find((addr) => addr.is_default)
-        if (defaultAddress) {
-          setSelectedAddressId(defaultAddress.id)
-          // Fill form with default address data
-          updateFormData({
-            fullName: defaultAddress.recipient_name,
-            phoneNumber: defaultAddress.recipient_phone,
-            address: defaultAddress.street_address,
-            province: defaultAddress.province_city,
-            district: defaultAddress.district,
-            ward: defaultAddress.ward,
-          })
-        } else if (addresses.length > 0) {
-          // Select first address if no default
-          setSelectedAddressId(addresses[0].id)
-          updateFormData({
-            fullName: addresses[0].recipient_name,
-            phoneNumber: addresses[0].phone,
-            address: addresses[0].street_address,
-            province: addresses[0].province_city,
-            district: addresses[0].district,
-            ward: addresses[0].ward,
-          })
-        } else {
-          setShowAddressForm(true)
-        }
-      } catch (error) {
-        console.error("Error fetching addresses:", error)
-      }
+    // Handle guest users
+    if (!isAuthenticated) {
+      setShowAddressForm(true)
+      return
     }
 
-    fetchAddresses()
-  }, [isAuthenticated, updateFormData, addresses])
+    // If addresses are loaded and we have at least one
+    if (addresses && addresses.length > 0 && !selectedAddressId) {
+      // Find default address if it exists
+      const defaultAddress = addresses.find((addr) => addr.is_default)
+      const addressToUse = defaultAddress || addresses[0]
+
+      setSelectedAddressId(addressToUse.id)
+      updateFormData({
+        fullName: addressToUse.recipient_name,
+        phoneNumber: addressToUse.recipient_phone,
+        address: addressToUse.street_address,
+        province: addressToUse.province_city,
+        district: addressToUse.district,
+        ward: addressToUse.ward,
+      })
+      setShowAddressForm(false)
+    } else if (addresses && addresses.length === 0) {
+      // No addresses found, show the form
+      setShowAddressForm(true)
+    }
+  }, [isAuthenticated, addresses, selectedAddressId, updateFormData])
 
   // Handle selecting an address from saved addresses
   const handleSelectAddress = (addressId: number) => {
-    const selectedAddress = addresses?.find((addr) => addr.id === addressId)
-    if (selectedAddress) {
-      setSelectedAddressId(addressId)
-      updateFormData({
-        fullName: selectedAddress.recipient_name,
-        phoneNumber: selectedAddress.recipient_phone,
-        address: selectedAddress.street_address,
-        province: selectedAddress.province_city,
-        district: selectedAddress.district,
-        ward: selectedAddress.ward,
-      })
-    }
+    if (!addresses) return
+
+    const selectedAddress = addresses.find((addr) => addr.id === addressId)
+    if (!selectedAddress) return
+
+    setSelectedAddressId(addressId)
+    updateFormData({
+      fullName: selectedAddress.recipient_name,
+      phoneNumber: selectedAddress.recipient_phone,
+      address: selectedAddress.street_address,
+      province: selectedAddress.province_city,
+      district: selectedAddress.district,
+      ward: selectedAddress.ward,
+    })
+
+    // Hide the form when selecting an existing address
+    setShowAddressForm(false)
   }
 
   // Show new address form
   const handleAddNewAddress = () => {
     setSelectedAddressId(null)
     setShowAddressForm(true)
-    // Clear address fields
+    // Clear address fields but keep user's name and phone if available
     updateFormData({
       address: "",
       province: "",
       district: "",
       ward: "",
     })
+  }
+
+  // Only show loading state if we're authenticated and still waiting for addresses
+  // This prevents the loading indicator from showing when data is already available
+  if (isAuthenticated && isLoading && !addresses) {
+    return (
+      <Card>
+        <CardContent className="py-8 flex justify-center items-center">
+          <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Đang tải địa chỉ...</span>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -110,14 +107,22 @@ export function AddressStep() {
         {isAuthenticated && <CardDescription>Chọn địa chỉ giao hàng hoặc thêm địa chỉ mới</CardDescription>}
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Show message when authenticated user has no addresses */}
+        {isAuthenticated && addresses?.length === 0 && !showAddressForm && (
+          <Alert className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>Bạn chưa có địa chỉ nào. Vui lòng thêm địa chỉ mới.</AlertDescription>
+          </Alert>
+        )}
+
         {/* Saved Addresses for authenticated users */}
-        {isAuthenticated && addresses?.length > 0 && (
+        {isAuthenticated && addresses && addresses.length > 0 && (
           <div className="space-y-4">
             <RadioGroup
               value={selectedAddressId?.toString() || ""}
-              onValueChange={(value) => handleSelectAddress(Number.parseInt(value))}
+              onValueChange={(value) => handleSelectAddress(Number(value))}
             >
-              {addresses?.map((address) => (
+              {addresses.map((address) => (
                 <div key={address.id} className="flex items-start space-x-3 p-3 border rounded-md">
                   <RadioGroupItem value={address.id.toString()} id={`address-${address.id}`} className="mt-1" />
                   <div className="space-y-1 flex-1">
@@ -144,7 +149,7 @@ export function AddressStep() {
         )}
 
         {/* Address Form - shown for guests or when adding new address */}
-        {(showAddressForm || !isAuthenticated) && (
+        {showAddressForm && (
           <div className="space-y-4 mt-4">
             {isAuthenticated && (
               <div className="bg-muted p-3 rounded-md mb-4 flex items-center">

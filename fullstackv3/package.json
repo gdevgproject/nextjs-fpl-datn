@@ -59,8 +59,11 @@
     "vaul": "^0.9.6",
     "zod": "latest",
     "@supabase/supabase-js": "latest",
+    "@emotion/is-prop-valid": "latest",
     "@tanstack/react-query": "latest",
     "@supabase/ssr": "latest",
+    "framer-motion": "latest",
+    "uuid": "latest",
     "@tanstack/react-query-devtools": "latest"
   },
   "devDependencies": {

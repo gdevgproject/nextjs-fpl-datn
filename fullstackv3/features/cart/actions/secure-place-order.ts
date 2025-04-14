@@ -11,6 +11,7 @@ import type { CartItem, GuestCheckoutInfo } from "../types"
 interface PlaceOrderResponse {
   success: boolean
   orderId?: number
+  accessToken?: string
   error?: string
 }
 
@@ -42,10 +43,11 @@ export async function securedPlaceOrder({
   guestInfo?: GuestCheckoutInfo | null
 }): Promise<PlaceOrderResponse> {
   // Create regular Supabase client for user session check only
-  const regularSupabase = getSupabaseServerClient()
+  const regularSupabase = await getSupabaseServerClient()
 
   // Create service role client for transaction operations (bypasses RLS)
-  const supabase = createServiceRoleClient()
+  // Fix: Make sure to await the async function to get the actual client instance
+  const supabase = await createServiceRoleClient()
 
   console.log("Starting order placement process with", cartItems.length, "items")
 
@@ -202,7 +204,9 @@ export async function securedPlaceOrder({
     }
 
     // Look for Pending status using various possible names
-    const pendingStatus = statusList.find((status) => ["Pending", "Chờ xử lý", "Đang chờ", "Mới"].includes(status.name))
+    let pendingStatus = statusList.find((status) =>
+      ["Pending", "Chờ xử lý", "Đang chờ", "Mới", "Chờ xác nhận"].includes(status.name),
+    )
 
     if (!pendingStatus) {
       console.error("Could not find a valid initial order status", statusList)
@@ -253,7 +257,7 @@ export async function securedPlaceOrder({
         shipping_fee: shippingFee,
         total_amount: total,
       })
-      .select("id")
+      .select("id, access_token")
       .single()
 
     if (orderError) {
@@ -334,6 +338,7 @@ export async function securedPlaceOrder({
     return {
       success: true,
       orderId,
+      accessToken: !userId ? newOrder.access_token : undefined, // Only return access_token for guest users
     }
   } catch (error) {
     console.error("Fatal error during order placement:", error)

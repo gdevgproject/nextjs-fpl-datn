@@ -3,7 +3,7 @@ import type { Category } from "@/lib/types/shared.types"
 
 // Hàm server-side để lấy tất cả danh mục
 export async function getAllCategories(): Promise<Category[]> {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     // Kiểm tra xem có bảng categories không
@@ -77,7 +77,7 @@ export function buildCategoryTree(categories: Category[]): Category[] {
 
 // Hàm để đếm số sản phẩm trong mỗi danh mục
 export async function getCategoryProductCounts(): Promise<Record<number, number>> {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   try {
     const { data, error } = await supabase.from("product_categories").select("category_id, count").select("category_id")

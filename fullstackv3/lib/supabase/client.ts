@@ -14,7 +14,7 @@ export const getSupabaseBrowserClient = () => {
       throw new Error("Missing Supabase environment variables")
     }
 
-    supabaseClient = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
+    supabaseClient = createBrowserClient(supabaseUrl, supabaseAnonKey)
     isInitialized = true
   }
 

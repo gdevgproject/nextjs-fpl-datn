@@ -3,7 +3,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { getUserRoleFromMetadata } from "@/lib/utils/auth-utils"
 
 export async function GET() {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
 
   // Kiểm tra session
   const {
