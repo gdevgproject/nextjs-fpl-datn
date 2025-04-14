@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { useAuth } from "@/features/auth/context/auth-context";
+import { useAuthQuery } from "@/features/auth/hooks";
 import { useToast } from "@/hooks/use-toast";
 import { QUERY_STALE_TIME } from "@/lib/hooks/use-query-config";
 import { handleApiError } from "@/lib/utils/error-utils";
@@ -30,7 +30,9 @@ export interface WishlistFilter {
 }
 
 export function useWishlist(filter?: WishlistFilter) {
-  const { user, isAuthenticated } = useAuth();
+  const { data: session } = useAuthQuery();
+  const user = session?.user;
+  const isAuthenticated = !!user;
   const supabase = getSupabaseBrowserClient();
   const queryClient = useQueryClient();
   const { toast } = useToast();

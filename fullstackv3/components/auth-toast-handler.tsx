@@ -4,13 +4,15 @@ import type React from "react";
 import { useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/features/auth/context/auth-context";
+import { useAuthQuery, useProfileQuery } from "@/features/auth/hooks";
 
 export function AuthToastHandler({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { toast } = useToast();
-  const { isAuthenticated, profile } = useAuth();
+  const { data: session } = useAuthQuery();
+  const isAuthenticated = !!session?.user;
+  const { data: profile } = useProfileQuery(session?.user?.id);
   const processedRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -68,7 +70,7 @@ export function AuthToastHandler({ children }: { children: React.ReactNode }) {
         case "password_changed":
           toast({
             title: "Đổi mật khẩu thành công!",
-            description: "Mật khẩu của bạn đã được cập nhật thành c��ng.",
+            description: "Mật khẩu của bạn đã được cập nhật thành công.",
           });
           break;
       }

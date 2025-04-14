@@ -4,7 +4,7 @@ import type React from "react";
 import { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useCartContext } from "./cart-provider";
-import { useAuth } from "@/features/auth/context/auth-context";
+import { useAuthQuery } from "@/features/auth/hooks";
 import { useToast } from "@/hooks/use-toast";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { securedPlaceOrder } from "../actions/secure-place-order";
@@ -74,7 +74,8 @@ const CheckoutContext = createContext<CheckoutContextType>({
 export function CheckoutProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { toast } = useToast();
-  const { isAuthenticated } = useAuth();
+  const { data: session } = useAuthQuery();
+  const isAuthenticated = !!session?.user;
   const {
     cartItems,
     subtotal,

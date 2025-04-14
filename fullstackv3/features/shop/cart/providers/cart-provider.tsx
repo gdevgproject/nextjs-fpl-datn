@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { createContext, useContext, useEffect, useState } from "react";
-import { useAuth } from "@/features/auth/context/auth-context";
+import { useAuthQuery } from "@/features/auth/hooks";
 import { useToast } from "@/hooks/use-toast";
 import type { CartItem, CartState, Discount } from "../types";
 import {
@@ -61,7 +61,9 @@ const CartContext = createContext<CartContextType>({
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<CartState>(initialCartState);
-  const { user, isAuthenticated } = useAuth();
+  const { data: session } = useAuthQuery();
+  const user = session?.user;
+  const isAuthenticated = !!user;
   const { toast } = useToast();
   const { settings } = useShopSettings();
 

@@ -2,7 +2,6 @@
 
 import { memo } from "react";
 import Link from "next/link";
-import { useAuth } from "@/features/auth/context/auth-context";
 import {
   CircleUser,
   LogIn,
@@ -26,29 +25,25 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { DEFAULT_AVATAR_URL } from "@/lib/constants";
+import {
+  useAuthQuery,
+  useProfileQuery,
+  useLogoutMutation,
+} from "@/features/auth/hooks";
 
-// Using memo to prevent unnecessary re-renders
 export const UserNav = memo(function UserNav() {
-  const { isAuthenticated, profile, signOut, profileImageUrl, role } =
-    useAuth();
+  const { data: session } = useAuthQuery();
+  const isAuthenticated = !!session?.user;
+  const { data: profile } = useProfileQuery(session?.user?.id);
+  const logoutMutation = useLogoutMutation();
+  const signOut = () => logoutMutation.mutate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Handle logout with proper state cleanup
   const handleSignOut = async () => {
     try {
-      // Pre-emptively clear cache
-      if (profile?.id) {
-        queryClient.removeQueries({ queryKey: ["profile"] });
-        queryClient.removeQueries({ queryKey: ["addresses"] });
-        queryClient.removeQueries({ queryKey: ["orders"] });
-        queryClient.removeQueries({ queryKey: ["cart"] });
-        queryClient.removeQueries({ queryKey: ["wishlist"] });
-      }
-
-      // Call the auth context signOut function
-      await signOut();
-
+      queryClient.clear();
+      signOut();
       toast({
         title: "Đăng xuất thành công",
         description: "Bạn đã đăng xuất khỏi tài khoản.",
@@ -63,7 +58,6 @@ export const UserNav = memo(function UserNav() {
     }
   };
 
-  // Show login button if not authenticated
   if (!isAuthenticated) {
     return (
       <Link href="/dang-nhap">
@@ -75,14 +69,13 @@ export const UserNav = memo(function UserNav() {
     );
   }
 
-  // Display dropdown menu for authenticated users
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
             <AvatarImage
-              src={profileImageUrl}
+              src={profile?.profile_image_url}
               alt={profile?.display_name || "Avatar"}
               onError={(e) => {
                 const target = e.currentTarget as HTMLImageElement;
@@ -128,8 +121,7 @@ export const UserNav = memo(function UserNav() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        {/* Admin Dashboard link - only visible for admin/staff users */}
-        {role === "admin" || role === "staff" ? (
+        {session?.user?.role === "admin" || session?.user?.role === "staff" ? (
           <>
             <DropdownMenuItem asChild>
               <Link href="/admin">

@@ -4,19 +4,17 @@ import { memo, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu } from "lucide-react";
+import { Menu, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { useAuth } from "@/features/auth/context/auth-context";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { CartButton } from "@/features/shop/cart/components/cart-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SearchForm } from "./search-form";
 import { UserNav } from "./user-nav";
 import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings";
-import { LogOut } from "lucide-react";
+import { useAuthQuery, useLogoutMutation } from "@/features/auth/hooks";
 
-// Navigation items memoized to prevent re-renders
 const mainNavItems = [
   { title: "Trang chủ", href: "/" },
   { title: "Sản phẩm", href: "/san-pham" },
@@ -26,23 +24,21 @@ const mainNavItems = [
   { title: "Liên hệ", href: "/lien-he" },
 ];
 
-// Memoized header component to prevent unnecessary re-renders
 export const Header = memo(function Header() {
   const pathname = usePathname();
-  // Destructure exactly what we need to ensure proper re-renders
-  const { signOut, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { data: session, isLoading: isAuthLoading } = useAuthQuery();
+  const isAuthenticated = !!session?.user;
+  const logoutMutation = useLogoutMutation();
+  const signOut = () => logoutMutation.mutate();
   const [mounted, setMounted] = useState(false);
   const { settings, isLoading: isLoadingSettings } = useShopSettings();
 
-  // Client-side only mounting to prevent hydration errors
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Get shop name from settings with fallback
   const shopName = settings?.shop_name || "MyBeauty";
 
-  // Loading skeleton for the header when not mounted yet or auth is loading
   if (!mounted || isAuthLoading) {
     return (
       <header className="sticky top-0 z-40 w-full border-b bg-background">
@@ -78,7 +74,6 @@ export const Header = memo(function Header() {
     );
   }
 
-  // Render the actual header
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background">
       <div className="container flex h-16 items-center justify-between">

@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Trash2, ShoppingCart, Loader2 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
-import { useWishlistContext } from "../providers/wishlist-provider";
 import { useCartContext } from "@/features/shop/cart/providers/cart-provider";
 import { useToast } from "@/hooks/use-toast";
 import { DEFAULT_AVATAR_URL } from "@/lib/constants";
+import { useWishlist } from "../hooks/use-wishlist";
 import type { WishlistItem as WishlistItemType } from "../hooks/use-wishlist";
 
 interface WishlistItemProps {
@@ -18,7 +18,7 @@ interface WishlistItemProps {
 }
 
 export function WishlistItem({ item }: WishlistItemProps) {
-  const { removeFromWishlist } = useWishlistContext();
+  const { removeFromWishlist } = useWishlist();
   const { addToCart } = useCartContext();
   const { toast } = useToast();
   const [isRemoving, setIsRemoving] = useState(false);

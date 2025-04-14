@@ -11,8 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { formatPrice } from "@/lib/utils";
-import { useAuth } from "@/features/auth/context/auth-context";
-import { useWishlistContext } from "@/features/shop/wishlist/providers/wishlist-provider";
+import { useAuthQuery } from "@/features/auth/hooks";
+import { useWishlist } from "@/features/shop/wishlist/hooks/use-wishlist";
 import { useCartContext } from "@/features/shop/cart/providers/cart-provider";
 import type { Product } from "@/features/shop/products/types";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -23,8 +23,9 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const { isAuthenticated } = useAuth();
-  const { isInWishlist, toggleWishlist } = useWishlistContext();
+  const { data: session } = useAuthQuery();
+  const isAuthenticated = !!session?.user;
+  const { isInWishlist, toggleWishlist } = useWishlist();
   const { addToCart } = useCartContext();
   const { toast } = useToast();
   const [isAddingToCart, setIsAddingToCart] = useState(false);

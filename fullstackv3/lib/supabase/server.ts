@@ -21,14 +21,14 @@ export const createServerComponentClient = async () => {
       },
       set(name: string, value: string, options: CookieOptions) {
         try {
-          cookieStore.set({ name, value, ...options });
+          cookieStore.set(name, value, options);
         } catch (error) {
           console.warn("Cookie couldn't be set:", error);
         }
       },
       remove(name: string, options: CookieOptions) {
         try {
-          cookieStore.set({ name, value: "", ...options });
+          cookieStore.set(name, "", options);
         } catch (error) {
           console.warn("Cookie couldn't be removed:", error);
         }

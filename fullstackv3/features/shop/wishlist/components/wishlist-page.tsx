@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useWishlistContext } from "../providers/wishlist-provider";
-import { useAuth } from "@/features/auth/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -19,10 +17,13 @@ import { WishlistItem } from "./wishlist-item";
 import { EmptyWishlist } from "./empty-wishlist";
 import { WishlistFilter } from "./wishlist-filter";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useWishlist } from "@/features/shop/wishlist/hooks/use-wishlist";
+import { useAuthQuery } from "@/features/auth/hooks";
 
 export function WishlistPage() {
-  const { wishlistItems, isLoading } = useWishlistContext();
-  const { isAuthenticated } = useAuth();
+  const { wishlistItems, isLoading } = useWishlist();
+  const { data: session } = useAuthQuery();
+  const isAuthenticated = !!session?.user;
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 

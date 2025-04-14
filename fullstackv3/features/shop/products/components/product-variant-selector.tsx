@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/features/auth/context/auth-context";
+import { useAuthQuery } from "@/features/auth/hooks";
 import { useCartContext } from "@/features/shop/cart/providers/cart-provider";
-import { useWishlistContext } from "@/features/shop/wishlist/providers/wishlist-provider";
+import { useWishlist } from "@/features/shop/wishlist/hooks/use-wishlist";
 import { formatPrice } from "@/lib/utils";
 
 interface ProductVariantSelectorProps {
@@ -19,9 +19,10 @@ export function ProductVariantSelector({
   product,
 }: ProductVariantSelectorProps) {
   const { toast } = useToast();
-  const { isAuthenticated } = useAuth();
+  const { data: session } = useAuthQuery();
+  const isAuthenticated = !!session?.user;
   const { addToCart } = useCartContext();
-  const { isInWishlist, toggleWishlist } = useWishlistContext();
+  const { isInWishlist, toggleWishlist } = useWishlist();
 
   const [selectedVariantId, setSelectedVariantId] = useState<number | null>(
     null

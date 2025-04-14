@@ -1,44 +1,52 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, X } from "lucide-react"
-import { useWishlistContext } from "../providers/wishlist-provider"
-import type { WishlistFilter } from "../hooks/use-wishlist"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, X } from "lucide-react";
+import type { WishlistFilter as WishlistFilterType } from "../hooks/use-wishlist";
 
-export function WishlistFilter() {
-  const { filter, setFilter } = useWishlistContext()
-  const [searchQuery, setSearchQuery] = useState(filter.search || "")
+export function WishlistFilter(props: {
+  filter: WishlistFilterType;
+  setFilter: (f: WishlistFilterType) => void;
+}) {
+  const { filter, setFilter } = props;
+  const [searchQuery, setSearchQuery] = useState(filter.search || "");
 
   // Xử lý thay đổi sắp xếp
   const handleSortChange = (value: string) => {
     setFilter({
       ...filter,
-      sortBy: value as WishlistFilter["sortBy"],
-    })
-  }
+      sortBy: value as WishlistFilterType["sortBy"],
+    });
+  };
 
   // Xử lý tìm kiếm
   const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     setFilter({
       ...filter,
       search: searchQuery,
-    })
-  }
+    });
+  };
 
   // Xử lý xóa tìm kiếm
   const handleClearSearch = () => {
-    setSearchQuery("")
+    setSearchQuery("");
     setFilter({
       ...filter,
       search: undefined,
-    })
-  }
+    });
+  };
 
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -61,13 +69,21 @@ export function WishlistFilter() {
             <span className="sr-only">Xóa tìm kiếm</span>
           </Button>
         ) : null}
-        <Button type="submit" variant="ghost" size="icon" className="absolute right-0 top-0 h-full">
+        <Button
+          type="submit"
+          variant="ghost"
+          size="icon"
+          className="absolute right-0 top-0 h-full"
+        >
           <Search className="h-4 w-4" />
           <span className="sr-only">Tìm kiếm</span>
         </Button>
       </form>
 
-      <Select value={filter.sortBy || "newest"} onValueChange={handleSortChange}>
+      <Select
+        value={filter.sortBy || "newest"}
+        onValueChange={handleSortChange}
+      >
         <SelectTrigger className="w-full sm:w-[180px]">
           <SelectValue placeholder="Sắp xếp theo" />
         </SelectTrigger>
@@ -79,6 +95,5 @@ export function WishlistFilter() {
         </SelectContent>
       </Select>
     </div>
-  )
+  );
 }
-

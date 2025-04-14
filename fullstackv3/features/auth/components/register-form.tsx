@@ -1,30 +1,39 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import type { z } from "zod"
-import { Button } from "@/components/ui/button"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { useToast } from "@/hooks/use-toast"
-import { registerSchema } from "../validators"
-import { register } from "../actions"
-import { PasswordStrengthIndicator } from "./password-strength-indicator"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Eye, EyeOff } from "lucide-react"
-import { FormNotification, FormNotificationLink } from "@/components/ui/form-notification"
-import { getFormErrorMessage } from "@/lib/utils/error-utils"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import type { z } from "zod";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { registerSchema } from "../validators";
+import { PasswordStrengthIndicator } from "./password-strength-indicator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, Eye, EyeOff } from "lucide-react";
+import {
+  FormNotification,
+  FormNotificationLink,
+} from "@/components/ui/form-notification";
+import { getFormErrorMessage } from "@/lib/utils/error-utils";
+import { useRegisterMutation } from "../hooks";
 
 export function RegisterForm() {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(false)
-  const [serverError, setServerError] = useState<string | null>(null)
-  const [errorCode, setErrorCode] = useState<string | null>(null)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const router = useRouter();
+  const { toast } = useToast();
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
@@ -35,55 +44,46 @@ export function RegisterForm() {
       display_name: "",
       phone_number: "",
     },
-  })
+  });
 
-  const password = form.watch("password")
-  const email = form.watch("email")
+  const password = form.watch("password");
+  const email = form.watch("email");
+
+  // Sử dụng TanStack Query mutation
+  const registerMutation = useRegisterMutation();
 
   async function onSubmit(values: z.infer<typeof registerSchema>) {
-    setIsLoading(true)
-    setServerError(null)
-    setErrorCode(null)
-
-    try {
-      const result = await register(values)
-
-      if (result && result.error) {
-        // Handle email_taken error with form notification
-        if (result.code === "email_taken") {
-          setErrorCode(result.code)
-        } else {
-          // Handle other errors with toast and alert
-          setServerError(result.error)
-          toast({
-            title: "Đăng ký thất bại",
-            description: result.error,
-            variant: "destructive",
-          })
+    setServerError(null);
+    setErrorCode(null);
+    registerMutation.mutate(values, {
+      onSuccess: (result) => {
+        if (result && result.error) {
+          if (result.code === "email_taken") {
+            setErrorCode(result.code);
+          } else {
+            setServerError(result.error);
+            toast({
+              title: "Đăng ký thất bại",
+              description: result.error,
+              variant: "destructive",
+            });
+          }
+          return;
         }
-        setIsLoading(false)
-        return
-      }
-
-      // Success toast
-      toast({
-        title: "Đăng ký thành công",
-        description: "Vui lòng kiểm tra email để xác nhận tài khoản",
-      })
-
-      router.push("/kiem-tra-email")
-    } catch (error) {
-      console.error("Lỗi đăng ký:", error)
-      const errorMessage = getFormErrorMessage(error)
-
-      toast({
-        title: "Đăng ký thất bại",
-        description: errorMessage,
-        variant: "destructive",
-      })
-
-      setIsLoading(false)
-    }
+        toast({
+          title: "Đăng ký thành công",
+          description: "Vui lòng kiểm tra email để xác nhận tài khoản",
+        });
+        router.push("/kiem-tra-email");
+      },
+      onError: (error) => {
+        toast({
+          title: "Đăng ký thất bại",
+          description: getFormErrorMessage(error),
+          variant: "destructive",
+        });
+      },
+    });
   }
 
   return (
@@ -103,7 +103,11 @@ export function RegisterForm() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input id="email" placeholder="example@example.com" {...field} />
+                <Input
+                  id="email"
+                  placeholder="example@example.com"
+                  {...field}
+                />
               </FormControl>
 
               {errorCode === "email_taken" ? (
@@ -112,8 +116,12 @@ export function RegisterForm() {
                   title="Email này đã được sử dụng."
                   action={
                     <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">Bạn đã có tài khoản?</span>
-                      <FormNotificationLink href={`/dang-nhap?email=${encodeURIComponent(email)}`}>
+                      <span className="text-muted-foreground">
+                        Bạn đã có tài khoản?
+                      </span>
+                      <FormNotificationLink
+                        href={`/dang-nhap?email=${encodeURIComponent(email)}`}
+                      >
                         Đăng nhập ngay
                       </FormNotificationLink>
                     </div>
@@ -159,7 +167,11 @@ export function RegisterForm() {
               <FormLabel>Mật khẩu</FormLabel>
               <FormControl>
                 <div className="relative">
-                  <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} />
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    {...field}
+                  />
                   <Button
                     type="button"
                     variant="ghost"
@@ -167,8 +179,14 @@ export function RegisterForm() {
                     className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground"
                     onClick={() => setShowPassword(!showPassword)}
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    <span className="sr-only">{showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}</span>
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                    <span className="sr-only">
+                      {showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                    </span>
                   </Button>
                 </div>
               </FormControl>
@@ -185,7 +203,11 @@ export function RegisterForm() {
               <FormLabel>Xác nhận mật khẩu</FormLabel>
               <FormControl>
                 <div className="relative">
-                  <Input type={showConfirmPassword ? "text" : "password"} placeholder="••••••••" {...field} />
+                  <Input
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    {...field}
+                  />
                   <Button
                     type="button"
                     variant="ghost"
@@ -193,8 +215,14 @@ export function RegisterForm() {
                     className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    <span className="sr-only">{showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}</span>
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                    <span className="sr-only">
+                      {showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                    </span>
                   </Button>
                 </div>
               </FormControl>
@@ -202,11 +230,14 @@ export function RegisterForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Đang đăng ký..." : "Đăng ký"}
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={registerMutation.isLoading}
+        >
+          {registerMutation.isLoading ? "Đang đăng ký..." : "Đăng ký"}
         </Button>
       </form>
     </Form>
-  )
+  );
 }
-
