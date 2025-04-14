@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { VerifyEmailPage } from "@/features/shop/auth/components/verify-email-page";
+import { VerifyEmailPage } from "@/features/auth/components/verify-email-page";
 
 export const metadata: Metadata = {
   title: "Xác nhận email - MyBeauty",

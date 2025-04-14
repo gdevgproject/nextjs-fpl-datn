@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CheckEmailPage } from "@/features/shop/auth/components/check-email-page";
+import { CheckEmailPage } from "@/features/auth/components/check-email-page";
 
 export const metadata: Metadata = {
   title: "Kiểm tra email - MyBeauty",
