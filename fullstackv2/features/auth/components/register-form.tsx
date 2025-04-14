@@ -1,26 +1,19 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import Link from "next/link";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { useRouter } from "next/navigation";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Icons } from "@/components/ui/icons";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { PasswordInput } from "@/components/ui/password-input";
-import { toast } from "sonner";
-import { useAuth } from "@/features/auth/context/auth-context";
+import { useState } from "react"
+import Link from "next/link"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
+import { useRouter } from "next/navigation"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
+import { Icons } from "@/components/ui/icons"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { PasswordInput } from "@/components/ui/password-input"
+import { toast } from "sonner"
+import { useAuth } from "@/features/auth/context/auth-context"
 
 const signupSchema = z.object({
   name: z
@@ -47,12 +40,12 @@ const signupSchema = z.object({
     .regex(/[\W_]/, {
       message: "Mật khẩu phải chứa ít nhất một ký tự đặc biệt",
     }),
-});
+})
 
 export default function RegisterForm() {
-  const [isPending, setIsPending] = useState(false);
-  const router = useRouter();
-  const { register } = useAuth();
+  const [isPending, setIsPending] = useState(false)
+  const router = useRouter()
+  const { register } = useAuth()
 
   const form = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
@@ -62,32 +55,30 @@ export default function RegisterForm() {
       phone: "",
       password: "",
     },
-  });
+  })
 
   async function onSubmit(values: z.infer<typeof signupSchema>) {
-    setIsPending(true);
+    setIsPending(true)
     try {
       const { error, user } = await register({
         name: values.name,
         email: values.email,
         password: values.password,
         phone: values.phone,
-      });
+      })
 
       if (error) {
-        toast.error("Đăng ký thất bại: " + error.message);
-        return;
+        toast.error("Đăng ký thất bại: " + error.message)
+        return
       }
 
-      toast.success(
-        "Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản."
-      );
-      router.push("/");
+      toast.success("Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản.")
+      router.push("/")
     } catch (error) {
-      toast.error("Đã xảy ra lỗi không mong muốn");
-      console.error(error);
+      toast.error("Đã xảy ra lỗi không mong muốn")
+      console.error(error)
     } finally {
-      setIsPending(false);
+      setIsPending(false)
     }
   }
 
@@ -109,11 +100,7 @@ export default function RegisterForm() {
                   <FormItem>
                     <FormLabel>Họ tên</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Nguyễn Văn A"
-                        {...field}
-                        disabled={isPending}
-                      />
+                      <Input placeholder="Nguyễn Văn A" {...field} disabled={isPending} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -126,11 +113,7 @@ export default function RegisterForm() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="example@mail.com"
-                        {...field}
-                        disabled={isPending}
-                      />
+                      <Input placeholder="example@mail.com" {...field} disabled={isPending} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -143,11 +126,7 @@ export default function RegisterForm() {
                   <FormItem>
                     <FormLabel>Số điện thoại</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="0123456789"
-                        {...field}
-                        disabled={isPending}
-                      />
+                      <Input placeholder="0123456789" {...field} disabled={isPending} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -160,12 +139,7 @@ export default function RegisterForm() {
                   <FormItem>
                     <FormLabel>Mật khẩu</FormLabel>
                     <FormControl>
-                      <PasswordInput
-                        placeholder="Mật khẩu"
-                        type="password"
-                        {...field}
-                        disabled={isPending}
-                      />
+                      <PasswordInput placeholder="Mật khẩu" type="password" {...field} disabled={isPending} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -193,5 +167,5 @@ export default function RegisterForm() {
         </Link>
       </div>
     </div>
-  );
+  )
 }

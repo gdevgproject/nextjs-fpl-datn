@@ -1,9 +1,9 @@
-"use client";
+"use client"
 
-import { useAuth } from "@/features/auth/context/auth-context";
-import { useTransition } from "react";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { useAuth } from "@/features/auth/context/auth-context"
+import { useTransition } from "react"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
 import {
   DropdownMenu,
@@ -12,28 +12,28 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { logOut } from "@/features/auth/actions";
-import { Icons } from "@/components/ui/icons"; // Import spinner icon
-import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { logOut } from "@/features/auth/actions"
+import { Icons } from "@/components/ui/icons" // Import spinner icon
+import { useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 
 export default function UserAuthState() {
-  const { user } = useAuth();
-  const [isPending, startTransision] = useTransition();
-  const queryClient = useQueryClient();
+  const { user } = useAuth()
+  const [isPending, startTransision] = useTransition()
+  const queryClient = useQueryClient()
 
   async function removeUser() {
     startTransision(async () => {
       try {
-        await logOut();
-        queryClient.invalidateQueries({ queryKey: ["user"] });
-        toast.success("Đăng xuất thành công!");
+        await logOut()
+        queryClient.invalidateQueries({ queryKey: ["user"] })
+        toast.success("Đăng xuất thành công!")
       } catch (error) {
-        toast.error("Đăng xuất thất bại");
+        toast.error("Đăng xuất thất bại")
       }
-    });
+    })
   }
 
   return (
@@ -47,13 +47,8 @@ export default function UserAuthState() {
                   <Icons.spinner className="h-4 w-4 animate-spin" />
                 </div>
               )}
-              <AvatarImage
-                src={user?.user_metadata?.avatar_url || ""}
-                alt="User Avatar"
-              />
-              <AvatarFallback>
-                {user?.email?.charAt(0).toUpperCase()}
-              </AvatarFallback>
+              <AvatarImage src={user?.user_metadata?.avatar_url || ""} alt="User Avatar" />
+              <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
@@ -64,11 +59,7 @@ export default function UserAuthState() {
             </DropdownMenuItem>
             <DropdownMenuItem>
               <button onClick={removeUser} disabled={isPending}>
-                {isPending ? (
-                  <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  "Log Out"
-                )}
+                {isPending ? <Icons.spinner className="mr-2 h-4 w-4 animate-spin" /> : "Log Out"}
               </button>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -76,14 +67,10 @@ export default function UserAuthState() {
       ) : (
         <Link href={"/login"}>
           <Button disabled={isPending}>
-            {isPending ? (
-              <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              "Verify Now"
-            )}
+            {isPending ? <Icons.spinner className="mr-2 h-4 w-4 animate-spin" /> : "Verify Now"}
           </Button>
         </Link>
       )}
     </div>
-  );
+  )
 }

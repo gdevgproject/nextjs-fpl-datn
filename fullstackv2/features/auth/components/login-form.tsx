@@ -1,45 +1,35 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import Link from "next/link";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { useRouter, useSearchParams } from "next/navigation";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Icons } from "@/components/ui/icons";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { PasswordInput } from "@/components/ui/password-input";
-import { toast } from "sonner";
-import { useAuth } from "@/features/auth/context/auth-context";
+import { useState } from "react"
+import Link from "next/link"
+import { z } from "zod"
+import { useForm } from "react-hook-form"
+import { useRouter, useSearchParams } from "next/navigation"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Icons } from "@/components/ui/icons"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { PasswordInput } from "@/components/ui/password-input"
+import { toast } from "sonner"
+import { useAuth } from "@/features/auth/context/auth-context"
 
 const loginSchema = z.object({
-  email: z
-    .string({ required_error: "Email is required" })
-    .email({ message: "Invalid email format" })
-    .min(5),
+  email: z.string({ required_error: "Email is required" }).email({ message: "Invalid email format" }).min(5),
   password: z
     .string({
       required_error: "Password is required",
     })
     .min(8, { message: "Password must be at least 8 characters long" })
     .regex(/\d/, { message: "Password must include at least one number" }),
-});
+})
 
 export default function LoginForm() {
-  const [isPending, setIsPending] = useState(false);
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const { login } = useAuth();
-  const redirectTo = searchParams.get("redirect") || "/";
+  const [isPending, setIsPending] = useState(false)
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const { login } = useAuth()
+  const redirectTo = searchParams.get("redirect") || "/"
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -47,25 +37,25 @@ export default function LoginForm() {
       email: "",
       password: "",
     },
-  });
+  })
 
   async function onSubmit(values: z.infer<typeof loginSchema>) {
-    setIsPending(true);
+    setIsPending(true)
     try {
-      const { error } = await login(values.email, values.password);
+      const { error } = await login(values.email, values.password)
 
       if (error) {
-        toast.error("Đăng nhập thất bại: " + error.message);
-        return;
+        toast.error("Đăng nhập thất bại: " + error.message)
+        return
       }
 
-      router.push(redirectTo);
-      toast.success("Đăng nhập thành công!");
+      router.push(redirectTo)
+      toast.success("Đăng nhập thành công!")
     } catch (error) {
-      toast.error("Đã xảy ra lỗi không mong muốn");
-      console.error(error);
+      toast.error("Đã xảy ra lỗi không mong muốn")
+      console.error(error)
     } finally {
-      setIsPending(false);
+      setIsPending(false)
     }
   }
 
@@ -81,11 +71,7 @@ export default function LoginForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="example@mail.com"
-                      {...field}
-                      disabled={isPending}
-                    />
+                    <Input placeholder="example@mail.com" {...field} disabled={isPending} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -98,11 +84,7 @@ export default function LoginForm() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <PasswordInput
-                      placeholder="password"
-                      {...field}
-                      disabled={isPending}
-                    />
+                    <PasswordInput placeholder="password" {...field} disabled={isPending} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -137,9 +119,7 @@ export default function LoginForm() {
           <span className="w-full border-t" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">
-            Đăng nhập với
-          </span>
+          <span className="bg-background px-2 text-muted-foreground">Đăng nhập với</span>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-6">
@@ -161,5 +141,5 @@ export default function LoginForm() {
         </Button>
       </div>
     </div>
-  );
+  )
 }

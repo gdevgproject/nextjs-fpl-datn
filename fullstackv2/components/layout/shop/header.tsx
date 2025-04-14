@@ -1,31 +1,31 @@
-"use client";
+"use client"
 
-import { useState, useCallback, memo } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useAuth } from "@/features/auth/context/auth-context";
-import { cn } from "@/shared/lib/utils";
-import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { ShoppingCart, Menu, User, Heart } from "lucide-react";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
-import { MobileNav } from "./mobile-nav";
-import { SearchBar } from "./search-bar";
-import { UserMenu } from "./user-menu";
-import { useCart } from "@/features/shop/cart/context/cart-context";
+import { useState, useCallback, memo } from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { useAuth } from "@/features/auth/context/auth-context"
+import { cn } from "@/shared/lib/utils"
+import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { ShoppingCart, Menu, User, Heart } from "lucide-react"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Badge } from "@/components/ui/badge"
+import { MobileNav } from "./mobile-nav"
+import { SearchBar } from "./search-bar"
+import { UserMenu } from "./user-menu"
+import { useCart } from "@/features/shop/cart/context/cart-context"
 
 // Rename the current Header function to HeaderComponent
 function HeaderComponent() {
-  const { user } = useAuth();
-  const pathname = usePathname();
-  const { itemCount: cartItemCount, isLoading: isCartLoading } = useCart();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user } = useAuth()
+  const pathname = usePathname()
+  const { itemCount: cartItemCount, isLoading: isCartLoading } = useCart()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   // Memoize the callback functions
   const handleMobileMenuToggle = useCallback((open: boolean) => {
-    setMobileMenuOpen(open);
-  }, []);
+    setMobileMenuOpen(open)
+  }, [])
 
   const mainNavItems = [
     { name: "Nước hoa nam", href: "/san-pham?gender=1" },
@@ -33,7 +33,7 @@ function HeaderComponent() {
     { name: "Unisex", href: "/san-pham?gender=3" },
     { name: "Danh mục", href: "/danh-muc" },
     { name: "Thương hiệu", href: "/thuong-hieu" },
-  ];
+  ]
 
   return (
     <header className="sticky top-0 z-50 w-full bg-background shadow-sm">
@@ -58,12 +58,7 @@ function HeaderComponent() {
             <ThemeToggle />
 
             {/* Wishlist */}
-            <Button
-              variant="ghost"
-              size="icon"
-              asChild
-              className="hidden sm:flex relative"
-            >
+            <Button variant="ghost" size="icon" asChild className="hidden sm:flex relative">
               <Link href="/tai-khoan/yeu-thich">
                 <Heart className="h-5 w-5" />
                 <span className="sr-only">Wishlist</span>
@@ -87,12 +82,7 @@ function HeaderComponent() {
             {user ? (
               <UserMenu user={user} />
             ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                asChild
-                className="hidden sm:flex"
-              >
+              <Button variant="outline" size="sm" asChild className="hidden sm:flex">
                 <Link href="/login">
                   <User className="mr-2 h-4 w-4" />
                   Đăng nhập
@@ -109,11 +99,7 @@ function HeaderComponent() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="p-0">
-                <MobileNav
-                  user={user}
-                  navItems={mainNavItems}
-                  onNavClick={() => handleMobileMenuToggle(false)}
-                />
+                <MobileNav user={user} navItems={mainNavItems} onNavClick={() => handleMobileMenuToggle(false)} />
               </SheetContent>
             </Sheet>
           </div>
@@ -135,10 +121,9 @@ function HeaderComponent() {
                   href={item.href}
                   className={cn(
                     "flex h-12 items-center text-sm font-medium transition-colors hover:text-primary",
-                    pathname === item.href ||
-                      pathname?.startsWith(`${item.href}/`)
+                    pathname === item.href || pathname?.startsWith(`${item.href}/`)
                       ? "text-primary"
-                      : "text-muted-foreground"
+                      : "text-muted-foreground",
                   )}
                 >
                   {item.name}
@@ -149,8 +134,8 @@ function HeaderComponent() {
         </div>
       </nav>
     </header>
-  );
+  )
 }
 
 // At the end of the file, export the memoized Header component
-export const Header = memo(HeaderComponent);
+export const Header = memo(HeaderComponent)

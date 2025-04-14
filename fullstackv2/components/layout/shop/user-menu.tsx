@@ -1,9 +1,9 @@
-"use client";
+"use client"
 
-import { useState, memo } from "react";
-import Link from "next/link";
-import type { User } from "@supabase/supabase-js";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useState, memo } from "react"
+import Link from "next/link"
+import type { User } from "@supabase/supabase-js"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +12,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu"
 import {
   LogOut,
   ShoppingBag,
@@ -24,74 +24,74 @@ import {
   Users,
   Settings,
   UserCircle,
-} from "lucide-react";
-import { logOut } from "@/features/auth/actions";
-import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+  Mail,
+  Phone,
+  Shield,
+} from "lucide-react"
+import { logOut } from "@/features/auth/actions"
+import { useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 
 interface UserMenuProps {
-  user: User;
+  user: User
 }
 
 export function UserMenu({ user }: UserMenuProps) {
-  const queryClient = useQueryClient();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const queryClient = useQueryClient()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   // Get user role from metadata
-  const userRole = user?.app_metadata?.role || "authenticated";
+  const userRole = user?.app_metadata?.role || "authenticated"
 
   // Get user display name from metadata
-  const displayName =
-    user?.user_metadata?.display_name ||
-    user?.user_metadata?.full_name ||
-    user.email?.split("@")[0];
+  const displayName = user?.user_metadata?.display_name || user?.user_metadata?.full_name || user.email?.split("@")[0]
 
   // Get user phone from metadata
-  const userPhone =
-    user?.user_metadata?.phone || user?.user_metadata?.phone_number || null;
+  const userPhone = user?.user_metadata?.phone || user?.user_metadata?.phone_number || null
 
   const handleLogout = async () => {
-    setIsLoggingOut(true);
+    setIsLoggingOut(true)
     try {
-      await logOut();
-      queryClient.invalidateQueries({ queryKey: ["user"] });
-      toast.success("Đăng xuất thành công");
+      await logOut()
+      queryClient.invalidateQueries({ queryKey: ["user"] })
+      toast.success("Đăng xuất thành công")
     } catch (error) {
-      toast.error("Đăng xuất thất bại");
+      toast.error("Đăng xuất thất bại")
     } finally {
-      setIsLoggingOut(false);
+      setIsLoggingOut(false)
     }
-  };
+  }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="flex items-center space-x-2 focus:outline-none">
           <Avatar className="h-8 w-8">
-            <AvatarImage
-              src={user.user_metadata?.avatar_url}
-              alt={displayName || ""}
-            />
+            <AvatarImage src={user.user_metadata?.avatar_url} alt={displayName || ""} />
             <AvatarFallback>
-              {displayName?.charAt(0).toUpperCase() ||
-                user.email?.charAt(0).toUpperCase() ||
-                "U"}
+              {displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || "U"}
             </AvatarFallback>
           </Avatar>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end">
         <DropdownMenuLabel>
-          <div className="flex flex-col space-y-1">
+          <div className="flex flex-col space-y-2">
             <p className="text-sm font-medium leading-none">{displayName}</p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {user.email}
-            </p>
+            <div className="flex items-center text-xs text-muted-foreground">
+              <Mail className="mr-1 h-3 w-3" />
+              <span>{user.email}</span>
+            </div>
             {userPhone && (
-              <p className="text-xs leading-none text-muted-foreground">
-                {userPhone}
-              </p>
+              <div className="flex items-center text-xs text-muted-foreground">
+                <Phone className="mr-1 h-3 w-3" />
+                <span>{userPhone}</span>
+              </div>
             )}
+            <div className="flex items-center text-xs text-muted-foreground">
+              <Shield className="mr-1 h-3 w-3" />
+              <span>{userRole.charAt(0).toUpperCase() + userRole.slice(1)}</span>
+            </div>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -129,13 +129,13 @@ export function UserMenu({ user }: UserMenuProps) {
             <DropdownMenuLabel>Quản lý</DropdownMenuLabel>
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href="/admin/dashboard">
+                <Link href="/admin">
                   <LayoutDashboard className="mr-2 h-4 w-4" />
-                  <span>Dashboard</span>
+                  <span>Trang quản trị</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/admin/products">
+                <Link href="/admin/catalog/products">
                   <Package className="mr-2 h-4 w-4" />
                   <span>Sản phẩm</span>
                 </Link>
@@ -155,7 +155,7 @@ export function UserMenu({ user }: UserMenuProps) {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/admin/settings">
+                    <Link href="/admin/settings/shop">
                       <Settings className="mr-2 h-4 w-4" />
                       <span>Cài đặt</span>
                     </Link>
@@ -198,8 +198,8 @@ export function UserMenu({ user }: UserMenuProps) {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
+  )
 }
 
 // At the end of the file, export the memoized UserMenu
-export default memo(UserMenu);
+export default memo(UserMenu)

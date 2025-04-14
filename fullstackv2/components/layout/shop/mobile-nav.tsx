@@ -1,14 +1,14 @@
-"use client";
+"use client"
 
-import { useState, memo } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
-import { cn } from "@/shared/lib/utils";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useState, memo } from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import type { User } from "@supabase/supabase-js"
+import { cn } from "@/shared/lib/utils"
+import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Home,
   UserIcon,
@@ -22,48 +22,47 @@ import {
   Users,
   MapPin,
   UserCircle,
-} from "lucide-react";
-import { logOut } from "@/features/auth/actions";
-import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+  Mail,
+  Phone,
+  Shield,
+} from "lucide-react"
+import { logOut } from "@/features/auth/actions"
+import { useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 
 interface MobileNavProps {
-  user: User | null;
-  navItems: { name: string; href: string }[];
-  onNavClick: () => void;
+  user: User | null
+  navItems: { name: string; href: string }[]
+  onNavClick: () => void
 }
 
 export function MobileNav({ user, navItems, onNavClick }: MobileNavProps) {
-  const pathname = usePathname();
-  const queryClient = useQueryClient();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const pathname = usePathname()
+  const queryClient = useQueryClient()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   // Get user role from metadata
-  const userRole = user?.app_metadata?.role || "authenticated";
+  const userRole = user?.app_metadata?.role || "authenticated"
 
   // Get user display name from metadata
-  const displayName =
-    user?.user_metadata?.display_name ||
-    user?.user_metadata?.full_name ||
-    user?.email?.split("@")[0];
+  const displayName = user?.user_metadata?.display_name || user?.user_metadata?.full_name || user?.email?.split("@")[0]
 
   // Get user phone from metadata
-  const userPhone =
-    user?.user_metadata?.phone || user?.user_metadata?.phone_number || null;
+  const userPhone = user?.user_metadata?.phone || user?.user_metadata?.phone_number || null
 
   const handleLogout = async () => {
-    setIsLoggingOut(true);
+    setIsLoggingOut(true)
     try {
-      await logOut();
-      queryClient.invalidateQueries({ queryKey: ["user"] });
-      toast.success("Đăng xuất thành công");
-      onNavClick(); // Close mobile menu after logout
+      await logOut()
+      queryClient.invalidateQueries({ queryKey: ["user"] })
+      toast.success("Đăng xuất thành công")
+      onNavClick() // Close mobile menu after logout
     } catch (error) {
-      toast.error("Đăng xuất thất bại");
+      toast.error("Đăng xuất thất bại")
     } finally {
-      setIsLoggingOut(false);
+      setIsLoggingOut(false)
     }
-  };
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -78,26 +77,27 @@ export function MobileNav({ user, navItems, onNavClick }: MobileNavProps) {
           {user ? (
             <div className="flex items-center gap-3 mb-6">
               <Avatar>
-                <AvatarImage
-                  src={user.user_metadata?.avatar_url}
-                  alt={displayName || ""}
-                />
+                <AvatarImage src={user.user_metadata?.avatar_url} alt={displayName || ""} />
                 <AvatarFallback>
-                  {displayName?.charAt(0).toUpperCase() ||
-                    user.email?.charAt(0).toUpperCase() ||
-                    "U"}
+                  {displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col">
                 <span className="font-medium">{displayName}</span>
-                <span className="text-xs text-muted-foreground">
-                  {user.email}
-                </span>
+                <div className="flex items-center text-xs text-muted-foreground">
+                  <Mail className="mr-1 h-3 w-3" />
+                  <span className="truncate max-w-[150px]">{user.email}</span>
+                </div>
                 {userPhone && (
-                  <span className="text-xs text-muted-foreground">
-                    {userPhone}
-                  </span>
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    <Phone className="mr-1 h-3 w-3" />
+                    <span>{userPhone}</span>
+                  </div>
                 )}
+                <div className="flex items-center text-xs text-muted-foreground">
+                  <Shield className="mr-1 h-3 w-3" />
+                  <span>{userRole.charAt(0).toUpperCase() + userRole.slice(1)}</span>
+                </div>
               </div>
             </div>
           ) : (
@@ -129,10 +129,7 @@ export function MobileNav({ user, navItems, onNavClick }: MobileNavProps) {
               <Button
                 key={item.name}
                 variant="ghost"
-                className={cn(
-                  "w-full justify-start",
-                  pathname === item.href && "bg-accent text-accent-foreground"
-                )}
+                className={cn("w-full justify-start", pathname === item.href && "bg-accent text-accent-foreground")}
                 asChild
               >
                 <Link href={item.href} onClick={onNavClick}>
@@ -146,41 +143,25 @@ export function MobileNav({ user, navItems, onNavClick }: MobileNavProps) {
             {/* User specific navigation */}
             {user && (
               <>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start"
-                  asChild
-                >
+                <Button variant="ghost" className="w-full justify-start" asChild>
                   <Link href="/tai-khoan/thong-tin" onClick={onNavClick}>
                     <UserCircle className="mr-2 h-4 w-4" />
                     Thông tin tài khoản
                   </Link>
                 </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start"
-                  asChild
-                >
+                <Button variant="ghost" className="w-full justify-start" asChild>
                   <Link href="/tai-khoan/don-hang" onClick={onNavClick}>
                     <ShoppingBag className="mr-2 h-4 w-4" />
                     Đơn hàng của tôi
                   </Link>
                 </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start"
-                  asChild
-                >
+                <Button variant="ghost" className="w-full justify-start" asChild>
                   <Link href="/tai-khoan/yeu-thich" onClick={onNavClick}>
                     <Heart className="mr-2 h-4 w-4" />
                     Danh sách yêu thích
                   </Link>
                 </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start"
-                  asChild
-                >
+                <Button variant="ghost" className="w-full justify-start" asChild>
                   <Link href="/tai-khoan/dia-chi" onClick={onNavClick}>
                     <MapPin className="mr-2 h-4 w-4" />
                     Địa chỉ của tôi
@@ -191,34 +172,20 @@ export function MobileNav({ user, navItems, onNavClick }: MobileNavProps) {
                 {(userRole === "admin" || userRole === "staff") && (
                   <>
                     <Separator className="my-4" />
-                    <p className="text-xs font-medium text-muted-foreground mb-2">
-                      Quản lý
-                    </p>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start"
-                      asChild
-                    >
-                      <Link href="/admin/dashboard" onClick={onNavClick}>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Quản lý</p>
+                    <Button variant="ghost" className="w-full justify-start" asChild>
+                      <Link href="/admin" onClick={onNavClick}>
                         <LayoutDashboard className="mr-2 h-4 w-4" />
-                        Dashboard
+                        Trang quản trị
                       </Link>
                     </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start"
-                      asChild
-                    >
-                      <Link href="/admin/products" onClick={onNavClick}>
+                    <Button variant="ghost" className="w-full justify-start" asChild>
+                      <Link href="/admin/catalog/products" onClick={onNavClick}>
                         <Package className="mr-2 h-4 w-4" />
                         Sản phẩm
                       </Link>
                     </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start"
-                      asChild
-                    >
+                    <Button variant="ghost" className="w-full justify-start" asChild>
                       <Link href="/admin/orders" onClick={onNavClick}>
                         <ShoppingBag className="mr-2 h-4 w-4" />
                         Đơn hàng
@@ -226,22 +193,14 @@ export function MobileNav({ user, navItems, onNavClick }: MobileNavProps) {
                     </Button>
                     {userRole === "admin" && (
                       <>
-                        <Button
-                          variant="ghost"
-                          className="w-full justify-start"
-                          asChild
-                        >
+                        <Button variant="ghost" className="w-full justify-start" asChild>
                           <Link href="/admin/users" onClick={onNavClick}>
                             <Users className="mr-2 h-4 w-4" />
                             Người dùng
                           </Link>
                         </Button>
-                        <Button
-                          variant="ghost"
-                          className="w-full justify-start"
-                          asChild
-                        >
-                          <Link href="/admin/settings" onClick={onNavClick}>
+                        <Button variant="ghost" className="w-full justify-start" asChild>
+                          <Link href="/admin/settings/shop" onClick={onNavClick}>
                             <Settings className="mr-2 h-4 w-4" />
                             Cài đặt
                           </Link>
@@ -254,24 +213,14 @@ export function MobileNav({ user, navItems, onNavClick }: MobileNavProps) {
                 {userRole === "shipper" && (
                   <>
                     <Separator className="my-4" />
-                    <p className="text-xs font-medium text-muted-foreground mb-2">
-                      Giao hàng
-                    </p>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start"
-                      asChild
-                    >
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Giao hàng</p>
+                    <Button variant="ghost" className="w-full justify-start" asChild>
                       <Link href="/shipper/orders" onClick={onNavClick}>
                         <Truck className="mr-2 h-4 w-4" />
                         Đơn hàng cần giao
                       </Link>
                     </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start"
-                      asChild
-                    >
+                    <Button variant="ghost" className="w-full justify-start" asChild>
                       <Link href="/shipper/history" onClick={onNavClick}>
                         <ShoppingBag className="mr-2 h-4 w-4" />
                         Lịch sử giao hàng
@@ -296,7 +245,7 @@ export function MobileNav({ user, navItems, onNavClick }: MobileNavProps) {
         </div>
       </ScrollArea>
     </div>
-  );
+  )
 }
 
-export default memo(MobileNav);
+export default memo(MobileNav)
