@@ -16,7 +16,21 @@ import { UserMenu } from "./user-menu"
 import { useCart } from "@/features/shop/cart/context/cart-context"
 
 // Rename the current Header function to HeaderComponent
-function HeaderComponent() {
+interface HeaderComponentProps {
+  shopLogo: string
+  categories: Array<{
+    id: number
+    name: string
+    slug: string
+    parent_category_id: number | null
+  }>
+  genders: Array<{
+    id: number
+    name: string
+  }>
+}
+
+function HeaderComponent({ shopLogo, categories, genders }: HeaderComponentProps) {
   const { user } = useAuth()
   const pathname = usePathname()
   const { itemCount: cartItemCount, isLoading: isCartLoading } = useCart()
@@ -43,6 +57,7 @@ function HeaderComponent() {
           {/* Logo and brand name */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2">
+              <img src={shopLogo || "/placeholder.svg"} alt="Shop Logo" className="h-8 w-auto mr-2" />
               <span className="text-xl font-bold text-primary">MyBeauty</span>
             </Link>
           </div>
@@ -115,13 +130,28 @@ function HeaderComponent() {
       <nav className="hidden md:block border-t">
         <div className="container mx-auto px-4">
           <ul className="flex items-center space-x-8">
-            {mainNavItems.map((item) => (
-              <li key={item.name}>
+            {genders.map((item) => (
+              <li key={item.id}>
                 <Link
-                  href={item.href}
+                  href={`/san-pham?gender=${item.id}`}
                   className={cn(
                     "flex h-12 items-center text-sm font-medium transition-colors hover:text-primary",
-                    pathname === item.href || pathname?.startsWith(`${item.href}/`)
+                    pathname === `/san-pham?gender=${item.id}` || pathname?.startsWith(`/san-pham?gender=${item.id}/`)
+                      ? "text-primary"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {item.name}
+                </Link>
+              </li>
+            ))}
+            {categories.map((item) => (
+              <li key={item.id}>
+                <Link
+                  href={item.slug}
+                  className={cn(
+                    "flex h-12 items-center text-sm font-medium transition-colors hover:text-primary",
+                    pathname === item.slug || pathname?.startsWith(`${item.slug}/`)
                       ? "text-primary"
                       : "text-muted-foreground",
                   )}

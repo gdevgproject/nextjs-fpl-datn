@@ -1858,6 +1858,98 @@ BEGIN
 END; $$;
 comment on function public.adjust_stock(bigint, integer, text) is '[V3] RPC cho Admin/Staff điều chỉnh tồn kho thủ công (nhập/xuất/kiểm kê). Cập nhật đồng bộ `product_variants.stock_quantity` và `inventory`, ghi log chi tiết. Ngăn tồn kho âm.';
 
+-- ============================================================================
+-- Thêm RPC Function để lấy danh sách sản phẩm giảm giá cho trang chủ.
+-- ============================================================================
+
+-- Xóa function cũ nếu tồn tại (quan trọng nếu bạn đã tạo hàm trước đó)
+DROP FUNCTION IF EXISTS public.get_homepage_on_sale_products(integer);
+DROP FUNCTION IF EXISTS public.get_homepage_on_sale_products_in_stock(integer);
+DROP FUNCTION IF EXISTS public.get_homepage_on_sale_products_with_stock(integer); -- Xóa luôn tên mới phòng trường hợp chạy lại
+
+-- FUNCTION: Lấy danh sách sản phẩm đang giảm giá KÈM TRẠNG THÁI TỒN KHO cho trang chủ
+CREATE OR REPLACE FUNCTION public.get_homepage_on_sale_products_with_stock(p_limit integer DEFAULT 8)
+RETURNS TABLE (
+    product_id bigint,
+    product_name text,
+    product_slug text,
+    brand_name text,
+    main_image_url text,
+    display_price numeric,      -- Giá sale thấp nhất (kể cả variant hết hàng)
+    original_price_high numeric,-- Giá gốc cao nhất
+    is_generally_in_stock boolean -- TRUE nếu còn ít nhất 1 variant (bất kỳ) còn hàng
+)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+WITH ProductSaleInfo AS (
+    -- Bước 1: Xác định sản phẩm có variant đang sale và tính giá min/max
+    SELECT
+        p.id,
+        p.name,
+        p.slug,
+        p.created_at, -- Cần để sắp xếp cuối cùng
+        b.name as brand_name,
+        MIN(pv.sale_price) as min_sale_price,
+        MAX(pv.price) as max_original_price
+    FROM
+        public.products p
+    INNER JOIN
+        public.product_variants pv ON p.id = pv.product_id
+    LEFT JOIN
+        public.brands b ON p.brand_id = b.id
+    WHERE
+        p.deleted_at IS NULL
+        AND pv.deleted_at IS NULL
+        AND pv.sale_price IS NOT NULL
+        AND pv.sale_price < pv.price
+    GROUP BY
+        p.id, b.name
+),
+ProductStockStatus AS (
+    -- Bước 2: Xác định xem sản phẩm có còn variant nào còn hàng không (stock > 0)
+    SELECT
+        p.id,
+        (COUNT(pv.id) > 0) as has_stock
+    FROM
+        public.products p
+    INNER JOIN
+        public.product_variants pv ON p.id = pv.product_id
+    WHERE
+        p.deleted_at IS NULL
+        AND pv.deleted_at IS NULL
+        AND pv.stock_quantity > 0
+    GROUP BY
+        p.id
+)
+-- Bước 3: Kết hợp thông tin và lấy ảnh
+SELECT
+    psi.id AS product_id,
+    psi.name AS product_name,
+    psi.slug AS product_slug,
+    psi.brand_name,
+    (SELECT pi.image_url FROM public.product_images pi WHERE pi.product_id = psi.id AND pi.is_main = true ORDER BY pi.display_order LIMIT 1) AS main_image_url,
+    psi.min_sale_price AS display_price,
+    psi.max_original_price AS original_price_high,
+    COALESCE(pss.has_stock, FALSE) AS is_generally_in_stock -- Nếu không có trong ProductStockStatus nghĩa là hết hàng
+FROM
+    ProductSaleInfo psi
+LEFT JOIN
+    ProductStockStatus pss ON psi.id = pss.id
+ORDER BY
+    -- Sắp xếp theo các tiêu chí ưu tiên, ví dụ: còn hàng lên trước, rồi đến mức giảm giá
+    is_generally_in_stock DESC,
+    ((psi.max_original_price - psi.min_sale_price) / psi.max_original_price) DESC NULLS LAST,
+    psi.created_at DESC
+LIMIT p_limit;
+$$;
+
+COMMENT ON FUNCTION public.get_homepage_on_sale_products_with_stock(integer) IS '[V3.8] RPC lấy danh sách sản phẩm đang giảm giá cho trang chủ, bao gồm giá sale thấp nhất và cờ báo hiệu sản phẩm còn hàng nói chung (is_generally_in_stock = TRUE nếu có ít nhất 1 variant còn hàng).';
+
+GRANT EXECUTE ON FUNCTION public.get_homepage_on_sale_products_with_stock(integer) TO anon, authenticated;
+
+-- ============================================================================
+-- END OF RPC FUNCTION DEFINITION
+-- ============================================================================
 
 -- ============================================================================
 -- SECTION: RLS POLICIES (Access Control Rules - Version 3)
