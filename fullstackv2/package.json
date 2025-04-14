@@ -21,11 +21,6 @@
     "@radix-ui/react-dropdown-menu": "^2.1.4",
     "@radix-ui/react-hover-card": "^1.1.4",
     "@radix-ui/react-label": "^2.1.1",
-<<<<<<< HEAD
-    "@radix-ui/react-popover": "^1.1.7",
-    "@radix-ui/react-scroll-area": "^1.2.4",
-    "@radix-ui/react-select": "^2.1.7",
-=======
     "@radix-ui/react-menubar": "^1.1.4",
     "@radix-ui/react-navigation-menu": "^1.2.3",
     "@radix-ui/react-popover": "^1.1.4",
@@ -33,7 +28,6 @@
     "@radix-ui/react-radio-group": "^1.2.2",
     "@radix-ui/react-scroll-area": "^1.2.2",
     "@radix-ui/react-select": "^2.1.4",
->>>>>>> feat/v2
     "@radix-ui/react-separator": "^1.1.1",
     "@radix-ui/react-slider": "^1.2.2",
     "@radix-ui/react-slot": "^1.1.1",
@@ -46,19 +40,6 @@
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-<<<<<<< HEAD
-    "date-fns": "^4.1.0",
-    "lucide-react": "^0.487.0",
-    "next": "15.2.5",
-    "next-themes": "^0.4.4",
-    "react": "^19.0.0",
-    "react-day-picker": "8.10.1",
-    "react-dom": "^19.0.0",
-    "react-hook-form": "^7.54.2",
-    "react-syntax-highlighter": "^15.6.1",
-    "sonner": "^2.0.3",
-    "tailwind-merge": "^3.0.1",
-=======
     "cmdk": "1.0.4",
     "date-fns": "latest",
     "embla-carousel-react": "8.5.1",
@@ -74,12 +55,10 @@
     "recharts": "latest",
     "sonner": "latest",
     "tailwind-merge": "^2.5.5",
->>>>>>> feat/v2
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.6",
     "zod": "latest",
     "@supabase/supabase-js": "latest",
-    "react-syntax-highlighter": "latest",
     "@tanstack/react-query": "latest",
     "react-color": "latest",
     "@supabase/postgrest-js": "latest",
