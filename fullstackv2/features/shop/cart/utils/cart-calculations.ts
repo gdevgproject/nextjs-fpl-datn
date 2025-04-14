@@ -25,7 +25,8 @@ export function calculateCartTotals(items: CartItem[], discountAmount = 0, shipp
   }
 }
 
-export function formatCurrency(amount: number): string {
+export function formatCurrency(amount: number | null | undefined): string {
+  if (amount === null || amount === undefined) return "Liên hệ"
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",

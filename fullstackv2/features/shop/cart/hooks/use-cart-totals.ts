@@ -4,6 +4,7 @@ import { useMemo } from "react"
 import { useCart as useCartContext } from "../context/cart-context"
 import { calculateCartTotals } from "../utils/cart-calculations"
 import { useDiscountCode } from "./use-discount-code"
+import { useShopSettings } from "@/features/admin/shop/hooks/use-shop-settings"
 
 interface UseCartTotalsOptions {
   shippingFee?: number
@@ -12,7 +13,8 @@ interface UseCartTotalsOptions {
 export function useCartTotals(options: UseCartTotalsOptions = {}) {
   const { items } = useCartContext()
   const { appliedDiscount, calculateDiscountAmount } = useDiscountCode()
-  const { shippingFee = 0 } = options
+  const { data: shopSettings } = useShopSettings()
+  const { shippingFee = shopSettings?.default_shipping_fee || 0 } = options
 
   // Calculate subtotal
   const subtotal = useMemo(() => {
@@ -35,6 +37,8 @@ export function useCartTotals(options: UseCartTotalsOptions = {}) {
   return {
     ...totals,
     subtotal,
+    discountAmount,
+    shippingFee,
     appliedDiscount,
     hasDiscount: !!appliedDiscount,
   }

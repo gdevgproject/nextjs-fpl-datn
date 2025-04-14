@@ -7,8 +7,8 @@ import { z } from "zod"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
-import { AlertCircle, Check, X } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertCircle, Check, X } from "lucide-react"
 import { useDiscountCode } from "../hooks/use-discount-code"
 
 const discountSchema = z.object({

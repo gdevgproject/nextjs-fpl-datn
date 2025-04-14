@@ -97,15 +97,34 @@ export function CartItem({ item }: CartItemProps) {
       {/* Product details */}
       <div className="ml-4 flex-1">
         <Link href={`/san-pham/${item.product_id}`} className="font-medium hover:underline">
-          {item.product_name || "Product"}
+          <span className="text-muted-foreground">Tên sản phẩm:</span> {item.product_name || "Product"}
         </Link>
-
-        {item.volume_ml && <p className="text-sm text-muted-foreground">{item.volume_ml}ml</p>}
+        {item.brand_name && (
+          <p className="text-sm text-muted-foreground">
+            <span className="text-muted-foreground">Thương hiệu:</span> {item.brand_name}
+          </p>
+        )}
+        {item.volume_ml && (
+          <p className="text-sm text-muted-foreground">
+            <span className="text-muted-foreground">Dung tích:</span> {item.volume_ml}ml
+          </p>
+        )}
+        {item.sku && (
+          <p className="text-sm text-muted-foreground">
+            <span className="text-muted-foreground">SKU:</span> {item.sku}
+          </p>
+        )}
+        <p className="text-sm text-muted-foreground">
+          <span className="text-muted-foreground">Số lượng:</span> {localQuantity}
+        </p>
 
         <div className="mt-1 flex items-center justify-between">
           <div className="flex items-center">
             {/* Price display */}
-            <div className="font-medium">{currentPrice !== undefined ? formatCurrency(currentPrice) : "N/A"}</div>
+            <div className="font-medium">
+              <span className="text-muted-foreground">Giá:</span>{" "}
+              {currentPrice !== undefined ? formatCurrency(currentPrice) : "N/A"}
+            </div>
 
             {/* Show original price if on sale */}
             {item.sale_price && item.price && item.sale_price < item.price && (

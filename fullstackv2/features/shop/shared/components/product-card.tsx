@@ -1,9 +1,13 @@
 "use client"
+
+import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ShoppingCart, Heart, AlertCircle } from "lucide-react"
+import { useCart } from "@/features/shop/cart/context/cart-context"
+import { toast } from "sonner"
 
 export interface ProductCardProps {
   id: number
@@ -38,8 +42,32 @@ export function ProductCard({
   perfume_type_name,
   discount_percentage,
 }: ProductCardProps) {
+  const { addItem } = useCart()
+  const [isAdding, setIsAdding] = useState(false)
   const isOnSale = sale_price && sale_price < price
   const isOutOfStock = stock_quantity <= 0
+
+  const handleAddToCart = async () => {
+    if (!variant_id) {
+      toast.error("Không có biến thể sản phẩm nào")
+      return
+    }
+
+    if (isOutOfStock) {
+      toast.error("Sản phẩm đã hết hàng")
+      return
+    }
+
+    setIsAdding(true)
+    try {
+      await addItem(variant_id, 1) // Assuming quantity is always 1 for quick add
+      toast.success("Đã thêm vào giỏ hàng!")
+    } catch (error) {
+      toast.error("Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng")
+    } finally {
+      setIsAdding(false)
+    }
+  }
 
   return (
     <div className="group relative overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md">
@@ -121,9 +149,20 @@ export function ProductCard({
           </Button>
         </div>
         {showAddToCart && (
-          <Button className="w-full" size="sm" disabled={!variant_id || isOutOfStock}>
-            <ShoppingCart className="h-4 w-4 mr-2" />
-            Thêm vào giỏ
+          <Button
+            className="w-full"
+            size="sm"
+            onClick={handleAddToCart}
+            disabled={!variant_id || isOutOfStock || isAdding}
+          >
+            {isAdding ? (
+              "Đang thêm..."
+            ) : (
+              <>
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                Thêm vào giỏ
+              </>
+            )}
           </Button>
         )}
         {isOutOfStock && (

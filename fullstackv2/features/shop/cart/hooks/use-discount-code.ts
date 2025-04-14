@@ -127,11 +127,9 @@ export function useDiscountCode() {
         } else if (data.max_discount_amount) {
           // Fixed amount discount
           discountAmount = data.max_discount_amount
-        }
-
-        // Ensure discount doesn't exceed subtotal
-        if (discountAmount > subtotal) {
-          discountAmount = subtotal
+          if (discountAmount > subtotal) {
+            discountAmount = subtotal
+          }
         }
 
         const result: DiscountCodeResult = {
@@ -194,11 +192,9 @@ export function useDiscountCode() {
       } else if (appliedDiscount.max_discount_amount) {
         // Fixed amount discount
         discountAmount = appliedDiscount.max_discount_amount
-      }
-
-      // Ensure discount doesn't exceed subtotal
-      if (discountAmount > subtotal) {
-        discountAmount = subtotal
+        if (discountAmount > subtotal) {
+          discountAmount = subtotal
+        }
       }
 
       return discountAmount

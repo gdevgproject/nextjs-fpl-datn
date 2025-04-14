@@ -12,24 +12,30 @@ import { Separator } from "@/components/ui/separator"
 import { ShoppingBag, Loader2, LogIn } from "lucide-react"
 import Link from "next/link"
 
-export function CartPage() {
+export default function CartPage() {
   const { items, isLoading, isEmpty, clearCart, isGuest, hasInteracted } = useCart()
   const [isClearing, setIsClearing] = useState(false)
-  const { subtotal, discountAmount, shippingFee, total } = useCartTotals()
+  const { subtotal, discountAmount, shippingFee, total, appliedDiscount } = useCartTotals()
 
   // Handle loading state
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
-        <p className="text-muted-foreground">Đang tải giỏ hàng...</p>
+      <div className="container mx-auto py-12 px-4">
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+          <h2 className="text-xl font-medium">Đang tải giỏ hàng...</h2>
+        </div>
       </div>
     )
   }
 
   // Handle empty cart state
   if (isEmpty) {
-    return <EmptyCart hasInteracted={hasInteracted} />
+    return (
+      <div className="container mx-auto py-12 px-4">
+        <EmptyCart hasInteracted={hasInteracted} />
+      </div>
+    )
   }
 
   // Handle cart clearing
@@ -45,9 +51,9 @@ export function CartPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6 flex items-center">
-        <ShoppingBag className="mr-2 h-6 w-6" />
+    <div className="container mx-auto py-12 px-4">
+      <h1 className="text-3xl font-bold mb-8 flex items-center">
+        <ShoppingBag className="mr-2 h-8 w-8" />
         Giỏ hàng của bạn
       </h1>
 
@@ -55,21 +61,15 @@ export function CartPage() {
         {/* Cart items */}
         <div className="lg:col-span-2">
           <div className="bg-card rounded-lg shadow-sm p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Sản phẩm ({items.length})</h2>
-              <Button variant="outline" size="sm" onClick={handleClearCart} disabled={isClearing}>
-                {isClearing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Đang xóa...
-                  </>
-                ) : (
-                  "Xóa tất cả"
-                )}
-              </Button>
+            <div className="flex justify-between mb-4">
+              <h2 className="text-xl font-semibold">Sản phẩm</h2>
+              <span className="text-muted-foreground">{items.length} sản phẩm</span>
             </div>
 
-            <div className="divide-y">
+            <Separator className="mb-4" />
+
+            {/* Cart items list */}
+            <div className="space-y-1">
               {items.map((item) => (
                 <CartItem key={item.id} item={item} />
               ))}
@@ -77,14 +77,15 @@ export function CartPage() {
           </div>
         </div>
 
-        {/* Cart summary */}
+        {/* Order summary */}
         <div className="lg:col-span-1">
           <div className="bg-card rounded-lg shadow-sm p-6 sticky top-24">
-            <h2 className="text-lg font-semibold mb-4">Tóm tắt đơn hàng</h2>
+            <h2 className="text-xl font-semibold mb-4">Tổng đơn hàng</h2>
+            <Separator className="mb-4" />
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex justify-between">
-                <span>Tạm tính</span>
+                <span className="text-muted-foreground">Tạm tính</span>
                 <span>{formatCurrency(subtotal)}</span>
               </div>
 
@@ -96,49 +97,61 @@ export function CartPage() {
 
               {/* Show discount amount if applied */}
               {discountAmount > 0 && (
-                <div className="flex justify-between text-green-600">
-                  <span>Giảm giá</span>
+                <div className="flex justify-between text-green-600 dark:text-green-400">
+                  <span>
+                    Giảm giá
+                    {appliedDiscount?.code && (
+                      <span className="ml-1 font-normal text-muted-foreground">({appliedDiscount.code})</span>
+                    )}
+                  </span>
                   <span>-{formatCurrency(discountAmount)}</span>
                 </div>
               )}
 
               <div className="flex justify-between">
-                <span>Phí vận chuyển</span>
+                <span className="text-muted-foreground">Phí vận chuyển</span>
                 <span>{shippingFee > 0 ? formatCurrency(shippingFee) : "Miễn phí"}</span>
               </div>
 
               <Separator />
 
-              <div className="flex justify-between font-bold">
+              <div className="flex justify-between font-bold text-lg">
                 <span>Tổng cộng</span>
                 <span>{formatCurrency(total)}</span>
               </div>
 
-              {isGuest ? (
-                <div className="space-y-4">
-                  <Button className="w-full" size="lg" asChild>
-                    <Link href="/login?redirect=/thanh-toan">
-                      <LogIn className="mr-2 h-4 w-4" />
-                      Đăng nhập để thanh toán
-                    </Link>
-                  </Button>
-                  <Button variant="outline" className="w-full" size="lg" asChild>
-                    <Link href="/thanh-toan">Thanh toán với tư cách khách</Link>
-                  </Button>
-                  <p className="text-xs text-muted-foreground text-center mt-2">
-                    Đăng nhập để lưu giỏ hàng và tích điểm thành viên
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <Button className="w-full" size="lg" asChild>
-                    <Link href="/thanh-toan">Tiến hành thanh toán</Link>
-                  </Button>
-                  <p className="text-xs text-muted-foreground text-center mt-2">
-                    Bằng cách tiến hành thanh toán, bạn đồng ý với các điều khoản và điều kiện của chúng tôi.
-                  </p>
-                </>
-              )}
+              <div className="pt-4">
+                {isGuest ? (
+                  <>
+                    <Button asChild className="w-full" size="lg">
+                      <Link href="/thanh-toan">Thanh toán với tư cách khách</Link>
+                    </Button>
+                    <div className="mt-2 text-center">
+                      <Button variant="outline" className="w-full" size="lg" asChild>
+                        <Link href={`/login?redirect=${encodeURIComponent("/thanh-toan")}`}>
+                          <LogIn className="mr-2 h-4 w-4" />
+                          Đăng nhập để thanh toán
+                        </Link>
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Đăng nhập để lưu giỏ hàng và tích điểm thành viên
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Button asChild className="w-full" size="lg">
+                      <Link href="/thanh-toan">Tiến hành thanh toán</Link>
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-2 text-center">
+                      Bằng cách tiến hành thanh toán, bạn đồng ý với các điều khoản và điều kiện của chúng tôi.
+                    </p>
+                  </>
+                )}
+                <Button variant="outline" className="w-full mt-2" size="lg" asChild>
+                  <Link href="/san-pham">Tiếp tục mua sắm</Link>
+                </Button>
+              </div>
             </div>
           </div>
         </div>

@@ -2,7 +2,7 @@
 
 import React from "react"
 import { createClient } from "@/shared/supabase/client"
-import { createContext, useState, useEffect } from "react"
+import { createContext, useState, useEffect, useCallback } from "react"
 import { useAuth } from "@/features/auth/context/auth-context"
 import { toast } from "sonner"
 
@@ -19,6 +19,7 @@ export interface CartItem {
   sale_price?: number
   stock_quantity?: number
   product_id?: number
+  sku?: string
 }
 
 interface CartContextType {
@@ -82,55 +83,58 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [items, isGuest])
 
   // Load cart from database on user login
-  useEffect(() => {
-    const loadCart = async () => {
-      if (!user) return
+  const loadCart = useCallback(async () => {
+    if (!user) return
 
-      setIsLoading(true)
-      try {
-        const { data, error } = await supabase
-          .from("cart_items")
-          .select(
-            `
-            id, 
-            variant_id, 
-            quantity,
-            product_name:product_variants(products(name)),
-            product_image:product_variants(products(product_images(image_url, is_main))),
-            volume_ml:product_variants(volume_ml),
-            price:product_variants(price),
-            sale_price:product_variants(sale_price),
-            stock_quantity:product_variants(stock_quantity),
-            product_id:product_variants(product_id)
-          `,
-          )
-          .eq("cart_id", `(SELECT id FROM shopping_carts WHERE user_id = '${user.id}')`)
-        if (error) throw error
+    setIsLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from("cart_items")
+        .select(
+          `
+         id, 
+         variant_id, 
+         quantity,
+         product_name:product_variants(products(name)),
+         product_image:product_variants(products(product_images(image_url, is_main))),
+         volume_ml:product_variants(volume_ml),
+         price:product_variants(price),
+         sale_price:product_variants(sale_price),
+         stock_quantity:product_variants(stock_quantity),
+         product_id:product_variants(product_id),
+         sku:product_variants(sku)
+       `,
+        )
+        .eq("cart_id", `(SELECT id FROM shopping_carts WHERE user_id = '${user.id}')`)
+      if (error) throw error
 
-        const formattedItems = data?.map((item: any) => ({
-          id: item.id,
-          variant_id: item.variant_id,
-          quantity: item.quantity,
-          product_name: item.product_name ? item.product_name[0]?.products?.name : null,
-          product_image: item.product_image ? item.product_image[0]?.products?.product_images[0]?.image_url : null,
-          volume_ml: item.volume_ml ? item.volume_ml[0]?.volume_ml : null,
-          price: item.price ? item.price[0]?.price : null,
-          sale_price: item.sale_price ? item.sale_price[0]?.sale_price : null,
-          stock_quantity: item.stock_quantity ? item.stock_quantity[0]?.stock_quantity : null,
-          product_id: item.product_id ? item.product_id[0]?.product_id : null,
-        }))
+      const formattedItems = data?.map((item: any) => ({
+        id: item.id,
+        variant_id: item.variant_id,
+        quantity: item.quantity,
+        product_name: item.product_name ? item.product_name[0]?.products?.name : null,
+        product_image: item.product_image ? item.product_image[0]?.products?.product_images[0]?.image_url : null,
+        volume_ml: item.volume_ml ? item.volume_ml[0]?.volume_ml : null,
+        price: item.price ? item.price[0]?.price : null,
+        sale_price: item.sale_price ? item.sale_price[0]?.sale_price : null,
+        stock_quantity: item.stock_quantity ? item.stock_quantity[0]?.stock_quantity : null,
+        product_id: item.product_id ? item.product_id[0]?.product_id : null,
+        sku: item.sku ? item.sku[0]?.sku : null,
+      }))
 
-        setItems(formattedItems || [])
-      } catch (err: any) {
-        setError(err)
-        toast.error(`Lỗi khi tải giỏ hàng: ${err.message}`)
-      } finally {
-        setIsLoading(false)
-      }
+      setItems(formattedItems || [])
+    } catch (err: any) {
+      setError(err)
+      toast.error(`Lỗi khi tải giỏ hàng: ${err.message}`)
+    } finally {
+      setIsLoading(false)
     }
-
-    loadCart()
   }, [user, toast])
+
+  // Load cart on auth state change
+  useEffect(() => {
+    loadCart()
+  }, [user, loadCart])
 
   const addItem = async (variantId: number, quantity: number) => {
     setHasInteracted(true)
@@ -142,7 +146,43 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         newItems[existingItemIndex].quantity += quantity
         setItems(newItems)
       } else {
-        setItems([...items, { id: Date.now(), variant_id: variantId, quantity }])
+        // Fetch product variant details
+        const { data: variantData, error: variantError } = await supabase
+          .from("product_variants")
+          .select(
+            `
+           id, 
+           product_id, 
+           volume_ml, 
+           price, 
+           sale_price,
+           stock_quantity,
+           sku,
+           products(name, product_images(image_url, is_main))
+         `,
+          )
+          .eq("id", variantId)
+          .single()
+
+        if (variantError) {
+          toast.error(`Lỗi khi tải thông tin sản phẩm: ${variantError.message}`)
+          return
+        }
+
+        const newItem: CartItem = {
+          id: Date.now(),
+          variant_id: variantId,
+          quantity,
+          product_name: variantData?.products?.name || "Product",
+          product_image: variantData?.products?.product_images?.find((img: any) => img.is_main)?.image_url || null,
+          volume_ml: variantData?.volume_ml || null,
+          price: variantData?.price || null,
+          sale_price: variantData?.sale_price || null,
+          stock_quantity: variantData?.stock_quantity || null,
+          product_id: variantData?.product_id || null,
+          sku: variantData?.sku || null,
+        }
+        setItems([...items, newItem])
       }
     } else {
       // Authenticated user cart logic
@@ -231,7 +271,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const refetchCart = async () => {
+  const refetchCart = useCallback(async () => {
     if (!user) return
     setIsLoading(true)
     try {
@@ -239,17 +279,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         .from("cart_items")
         .select(
           `
-          id, 
-          variant_id, 
-          quantity,
-          product_name:product_variants(products(name)),
-          product_image:product_variants(products(product_images(image_url, is_main))),
-          volume_ml:product_variants(volume_ml),
-          price:product_variants(price),
-          sale_price:product_variants(sale_price),
-          stock_quantity:product_variants(stock_quantity),
-          product_id:product_variants(product_id)
-        `,
+         id, 
+         variant_id, 
+         quantity,
+         product_name:product_variants(products(name)),
+         product_image:product_variants(products(product_images(image_url, is_main))),
+         volume_ml:product_variants(volume_ml),
+         price:product_variants(price),
+         sale_price:product_variants(sale_price),
+         stock_quantity:product_variants(stock_quantity),
+         product_id:product_variants(product_id),
+         sku:product_variants(sku)
+       `,
         )
         .eq("cart_id", `(SELECT id FROM shopping_carts WHERE user_id = '${user.id}')`)
       if (error) throw error
@@ -265,6 +306,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         sale_price: item.sale_price ? item.sale_price[0]?.sale_price : null,
         stock_quantity: item.stock_quantity ? item.stock_quantity[0]?.stock_quantity : null,
         product_id: item.product_id ? item.product_id[0]?.product_id : null,
+        sku: item.sku ? item.sku[0]?.sku : null,
       }))
 
       setItems(formattedItems || [])
@@ -274,7 +316,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [user, toast])
 
   const itemCount = items.reduce((total, item) => total + item.quantity, 0)
   const isEmpty = items.length === 0
