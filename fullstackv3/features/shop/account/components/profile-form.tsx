@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/context/auth-context";
 import { useUpdateUserProfile } from "../queries";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";

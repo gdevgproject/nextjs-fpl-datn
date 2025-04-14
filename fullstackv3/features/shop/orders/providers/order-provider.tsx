@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { createContext, useContext, useState, useMemo } from "react";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/context/auth-context";
 import { useCartContext } from "@/features/shop/cart/providers/cart-provider";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";

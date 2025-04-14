@@ -6,7 +6,7 @@ import { useState, useRef, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/context/auth-context";
 import { Camera, Loader2, X } from "lucide-react";
 import { uploadAvatar } from "../actions";
 import { DEFAULT_AVATAR_URL } from "@/lib/constants";

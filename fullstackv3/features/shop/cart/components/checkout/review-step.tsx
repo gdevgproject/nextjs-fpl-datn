@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, MapPin, User, CreditCard, FileText } from "lucide-react";
 import { formatCurrency } from "@/lib/utils/format";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/context/auth-context";
 
 export function ReviewStep() {
   const { isAuthenticated } = useAuth();

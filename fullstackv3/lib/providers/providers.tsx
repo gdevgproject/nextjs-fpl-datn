@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useEffect } from "react";
-import { AuthProvider } from "@/features/auth/auth-context";
+import { AuthProvider } from "@/features/auth/context/auth-context";
 import { QueryProvider } from "./query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { CartProvider } from "@/features/shop/cart/providers/cart-provider";

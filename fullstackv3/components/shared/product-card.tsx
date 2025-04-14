@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { formatPrice } from "@/lib/utils";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/context/auth-context";
 import { useWishlistContext } from "@/features/shop/wishlist/providers/wishlist-provider";
 import { useCartContext } from "@/features/shop/cart/providers/cart-provider";
 import type { Product } from "@/features/shop/products/types";

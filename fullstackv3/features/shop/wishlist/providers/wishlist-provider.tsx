@@ -10,7 +10,7 @@ import {
   useEffect,
   useCallback,
 } from "react";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/context/auth-context";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 

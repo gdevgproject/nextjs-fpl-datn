@@ -13,7 +13,7 @@ import {
 import { PlusCircle } from "lucide-react";
 import { AddressForm } from "./address-form";
 import { AddressList } from "./address-list";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/context/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion, AnimatePresence } from "framer-motion";
 

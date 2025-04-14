@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useCheckout } from "../../providers/checkout-provider";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/context/auth-context";
 import {
   Card,
   CardContent,

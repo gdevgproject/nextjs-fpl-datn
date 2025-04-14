@@ -11,14 +11,14 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import type { User, Session } from "@supabase/supabase-js";
-import { getSupabaseBrowserClient } from "../../lib/supabase/client";
+import { getSupabaseBrowserClient } from "../../../lib/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Profile } from "@/features/shop/account/types";
-import { handleApiError } from "../../lib/utils/error-utils";
-import { getUserRoleFromMetadata } from "../../lib/utils/auth-utils";
+import { handleApiError } from "../../../lib/utils/error-utils";
+import { getUserRoleFromMetadata } from "../../../lib/utils/auth-utils";
 import type { UserRole } from "@/features/shop/auth/types";
-import { DEFAULT_AVATAR_URL } from "../../lib/constants";
-import { QUERY_STALE_TIME } from "../../lib/hooks/use-query-config";
+import { DEFAULT_AVATAR_URL } from "../../../lib/constants";
+import { QUERY_STALE_TIME } from "../../../lib/hooks/use-query-config";
 
 type AuthState = {
   user: User | null;

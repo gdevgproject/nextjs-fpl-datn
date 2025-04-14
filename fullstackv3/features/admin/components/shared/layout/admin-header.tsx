@@ -4,7 +4,7 @@ import Link from "next/link";
 import { LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/context/auth-context";
 import {
   DropdownMenu,
   DropdownMenuContent,

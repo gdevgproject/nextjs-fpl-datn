@@ -4,7 +4,7 @@ import type React from "react";
 import { useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/context/auth-context";
 
 export function AuthToastHandler({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();

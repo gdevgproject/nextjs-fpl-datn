@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import Link from "next/link";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/context/auth-context";
 import {
   CircleUser,
   LogIn,

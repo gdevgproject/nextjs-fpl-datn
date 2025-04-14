@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useWishlistContext } from "../providers/wishlist-provider";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {

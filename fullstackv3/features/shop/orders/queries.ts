@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/context/auth-context";
 import { QUERY_STALE_TIME } from "@/lib/hooks/use-query-config";
 import type { Order, OrderFilter, OrdersResponse } from "./types";
 import { cancelOrder } from "./actions";
