@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useCheckout } from "../../providers/checkout-provider";
-import { useAuth } from "@/features/auth/context/auth-context";
+import { useAuthQuery } from "@/features/auth/hooks";
 import {
   Card,
   CardContent,
@@ -21,7 +21,9 @@ import { useUserAddresses } from "@/features/shop/account/queries";
 import { LoaderCircle } from "lucide-react";
 
 export function AddressStep() {
-  const { isAuthenticated } = useAuth();
+  const { data: session } = useAuthQuery();
+  const isAuthenticated = !!session?.user;
+  const userId = session?.user?.id;
   const { formData, updateFormData, errors, goToNextStep } = useCheckout();
 
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
@@ -30,7 +32,7 @@ export function AddressStep() {
   const [showAddressForm, setShowAddressForm] = useState(!isAuthenticated);
 
   // Remove unnecessary initialized state which causes delay in showing content
-  const { data: addresses, isLoading } = useUserAddresses();
+  const { data: addresses, isLoading } = useUserAddresses(userId);
 
   // Improved address initialization logic
   useEffect(() => {
