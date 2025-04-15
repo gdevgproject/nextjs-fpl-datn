@@ -6,6 +6,6 @@ export const metadata: Metadata = {
   description: "Xác nhận email cho tài khoản MyBeauty của bạn",
 };
 
-export default function Page({ params }: { params: { token: string } }) {
-  return <VerifyEmailPage token={params.token} />;
+export default function Page({ params }: { params: { code: string } }) {
+  return <VerifyEmailPage code={params.code} />;
 }

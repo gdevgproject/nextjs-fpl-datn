@@ -8,7 +8,7 @@ import { useVerifyOtpMutation } from "../hooks";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-export function VerifyEmailPage({ token }: { token: string }) {
+export function VerifyEmailPage({ code }: { code: string }) {
   const router = useRouter();
   const [status, setStatus] = useState<"loading" | "success" | "error">(
     "loading"
@@ -18,7 +18,7 @@ export function VerifyEmailPage({ token }: { token: string }) {
   const verifyOtpMutation = useVerifyOtpMutation();
 
   useEffect(() => {
-    verifyOtpMutation.mutate(token, {
+    verifyOtpMutation.mutate(code, {
       onSuccess: (result) => {
         if (result.error) {
           setStatus("error");
@@ -36,7 +36,7 @@ export function VerifyEmailPage({ token }: { token: string }) {
       },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [code]);
 
   return (
     <div className="flex flex-col space-y-4 text-center">
