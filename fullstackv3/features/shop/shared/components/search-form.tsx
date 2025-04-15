@@ -105,9 +105,7 @@ export const SearchForm = memo(function SearchForm() {
       className="relative w-full max-w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-3xl 2xl:max-w-4xl flex-1"
       role="search"
     >
-      <div
-        className="flex items-center gap-2 bg-muted rounded-full px-2 py-1 shadow-sm border w-full min-w-0"
-      >
+      <div className="flex items-center gap-2 bg-muted rounded-full px-2 py-1 shadow-sm border w-full min-w-0">
         <ToggleGroup
           type="single"
           value={mode}
@@ -151,12 +149,13 @@ export const SearchForm = memo(function SearchForm() {
           <Button
             type="button"
             variant="ghost"
-            size="icon"
-            className="text-muted-foreground"
+            size="sm"
+            className="px-1.5 h-7 rounded-full hover:bg-muted-foreground/10 hover:text-foreground"
             onClick={() => setQuery("")}
             aria-label="Xóa tìm kiếm"
           >
             <X className="h-4 w-4" />
+            <span className="sr-only">Xóa tìm kiếm</span>
           </Button>
         )}
         <Button
