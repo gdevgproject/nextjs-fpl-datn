@@ -10,16 +10,17 @@ import { AddressStep } from "./address-step";
 import { PaymentStep } from "./payment-step";
 import { ReviewStep } from "./review-step";
 import { OrderSummary } from "../../../orders/components/order-summary";
-import { useAuth } from "@/features/auth/context/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { EmptyCart } from "@/features/shop/cart/components/empty-cart";
+import { useAuthQuery } from "@/features/auth/hooks";
 
 export function CheckoutPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { isAuthenticated } = useAuth();
   const { cartItemCount } = useCartContext();
   const { currentStep, justPlacedOrder } = useCheckout();
+  const { data: session } = useAuthQuery();
+  const isAuthenticated = !!session?.user;
 
   // Check if cart is empty and redirect to cart page if it is
   useEffect(() => {

@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, MapPin, User, CreditCard, FileText } from "lucide-react";
 import { formatCurrency } from "@/lib/utils/format";
-import { useAuth } from "@/features/auth/context/auth-context";
+import { useAuthQuery } from "@/features/auth/hooks";
 
 export function ReviewStep() {
-  const { isAuthenticated } = useAuth();
+  const { data: session } = useAuthQuery();
+  const isAuthenticated = !!session?.user;
   const { formData, placeOrderHandler, isProcessing, goToPreviousStep } =
     useCheckout();
   const { appliedDiscount } = useCartContext();
