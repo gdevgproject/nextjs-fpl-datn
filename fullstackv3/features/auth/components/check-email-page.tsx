@@ -19,7 +19,8 @@ export function CheckEmailPage() {
         </div>
         <CardTitle className="text-2xl">Kiểm tra email của bạn</CardTitle>
         <CardDescription>
-        Nếu bạn không nhận được email, vui lòng kiểm tra thư mục spam hoặc thử lại sau.
+          Nếu bạn không nhận được email, vui lòng kiểm tra thư mục spam hoặc thử
+          lại sau.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 text-center">

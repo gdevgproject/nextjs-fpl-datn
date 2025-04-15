@@ -70,11 +70,9 @@ export async function register(values: z.infer<typeof registerSchema>) {
 export async function login(values: LoginParams) {
   const supabase = await getSupabaseServerClient();
   try {
-    const persistSession = values.rememberMe !== false;
     const { data, error } = await supabase.auth.signInWithPassword({
       email: values.email,
       password: values.password,
-      options: { persistSession },
     });
     if (error) {
       if (error.message.includes("Invalid login credentials")) {

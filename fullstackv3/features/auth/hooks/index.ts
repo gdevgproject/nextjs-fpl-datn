@@ -1,8 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { login, register, logout, updateProfile, verifyOtp } from "../actions";
-import { getSessionClient, getProfileById, getProfileByIdClient } from "../services";
+import {
+  getSessionClient,
+  getProfileById,
+  getProfileByIdClient,
+} from "../services";
 import type { LoginFormValues, RegisterFormValues } from "../types";
 import type { User, Session } from "@supabase/supabase-js";
+
+// Helper: Lấy data an toàn từ kết quả trả về
+export function getResultData<T = any>(result: any): T | undefined {
+  if (result && typeof result === "object" && "data" in result) {
+    return result.data as T;
+  }
+  return undefined;
+}
+
+// Helper: Lấy error và code an toàn từ kết quả trả về
+export function getErrorAndCodeFromResult(result: any): { error?: string; code?: string } {
+  if (result && typeof result === "object") {
+    if ("error" in result) {
+      return { error: result.error, code: result.code };
+    }
+  }
+  return {};
+}
 
 // Hook: Đăng nhập
 export function useLoginMutation() {
@@ -11,9 +33,10 @@ export function useLoginMutation() {
     mutationFn: (values: LoginFormValues) => login(values),
     onSuccess: (data) => {
       // Prefetch profile nếu login thành công
-      if (data?.data?.user?.id) {
+      const userData = getResultData(data);
+      if (userData?.user?.id) {
         queryClient.invalidateQueries({
-          queryKey: ["profile", data.data.user.id],
+          queryKey: ["profile", userData.user.id],
         });
       }
     },
@@ -26,9 +49,10 @@ export function useRegisterMutation() {
   return useMutation({
     mutationFn: (values: RegisterFormValues) => register(values),
     onSuccess: (data) => {
-      if (data?.data?.user?.id) {
+      const userData = getResultData(data);
+      if (userData?.user?.id) {
         queryClient.invalidateQueries({
-          queryKey: ["profile", data.data.user.id],
+          queryKey: ["profile", userData.user.id],
         });
       }
     },

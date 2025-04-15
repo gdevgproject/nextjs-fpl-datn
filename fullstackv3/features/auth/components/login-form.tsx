@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useForm, type SubmitHandler, type Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
+import type { z } from "zod";
 import { Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,12 +25,12 @@ import {
   FormNotification,
   FormNotificationLink,
 } from "@/components/ui/form-notification";
-import { useLoginMutation } from "../hooks";
+import { useLoginMutation, getErrorAndCodeFromResult } from "../hooks";
 
-// Cập nhật schema để thêm trường rememberMe
-const extendedLoginSchema = loginSchema.extend({
-  rememberMe: z.boolean().default(false),
-});
+// Định nghĩa type chuẩn cho form
+export type LoginFormValues = z.infer<typeof loginSchema> & {
+  rememberMe: boolean;
+};
 
 // Định nghĩa kiểu dữ liệu cho kết quả trả về từ API
 type LoginResult = {
@@ -51,8 +51,9 @@ export function LoginForm() {
   // Lấy email từ query params (nếu được chuyển từ trang đăng ký)
   const emailFromParams = searchParams.get("email");
 
-  const form = useForm<z.infer<typeof extendedLoginSchema>>({
-    resolver: zodResolver(extendedLoginSchema),
+  // Khởi tạo form với type chuẩn và defaultValues đầy đủ
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema) as any, // ép kiểu nếu cần
     defaultValues: {
       email: emailFromParams || "",
       password: "",
@@ -72,19 +73,21 @@ export function LoginForm() {
 
   const loginMutation = useLoginMutation();
 
-  async function onSubmit(values: z.infer<typeof extendedLoginSchema>) {
+  // onSubmit nhận đúng type LoginFormValues
+  const onSubmit: SubmitHandler<LoginFormValues> = async (values) => {
     setServerError(null);
     setErrorCode(null);
     loginMutation.mutate(values, {
       onSuccess: (result) => {
-        if (result.error) {
-          if (result.code === "email_not_confirmed") {
-            setErrorCode(result.code);
+        const { error, code } = getErrorAndCodeFromResult(result);
+        if (error) {
+          if (code === "email_not_confirmed") {
+            setErrorCode(code);
           } else {
-            setServerError(result.error);
+            setServerError(error);
             toast({
               title: "Đăng nhập thất bại",
-              description: result.error,
+              description: error,
               variant: "destructive",
             });
           }
@@ -104,7 +107,7 @@ export function LoginForm() {
         });
       },
     });
-  }
+  };
 
   return (
     <Form {...form}>
@@ -117,7 +120,7 @@ export function LoginForm() {
         )}
 
         <FormField
-          control={form.control}
+          control={form.control as Control<LoginFormValues>}
           name="email"
           render={({ field }) => (
             <FormItem>
@@ -130,7 +133,7 @@ export function LoginForm() {
           )}
         />
         <FormField
-          control={form.control}
+          control={form.control as Control<LoginFormValues>}
           name="password"
           render={({ field }) => (
             <FormItem>
@@ -166,7 +169,7 @@ export function LoginForm() {
         />
 
         <FormField
-          control={form.control}
+          control={form.control as Control<LoginFormValues>}
           name="rememberMe"
           render={({ field }) => (
             <FormItem className="flex flex-row items-start space-x-3 space-y-0">
@@ -206,9 +209,9 @@ export function LoginForm() {
         <Button
           type="submit"
           className="w-full"
-          disabled={loginMutation.isLoading}
+          disabled={loginMutation.isPending}
         >
-          {loginMutation.isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
+          {loginMutation.isPending ? "Đang đăng nhập..." : "Đăng nhập"}
         </Button>
       </form>
     </Form>

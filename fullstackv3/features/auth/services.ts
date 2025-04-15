@@ -1,6 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import type { User } from "@supabase/supabase-js";
 
 // Lấy profile theo userId (server)
 export async function getProfileById(userId: string) {

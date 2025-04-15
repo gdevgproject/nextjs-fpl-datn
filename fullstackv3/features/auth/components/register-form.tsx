@@ -25,7 +25,7 @@ import {
   FormNotificationLink,
 } from "@/components/ui/form-notification";
 import { getFormErrorMessage } from "@/lib/utils/error-utils";
-import { useRegisterMutation } from "../hooks";
+import { useRegisterMutation, getErrorAndCodeFromResult } from "../hooks";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -57,14 +57,15 @@ export function RegisterForm() {
     setErrorCode(null);
     registerMutation.mutate(values, {
       onSuccess: (result) => {
-        if (result && result.error) {
-          if (result.code === "email_taken") {
-            setErrorCode(result.code);
+        const { error, code } = getErrorAndCodeFromResult(result);
+        if (error) {
+          if (code === "email_taken") {
+            setErrorCode(code);
           } else {
-            setServerError(result.error);
+            setServerError(error);
             toast({
               title: "Đăng ký thất bại",
-              description: result.error,
+              description: error,
               variant: "destructive",
             });
           }
@@ -233,9 +234,9 @@ export function RegisterForm() {
         <Button
           type="submit"
           className="w-full"
-          disabled={registerMutation.isLoading}
+          disabled={registerMutation.isPending}
         >
-          {registerMutation.isLoading ? "Đang đăng ký..." : "Đăng ký"}
+          {registerMutation.isPending ? "Đang đăng ký..." : "Đăng ký"}
         </Button>
       </form>
     </Form>
