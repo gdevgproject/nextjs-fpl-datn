@@ -3,8 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { useAuth } from "@/features/auth/context/auth-context";
-import { useToast } from "@/hooks/use-toast";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { QUERY_STALE_TIME } from "@/lib/hooks/use-query-config";
 import { handleApiError } from "@/lib/utils/error-utils";
 
@@ -41,17 +40,22 @@ export type LocalCartItem = {
 };
 
 export function useCart() {
-  const { user, isAuthenticated } = useAuth();
   const supabase = getSupabaseBrowserClient();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const { toast } = useSonnerToast();
   const [localCart, setLocalCart] = useState<LocalCartItem[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Fetch cart từ database nếu user đã đăng nhập
   const { data: cartItems = [], isLoading } = useQuery({
-    queryKey: ["cart", user?.id],
+    queryKey: ["cart"],
     queryFn: async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const user = session?.user;
+
       if (!user) return [];
 
       try {
@@ -125,7 +129,6 @@ export function useCart() {
         throw new Error(handleApiError(error));
       }
     },
-    enabled: !!user,
     staleTime: QUERY_STALE_TIME.CART,
   });
 
@@ -203,15 +206,29 @@ export function useCart() {
 
   // Lưu local cart vào localStorage khi thay đổi
   useEffect(() => {
-    if (isInitialized && !isAuthenticated && typeof window !== "undefined") {
-      localStorage.setItem("mybeauty_cart", JSON.stringify(localCart));
+    if (isInitialized && typeof window !== "undefined") {
+      const {
+        data: { session },
+      } = supabase.auth.getSession();
+
+      const user = session?.user;
+
+      if (!user) {
+        localStorage.setItem("mybeauty_cart", JSON.stringify(localCart));
+      }
     }
-  }, [localCart, isInitialized, isAuthenticated]);
+  }, [localCart, isInitialized, supabase]);
 
   // Merge local cart với user cart khi đăng nhập
   useEffect(() => {
     const mergeLocalCartWithUserCart = async () => {
-      if (isAuthenticated && user && localCart.length > 0) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const user = session?.user;
+
+      if (user && localCart.length > 0) {
         try {
           // Lấy cart_id của user
           const { data: cartData, error: cartError } = await supabase
@@ -272,7 +289,7 @@ export function useCart() {
       localStorage.removeItem("mybeauty_cart");
 
       // Invalidate cart query để fetch lại cart items
-      queryClient.invalidateQueries({ queryKey: ["cart", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["cart"] });
 
       toast({
         title: "Giỏ hàng đã được đồng bộ",
@@ -282,7 +299,7 @@ export function useCart() {
     };
 
     mergeLocalCartWithUserCart();
-  }, [isAuthenticated, user, localCart, supabase, queryClient, toast]);
+  }, [localCart, supabase, queryClient, toast]);
 
   // Thêm sản phẩm vào giỏ hàng
   const addToCart = useMutation({
@@ -295,7 +312,13 @@ export function useCart() {
       quantity: number;
       productId: string;
     }) => {
-      if (isAuthenticated && user) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const user = session?.user;
+
+      if (user) {
         try {
           // Lấy cart_id của user
           const { data: cartData, error: cartError } = await supabase
@@ -350,9 +373,15 @@ export function useCart() {
         return { success: true };
       }
     },
-    onSuccess: () => {
-      if (isAuthenticated && user) {
-        queryClient.invalidateQueries({ queryKey: ["cart", user.id] });
+    onSuccess: async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const user = session?.user;
+
+      if (user) {
+        queryClient.invalidateQueries({ queryKey: ["cart"] });
       }
 
       toast({
@@ -419,7 +448,13 @@ export function useCart() {
       quantity: number;
       variantId?: number;
     }) => {
-      if (isAuthenticated && user) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const user = session?.user;
+
+      if (user) {
         if (!itemId) throw new Error("Item ID is required");
 
         try {
@@ -447,9 +482,15 @@ export function useCart() {
         return { success: true };
       }
     },
-    onSuccess: () => {
-      if (isAuthenticated && user) {
-        queryClient.invalidateQueries({ queryKey: ["cart", user.id] });
+    onSuccess: async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const user = session?.user;
+
+      if (user) {
+        queryClient.invalidateQueries({ queryKey: ["cart"] });
       }
     },
     onError: (error) => {
@@ -474,7 +515,13 @@ export function useCart() {
       itemId?: string;
       variantId?: number;
     }) => {
-      if (isAuthenticated && user) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const user = session?.user;
+
+      if (user) {
         if (!itemId) throw new Error("Item ID is required");
 
         try {
@@ -502,9 +549,15 @@ export function useCart() {
         return { success: true };
       }
     },
-    onSuccess: () => {
-      if (isAuthenticated && user) {
-        queryClient.invalidateQueries({ queryKey: ["cart", user.id] });
+    onSuccess: async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const user = session?.user;
+
+      if (user) {
+        queryClient.invalidateQueries({ queryKey: ["cart"] });
       }
 
       toast({
@@ -526,30 +579,29 @@ export function useCart() {
   });
 
   // Tính tổng số lượng sản phẩm trong giỏ hàng
-  const cartItemCount = isAuthenticated
-    ? cartItems?.reduce((total, item) => total + item.quantity, 0) || 0
-    : localCart.reduce((total, item) => total + item.quantity, 0);
+  const cartItemCount =
+    cartItems?.reduce((total, item) => total + item.quantity, 0) ||
+    localCart.reduce((total, item) => total + item.quantity, 0);
 
   // Tính tổng tiền giỏ hàng (sẽ cần fetch thêm thông tin sản phẩm cho local cart)
-  const cartTotal = isAuthenticated
-    ? cartItems?.reduce(
-        (total, item) =>
+  const cartTotal =
+    cartItems?.reduce(
+      (total, item) =>
+        total + (item.product.sale_price || item.product.price) * item.quantity,
+      0
+    ) ||
+    localCart.reduce((total, item) => {
+      if (item.product) {
+        return (
           total +
-          (item.product.sale_price || item.product.price) * item.quantity,
-        0
-      ) || 0
-    : localCart.reduce((total, item) => {
-        if (item.product) {
-          return (
-            total +
-            (item.product.sale_price || item.product.price) * item.quantity
-          );
-        }
-        return total;
-      }, 0);
+          (item.product.sale_price || item.product.price) * item.quantity
+        );
+      }
+      return total;
+    }, 0);
 
   return {
-    cartItems: isAuthenticated ? cartItems || [] : [], // Cần fetch thông tin sản phẩm cho local cart
+    cartItems: cartItems || [], // Cần fetch thông tin sản phẩm cho local cart
     localCart,
     isLoading,
     cartItemCount,

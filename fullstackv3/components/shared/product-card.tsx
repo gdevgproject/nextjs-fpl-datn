@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { formatPrice } from "@/lib/utils";
-import { useAuthQuery } from "@/features/auth/hooks";
 import { useWishlist } from "@/features/shop/wishlist/hooks/use-wishlist";
 import { useCartContext } from "@/features/shop/cart/providers/cart-provider";
 import type { Product } from "@/features/shop/products/types";
@@ -24,8 +23,6 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const { data: session } = useAuthQuery();
-  const isAuthenticated = !!session?.user;
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { addToCart } = useCartContext();
   const { toast } = useToast();
@@ -172,7 +169,10 @@ export function ProductCard({ product }: ProductCardProps) {
     try {
       setIsTogglingWishlist(true);
 
-      if (!isAuthenticated) {
+      const supabase = getSupabaseBrowserClient();
+      const { data: user } = await supabase.auth.getUser();
+
+      if (!user) {
         toast({
           title: "Vui lòng đăng nhập",
           description:

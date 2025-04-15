@@ -6,7 +6,7 @@ import {
   getNewArrivals,
   getProductsOnSale,
   getBestSellingProducts,
-} from "../queries";
+} from "../home-data";
 import { BannerCarousel } from "./hero-banner";
 import { FeaturedCategories } from "./featured-categories-section";
 import { ProductSection } from "./product-section";
@@ -38,6 +38,9 @@ export async function HomePage() {
       {/* Banner Carousel */}
       <BannerCarousel banners={banners} />
 
+      {/* Featured Categories */}
+      <FeaturedCategories categories={categories} />
+
       {/* Featured Brands - Moved up */}
       <FeaturedBrands brands={brands} />
 
@@ -67,9 +70,6 @@ export async function HomePage() {
         viewAllLink="/san-pham?sort=best-selling"
         bgColor="muted"
       />
-
-      {/* Featured Categories */}
-      <FeaturedCategories categories={categories} />
 
       {/* Featured Products */}
       <ProductSection
