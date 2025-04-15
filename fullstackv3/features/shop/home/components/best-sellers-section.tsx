@@ -71,25 +71,37 @@ export default function BestSellersSection() {
   }
 
   // Transform data for ProductCard
-  const products = data.map((product: any) => ({
-    id: product.product_id,
-    slug: product.product_slug,
-    name: product.product_name,
-    brand: {
-      id: product.brand_id,
-      name: product.brand_name,
-    },
-    images: [
-      {
-        image_url: product.image_url,
-        is_main: true,
+  const products = data.map((item: any, index: number) => ({
+    uniqueKey: `best-seller-${item.product_id}-${index}`,
+    product: {
+      id: item.product_id,
+      slug: item.product_slug,
+      name: item.product_name,
+      brand: {
+        id: item.brand_id,
+        name: item.brand_name,
       },
-    ],
-    price: product.price || 0,
-    sale_price: product.sale_price,
-    // Note: We don't have variant_id in the RPC result, so Add to Cart won't work
-    // This is intentional - users need to click through to the product page
-    variants: [], // Empty variants to prevent add to cart functionality
+      images: [
+        {
+          image_url: item.image_url || "/placeholder.svg",
+          is_main: true,
+        },
+      ],
+      price: item.price || 0,
+      sale_price: item.sale_price,
+      // Thêm ước lượng stock_quantity để tránh hiện "hết hàng"
+      variants:
+        item.stock_quantity && item.stock_quantity > 0
+          ? [
+              {
+                id: item.variant_id || 0,
+                price: item.price || 0,
+                sale_price: item.sale_price,
+                stock_quantity: item.stock_quantity,
+              },
+            ]
+          : [],
+    },
   }));
 
   return (
@@ -106,8 +118,8 @@ export default function BestSellersSection() {
         </Link>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
+        {products.map((item) => (
+          <ProductCard key={item.uniqueKey} product={item.product} />
         ))}
       </div>
     </section>

@@ -5,49 +5,108 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Heart, AlertCircle } from "lucide-react";
+import { formatPrice } from "@/lib/utils";
+
+export interface ProductImageType {
+  image_url: string;
+  is_main: boolean;
+}
+
+export interface ProductVariantType {
+  id: number;
+  price: number;
+  sale_price?: number | null;
+  stock_quantity?: number;
+  volume_ml?: number;
+}
+
+export interface ProductBrandType {
+  id?: number;
+  name: string;
+}
 
 export interface ProductCardProps {
-  id: number;
-  slug: string;
-  name: string;
+  product?: {
+    id: number;
+    name: string;
+    slug: string;
+    brand?: ProductBrandType;
+    images?: ProductImageType[];
+    price?: number;
+    sale_price?: number | null;
+    variants?: ProductVariantType[];
+  };
+  // Support for legacy format
+  id?: number;
+  slug?: string;
+  name?: string;
   brand_name?: string;
   image_url?: string;
-  price: number;
+  price?: number;
   sale_price?: number | null;
   variant_id?: number;
   stock_quantity?: number;
-  showAddToCart?: boolean;
-  gender_name?: string | null;
-  concentration_name?: string | null;
-  perfume_type_name?: string | null;
-  discount_percentage?: number;
 }
 
 export function ProductCard({
+  product,
   id,
   slug,
   name,
   brand_name,
   image_url,
-  price,
-  sale_price,
+  price: directPrice,
+  sale_price: directSalePrice,
   variant_id,
-  stock_quantity = 0,
-  showAddToCart = true,
-  gender_name,
-  concentration_name,
-  perfume_type_name,
-  discount_percentage,
+  stock_quantity,
 }: ProductCardProps) {
-  const isOnSale = sale_price && sale_price < price;
-  const isOutOfStock = stock_quantity <= 0;
+  // Support both new format (product object) and legacy format (direct props)
+  const productId = product?.id || id;
+  const productSlug = product?.slug || slug || `product-${productId}`;
+  const productName = product?.name || name || "Sản phẩm";
+  const brandName = product?.brand?.name || brand_name;
+  
+  // Find main image
+  const mainImage = product?.images?.find(img => img.is_main)?.image_url || 
+                    product?.images?.[0]?.image_url || 
+                    image_url ||
+                    "/placeholder.svg";
+
+  // Determine price and sale price
+  const productPrice = product?.price ?? directPrice ?? 0;
+  const productSalePrice = product?.sale_price ?? directSalePrice;
+  
+  // Determine if product is on sale
+  const isOnSale = productSalePrice !== null && 
+                   productSalePrice !== undefined && 
+                   productSalePrice < productPrice;
+  
+  // Calculate discount percentage if product is on sale
+  const discountPercentage = isOnSale 
+    ? Math.round(((productPrice - (productSalePrice as number)) / productPrice) * 100) 
+    : 0;
+
+  // Determine if product is out of stock
+  let isOutOfStock = true;
+
+  // Check stock from variants
+  if (product?.variants && product.variants.length > 0) {
+    // Check if any variant has stock
+    isOutOfStock = !product.variants.some(v => 
+      v.stock_quantity === undefined || v.stock_quantity > 0
+    );
+  } else if (stock_quantity !== undefined) {
+    isOutOfStock = stock_quantity <= 0;
+  } else {
+    isOutOfStock = false; // Default to in-stock if no stock info available
+  }
 
   return (
     <div className="group relative overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md">
-      <Link href={`/san-pham/${slug}`} className="block">
+      <Link href={`/san-pham/${productSlug}`} className="block">
         {isOnSale && (
           <Badge className="absolute top-2 left-2 z-10 bg-red-500 hover:bg-red-600">
-            -{discount_percentage}%
+            -{discountPercentage}%
           </Badge>
         )}
         {isOutOfStock && (
@@ -60,82 +119,49 @@ export function ProductCard({
         )}
         <div className="aspect-square relative overflow-hidden bg-muted">
           <Image
-            src={image_url || "/placeholder.svg"}
-            alt={name}
+            src={mainImage}
+            alt={productName}
             fill
             className="object-cover transition-transform duration-300 group-hover:scale-105"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
         </div>
       </Link>
       <div className="p-4 space-y-1">
-        {brand_name && (
+        {brandName && (
           <Link
-            href={`/thuong-hieu/${brand_name
+            href={`/thuong-hieu/${brandName
               .toLowerCase()
               .replace(/\s+/g, "-")}`}
           >
             <p className="text-xs text-muted-foreground font-medium hover:text-primary transition-colors">
-              {brand_name}
+              {brandName}
             </p>
           </Link>
         )}
         <Link
-          href={`/san-pham/${slug}`}
+          href={`/san-pham/${productSlug}`}
           className="block group-hover:text-primary transition-colors"
         >
           <h3 className="font-medium text-sm leading-tight line-clamp-2">
-            {name}
+            {productName}
           </h3>
         </Link>
-        <div className="flex flex-wrap gap-1 mt-1.5">
-          {gender_name && (
-            <Badge
-              variant="outline"
-              className="text-[10px] px-1.5 py-0 h-5 font-normal"
-            >
-              {gender_name}
-            </Badge>
-          )}
-          {concentration_name && (
-            <Badge
-              variant="outline"
-              className="text-[10px] px-1.5 py-0 h-5 font-normal"
-            >
-              {concentration_name}
-            </Badge>
-          )}
-          {perfume_type_name && (
-            <Badge
-              variant="outline"
-              className="text-[10px] px-1.5 py-0 h-5 font-normal"
-            >
-              {perfume_type_name}
-            </Badge>
-          )}
-        </div>
+        
         <div className="flex items-center justify-between pt-2">
           <div>
             {isOnSale ? (
               <div className="flex items-center gap-2">
                 <span className="font-semibold">
-                  {new Intl.NumberFormat("vi-VN", {
-                    style: "currency",
-                    currency: "VND",
-                  }).format(sale_price || 0)}
+                  {formatPrice(productSalePrice as number)}
                 </span>
                 <span className="text-xs text-muted-foreground line-through">
-                  {new Intl.NumberFormat("vi-VN", {
-                    style: "currency",
-                    currency: "VND",
-                  }).format(price)}
+                  {formatPrice(productPrice)}
                 </span>
               </div>
             ) : (
               <span className="font-semibold">
-                {new Intl.NumberFormat("vi-VN", {
-                  style: "currency",
-                  currency: "VND",
-                }).format(price)}
+                {formatPrice(productPrice)}
               </span>
             )}
           </div>
@@ -144,25 +170,17 @@ export function ProductCard({
             <span className="sr-only">Add to wishlist</span>
           </Button>
         </div>
-        {showAddToCart && (
-          <Button
-            className="w-full"
-            size="sm"
-            disabled
-            asChild
-          >
-            <Link href={`/san-pham/${slug}`}>
-              <ShoppingCart className="h-4 w-4 mr-2" />
-              Xem chi tiết
-            </Link>
-          </Button>
-        )}
-        {isOutOfStock && (
-          <div className="flex items-center text-red-600 text-sm mt-1">
-            <AlertCircle className="h-4 w-4 mr-1" />
-            <span>Hết hàng</span>
-          </div>
-        )}
+        
+        <Button
+          className="w-full mt-2"
+          size="sm"
+          asChild
+        >
+          <Link href={`/san-pham/${productSlug}`}>
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            Xem chi tiết
+          </Link>
+        </Button>
       </div>
     </div>
   );

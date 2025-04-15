@@ -20,10 +20,7 @@ export default function NewArrivalsSection() {
           name, 
           slug, 
           brands!inner(id, name),
-          genders(name),
-          concentrations(name),
-          perfume_types(name),
-          product_variants!inner(
+          product_variants(
             id, 
             price, 
             sale_price,
@@ -94,30 +91,45 @@ export default function NewArrivalsSection() {
     return null;
   }
 
-  // Transform data for ProductCard
+  // Transform data for ProductCard with unique keys
   const products = (data.data as any[]).map((product) => {
-    // Format product data for ProductCard component
+    const mainImage =
+      product.product_images?.find((img: any) => img.is_main) ||
+      product.product_images?.[0];
+    // Sort variants by price to show cheapest first
+    const sortedVariants = product.product_variants?.sort((a: any, b: any) => {
+      const priceA = a.sale_price || a.price;
+      const priceB = b.sale_price || b.price;
+      return priceA - priceB;
+    });
+
+    // Take the lowest priced variant as the display price
+    const firstVariant = sortedVariants?.[0];
+
     return {
-      id: product.id,
-      name: product.name,
-      slug: product.slug,
-      brand: {
-        id: product.brands?.id,
-        name: product.brands?.name,
+      uniqueKey: `new-${product.id}-${firstVariant?.id || "default"}`,
+      product: {
+        id: product.id,
+        name: product.name,
+        slug: product.slug,
+        brand: {
+          id: product.brands?.id,
+          name: product.brands?.name,
+        },
+        images: product.product_images?.map((img: any) => ({
+          image_url: img.image_url,
+          is_main: img.is_main,
+        })),
+        price: firstVariant?.price || 0,
+        sale_price: firstVariant?.sale_price,
+        variants: product.product_variants?.map((variant: any) => ({
+          id: variant.id,
+          volume_ml: variant.volume_ml,
+          price: variant.price,
+          sale_price: variant.sale_price,
+          stock_quantity: variant.stock_quantity,
+        })),
       },
-      images: product.product_images?.map((img: any) => ({
-        image_url: img.image_url,
-        is_main: img.is_main,
-      })),
-      price: product.product_variants[0]?.price || 0,
-      sale_price: product.product_variants[0]?.sale_price,
-      variants: product.product_variants?.map((variant: any) => ({
-        id: variant.id,
-        volume_ml: variant.volume_ml,
-        price: variant.price,
-        sale_price: variant.sale_price,
-        stock_quantity: variant.stock_quantity,
-      })),
     };
   });
 
@@ -135,8 +147,8 @@ export default function NewArrivalsSection() {
         </Link>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
+        {products.map((item) => (
+          <ProductCard key={item.uniqueKey} product={item.product} />
         ))}
       </div>
     </section>

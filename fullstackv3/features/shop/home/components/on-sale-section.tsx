@@ -72,32 +72,35 @@ export default function OnSaleSection() {
   }
 
   // Transform data for ProductCard
-  const products = data.map((product: any) => ({
-    id: product.product_id,
-    slug: product.product_slug,
-    name: product.product_name,
-    brand: {
-      name: product.brand_name,
-    },
-    images: [
-      {
-        image_url: product.main_image_url,
-        is_main: true,
+  const products = data.map((item: any, index: number) => ({
+    uniqueKey: `sale-${item.product_id}-${index}`,
+    product: {
+      id: item.product_id,
+      slug: item.product_slug,
+      name: item.product_name,
+      brand: {
+        name: item.brand_name,
       },
-    ],
-    price: product.original_price_high,
-    sale_price: product.display_price,
-    // Chuyển is_generally_in_stock thành stock_quantity để ProductCard hiểu được
-    variants: product.is_generally_in_stock
-      ? [
-          {
-            id: 1, // Fake ID since we don't have variant_id
-            stock_quantity: 1, // Just to indicate it's in stock
-            price: product.original_price_high,
-            sale_price: product.display_price,
-          },
-        ]
-      : [],
+      images: [
+        {
+          image_url: item.main_image_url || "/placeholder.svg",
+          is_main: true,
+        },
+      ],
+      price: item.original_price_high,
+      sale_price: item.display_price,
+      // Use stock information if available
+      variants: item.is_generally_in_stock
+        ? [
+            {
+              id: item.variant_id || 0,
+              price: item.original_price_high,
+              sale_price: item.display_price,
+              stock_quantity: 1, // At least one in stock based on is_generally_in_stock flag
+            },
+          ]
+        : [],
+    },
   }));
 
   return (
@@ -114,8 +117,8 @@ export default function OnSaleSection() {
         </Link>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
+        {products.map((item) => (
+          <ProductCard key={item.uniqueKey} product={item.product} />
         ))}
       </div>
     </section>

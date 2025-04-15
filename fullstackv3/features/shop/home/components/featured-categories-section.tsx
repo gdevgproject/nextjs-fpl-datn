@@ -51,15 +51,13 @@ export default function FeaturedCategoriesSection({
           price, 
           sale_price,
           stock_quantity,
+          volume_ml,
           products!inner(
             id,
             name, 
             slug, 
             deleted_at,
-            brands(name),
-            genders(name),
-            concentrations(name),
-            perfume_types(name),
+            brands(id, name),
             product_images(
               image_url,
               is_main
@@ -72,7 +70,6 @@ export default function FeaturedCategoriesSection({
         )
         .eq("products.product_categories.category_id", selectedCategory?.id)
         .is("products.deleted_at", null)
-        .gt("stock_quantity", 0)
         .order("created_at", { ascending: false })
         .limit(8);
 
@@ -89,30 +86,39 @@ export default function FeaturedCategoriesSection({
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  const products = ((productsData?.data as any[]) || []).map((variant) => ({
-    id: variant.products.id,
-    name: variant.products.name,
-    slug: variant.products.slug,
-    brand: {
-      id: variant.products.brands?.id,
-      name: variant.products.brands?.name,
-    },
-    images: variant.products.product_images?.map((img: any) => ({
-      image_url: img.image_url,
-      is_main: img.is_main,
-    })),
-    price: variant.price,
-    sale_price: variant.sale_price,
-    variants: [
-      {
-        id: variant.id,
-        volume_ml: variant.volume_ml,
+  const products = ((productsData?.data as any[]) || []).map((variant) => {
+    const productId = variant.products.id;
+    const variantId = variant.id;
+    const uniqueKey = `${productId}-${variantId}`;
+
+    return {
+      uniqueKey,
+      product: {
+        id: variant.products.id,
+        name: variant.products.name,
+        slug: variant.products.slug,
+        brand: {
+          id: variant.products.brands?.id,
+          name: variant.products.brands?.name,
+        },
+        images: variant.products.product_images?.map((img: any) => ({
+          image_url: img.image_url,
+          is_main: img.is_main,
+        })),
         price: variant.price,
         sale_price: variant.sale_price,
-        stock_quantity: variant.stock_quantity,
+        variants: [
+          {
+            id: variant.id,
+            volume_ml: variant.volume_ml,
+            price: variant.price,
+            sale_price: variant.sale_price,
+            stock_quantity: variant.stock_quantity,
+          },
+        ],
       },
-    ],
-  }));
+    };
+  });
 
   const scrollLeft = () => {
     if (scrollContainerRef.current) {
@@ -250,8 +256,8 @@ export default function FeaturedCategoriesSection({
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-            {products.map((product) => (
-              <ProductCard key={`${product.id}`} product={product} />
+            {products.map((item) => (
+              <ProductCard key={item.uniqueKey} product={item.product} />
             ))}
           </div>
         )}
