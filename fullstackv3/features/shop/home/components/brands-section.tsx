@@ -1,36 +1,17 @@
 "use client";
 
 import { useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useBrands, type Brand } from "../hooks/use-brands";
 
 export default function BrandsSection() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["brands", "all"],
-    queryFn: async () => {
-      const supabase = getSupabaseBrowserClient();
-      const { data, error } = await supabase
-        .from("brands")
-        .select("id, name, logo_url, description")
-        .order("name", { ascending: true });
-
-      if (error) {
-        console.error("Error fetching brands:", error);
-        throw new Error(error.message);
-      }
-
-      return data || [];
-    },
-    staleTime: 1000 * 60 * 30, // 30 minutes
-  });
+  const { data, isLoading, error } = useBrands();
 
   const scrollLeft = () => {
     if (scrollContainerRef.current) {
@@ -135,7 +116,7 @@ export default function BrandsSection() {
         ref={scrollContainerRef}
         className="flex space-x-4 pb-4 overflow-x-auto scrollbar-hide snap-x"
       >
-        {data.map((brand) => (
+        {data.map((brand: Brand) => (
           <Link
             key={brand.id}
             href={`/san-pham?brand=${brand.id}`}

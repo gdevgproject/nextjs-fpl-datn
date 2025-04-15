@@ -1,31 +1,13 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import ProductSectionSkeleton from "./product-section-skeleton";
 import { Button } from "@/components/ui/button";
 import ProductCard from "@/components/shared/product-card";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useOnSaleProducts } from "../hooks/use-on-sale";
 
 export default function OnSaleSection() {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["products", "on-sale"],
-    queryFn: async () => {
-      const supabase = getSupabaseBrowserClient();
-      const { data, error } = await supabase.rpc(
-        "get_homepage_on_sale_products_with_stock",
-        { p_limit: 8 }
-      );
-
-      if (error) {
-        console.error("Error fetching on sale products:", error);
-        throw new Error(error.message);
-      }
-
-      return data;
-    },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
+  const { data: products, isLoading, error } = useOnSaleProducts();
 
   // Handle loading state
   if (isLoading) {
@@ -48,7 +30,7 @@ export default function OnSaleSection() {
   }
 
   // Handle error state
-  if (error || !data) {
+  if (error || !products) {
     return (
       <section className="space-y-6">
         <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
@@ -67,41 +49,9 @@ export default function OnSaleSection() {
   }
 
   // If no products found
-  if (data.length === 0) {
+  if (products.length === 0) {
     return null;
   }
-
-  // Transform data for ProductCard
-  const products = data.map((item: any, index: number) => ({
-    uniqueKey: `sale-${item.product_id}-${index}`,
-    product: {
-      id: item.product_id,
-      slug: item.product_slug,
-      name: item.product_name,
-      brand: {
-        name: item.brand_name,
-      },
-      images: [
-        {
-          image_url: item.main_image_url || "/placeholder.svg",
-          is_main: true,
-        },
-      ],
-      price: item.original_price_high,
-      sale_price: item.display_price,
-      // Use stock information if available
-      variants: item.is_generally_in_stock
-        ? [
-            {
-              id: item.variant_id || 0,
-              price: item.original_price_high,
-              sale_price: item.display_price,
-              stock_quantity: 1, // At least one in stock based on is_generally_in_stock flag
-            },
-          ]
-        : [],
-    },
-  }));
 
   return (
     <section className="space-y-6">
@@ -117,8 +67,11 @@ export default function OnSaleSection() {
         </Link>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-        {products.map((item) => (
-          <ProductCard key={item.uniqueKey} product={item.product} />
+        {products.map((product) => (
+          <ProductCard
+            key={`sale-${product.id}-${product.variants?.[0]?.id || "default"}`}
+            product={product}
+          />
         ))}
       </div>
     </section>

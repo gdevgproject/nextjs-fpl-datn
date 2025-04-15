@@ -6,11 +6,10 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
 import ProductCard from "@/components/shared/product-card";
 import ProductSectionSkeleton from "./product-section-skeleton";
 import { cn } from "@/lib/utils";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useFeaturedCategoryProducts } from "../hooks/use-featured-categories";
 
 interface Category {
   id: number;
@@ -33,92 +32,12 @@ export default function FeaturedCategoriesSection({
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // Use the extracted hook
   const {
     data: productsData,
     isLoading,
     error,
-  } = useQuery({
-    queryKey: ["products", "category", selectedCategory?.id],
-    queryFn: async () => {
-      if (!selectedCategory) return { data: [] };
-
-      const supabase = getSupabaseBrowserClient();
-      const query = supabase
-        .from("product_variants")
-        .select(
-          `
-          id, 
-          price, 
-          sale_price,
-          stock_quantity,
-          volume_ml,
-          products!inner(
-            id,
-            name, 
-            slug, 
-            deleted_at,
-            brands(id, name),
-            product_images(
-              image_url,
-              is_main
-            ),
-            product_categories!inner(
-              category_id
-            )
-          )
-        `
-        )
-        .eq("products.product_categories.category_id", selectedCategory?.id)
-        .is("products.deleted_at", null)
-        .order("created_at", { ascending: false })
-        .limit(8);
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error("Error fetching products:", error);
-        throw new Error(error.message);
-      }
-
-      return { data };
-    },
-    enabled: !!selectedCategory,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
-
-  const products = ((productsData?.data as any[]) || []).map((variant) => {
-    const productId = variant.products.id;
-    const variantId = variant.id;
-    const uniqueKey = `${productId}-${variantId}`;
-
-    return {
-      uniqueKey,
-      product: {
-        id: variant.products.id,
-        name: variant.products.name,
-        slug: variant.products.slug,
-        brand: {
-          id: variant.products.brands?.id,
-          name: variant.products.brands?.name,
-        },
-        images: variant.products.product_images?.map((img: any) => ({
-          image_url: img.image_url,
-          is_main: img.is_main,
-        })),
-        price: variant.price,
-        sale_price: variant.sale_price,
-        variants: [
-          {
-            id: variant.id,
-            volume_ml: variant.volume_ml,
-            price: variant.price,
-            sale_price: variant.sale_price,
-            stock_quantity: variant.stock_quantity,
-          },
-        ],
-      },
-    };
-  });
+  } = useFeaturedCategoryProducts(selectedCategory?.id || null);
 
   const scrollLeft = () => {
     if (scrollContainerRef.current) {
@@ -248,7 +167,7 @@ export default function FeaturedCategoriesSection({
               Thử lại
             </Button>
           </div>
-        ) : products.length === 0 ? (
+        ) : productsData?.data.length === 0 ? (
           <div className="p-8 text-center rounded-lg bg-muted/30">
             <p className="text-muted-foreground">
               Không có sản phẩm nào trong danh mục này
@@ -256,8 +175,13 @@ export default function FeaturedCategoriesSection({
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-            {products.map((item) => (
-              <ProductCard key={item.uniqueKey} product={item.product} />
+            {productsData?.data.map((product) => (
+              <ProductCard
+                key={`category-${product.id}-${
+                  product.variants?.[0]?.id || "default"
+                }`}
+                product={product}
+              />
             ))}
           </div>
         )}

@@ -1,30 +1,13 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import ProductSectionSkeleton from "./product-section-skeleton";
 import { Button } from "@/components/ui/button";
 import ProductCard from "@/components/shared/product-card";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useBestSellers } from "../hooks/use-best-sellers";
 
 export default function BestSellersSection() {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["products", "best-sellers"],
-    queryFn: async () => {
-      const supabase = getSupabaseBrowserClient();
-      const { data, error } = await supabase.rpc("get_best_selling_products", {
-        p_limit: 8,
-      });
-
-      if (error) {
-        console.error("Error fetching best sellers:", error);
-        throw new Error(error.message);
-      }
-
-      return data;
-    },
-    staleTime: 1000 * 60 * 10, // 10 minutes
-  });
+  const { data: products, isLoading, error } = useBestSellers();
 
   // Handle loading state
   if (isLoading) {
@@ -47,7 +30,7 @@ export default function BestSellersSection() {
   }
 
   // Handle error state
-  if (error || !data) {
+  if (error || !products) {
     return (
       <section className="space-y-6">
         <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
@@ -66,43 +49,9 @@ export default function BestSellersSection() {
   }
 
   // If no products found
-  if (data.length === 0) {
+  if (products.length === 0) {
     return null;
   }
-
-  // Transform data for ProductCard
-  const products = data.map((item: any, index: number) => ({
-    uniqueKey: `best-seller-${item.product_id}-${index}`,
-    product: {
-      id: item.product_id,
-      slug: item.product_slug,
-      name: item.product_name,
-      brand: {
-        id: item.brand_id,
-        name: item.brand_name,
-      },
-      images: [
-        {
-          image_url: item.image_url || "/placeholder.svg",
-          is_main: true,
-        },
-      ],
-      price: item.price || 0,
-      sale_price: item.sale_price,
-      // Thêm ước lượng stock_quantity để tránh hiện "hết hàng"
-      variants:
-        item.stock_quantity && item.stock_quantity > 0
-          ? [
-              {
-                id: item.variant_id || 0,
-                price: item.price || 0,
-                sale_price: item.sale_price,
-                stock_quantity: item.stock_quantity,
-              },
-            ]
-          : [],
-    },
-  }));
 
   return (
     <section className="space-y-6">
@@ -118,8 +67,13 @@ export default function BestSellersSection() {
         </Link>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-        {products.map((item) => (
-          <ProductCard key={item.uniqueKey} product={item.product} />
+        {products.map((product) => (
+          <ProductCard
+            key={`best-seller-${product.id}-${
+              product.variants?.[0]?.id || "default"
+            }`}
+            product={product}
+          />
         ))}
       </div>
     </section>
