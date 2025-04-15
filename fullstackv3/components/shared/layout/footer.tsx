@@ -19,8 +19,9 @@ export function Footer() {
   const { settings, isLoading } = useShopSettings();
 
   // Fallback values if settings are not loaded yet
+  const logoUrl = settings?.shop_logo_url || "/placeholder-logo.png";
   const shopName = settings?.shop_name || "MyBeauty";
-  const address = settings?.address || "123 Đường ABC, Quận 1, TP.HCM";
+  const address = settings?.address || "Địa chỉ đang cập nhật";
   const email = settings?.contact_email || "info@mybeauty.vn";
   const phone = settings?.contact_phone || "0123 456 789";
   const facebookUrl = settings?.facebook_url || "";
@@ -29,6 +30,10 @@ export function Footer() {
   const youtubeUrl = settings?.youtube_url || "";
   const messengerUrl = settings?.messenger_url || "";
   const zaloUrl = settings?.zalo_url || "";
+  const refundPolicy = settings?.refund_policy_text;
+  const shippingPolicy = settings?.shipping_policy_text;
+  const privacyPolicy = settings?.privacy_policy_text;
+  const termsConditions = settings?.terms_conditions_text;
 
   return (
     <footer className="border-t bg-background">
@@ -38,7 +43,7 @@ export function Footer() {
             <div className="flex items-center gap-2 mb-2">
               <div className="rounded-lg overflow-hidden">
                 <Image
-                  src="/images/logo.png"
+                  src={logoUrl}
                   alt={`${shopName} Logo`}
                   width={40}
                   height={40}
@@ -50,7 +55,9 @@ export function Footer() {
               </span>
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
-              Cửa hàng nước hoa chính hãng với đa dạng thương hiệu cao cấp
+              {settings?.shop_name
+                ? `Cửa hàng ${shopName} - ${address}`
+                : "Cửa hàng nước hoa chính hãng với đa dạng thương hiệu cao cấp"}
             </p>
             <div className="mt-4 flex space-x-3">
               {facebookUrl && (
@@ -120,22 +127,26 @@ export function Footer() {
                   Giới thiệu
                 </Link>
               </li>
-              <li>
-                <Link
-                  href="/chinh-sach-bao-mat"
-                  className="text-muted-foreground hover:text-primary"
-                >
-                  Chính sách bảo mật
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/dieu-khoan-dich-vu"
-                  className="text-muted-foreground hover:text-primary"
-                >
-                  Điều khoản dịch vụ
-                </Link>
-              </li>
+              {privacyPolicy && (
+                <li>
+                  <Link
+                    href="/chinh-sach-bao-mat"
+                    className="text-muted-foreground hover:text-primary"
+                  >
+                    Chính sách bảo mật
+                  </Link>
+                </li>
+              )}
+              {termsConditions && (
+                <li>
+                  <Link
+                    href="/dieu-khoan-dich-vu"
+                    className="text-muted-foreground hover:text-primary"
+                  >
+                    Điều khoản dịch vụ
+                  </Link>
+                </li>
+              )}
             </ul>
           </div>
           <div>
@@ -149,14 +160,26 @@ export function Footer() {
                   Liên hệ
                 </Link>
               </li>
-              <li>
-                <Link
-                  href="/chinh-sach-doi-tra"
-                  className="text-muted-foreground hover:text-primary"
-                >
-                  Chính sách đổi trả
-                </Link>
-              </li>
+              {refundPolicy && (
+                <li>
+                  <Link
+                    href="/chinh-sach-doi-tra"
+                    className="text-muted-foreground hover:text-primary"
+                  >
+                    Chính sách đổi trả
+                  </Link>
+                </li>
+              )}
+              {shippingPolicy && (
+                <li>
+                  <Link
+                    href="/chinh-sach-van-chuyen"
+                    className="text-muted-foreground hover:text-primary"
+                  >
+                    Chính sách vận chuyển
+                  </Link>
+                </li>
+              )}
               <li>
                 <Link
                   href="/cau-hoi-thuong-gap"

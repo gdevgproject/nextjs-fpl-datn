@@ -59,16 +59,16 @@ export const Header = memo(function Header() {
   const { data: session, isLoading: isAuthLoading } = useAuthQuery();
   const isAuthenticated = !!session?.user;
   const logoutMutation = useLogoutMutation();
-  const { toast } = useSonnerToast();
+  const { success, error } = useSonnerToast();
 
   const handleLogout = async () => {
     try {
       await logoutMutation.mutateAsync();
-      toast.success("Đăng xuất thành công", {
+      success("Đăng xuất thành công", {
         description: "Bạn đã đăng xuất khỏi tài khoản.",
       });
-    } catch (error) {
-      toast.error("Đăng xuất thất bại", {
+    } catch (err) {
+      error("Đăng xuất thất bại", {
         description: "Có lỗi xảy ra khi đăng xuất. Vui lòng thử lại.",
       });
     }
@@ -76,13 +76,12 @@ export const Header = memo(function Header() {
 
   const [mounted, setMounted] = useState(false);
   const { settings, isLoading: isLoadingSettings } = useShopSettings();
+  const shopName = settings?.shop_name || "MyBeauty";
+  const logoUrl = settings?.shop_logo_url || "/placeholder-logo.png";
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  const shopName = settings?.shop_name || "MyBeauty";
-  const logoUrl = settings?.logo_url || "/images/logo.png";
 
   if (!mounted || isAuthLoading) {
     return (
@@ -182,7 +181,7 @@ export const Header = memo(function Header() {
                     variant="ghost"
                     onClick={handleLogout}
                     className="justify-start px-0"
-                    disabled={isAuthLoading || logoutMutation.isLoading}
+                    disabled={isAuthLoading || logoutMutation.isPending}
                   >
                     <LogOut className="mr-2 h-4 w-4" />
                     Đăng xuất

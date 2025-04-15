@@ -4,14 +4,16 @@ import type React from "react";
 import { toast as sonnerToast } from "sonner";
 import type { ToastT } from "sonner";
 
-// Define our own ToastOptions type based on the available exports
-export type ToastOptions = Omit<
-  ToastT,
-  "id" | "title" | "type" | "icon" | "description"
->;
-
 // Định nghĩa các loại toast phổ biến
 export type ToastType = "default" | "success" | "error" | "info" | "warning";
+
+// Bổ sung description vào ToastOptions để hỗ trợ truyền description cho toast
+export type ToastOptions = Omit<
+  ToastT,
+  "id" | "title" | "type" | "icon"
+> & {
+  description?: React.ReactNode;
+};
 
 // Interface cho hook
 export interface UseSonnerToastReturn {

@@ -1,13 +1,5 @@
-                        PROJECT DOCUMENTATION & GUIDELINES (docs.txt)
-                         Perfume Store - Next.js App Router & Supabase
-
 MỤC TIÊU:
-Hướng dẫn này cung cấp quy ước và giải thích về cấu trúc dự án, vai trò của
-các thành phần chính, và cách sử dụng tối ưu các công nghệ được chọn
-(Next.js App Router, Supabase, TanStack Query, Server Actions, Context API,
-TypeScript, Zod, shadcn/ui, TailwindCSS, next-themes) để xây dựng một ứng
-dụng web full-stack mạnh mẽ, hiệu suất cao và dễ bảo trì, đáp ứng các
-yêu cầu phức tạp của schema database (schema.txt).
+Hướng dẫn này cung cấp quy ước và giải thích về cấu trúc dự án, vai trò của các thành phần chính, và cách sử dụng tối ưu các công nghệ được chọn (Next.js App Router, Supabase, TanStack Query, Server Actions, Context API, TypeScript, Zod, shadcn/ui, TailwindCSS, next-themes) để xây dựng một ứng dụng web full-stack mạnh mẽ, hiệu suất cao và dễ bảo trì, đáp ứng các yêu cầu phức tạp của schema database (schema.txt).
 
 NGUYÊN TẮC CỐT LÕI:
 1.  **Colocation (Đồng vị trí):** Giữ code liên quan đến một tính năng (feature)

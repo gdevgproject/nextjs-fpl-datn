@@ -31,7 +31,7 @@ export const UserNav = memo(function UserNav({ settings }: { settings?: any }) {
   );
   const logoutMutation = useLogoutMutation();
   const queryClient = useQueryClient();
-  const { toast } = useSonnerToast();
+  const { success, error } = useSonnerToast();
 
   // Debug thông tin profile
   useEffect(() => {
@@ -52,11 +52,11 @@ export const UserNav = memo(function UserNav({ settings }: { settings?: any }) {
         "sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       document.cookie =
         "sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      toast.success("Đăng xuất thành công", {
+      success("Đăng xuất thành công", {
         description: "Bạn đã đăng xuất khỏi tài khoản.",
       });
-    } catch (error) {
-      toast.error("Đăng xuất thất bại", {
+    } catch (err) {
+      error("Đăng xuất thất bại", {
         description: "Có lỗi xảy ra khi đăng xuất. Vui lòng thử lại.",
       });
     }
