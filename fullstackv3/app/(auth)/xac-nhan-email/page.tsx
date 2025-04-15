@@ -6,16 +6,15 @@ export const metadata: Metadata = {
   description: "Xác nhận email cho tài khoản MyBeauty của bạn",
 };
 
-export default async function Page({
+export default function Page({
   searchParams,
 }: {
   searchParams: { code?: string };
 }) {
-  // Nếu có tham số code trong query string, redirect đến trang động để xử lý
   if (searchParams.code) {
-    redirect(`/xac-nhan-email/${searchParams.code}`);
+    // Chuyển sang API route để set session
+    redirect(`/api/auth/comfirm?code=${searchParams.code}`);
   }
-
-  // Nếu không có code, redirect về trang kiểm tra email để hiển thị hướng dẫn
+  // Nếu không có code, hiển thị hướng dẫn kiểm tra email
   redirect("/kiem-tra-email");
 }
