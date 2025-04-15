@@ -14,14 +14,6 @@ export async function getProfileById(userId: string) {
   return data;
 }
 
-// Lấy user theo email (server, dùng cho kiểm tra đăng ký)
-export async function getUserByEmail(email: string) {
-  const supabase = await getSupabaseServerClient();
-  const { data, error } = await supabase.auth.admin.listUsers();
-  if (error) throw error;
-  return data.users.find((u: User) => u.email === email) || null;
-}
-
 // Lấy session phía server
 export async function getSessionServer() {
   const supabase = await getSupabaseServerClient();

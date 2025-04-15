@@ -6,7 +6,7 @@ import {
   createErrorResponse,
   createSuccessResponse,
 } from "@/lib/utils/error-utils";
-import { getProfileById, getUserByEmail } from "./services";
+import { getProfileById } from "./services";
 import {
   getSupabaseServerClient,
   createServiceRoleClient,
@@ -20,18 +20,8 @@ type LoginParams = z.infer<typeof loginSchema> & {
 // Đăng ký
 export async function register(values: z.infer<typeof registerSchema>) {
   const supabase = await getSupabaseServerClient();
-  const serviceClient = await createServiceRoleClient();
 
   try {
-    // Kiểm tra xem email đã tồn tại chưa
-    const existingUser = await getUserByEmail(values.email);
-    if (existingUser) {
-      return createErrorResponse(
-        "Email này đã được sử dụng. Vui lòng sử dụng email khác hoặc đăng nhập.",
-        "email_taken"
-      );
-    }
-
     // Tiến hành đăng ký
     const { data, error } = await supabase.auth.signUp({
       email: values.email,
