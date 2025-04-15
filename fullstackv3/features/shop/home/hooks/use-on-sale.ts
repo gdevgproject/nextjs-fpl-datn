@@ -10,10 +10,15 @@ interface OnSaleData {
   product_slug: string;
   brand_name: string;
   main_image_url: string;
-  display_price: number;
-  original_price_high: number;
-  is_generally_in_stock: boolean;
-  variant_id?: number;
+  // Thông tin của biến thể được CHỌN (giảm giá cao nhất)
+  chosen_variant_id: number;
+  chosen_volume_ml: number;
+  chosen_price: number; // Giá gốc của biến thể được chọn
+  chosen_sale_price: number; // Giá sale của biến thể được chọn
+  chosen_discount_amount: number; // Mức giảm giá tuyệt đối của biến thể được chọn
+  is_chosen_variant_in_stock: boolean; // Biến thể được chọn có còn hàng không?
+  // Thông tin chung của sản phẩm
+  is_generally_in_stock: boolean; // Sản phẩm này có bất kỳ biến thể nào còn hàng không?
 }
 
 export const useOnSaleProducts = () => {
@@ -34,17 +39,16 @@ export const useOnSaleProducts = () => {
       // Transform data for ProductCard
       const products: ProductData[] = ((data as OnSaleData[]) || []).map(
         (item: OnSaleData) => {
-          // Chỉ tạo variant nếu có variant_id
-          const variants = item.variant_id
-            ? [
-                {
-                  id: item.variant_id, // Không sử dụng fallback 0 nữa
-                  price: item.original_price_high,
-                  sale_price: item.display_price,
-                  stock_quantity: item.is_generally_in_stock ? 1 : 0,
-                },
-              ]
-            : undefined; // Trả về undefined nếu không có variant_id
+          // Tạo variant dựa trên chosen_variant_id từ SQL function
+          const variants = [
+            {
+              id: item.chosen_variant_id,
+              volume_ml: item.chosen_volume_ml,
+              price: item.chosen_price,
+              sale_price: item.chosen_sale_price,
+              stock_quantity: item.is_chosen_variant_in_stock ? 1 : 0,
+            },
+          ];
 
           return {
             id: item.product_id,
@@ -59,8 +63,9 @@ export const useOnSaleProducts = () => {
                 is_main: true,
               },
             ],
-            price: item.original_price_high,
-            sale_price: item.display_price,
+            // Sử dụng thông tin của biến thể được chọn cho hiển thị giá
+            price: item.chosen_price,
+            sale_price: item.chosen_sale_price,
             variants,
           };
         }
