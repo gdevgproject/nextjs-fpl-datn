@@ -18,7 +18,11 @@ import { cn } from "@/lib/utils";
  * Optimized SearchForm component that handles product and order searches
  * Implements performance best practices like useCallback, memoization, and debouncing
  */
-export const SearchForm = memo(function SearchForm() {
+export const SearchForm = memo(function SearchForm({
+  mobile,
+}: {
+  mobile?: boolean;
+}) {
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<"product" | "order">("product");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -65,13 +69,26 @@ export const SearchForm = memo(function SearchForm() {
     <form
       ref={formRef}
       onSubmit={handleSubmit}
-      className="relative w-full max-w-full flex-1"
+      className={cn(
+        "relative w-full max-w-full flex-1",
+        mobile ? "mt-2 mb-2" : ""
+      )}
       role="search"
     >
-      <div className="flex items-center gap-2 bg-background border border-border rounded-[10px] px-3 py-2 shadow-sm w-full min-w-0 focus-within:ring-2 focus-within:ring-primary/30 transition-all">
+      <div
+        className={cn(
+          "flex items-center gap-2 bg-background border border-border rounded-[10px] px-3 py-2 shadow-sm w-full min-w-0 focus-within:ring-2 focus-within:ring-primary/30 transition-all",
+          mobile ? "h-12 text-base" : ""
+        )}
+      >
         {/* Mode dropdown replaces toggle group */}
         <Select value={mode} onValueChange={handleModeChange}>
-          <SelectTrigger className="w-28 h-8 text-xs rounded-[8px] bg-background border-none shadow-none px-2">
+          <SelectTrigger
+            className={cn(
+              "w-28 h-8 text-xs rounded-[8px] bg-background border-none shadow-none px-2",
+              mobile ? "h-10 text-sm" : ""
+            )}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent
@@ -90,7 +107,8 @@ export const SearchForm = memo(function SearchForm() {
           }
           className={cn(
             "flex-1 bg-transparent outline-none border-0 px-2 py-1 text-sm min-w-0",
-            "placeholder:text-muted-foreground"
+            "placeholder:text-muted-foreground",
+            mobile ? "text-base h-10" : ""
           )}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -102,8 +120,11 @@ export const SearchForm = memo(function SearchForm() {
           <Button
             type="button"
             variant="ghost"
-            size="sm"
-            className="px-1.5 h-7 rounded-[8px] hover:bg-muted-foreground/10 hover:text-foreground"
+            size={mobile ? "default" : "sm"}
+            className={cn(
+              "px-1.5 h-7 rounded-[8px] hover:bg-muted-foreground/10 hover:text-foreground",
+              mobile ? "h-10 w-10" : ""
+            )}
             onClick={handleClearClick}
             aria-label="Xóa tìm kiếm"
           >
@@ -114,10 +135,10 @@ export const SearchForm = memo(function SearchForm() {
         <Button
           type="submit"
           variant="ghost"
-          size="icon"
+          size={mobile ? "default" : "icon"}
           aria-label={mode === "product" ? "Tìm kiếm" : "Tra cứu"}
           disabled={!query.trim()}
-          className="rounded-[8px]"
+          className={cn("rounded-[8px]", mobile ? "h-10 w-10" : "")}
         >
           <Search className="h-5 w-5" />
         </Button>

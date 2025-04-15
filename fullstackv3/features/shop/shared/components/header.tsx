@@ -108,10 +108,10 @@ export const Header = memo(function Header() {
               <ShopNameLogo shopName={shopName} logoUrl={logoUrl} />
             </Link>
           </div>
-          {/* Search bar luôn ở hàng trên trên laptop trở lên, mobile xuống dưới */}
+          {/* Search bar: mobile hiển thị dưới logo, full width, margin rõ ràng */}
           <div className="w-full order-3 md:order-none md:flex-1 flex justify-center px-0 md:px-2 min-w-0 md:mb-0 mb-2">
             <div className="w-full max-w-xl">
-              <SearchForm />
+              <SearchForm mobile />
             </div>
           </div>
           <div className="flex items-center gap-1 sm:gap-2 min-w-[120px] justify-end flex-shrink-0 mb-2 md:mb-0">
