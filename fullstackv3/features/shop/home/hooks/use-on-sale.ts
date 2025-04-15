@@ -34,14 +34,17 @@ export const useOnSaleProducts = () => {
       // Transform data for ProductCard
       const products: ProductData[] = ((data as OnSaleData[]) || []).map(
         (item: OnSaleData) => {
-          const variants = [
-            {
-              id: item.variant_id || 0,
-              price: item.original_price_high,
-              sale_price: item.display_price,
-              stock_quantity: item.is_generally_in_stock ? 1 : 0,
-            },
-          ];
+          // Chỉ tạo variant nếu có variant_id
+          const variants = item.variant_id
+            ? [
+                {
+                  id: item.variant_id, // Không sử dụng fallback 0 nữa
+                  price: item.original_price_high,
+                  sale_price: item.display_price,
+                  stock_quantity: item.is_generally_in_stock ? 1 : 0,
+                },
+              ]
+            : undefined; // Trả về undefined nếu không có variant_id
 
           return {
             id: item.product_id,

@@ -103,7 +103,7 @@ export function ProductCard({
     variant_id ||
     (product?.variants && product.variants.length > 0
       ? product.variants[0].id
-      : undefined);
+      : productId); // Sử dụng productId làm fallback thay vì undefined
 
   // Check stock from variants
   if (product?.variants && product.variants.length > 0) {
