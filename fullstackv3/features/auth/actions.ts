@@ -31,7 +31,8 @@ export async function register(values: z.infer<typeof registerSchema>) {
           display_name: values.display_name,
           phone_number: values.phone_number || null,
         },
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/api/auth/callback?type=signup`,
+        // Sửa redirect về đúng route xác nhận email
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/(auth)/xac-nhan-email`,
       },
     });
 
