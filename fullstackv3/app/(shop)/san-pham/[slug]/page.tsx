@@ -9,14 +9,15 @@ import { Separator } from "@/components/ui/separator";
 import { getProductDetailBySlug } from "@/features/shop/product-details/services";
 
 interface ProductPageProps {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }
 
 export async function generateMetadata(
   { params }: ProductPageProps,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
-  const product = await getProductDetailBySlug(params.slug);
+  const resolvedParams = await params;
+  const product = await getProductDetailBySlug(resolvedParams.slug);
   if (!product) {
     return {
       title: "Sản phẩm không tồn tại",
@@ -38,7 +39,8 @@ export async function generateMetadata(
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
-  const product = await getProductDetailBySlug(params.slug);
+  const resolvedParams = await params;
+  const product = await getProductDetailBySlug(resolvedParams.slug);
   if (!product) notFound();
 
   return (
