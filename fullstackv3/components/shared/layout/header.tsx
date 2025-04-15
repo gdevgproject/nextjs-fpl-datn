@@ -86,26 +86,36 @@ export const Header = memo(function Header() {
   if (!mounted || isAuthLoading) {
     return (
       <header className="sticky top-0 z-40 w-full border-b bg-background">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-6 md:gap-10">
-            <Link href="/" className="flex items-center space-x-2">
-              <ShopNameLogo
-                shopName={shopName}
-                logoUrl={logoUrl}
-                isLoadingSettings={isLoadingSettings}
-              />
-            </Link>
-            <nav className="hidden gap-6 md:flex">
-              {mainNavItems.map((item) => (
-                <Skeleton key={item.href} className="h-4 w-20" />
-              ))}
-            </nav>
+        <div className="container flex flex-col gap-0 px-2 sm:px-4 xl:px-8 2xl:px-16">
+          {/* Top bar skeleton */}
+          <div className="flex h-16 items-center justify-between gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-[48px]">
+              <Link href="/" className="flex items-center space-x-2">
+                <ShopNameLogo
+                  shopName={shopName}
+                  logoUrl={logoUrl}
+                  isLoadingSettings={isLoadingSettings}
+                />
+              </Link>
+            </div>
+            <div className="flex items-center gap-1 sm:gap-2 min-w-[120px] justify-end">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <Skeleton className="h-8 w-8 rounded-full" />
+              {/* Hamburger menu skeleton on mobile */}
+              <Skeleton className="h-8 w-8 rounded-full md:hidden" />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-8 w-8 rounded-full" />
-            <Skeleton className="h-8 w-8 rounded-full" />
-            <Skeleton className="h-8 w-8 rounded-full" />
+          {/* Search bar on mobile: show below top bar */}
+          <div className="block md:hidden w-full py-2">
+            <Skeleton className="h-10 w-full rounded-full" />
           </div>
+          {/* Menu bar skeleton: only show on md+ */}
+          <nav className="hidden md:flex gap-2 sm:gap-4 justify-center border-t bg-background/80 backdrop-blur py-2 overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+            {mainNavItems.map((item) => (
+              <Skeleton key={item.href} className="h-4 w-20" />
+            ))}
+          </nav>
         </div>
       </header>
     );
@@ -113,83 +123,97 @@ export const Header = memo(function Header() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background">
-      <div className="container flex h-16 items-center justify-between">
-        <div className="flex items-center gap-6 md:gap-10">
-          <Link href="/" className="flex items-center space-x-2">
-            <ShopNameLogo
-              shopName={shopName}
-              logoUrl={logoUrl}
-              isLoadingSettings={isLoadingSettings}
-            />
-          </Link>
-          <nav className="hidden gap-6 md:flex">
-            {mainNavItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  pathname === item.href
-                    ? "text-primary"
-                    : "text-muted-foreground"
-                }`}
-              >
-                {item.title}
-              </Link>
-            ))}
-          </nav>
-        </div>
-        <div className="flex items-center gap-2">
-          <SearchForm />
-          <CartButton />
-          <UserNav settings={settings} />
-          <ThemeToggle />
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="md:hidden"
-                aria-label="Menu"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right">
-              <nav className="flex flex-col gap-4 mt-8">
-                <Link href="/" className="flex items-center space-x-2">
-                  <ShopNameLogo
-                    shopName={shopName}
-                    logoUrl={logoUrl}
-                    isLoadingSettings={isLoadingSettings}
-                  />
-                </Link>
-                {mainNavItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`text-sm font-medium transition-colors hover:text-primary ${
-                      pathname === item.href
-                        ? "text-primary"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {item.title}
+      <div className="container flex flex-col gap-0 px-2 sm:px-4 xl:px-8 2xl:px-16">
+        {/* Top bar */}
+        <div className="flex h-16 items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-[48px]">
+            <Link href="/" className="flex items-center space-x-2">
+              <ShopNameLogo
+                shopName={shopName}
+                logoUrl={settings?.shop_logo_url || logoUrl}
+                isLoadingSettings={isLoadingSettings}
+              />
+            </Link>
+          </div>
+          <div className="flex items-center gap-1 sm:gap-2 min-w-[120px] justify-end">
+            <CartButton />
+            <UserNav settings={settings} />
+            <ThemeToggle />
+            {/* Hamburger menu on mobile */}
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="md:hidden"
+                  aria-label="Menu"
+                >
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right">
+                <nav className="flex flex-col gap-4 mt-8">
+                  <Link href="/" className="flex items-center space-x-2">
+                    <ShopNameLogo
+                      shopName={shopName}
+                      logoUrl={settings?.shop_logo_url || logoUrl}
+                      isLoadingSettings={isLoadingSettings}
+                    />
                   </Link>
-                ))}
-                {isAuthenticated && (
-                  <Button
-                    variant="ghost"
-                    onClick={handleLogout}
-                    className="justify-start px-0"
-                    disabled={isAuthLoading || logoutMutation.isPending}
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Đăng xuất
-                  </Button>
-                )}
-              </nav>
-            </SheetContent>
-          </Sheet>
+                  {mainNavItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`text-sm font-medium transition-colors hover:text-primary ${
+                        pathname === item.href
+                          ? "text-primary"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {item.title}
+                    </Link>
+                  ))}
+                  {isAuthenticated && (
+                    <Button
+                      variant="ghost"
+                      onClick={handleLogout}
+                      className="justify-start px-0"
+                      disabled={isAuthLoading || logoutMutation.isPending}
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Đăng xuất
+                    </Button>
+                  )}
+                </nav>
+              </SheetContent>
+            </Sheet>
+          </div>
+        </div>
+        {/* Search bar: show below top bar on mobile, inline on md+ */}
+        <div className="block md:hidden w-full py-2">
+          <SearchForm />
+        </div>
+        {/* Menu bar: only show on md+ */}
+        <nav className="hidden md:flex gap-2 sm:gap-4 justify-center border-t bg-background/80 backdrop-blur py-2 overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+          {mainNavItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`text-sm font-medium transition-colors px-3 py-1 rounded-full hover:bg-primary/10 hover:text-primary whitespace-nowrap ${
+                pathname === item.href
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground"
+              }`}
+            >
+              {item.title}
+            </Link>
+          ))}
+        </nav>
+        {/* Search bar inline on md+ */}
+        <div className="hidden md:flex w-full justify-center py-2">
+          <div className="w-full max-w-2xl">
+            <SearchForm />
+          </div>
         </div>
       </div>
     </header>

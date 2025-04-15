@@ -62,6 +62,9 @@ export default async function HomePage() {
         {/* Brands Section - Client Component with useClientFetch */}
         <BrandsSection />
 
+        {/* On Sale Section - Client Component with useClientFetch */}
+        <OnSaleSection />
+
         {/* Featured Categories Section */}
         <FeaturedCategoriesSection categories={featuredCategories} />
 
@@ -70,9 +73,6 @@ export default async function HomePage() {
 
         {/* Best Sellers Section - Client Component with useClientRpcQuery */}
         <BestSellersSection />
-
-        {/* On Sale Section - Client Component with useClientFetch */}
-        <OnSaleSection />
       </div>
     </div>
   );
