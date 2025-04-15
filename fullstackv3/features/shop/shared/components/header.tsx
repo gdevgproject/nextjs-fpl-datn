@@ -33,7 +33,7 @@ const ShopNameLogo = memo(function ShopNameLogo({
 }) {
   return (
     <>
-      <div className="rounded-lg overflow-hidden">
+      <div className="rounded-[10px] overflow-hidden border border-border bg-background">
         <Image
           src={logoUrl}
           alt={`${shopName} Logo`}
@@ -62,9 +62,9 @@ const NavigationItems = memo(function NavigationItems({
         <Link
           key={item.href}
           href={item.href}
-          className={`text-sm font-medium transition-colors px-3 py-1 rounded-full hover:bg-primary/10 hover:text-primary whitespace-nowrap ${
+          className={`text-sm font-medium transition-colors px-3 py-1 rounded-[8px] hover:bg-primary/10 hover:text-primary whitespace-nowrap border border-transparent ${
             pathname === item.href
-              ? "bg-primary/10 text-primary"
+              ? "bg-primary/10 text-primary border-primary/30"
               : "text-muted-foreground"
           }`}
         >
@@ -101,14 +101,20 @@ export const Header = memo(function Header() {
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background">
       <div className="container flex flex-col gap-0 px-2 sm:px-4 xl:px-8 2xl:px-16">
-        {/* Top bar */}
-        <div className="flex h-16 items-center justify-between gap-2 sm:gap-4">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-[48px]">
+        {/* Top bar: logo, search, actions */}
+        <div className="flex flex-wrap md:flex-nowrap h-auto md:h-20 items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-[48px] flex-shrink-0 mb-2 md:mb-0">
             <Link href="/" className="flex items-center space-x-2">
               <ShopNameLogo shopName={shopName} logoUrl={logoUrl} />
             </Link>
           </div>
-          <div className="flex items-center gap-1 sm:gap-2 min-w-[120px] justify-end">
+          {/* Search bar luôn ở hàng trên trên laptop trở lên, mobile xuống dưới */}
+          <div className="w-full order-3 md:order-none md:flex-1 flex justify-center px-0 md:px-2 min-w-0 md:mb-0 mb-2">
+            <div className="w-full max-w-xl">
+              <SearchForm />
+            </div>
+          </div>
+          <div className="flex items-center gap-1 sm:gap-2 min-w-[120px] justify-end flex-shrink-0 mb-2 md:mb-0">
             <CartButton />
             <UserNav settings={settings} />
             <ThemeToggle />
@@ -120,20 +126,10 @@ export const Header = memo(function Header() {
             />
           </div>
         </div>
-        {/* Search bar: show below top bar on mobile, inline on md+ */}
-        <div className="block md:hidden w-full py-2">
-          <SearchForm />
-        </div>
         {/* Menu bar: only show on md+ */}
         <nav className="hidden md:flex gap-2 sm:gap-4 justify-center border-t bg-background/80 backdrop-blur py-2 overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
           <NavigationItems pathname={pathname} />
         </nav>
-        {/* Search bar inline on md+ */}
-        <div className="hidden md:flex w-full justify-center py-2">
-          <div className="w-full max-w-2xl">
-            <SearchForm />
-          </div>
-        </div>
       </div>
     </header>
   );
@@ -155,16 +151,19 @@ const MobileMenu = memo(function MobileMenu({
         <Button
           variant="ghost"
           size="icon"
-          className="md:hidden"
+          className="md:hidden rounded-[10px] border border-border"
           aria-label="Menu"
         >
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="right">
-        <nav className="flex flex-col gap-4 mt-8">
-          <Link href="/" className="flex items-center space-x-2">
-            <div className="rounded-lg overflow-hidden">
+      <SheetContent
+        side="right"
+        className="rounded-l-[14px] p-0 max-w-[320px] w-full border-l border-border bg-background shadow-xl"
+      >
+        <div className="flex flex-col gap-0 h-full">
+          <div className="flex items-center gap-2 px-5 py-6 border-b border-border">
+            <div className="rounded-[10px] overflow-hidden border border-border bg-background">
               <Image
                 src={logoUrl}
                 alt={`${shopName} Logo`}
@@ -174,21 +173,23 @@ const MobileMenu = memo(function MobileMenu({
               />
             </div>
             <span className="font-bold text-xl">{shopName}</span>
-          </Link>
-          {mainNavItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                pathname === item.href
-                  ? "text-primary"
-                  : "text-muted-foreground"
-              }`}
-            >
-              {item.title}
-            </Link>
-          ))}
-        </nav>
+          </div>
+          <nav className="flex flex-col gap-1 px-3 py-4">
+            {mainNavItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`text-base font-medium transition-colors px-3 py-2 rounded-[8px] border border-transparent hover:bg-primary/10 hover:text-primary ${
+                  pathname === item.href
+                    ? "bg-primary/10 text-primary border-primary/30"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {item.title}
+              </Link>
+            ))}
+          </nav>
+        </div>
       </SheetContent>
     </Sheet>
   );

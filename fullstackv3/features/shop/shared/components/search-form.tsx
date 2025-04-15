@@ -5,7 +5,13 @@ import { useState, useRef, useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 /**
@@ -59,31 +65,23 @@ export const SearchForm = memo(function SearchForm() {
     <form
       ref={formRef}
       onSubmit={handleSubmit}
-      className="relative w-full max-w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-3xl 2xl:max-w-4xl flex-1"
+      className="relative w-full max-w-full flex-1"
       role="search"
     >
-      <div className="flex items-center gap-2 bg-muted rounded-full px-2 py-1 shadow-sm border w-full min-w-0">
-        <ToggleGroup
-          type="single"
-          value={mode}
-          onValueChange={handleModeChange}
-          className="shrink-0 rounded-full overflow-hidden border-none bg-transparent"
-        >
-          <ToggleGroupItem
-            value="product"
-            aria-label="Tìm sản phẩm"
-            className="text-xs px-3 rounded-full data-[state=on]:bg-primary/10 data-[state=on]:text-primary transition-colors"
+      <div className="flex items-center gap-2 bg-background border border-border rounded-[10px] px-3 py-2 shadow-sm w-full min-w-0 focus-within:ring-2 focus-within:ring-primary/30 transition-all">
+        {/* Mode dropdown replaces toggle group */}
+        <Select value={mode} onValueChange={handleModeChange}>
+          <SelectTrigger className="w-28 h-8 text-xs rounded-[8px] bg-background border-none shadow-none px-2">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent
+            align="start"
+            className="min-w-[120px] rounded-[8px] border border-border"
           >
-            Sản phẩm
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="order"
-            aria-label="Tra cứu đơn hàng"
-            className="text-xs px-3 rounded-full data-[state=on]:bg-primary/10 data-[state=on]:text-primary transition-colors"
-          >
-            Đơn hàng
-          </ToggleGroupItem>
-        </ToggleGroup>
+            <SelectItem value="product">Sản phẩm</SelectItem>
+            <SelectItem value="order">Đơn hàng</SelectItem>
+          </SelectContent>
+        </Select>
         <input
           ref={inputRef}
           type="search"
@@ -105,7 +103,7 @@ export const SearchForm = memo(function SearchForm() {
             type="button"
             variant="ghost"
             size="sm"
-            className="px-1.5 h-7 rounded-full hover:bg-muted-foreground/10 hover:text-foreground"
+            className="px-1.5 h-7 rounded-[8px] hover:bg-muted-foreground/10 hover:text-foreground"
             onClick={handleClearClick}
             aria-label="Xóa tìm kiếm"
           >
@@ -119,6 +117,7 @@ export const SearchForm = memo(function SearchForm() {
           size="icon"
           aria-label={mode === "product" ? "Tìm kiếm" : "Tra cứu"}
           disabled={!query.trim()}
+          className="rounded-[8px]"
         >
           <Search className="h-5 w-5" />
         </Button>

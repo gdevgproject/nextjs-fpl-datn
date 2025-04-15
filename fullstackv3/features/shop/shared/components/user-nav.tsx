@@ -38,8 +38,7 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
 
   // Only fetch profile if user is authenticated
   const { data: profile, isLoading: isProfileLoading } = useProfileQuery(
-    session?.user?.id,
-    { enabled: isAuthenticated }
+    isAuthenticated ? session?.user?.id : undefined
   );
 
   const logoutMutation = useLogoutMutation();
@@ -118,8 +117,11 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0">
-          <Avatar className="h-8 w-8">
+        <Button
+          variant="ghost"
+          className="relative h-8 w-8 rounded-[10px] p-0 border border-border focus-visible:ring-2 focus-visible:ring-primary/70"
+        >
+          <Avatar className="h-8 w-8 rounded-[8px]">
             <AvatarImage
               src={avatarUrl}
               alt={displayName}
@@ -135,60 +137,74 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-64" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-base font-semibold leading-none line-clamp-1">
-              {displayName}
-            </p>
-            {phone && (
-              <p className="text-xs text-muted-foreground line-clamp-1">
-                {phone}
-              </p>
-            )}
-            <p className="text-xs text-muted-foreground line-clamp-1 capitalize">
+      <DropdownMenuContent
+        className="w-72 p-0 overflow-hidden rounded-[12px] shadow-xl border border-border bg-background"
+        align="end"
+        forceMount
+      >
+        <div className="px-4 py-3 bg-muted/60 flex items-center gap-3 border-b border-border">
+          <Avatar className="h-10 w-10 rounded-[8px]">
+            <AvatarImage src={avatarUrl} alt={displayName} />
+            <AvatarFallback>
+              {displayName.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-base truncate">{displayName}</p>
+            <p className="text-xs text-muted-foreground truncate">{email}</p>
+            <p className="text-xs text-muted-foreground capitalize truncate">
               {userRoleDisplay}
             </p>
-            {email && (
-              <p className="text-xs text-muted-foreground line-clamp-1">
-                {email}
-              </p>
-            )}
           </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        </div>
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <Link href="/tai-khoan">
+            <Link
+              href="/tai-khoan"
+              className="flex items-center gap-2 rounded-[8px]"
+            >
+              <span className="inline-block w-4 h-4 bg-primary/10 rounded-[6px]" />
               <span>Tài khoản</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/tai-khoan/don-hang">
+            <Link
+              href="/tai-khoan/don-hang"
+              className="flex items-center gap-2 rounded-[8px]"
+            >
+              <span className="inline-block w-4 h-4 bg-primary/10 rounded-[6px]" />
               <span>Đơn hàng</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/tai-khoan/yeu-thich">
+            <Link
+              href="/tai-khoan/yeu-thich"
+              className="flex items-center gap-2 rounded-[8px]"
+            >
+              <span className="inline-block w-4 h-4 bg-primary/10 rounded-[6px]" />
               <span>Yêu thích</span>
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
         {(role === "admin" || role === "staff" || role === "shipper") && (
           <>
+            <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href="/admin">
+              <Link
+                href="/admin"
+                className="flex items-center gap-2 rounded-[8px]"
+              >
+                <span className="inline-block w-4 h-4 bg-primary/10 rounded-[6px]" />
                 <span>Quản trị</span>
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
           </>
         )}
+        <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={handleSignOut}
           disabled={logoutMutation.isPending}
-          className="text-destructive"
+          className="text-destructive flex items-center gap-2 rounded-[8px]"
         >
           <LogOut className="mr-2 h-4 w-4" />
           <span>
