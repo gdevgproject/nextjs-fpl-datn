@@ -17,7 +17,10 @@ export function getResultData<T = any>(result: any): T | undefined {
 }
 
 // Helper: Lấy error và code an toàn từ kết quả trả về
-export function getErrorAndCodeFromResult(result: any): { error?: string; code?: string } {
+export function getErrorAndCodeFromResult(result: any): {
+  error?: string;
+  code?: string;
+} {
   if (result && typeof result === "object") {
     if ("error" in result) {
       return { error: result.error, code: result.code };

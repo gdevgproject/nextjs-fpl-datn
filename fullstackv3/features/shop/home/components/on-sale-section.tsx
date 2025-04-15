@@ -1,0 +1,1 @@
+// sử dụng hàm get_homepage_on_sale_products_with_stock mà schema.ts đã định nghĩa

@@ -8,10 +8,7 @@ import type { ToastT } from "sonner";
 export type ToastType = "default" | "success" | "error" | "info" | "warning";
 
 // Bổ sung description vào ToastOptions để hỗ trợ truyền description cho toast
-export type ToastOptions = Omit<
-  ToastT,
-  "id" | "title" | "type" | "icon"
-> & {
+export type ToastOptions = Omit<ToastT, "id" | "title" | "type" | "icon"> & {
   description?: React.ReactNode;
 };
 

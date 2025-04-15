@@ -17,6 +17,7 @@ import { useCartContext } from "@/features/shop/cart/providers/cart-provider";
 import type { Product } from "@/features/shop/products/types";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 
 interface ProductCardProps {
   product: Product;
@@ -45,8 +46,10 @@ export function ProductCard({ product }: ProductCardProps) {
 
   // Kiểm tra xem sản phẩm có giảm giá không
   const hasDiscount =
-    product.sale_price !== null &&
+    typeof product.sale_price === "number" &&
+    typeof product.price === "number" &&
     product.sale_price > 0 &&
+    product.price > 0 &&
     product.sale_price < product.price;
 
   // Kiểm tra xem sản phẩm có trong danh sách yêu thích không
@@ -66,13 +69,16 @@ export function ProductCard({ product }: ProductCardProps) {
         console.error("Error fetching product labels:", error);
         return [];
       }
-      return data?.map((item) => item.label) || [];
+      return (data?.map((item: { label: any }) => item.label) || []) as {
+        id: number;
+        name: string;
+      }[];
     },
     staleTime: 1000 * 60 * 60, // 1 hour
   });
 
   // Fetch average rating
-  const { data: avgRating } = useQuery({
+  const { data: avgRating = 0 } = useQuery({
     queryKey: ["averageRating", product.id],
     queryFn: async () => {
       const supabase = getSupabaseBrowserClient();
@@ -91,7 +97,10 @@ export function ProductCard({ product }: ProductCardProps) {
         return 0;
       }
 
-      const totalRating = data.reduce((sum, review) => sum + review.rating, 0);
+      const totalRating = data.reduce(
+        (sum: number, review: { rating: number }) => sum + review.rating,
+        0
+      );
       return totalRating / data.length;
     },
     staleTime: 1000 * 60 * 15, // 15 minutes
@@ -212,9 +221,12 @@ export function ProductCard({ product }: ProductCardProps) {
             {hasDiscount && (
               <Badge className="absolute left-2 top-2 bg-red-500 hover:bg-red-600">
                 -
-                {Math.round(
-                  ((product.price - product.sale_price!) / product.price) * 100
-                )}
+                {product.price && product.sale_price
+                  ? Math.round(
+                      ((product.price - product.sale_price) / product.price) *
+                        100
+                    )
+                  : 0}
                 %
               </Badge>
             )}
@@ -247,11 +259,18 @@ export function ProductCard({ product }: ProductCardProps) {
         <div className="p-4">
           {product.brand && (
             <div className="text-xs text-muted-foreground">
-              {product.brand.name}
+              <Link
+                href={`/san-pham?brand=${product.brand.id}`}
+                prefetch={true}
+                className="hover:underline"
+              >
+                {product.brand.name}
+              </Link>
             </div>
           )}
           <Link
             href={`/san-pham/${productSlug}`}
+            prefetch={true}
             className="line-clamp-2 mt-1 font-medium hover:underline"
           >
             {product.name}
@@ -260,15 +279,15 @@ export function ProductCard({ product }: ProductCardProps) {
             {hasDiscount ? (
               <>
                 <span className="font-medium text-primary">
-                  {formatPrice(product.sale_price!)}
+                  {formatPrice(product.sale_price ?? 0)}
                 </span>
                 <span className="text-sm text-muted-foreground line-through">
-                  {formatPrice(product.price)}
+                  {formatPrice(product.price ?? 0)}
                 </span>
               </>
             ) : (
               <span className="font-medium text-primary">
-                {formatPrice(product.price)}
+                {formatPrice(product.price ?? 0)}
               </span>
             )}
             {/* Display volume if it's a perfume product */}
@@ -279,7 +298,7 @@ export function ProductCard({ product }: ProductCardProps) {
           {/* Product Labels */}
           {labels && labels.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
-              {labels.map((label) => (
+              {labels.map((label: { id: number; name: string }) => (
                 <Badge
                   key={label.id}
                   className="bg-secondary text-secondary-foreground"

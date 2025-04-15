@@ -1,16 +1,16 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { ProductCard } from "@/components/shared/product-card"
-import { Skeleton } from "@/components/ui/skeleton"
-import type { Product } from "../types"
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { ProductCard } from "@/components/shared/product-card";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Product } from "../types";
 
 interface ProductSectionProps {
-  title: string
-  description: string
-  products: Product[]
-  viewAllLink: string
-  isLoading?: boolean
-  bgColor?: "default" | "muted" | "accent" | "subtle"
+  title: string;
+  description: string;
+  products: Product[];
+  viewAllLink: string;
+  isLoading?: boolean;
+  bgColor?: "default" | "muted" | "accent" | "subtle";
 }
 
 export function ProductSection({
@@ -25,15 +25,15 @@ export function ProductSection({
   const getBgClass = () => {
     switch (bgColor) {
       case "muted":
-        return "bg-muted/60 dark:bg-muted/30"
+        return "bg-muted/60 dark:bg-muted/30";
       case "accent":
-        return "bg-primary/5 dark:bg-primary/10"
+        return "bg-primary/5 dark:bg-primary/10";
       case "subtle":
-        return "bg-secondary/5 dark:bg-secondary/10"
+        return "bg-secondary/5 dark:bg-secondary/10";
       default:
-        return "bg-background"
+        return "bg-background";
     }
-  }
+  };
 
   // Nếu đang loading, hiển thị skeleton
   if (isLoading) {
@@ -62,7 +62,7 @@ export function ProductSection({
           </div>
         </div>
       </section>
-    )
+    );
   }
 
   // Nếu không có sản phẩm, hiển thị placeholder
@@ -87,7 +87,9 @@ export function ProductSection({
             {
               id: i,
               product_id: i,
-              image_url: `/placeholder.svg?height=400&width=400&text=${encodeURIComponent(`Sản phẩm ${i + 1}`)}`,
+              image_url: `/placeholder.svg?height=400&width=400&text=${encodeURIComponent(
+                `Sản phẩm ${i + 1}`
+              )}`,
               is_main: true,
               display_order: 0,
               created_at: new Date().toISOString(),
@@ -108,7 +110,7 @@ export function ProductSection({
               deleted_at: null,
             },
           ],
-        }))
+        }));
 
   return (
     <section className={getBgClass()}>
@@ -118,7 +120,11 @@ export function ProductSection({
             <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
             <p className="text-muted-foreground">{description}</p>
           </div>
-          <Button asChild variant="outline" className="self-start sm:self-center">
+          <Button
+            asChild
+            variant="outline"
+            className="self-start sm:self-center"
+          >
             <Link href={viewAllLink}>Xem tất cả</Link>
           </Button>
         </div>
@@ -129,6 +135,5 @@ export function ProductSection({
         </div>
       </div>
     </section>
-  )
+  );
 }
-
