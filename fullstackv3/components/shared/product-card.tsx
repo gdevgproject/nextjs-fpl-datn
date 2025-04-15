@@ -1,343 +1,171 @@
 "use client";
 
-import type React from "react";
-import { useState } from "react";
-import Link from "next/link";
 import Image from "next/image";
-import { Heart, ShoppingCart, Loader2, Star } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/hooks/use-toast";
-import { formatPrice } from "@/lib/utils";
-import { useWishlist } from "@/features/shop/wishlist/hooks/use-wishlist";
-import { useCartContext } from "@/features/shop/cart/providers/cart-provider";
-import type { Product } from "@/features/shop/products/types";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { ShoppingCart, Heart, AlertCircle } from "lucide-react";
 
-interface ProductCardProps {
-  product: Product;
+export interface ProductCardProps {
+  id: number;
+  slug: string;
+  name: string;
+  brand_name?: string;
+  image_url?: string;
+  price: number;
+  sale_price?: number | null;
+  variant_id?: number;
+  stock_quantity?: number;
+  showAddToCart?: boolean;
+  gender_name?: string | null;
+  concentration_name?: string | null;
+  perfume_type_name?: string | null;
+  discount_percentage?: number;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
-  const { isInWishlist, toggleWishlist } = useWishlist();
-  const { addToCart } = useCartContext();
-  const { toast } = useToast();
-  const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
-  const [isImageLoading, setIsImageLoading] = useState(true);
-
-  // Đảm bảo product.slug tồn tại
-  const productSlug = product.slug || `product-${product.id}`;
-
-  // Tìm ảnh chính hoặc sử dụng ảnh đầu tiên
-  const mainImage =
-    product.images?.find((img) => img.is_main)?.image_url ||
-    product.images?.[0]?.image_url ||
-    `/placeholder.svg?height=400&width=400&text=${encodeURIComponent(
-      product.name
-    )}`;
-
-  // Kiểm tra xem sản phẩm có giảm giá không
-  const hasDiscount =
-    typeof product.sale_price === "number" &&
-    typeof product.price === "number" &&
-    product.sale_price > 0 &&
-    product.price > 0 &&
-    product.sale_price < product.price;
-
-  // Kiểm tra xem sản phẩm có trong danh sách yêu thích không
-  const isWishlisted = isInWishlist(product.id);
-
-  // Fetch product labels
-  const { data: labels } = useQuery({
-    queryKey: ["productLabels", product.id],
-    queryFn: async () => {
-      const supabase = getSupabaseBrowserClient();
-      const { data, error } = await supabase
-        .from("product_label_assignments")
-        .select("label:product_labels(*)")
-        .eq("product_id", product.id);
-
-      if (error) {
-        console.error("Error fetching product labels:", error);
-        return [];
-      }
-      return (data?.map((item: { label: any }) => item.label) || []) as {
-        id: number;
-        name: string;
-      }[];
-    },
-    staleTime: 1000 * 60 * 60, // 1 hour
-  });
-
-  // Fetch average rating
-  const { data: avgRating = 0 } = useQuery({
-    queryKey: ["averageRating", product.id],
-    queryFn: async () => {
-      const supabase = getSupabaseBrowserClient();
-      const { data, error } = await supabase
-        .from("reviews")
-        .select("rating")
-        .eq("product_id", product.id)
-        .eq("is_approved", true);
-
-      if (error) {
-        console.error("Error fetching average rating:", error);
-        return 0;
-      }
-
-      if (!data || data.length === 0) {
-        return 0;
-      }
-
-      const totalRating = data.reduce(
-        (sum: number, review: { rating: number }) => sum + review.rating,
-        0
-      );
-      return totalRating / data.length;
-    },
-    staleTime: 1000 * 60 * 15, // 15 minutes
-  });
-
-  // Determine the volume of the product
-  const volume =
-    product.variants && product.variants.length > 0
-      ? product.variants[0].volume_ml
-      : null;
-
-  // Xử lý thêm vào giỏ hàng
-  const handleAddToCart = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    try {
-      setIsAddingToCart(true);
-
-      // Kiểm tra sản phẩm và variants
-      if (product && product.variants && product.variants.length > 0) {
-        // Tìm variant có giá thấp nhất
-        const sortedVariants = [...product.variants].sort((a, b) => {
-          const priceA = a.sale_price || a.price;
-          const priceB = b.sale_price || b.price;
-          return priceA - priceB;
-        });
-
-        const variantToAdd = sortedVariants[0];
-        if (variantToAdd && variantToAdd.id) {
-          await addToCart(variantToAdd.id, 1, product.id.toString());
-
-          toast({
-            title: "Đã thêm vào giỏ hàng",
-            description: `${product.name} đã được thêm vào giỏ hàng của bạn.`,
-          });
-        } else {
-          toast({
-            title: "Không thể thêm vào giỏ hàng",
-            description: "Không thể xác định biến thể sản phẩm.",
-            variant: "destructive",
-          });
-        }
-      } else {
-        // Fallback khi không có variant
-        toast({
-          title: "Không thể thêm vào giỏ hàng",
-          description: "Sản phẩm này không có biến thể nào.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error adding to cart:", error);
-      toast({
-        title: "Thêm vào giỏ hàng thất bại",
-        description: "Đã xảy ra lỗi khi thêm sản phẩm vào giỏ hàng.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsAddingToCart(false);
-    }
-  };
-
-  // Xử lý thêm/xóa khỏi danh sách yêu thích
-  const handleToggleWishlist = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    try {
-      setIsTogglingWishlist(true);
-
-      const supabase = getSupabaseBrowserClient();
-      const { data: user } = await supabase.auth.getUser();
-
-      if (!user) {
-        toast({
-          title: "Vui lòng đăng nhập",
-          description:
-            "Bạn cần đăng nhập để thêm sản phẩm vào danh sách yêu thích.",
-          variant: "default",
-        });
-        return;
-      }
-
-      await toggleWishlist(product.id);
-    } catch (error) {
-      console.error("Error toggling wishlist:", error);
-    } finally {
-      setIsTogglingWishlist(false);
-    }
-  };
-
-  const handleImageLoad = () => {
-    setIsImageLoading(false);
-  };
-
-  const handleImageError = () => {
-    setIsImageLoading(false);
-  };
+export function ProductCard({
+  id,
+  slug,
+  name,
+  brand_name,
+  image_url,
+  price,
+  sale_price,
+  variant_id,
+  stock_quantity = 0,
+  showAddToCart = true,
+  gender_name,
+  concentration_name,
+  perfume_type_name,
+  discount_percentage,
+}: ProductCardProps) {
+  const isOnSale = sale_price && sale_price < price;
+  const isOutOfStock = stock_quantity <= 0;
 
   return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-0">
-        <Link href={`/san-pham/${productSlug}`}>
-          <div className="relative aspect-square overflow-hidden">
-            {isImageLoading && (
-              <Skeleton className="absolute inset-0 h-full w-full" />
-            )}
-            <Image
-              src={mainImage || "/placeholder.svg"}
-              alt={product.name}
-              fill
-              className={`object-cover transition-all duration-300 ${
-                isImageLoading ? "opacity-0" : "opacity-100 hover:scale-105"
-              }`}
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              onLoad={handleImageLoad}
-              onError={handleImageError}
-              loading="lazy"
-            />
-            {hasDiscount && (
-              <Badge className="absolute left-2 top-2 bg-red-500 hover:bg-red-600">
-                -
-                {product.price && product.sale_price
-                  ? Math.round(
-                      ((product.price - product.sale_price) / product.price) *
-                        100
-                    )
-                  : 0}
-                %
-              </Badge>
-            )}
-            <Button
-              variant="secondary"
-              size="icon"
-              className={`absolute right-2 top-2 z-10 h-8 w-8 rounded-full shadow-md ${
-                isWishlisted
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                  : "bg-white text-gray-700 hover:bg-white/90"
-              }`}
-              onClick={handleToggleWishlist}
-              disabled={isTogglingWishlist}
-            >
-              {isTogglingWishlist ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Heart
-                  className={`h-4 w-4 ${isWishlisted ? "fill-current" : ""}`}
-                />
-              )}
-              <span className="sr-only">
-                {isWishlisted
-                  ? "Xóa khỏi danh sách yêu thích"
-                  : "Thêm vào yêu thích"}
-              </span>
-            </Button>
-          </div>
-        </Link>
-        <div className="p-4">
-          {product.brand && (
-            <div className="text-xs text-muted-foreground">
-              <Link
-                href={`/san-pham?brand=${product.brand.id}`}
-                prefetch={true}
-                className="hover:underline"
-              >
-                {product.brand.name}
-              </Link>
-            </div>
-          )}
-          <Link
-            href={`/san-pham/${productSlug}`}
-            prefetch={true}
-            className="line-clamp-2 mt-1 font-medium hover:underline"
+    <div className="group relative overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md">
+      <Link href={`/san-pham/${slug}`} className="block">
+        {isOnSale && (
+          <Badge className="absolute top-2 left-2 z-10 bg-red-500 hover:bg-red-600">
+            -{discount_percentage}%
+          </Badge>
+        )}
+        {isOutOfStock && (
+          <Badge
+            variant="outline"
+            className="absolute top-2 right-2 z-10 bg-background/80"
           >
-            {product.name}
+            Hết hàng
+          </Badge>
+        )}
+        <div className="aspect-square relative overflow-hidden bg-muted">
+          <Image
+            src={image_url || "/placeholder.svg"}
+            alt={name}
+            fill
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        </div>
+      </Link>
+      <div className="p-4 space-y-1">
+        {brand_name && (
+          <Link
+            href={`/thuong-hieu/${brand_name
+              .toLowerCase()
+              .replace(/\s+/g, "-")}`}
+          >
+            <p className="text-xs text-muted-foreground font-medium hover:text-primary transition-colors">
+              {brand_name}
+            </p>
           </Link>
-          <div className="mt-2 flex items-center gap-2">
-            {hasDiscount ? (
-              <>
-                <span className="font-medium text-primary">
-                  {formatPrice(product.sale_price ?? 0)}
-                </span>
-                <span className="text-sm text-muted-foreground line-through">
-                  {formatPrice(product.price ?? 0)}
-                </span>
-              </>
-            ) : (
-              <span className="font-medium text-primary">
-                {formatPrice(product.price ?? 0)}
-              </span>
-            )}
-            {/* Display volume if it's a perfume product */}
-            {volume && (
-              <span className="text-sm text-muted-foreground">{volume}ml</span>
-            )}
-          </div>
-          {/* Product Labels */}
-          {labels && labels.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1">
-              {labels.map((label: { id: number; name: string }) => (
-                <Badge
-                  key={label.id}
-                  className="bg-secondary text-secondary-foreground"
-                >
-                  {label.name}
-                </Badge>
-              ))}
-            </div>
+        )}
+        <Link
+          href={`/san-pham/${slug}`}
+          className="block group-hover:text-primary transition-colors"
+        >
+          <h3 className="font-medium text-sm leading-tight line-clamp-2">
+            {name}
+          </h3>
+        </Link>
+        <div className="flex flex-wrap gap-1 mt-1.5">
+          {gender_name && (
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1.5 py-0 h-5 font-normal"
+            >
+              {gender_name}
+            </Badge>
           )}
-          {/* Average Rating */}
-          {avgRating > 0 && (
-            <div className="mt-2 flex items-center gap-1">
-              <Star className="h-4 w-4 text-yellow-500" />
-              <span className="text-sm font-medium">
-                {avgRating.toFixed(1)}
-              </span>
-            </div>
+          {concentration_name && (
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1.5 py-0 h-5 font-normal"
+            >
+              {concentration_name}
+            </Badge>
+          )}
+          {perfume_type_name && (
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1.5 py-0 h-5 font-normal"
+            >
+              {perfume_type_name}
+            </Badge>
           )}
         </div>
-      </CardContent>
-      <CardFooter className="p-4 pt-0">
-        <Button
-          className="w-full"
-          onClick={handleAddToCart}
-          disabled={isAddingToCart}
-        >
-          {isAddingToCart ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Đang thêm...
-            </>
-          ) : (
-            <>
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              Thêm vào giỏ hàng
-            </>
-          )}
-        </Button>
-      </CardFooter>
-    </Card>
+        <div className="flex items-center justify-between pt-2">
+          <div>
+            {isOnSale ? (
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">
+                  {new Intl.NumberFormat("vi-VN", {
+                    style: "currency",
+                    currency: "VND",
+                  }).format(sale_price || 0)}
+                </span>
+                <span className="text-xs text-muted-foreground line-through">
+                  {new Intl.NumberFormat("vi-VN", {
+                    style: "currency",
+                    currency: "VND",
+                  }).format(price)}
+                </span>
+              </div>
+            ) : (
+              <span className="font-semibold">
+                {new Intl.NumberFormat("vi-VN", {
+                  style: "currency",
+                  currency: "VND",
+                }).format(price)}
+              </span>
+            )}
+          </div>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Heart className="h-4 w-4" />
+            <span className="sr-only">Add to wishlist</span>
+          </Button>
+        </div>
+        {showAddToCart && (
+          <Button
+            className="w-full"
+            size="sm"
+            disabled
+            asChild
+          >
+            <Link href={`/san-pham/${slug}`}>
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              Xem chi tiết
+            </Link>
+          </Button>
+        )}
+        {isOutOfStock && (
+          <div className="flex items-center text-red-600 text-sm mt-1">
+            <AlertCircle className="h-4 w-4 mr-1" />
+            <span>Hết hàng</span>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
+
+export default ProductCard;

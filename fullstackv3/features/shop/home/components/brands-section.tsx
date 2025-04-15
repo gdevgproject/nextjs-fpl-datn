@@ -1,63 +1,170 @@
-import Link from "next/link"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import type { Brand } from "../types"
+"use client";
 
-interface FeaturedBrandsProps {
-  brands: Brand[]
-}
+import { useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
+import Image from "next/image";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-export function FeaturedBrands({ brands }: FeaturedBrandsProps) {
-  // Nếu không có thương hiệu, hiển thị placeholder
-  const displayBrands =
-    brands.length > 0
-      ? brands
-      : Array.from({ length: 6 }).map((_, i) => ({
-          id: i,
-          name: `Thương hiệu ${i + 1}`,
-          description: `Mô tả thương hiệu ${i + 1}`,
-          logo_url: `/placeholder.svg?height=100&width=200&text=${encodeURIComponent(`Thương hiệu ${i + 1}`)}`,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }))
+export default function BrandsSection() {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  return (
-    <section className="bg-primary/5 dark:bg-primary/10 py-12">
-      <div className="container">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div className="mb-4 sm:mb-0">
-            <h2 className="text-2xl font-bold tracking-tight">Thương hiệu nổi tiếng</h2>
-            <p className="text-muted-foreground">Chúng tôi hợp tác với các thương hiệu nước hoa hàng đầu thế giới</p>
-          </div>
-          <Button asChild variant="outline" className="self-start sm:self-center">
-            <Link href="/thuong-hieu">Xem tất cả</Link>
-          </Button>
-        </div>
-        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-          {displayBrands.map((brand) => (
-            <Link
-              key={brand.id}
-              href={`/san-pham?brand=${brand.id}`}
-              className="group flex h-24 items-center justify-center rounded-lg bg-background p-4 transition-all hover:shadow-md hover:scale-105 border border-transparent hover:border-primary/20"
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["brands", "all"],
+    queryFn: async () => {
+      const supabase = getSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("brands")
+        .select("id, name, logo_url, description")
+        .order("name", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching brands:", error);
+        throw new Error(error.message);
+      }
+
+      return data || [];
+    },
+    staleTime: 1000 * 60 * 30, // 30 minutes
+  });
+
+  const scrollLeft = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: -300, behavior: "smooth" });
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: 300, behavior: "smooth" });
+    }
+  };
+
+  // Handle loading state
+  if (isLoading) {
+    return (
+      <section className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
+            Thương hiệu
+          </h2>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="rounded-full hidden md:flex"
+              disabled
             >
-              <div className="relative flex h-full w-full items-center justify-center">
-                {brand.logo_url ? (
-                  <Image
-                    src={brand.logo_url || "/placeholder.svg"}
-                    alt={brand.name}
-                    fill
-                    className="object-contain p-2"
-                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw"
-                  />
-                ) : (
-                  <span className="text-center text-sm font-medium">{brand.name}</span>
-                )}
-              </div>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="rounded-full hidden md:flex"
+              disabled
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Link href="/san-pham" className="text-sm font-medium">
+              Xem tất cả
             </Link>
+          </div>
+        </div>
+        <div className="flex space-x-4 pb-4 overflow-x-auto scrollbar-hide">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <div key={index} className="min-w-[180px] max-w-[180px]">
+              <Card className="overflow-hidden">
+                <CardContent className="p-6 flex flex-col items-center justify-center">
+                  <Skeleton className="h-16 w-16 rounded-full mb-4" />
+                  <Skeleton className="h-4 w-24" />
+                </CardContent>
+              </Card>
+            </div>
           ))}
         </div>
+      </section>
+    );
+  }
+
+  // Handle error state
+  if (error || !data) {
+    return null;
+  }
+
+  // If no brands found
+  if (data.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
+          Thương hiệu
+        </h2>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-full hidden md:flex"
+            onClick={scrollLeft}
+            aria-label="Scroll left"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-full hidden md:flex"
+            onClick={scrollRight}
+            aria-label="Scroll right"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Link href="/san-pham" className="text-sm font-medium">
+            Xem tất cả
+          </Link>
+        </div>
+      </div>
+
+      <div
+        ref={scrollContainerRef}
+        className="flex space-x-4 pb-4 overflow-x-auto scrollbar-hide snap-x"
+      >
+        {data.map((brand) => (
+          <Link
+            key={brand.id}
+            href={`/san-pham?brand=${brand.id}`}
+            className="min-w-[180px] max-w-[180px] snap-start"
+          >
+            <Card className="overflow-hidden h-full transition-all hover:shadow-md">
+              <CardContent className="p-6 flex flex-col items-center justify-center">
+                <div className="relative h-16 w-16 mb-4">
+                  {brand.logo_url ? (
+                    <Image
+                      src={brand.logo_url || "/placeholder.svg"}
+                      alt={brand.name}
+                      fill
+                      className="object-contain"
+                    />
+                  ) : (
+                    <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
+                      <span className="text-xl font-semibold">
+                        {brand.name.charAt(0)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <h3 className="font-medium text-center">{brand.name}</h3>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
       </div>
     </section>
-  )
+  );
 }
-

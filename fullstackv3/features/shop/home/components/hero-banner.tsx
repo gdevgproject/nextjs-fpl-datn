@@ -1,248 +1,277 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import type React from "react";
+
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import type { Banner } from "../types";
+import { cn } from "@/lib/utils";
 
-interface BannerCarouselProps {
+interface Banner {
+  id: number;
+  title: string;
+  subtitle?: string | null;
+  image_url: string;
+  link_url?: string | null;
+  display_order: number;
+}
+
+interface HeroBannerProps {
   banners: Banner[];
 }
 
-export function BannerCarousel({ banners }: BannerCarouselProps) {
+export default function HeroBanner({ banners }: HeroBannerProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
-  const [isImageLoading, setIsImageLoading] = useState(true);
-  const loadedImages = useRef<Set<string>>(new Set());
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const autoPlayRef = useRef<NodeJS.Timeout | null>(null);
+  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Nếu không có banner, hiển thị banner mặc định
-  const displayBanners =
-    banners.length > 0
-      ? banners
-      : [
-          {
-            id: 0,
-            title: "Khám phá bộ sưu tập mới",
-            subtitle: "Nước hoa cao cấp với hương thơm độc đáo",
-            image_url: "/placeholder.svg?height=600&width=1400",
-            link_url: "/san-pham?sort=newest",
-            is_active: true,
-            display_order: 1,
-            start_date: null,
-            end_date: null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-          {
-            id: 1,
-            title: "Thương hiệu cao cấp",
-            subtitle: "Các thương hiệu nước hoa nổi tiếng thế giới",
-            image_url: "/placeholder.svg?height=600&width=1400",
-            link_url: "/san-pham?perfume_type=1", // Giả sử 1 là ID của loại nước hoa cao cấp
-            is_active: true,
-            display_order: 2,
-            start_date: null,
-            end_date: null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-        ];
+  // Minimum swipe distance (in px)
+  const minSwipeDistance = 50;
 
-  const bannerCount = displayBanners.length;
+  const startAutoPlay = useCallback(() => {
+    if (banners.length <= 1) return;
 
-  const nextSlide = useCallback(() => {
-    setCurrentIndex((prevIndex) => {
-      const nextIdx = (prevIndex + 1) % bannerCount;
-      const nextImg = displayBanners[nextIdx]?.image_url;
-      if (nextImg && loadedImages.current.has(nextImg)) {
-        setIsImageLoading(false);
-      } else {
-        setIsImageLoading(true);
-      }
-      return nextIdx;
-    });
-  }, [bannerCount, displayBanners]);
-
-  const prevSlide = useCallback(() => {
-    setCurrentIndex((prevIndex) => {
-      const prevIdx = (prevIndex - 1 + bannerCount) % bannerCount;
-      const prevImg = displayBanners[prevIdx]?.image_url;
-      if (prevImg && loadedImages.current.has(prevImg)) {
-        setIsImageLoading(false);
-      } else {
-        setIsImageLoading(true);
-      }
-      return prevIdx;
-    });
-  }, [bannerCount, displayBanners]);
-
-  // Preload ảnh tiếp theo và trước
-  useEffect(() => {
-    const preload = (idx: number) => {
-      const imgUrl = displayBanners[idx]?.image_url;
-      if (imgUrl && !loadedImages.current.has(imgUrl)) {
-        const img = new window.Image();
-        img.src = imgUrl;
-        img.onload = () => loadedImages.current.add(imgUrl);
-      }
-    };
-    preload((currentIndex + 1) % bannerCount);
-    preload((currentIndex - 1 + bannerCount) % bannerCount);
-  }, [currentIndex, displayBanners, bannerCount]);
-
-  // Auto-play functionality
-  useEffect(() => {
-    if (!isAutoPlaying) return;
-
-    const interval = setInterval(() => {
-      nextSlide();
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [isAutoPlaying, nextSlide]);
-
-  // Pause auto-play on hover
-  const handleMouseEnter = () => setIsAutoPlaying(false);
-  const handleMouseLeave = () => setIsAutoPlaying(true);
-
-  const handleImageLoad = (e?: any) => {
-    const url = displayBanners[currentIndex]?.image_url;
-    if (url) loadedImages.current.add(url);
-    setIsImageLoading(false);
-  };
-
-  // Xử lý link_url để đảm bảo tương thích với trang sản phẩm
-  const getLinkUrl = (banner: Banner) => {
-    // Nếu link_url đã có, kiểm tra xem có cần điều chỉnh không
-    if (banner.link_url) {
-      // Nếu link_url là "/danh-muc/X", chuyển thành "/san-pham?category=X"
-      if (banner.link_url.startsWith("/danh-muc/")) {
-        const slug = banner.link_url.replace("/danh-muc/", "");
-        return `/san-pham?category=${slug}`;
-      }
-
-      // Nếu link_url là "/thuong-hieu/X", chuyển thành "/san-pham?brand=X"
-      if (banner.link_url.startsWith("/thuong-hieu/")) {
-        const slug = banner.link_url.replace("/thuong-hieu/", "");
-        return `/san-pham?brand=${slug}`;
-      }
-
-      // Nếu không cần điều chỉnh, giữ nguyên
-      return banner.link_url;
+    // Clear any existing interval
+    if (autoPlayRef.current) {
+      clearInterval(autoPlayRef.current);
     }
 
-    // Mặc định trỏ đến trang sản phẩm
-    return "/san-pham";
+    // Set new interval
+    autoPlayRef.current = setInterval(() => {
+      goToNext();
+    }, 6000); // 6 seconds per slide
+  }, [banners.length]);
+
+  // Initialize autoplay
+  useEffect(() => {
+    startAutoPlay();
+
+    // Cleanup on unmount
+    return () => {
+      if (autoPlayRef.current) {
+        clearInterval(autoPlayRef.current);
+      }
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+      }
+    };
+  }, [startAutoPlay]);
+
+  // Handle animation
+  const animateSlide = useCallback(
+    (callback: () => void) => {
+      if (isAnimating) return;
+
+      setIsAnimating(true);
+
+      // Clear any existing animation timeout
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+      }
+
+      // Set timeout for animation
+      animationTimeoutRef.current = setTimeout(() => {
+        callback();
+
+        // Reset animation state after a short delay
+        setTimeout(() => {
+          setIsAnimating(false);
+        }, 50);
+      }, 300);
+    },
+    [isAnimating]
+  );
+
+  const goToPrevious = useCallback(() => {
+    if (banners.length <= 1) return;
+
+    animateSlide(() => {
+      setCurrentIndex(
+        (prevIndex) => (prevIndex - 1 + banners.length) % banners.length
+      );
+    });
+
+    // Reset autoplay timer when manually navigating
+    startAutoPlay();
+  }, [banners.length, animateSlide, startAutoPlay]);
+
+  const goToNext = useCallback(() => {
+    if (banners.length <= 1) return;
+
+    animateSlide(() => {
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % banners.length);
+    });
+
+    // Reset autoplay timer when manually navigating
+    startAutoPlay();
+  }, [banners.length, animateSlide, startAutoPlay]);
+
+  const goToSlide = useCallback(
+    (index: number) => {
+      if (index === currentIndex || banners.length <= 1) return;
+
+      animateSlide(() => {
+        setCurrentIndex(index);
+      });
+
+      // Reset autoplay timer when manually navigating
+      startAutoPlay();
+    },
+    [currentIndex, banners.length, animateSlide, startAutoPlay]
+  );
+
+  // Touch event handlers for mobile swipe
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
   };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe) {
+      goToNext();
+    } else if (isRightSwipe) {
+      goToPrevious();
+    }
+  };
+
+  // If no banners, show a default banner
+  if (banners.length === 0) {
+    return (
+      <div className="relative w-full h-[350px] sm:h-[400px] md:h-[500px] lg:h-[600px] bg-gradient-to-r from-primary/20 to-primary/5">
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
+            Welcome to MyBeauty
+          </h2>
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mb-6">
+            Discover our exclusive collection of premium fragrances
+          </p>
+          <Button
+            size="lg"
+            className="rounded-full px-8 shadow-lg hover:shadow-xl transition-all"
+          >
+            Shop Now
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const currentBanner = banners[currentIndex];
 
   return (
     <div
-      className="relative w-full overflow-hidden"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      className="relative w-full h-[350px] sm:h-[400px] md:h-[500px] lg:h-[600px] overflow-hidden"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
     >
+      {/* Banner Image */}
       <div
-        className="flex transition-transform duration-500 ease-in-out"
-        style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+        className={cn(
+          "absolute inset-0 transition-opacity duration-500 ease-in-out",
+          isAnimating ? "opacity-80" : "opacity-100"
+        )}
       >
-        {displayBanners.map((banner) => (
-          <div key={banner.id} className="relative min-w-full">
-            <div className="relative aspect-[21/9] w-full md:aspect-[3/1]">
-              {isImageLoading && (
-                <Skeleton className="absolute inset-0 h-full w-full" />
-              )}
-              <Image
-                src={
-                  banner.image_url || "/placeholder.svg?height=600&width=1400"
-                }
-                alt={banner.title}
-                fill
-                priority
-                className={`object-cover transition-opacity duration-300 ${
-                  isImageLoading ? "opacity-0" : "opacity-100"
-                }`}
-                sizes="100vw"
-                onLoad={handleImageLoad}
-                onError={handleImageLoad}
-                loading="eager"
-                draggable={false}
-                aria-label={banner.title}
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent">
-                <div className="container flex h-full flex-col items-start justify-center p-4 text-white">
-                  <h2 className="max-w-md text-2xl font-bold sm:text-3xl md:text-4xl lg:text-5xl">
-                    {banner.title}
-                  </h2>
-                  {banner.subtitle && (
-                    <p className="mt-2 max-w-md text-sm sm:text-base md:text-lg">
-                      {banner.subtitle}
-                    </p>
-                  )}
-                  {banner.link_url && (
-                    <Button
-                      asChild
-                      className="mt-4 bg-white text-black hover:bg-white/90"
-                    >
-                      <Link href={getLinkUrl(banner)}>Khám phá ngay</Link>
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
+        <Image
+          src={currentBanner.image_url || "/placeholder.svg"}
+          alt={currentBanner.title}
+          fill
+          priority
+          className="object-cover"
+          sizes="100vw"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-transparent" />
       </div>
 
-      {/* Navigation arrows */}
-      {bannerCount > 1 && (
+      {/* Banner Content */}
+      <div
+        className={cn(
+          "absolute inset-0 flex flex-col justify-center p-6 md:p-12",
+          "transition-all duration-500 ease-in-out",
+          isAnimating ? "translate-y-4 opacity-0" : "translate-y-0 opacity-100"
+        )}
+      >
+        <div className="container mx-auto">
+          <div className="max-w-lg">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 drop-shadow-md">
+              {currentBanner.title}
+            </h2>
+            {currentBanner.subtitle && (
+              <p className="text-base sm:text-lg md:text-xl text-white/90 mb-6 drop-shadow-md">
+                {currentBanner.subtitle}
+              </p>
+            )}
+            {currentBanner.link_url && (
+              <Link href={currentBanner.link_url}>
+                <Button
+                  size="lg"
+                  className="rounded-full px-8 shadow-lg hover:shadow-xl transition-all"
+                >
+                  Khám phá ngay
+                </Button>
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation Arrows - Only show if more than one banner */}
+      {banners.length > 1 && (
         <>
           <Button
             variant="ghost"
             size="icon"
-            className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/30 text-white hover:bg-black/50"
-            onClick={prevSlide}
+            className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/20 hover:bg-black/40 text-white rounded-full h-10 w-10 sm:h-12 sm:w-12 shadow-md backdrop-blur-sm z-10"
+            onClick={goToPrevious}
+            disabled={isAnimating}
             aria-label="Previous banner"
-            tabIndex={0}
           >
-            <ChevronLeft className="h-6 w-6" />
+            <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/30 text-white hover:bg-black/50"
-            onClick={nextSlide}
+            className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/20 hover:bg-black/40 text-white rounded-full h-10 w-10 sm:h-12 sm:w-12 shadow-md backdrop-blur-sm z-10"
+            onClick={goToNext}
+            disabled={isAnimating}
             aria-label="Next banner"
-            tabIndex={0}
           >
-            <ChevronRight className="h-6 w-6" />
+            <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" />
           </Button>
-        </>
-      )}
 
-      {/* Indicators */}
-      {bannerCount > 1 && (
-        <div
-          className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 space-x-2"
-          role="tablist"
-          aria-label="Banner indicators"
-        >
-          {displayBanners.map((_, index) => (
-            <button
-              key={index}
-              className={`h-2 w-8 rounded-full transition-colors ${
-                index === currentIndex ? "bg-white" : "bg-white/50"
-              }`}
-              onClick={() => setCurrentIndex(index)}
-              aria-label={`Go to banner ${index + 1}`}
-              aria-selected={index === currentIndex}
-              role="tab"
-              tabIndex={0}
-            />
-          ))}
-        </div>
+          {/* Dots Indicator */}
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+            {banners.map((_, index) => (
+              <button
+                key={index}
+                className={cn(
+                  "h-2.5 rounded-full transition-all duration-300",
+                  index === currentIndex
+                    ? "bg-white w-8"
+                    : "bg-white/50 hover:bg-white/70 w-2.5"
+                )}
+                onClick={() => goToSlide(index)}
+                disabled={isAnimating}
+                aria-label={`Go to banner ${index + 1}`}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
