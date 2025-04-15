@@ -157,7 +157,7 @@ NGUYÊN TẮC CỐT LÕI:
 *   **`lib/supabase/`:** Quản lý các cách khởi tạo Supabase client khác nhau (`client`, `server`, `serviceRoleClient`) và middleware helper (`@supabase/ssr`). Rất quan trọng để tương tác đúng cách với Supabase từ các ngữ cảnh khác nhau.
 *   **`lib/providers/providers.tsx`:** Tập trung việc wrap các global providers (QueryClientProvider, GuestCartProvider nếu có, NextThemesProvider) giúp layout gọn gàng.
 *   **`lib/query-client.ts`:** Khởi tạo instance `QueryClient` của TanStack Query.
-*   **`lib/hooks/`:** Hooks dùng chung không thuộc feature (ví dụ: `useToast` để đảm bảo toast nhất quán).
+*   **`lib/hooks/`:** Hooks dùng chung không thuộc feature (ví dụ: `use-sonner-toast.tsx` để đảm bảo toast sonner nhất quán).
 *   **`lib/types/database.types.ts`:** Types được tạo tự động từ schema Supabase. Cực kỳ quan trọng cho type safety khi làm việc với dữ liệu.
 *   **`lib/utils/`:** Các hàm tiện ích nhỏ, tái sử dụng cao.
 *   **`lib/constants.ts`:** Định nghĩa hằng số.

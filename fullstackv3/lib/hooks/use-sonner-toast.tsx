@@ -134,7 +134,7 @@ export function useSonnerToast(
     message: React.ReactNode,
     options?: ToastOptions
   ): void => {
-    sonnerToast.custom(() => <>{message}</>, {
+    sonnerToast(message, {
       id: toastId,
       ...mergeOptions(options),
     });
