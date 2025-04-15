@@ -2,10 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, Heart, AlertCircle } from "lucide-react";
+import { ShoppingCart, Heart, AlertCircle, Loader2 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
+import { useCartContext } from "@/features/shop/cart/providers/cart-provider";
 
 export interface ProductImageType {
   image_url: string;
@@ -60,46 +62,76 @@ export function ProductCard({
   variant_id,
   stock_quantity,
 }: ProductCardProps) {
+  const { addToCart, isUpdatingCart } = useCartContext();
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+
   // Support both new format (product object) and legacy format (direct props)
   const productId = product?.id || id;
   const productSlug = product?.slug || slug || `product-${productId}`;
   const productName = product?.name || name || "Sản phẩm";
   const brandName = product?.brand?.name || brand_name;
-  
+
   // Find main image
-  const mainImage = product?.images?.find(img => img.is_main)?.image_url || 
-                    product?.images?.[0]?.image_url || 
-                    image_url ||
-                    "/placeholder.svg";
+  const mainImage =
+    product?.images?.find((img) => img.is_main)?.image_url ||
+    product?.images?.[0]?.image_url ||
+    image_url ||
+    "/placeholder.svg";
 
   // Determine price and sale price
   const productPrice = product?.price ?? directPrice ?? 0;
   const productSalePrice = product?.sale_price ?? directSalePrice;
-  
+
   // Determine if product is on sale
-  const isOnSale = productSalePrice !== null && 
-                   productSalePrice !== undefined && 
-                   productSalePrice < productPrice;
-  
+  const isOnSale =
+    productSalePrice !== null &&
+    productSalePrice !== undefined &&
+    productSalePrice < productPrice;
+
   // Calculate discount percentage if product is on sale
-  const discountPercentage = isOnSale 
-    ? Math.round(((productPrice - (productSalePrice as number)) / productPrice) * 100) 
+  const discountPercentage = isOnSale
+    ? Math.round(
+        ((productPrice - (productSalePrice as number)) / productPrice) * 100
+      )
     : 0;
 
   // Determine if product is out of stock
   let isOutOfStock = true;
 
+  // Get variant ID (use first variant if available or provided variant_id)
+  const productVariantId =
+    variant_id ||
+    (product?.variants && product.variants.length > 0
+      ? product.variants[0].id
+      : undefined);
+
   // Check stock from variants
   if (product?.variants && product.variants.length > 0) {
     // Check if any variant has stock
-    isOutOfStock = !product.variants.some(v => 
-      v.stock_quantity === undefined || v.stock_quantity > 0
+    isOutOfStock = !product.variants.some(
+      (v) => v.stock_quantity === undefined || v.stock_quantity > 0
     );
   } else if (stock_quantity !== undefined) {
     isOutOfStock = stock_quantity <= 0;
   } else {
     isOutOfStock = false; // Default to in-stock if no stock info available
   }
+
+  // Handle add to cart
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.preventDefault();
+
+    if (!productVariantId || isOutOfStock) return;
+
+    setIsAddingToCart(true);
+    try {
+      await addToCart(productVariantId, 1, productId?.toString());
+    } catch (error) {
+      console.error("Failed to add product to cart:", error);
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
 
   return (
     <div className="group relative overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md">
@@ -147,7 +179,7 @@ export function ProductCard({
             {productName}
           </h3>
         </Link>
-        
+
         <div className="flex items-center justify-between pt-2">
           <div>
             {isOnSale ? (
@@ -160,9 +192,7 @@ export function ProductCard({
                 </span>
               </div>
             ) : (
-              <span className="font-semibold">
-                {formatPrice(productPrice)}
-              </span>
+              <span className="font-semibold">{formatPrice(productPrice)}</span>
             )}
           </div>
           <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -170,16 +200,24 @@ export function ProductCard({
             <span className="sr-only">Add to wishlist</span>
           </Button>
         </div>
-        
+
         <Button
           className="w-full mt-2"
           size="sm"
-          asChild
+          onClick={handleAddToCart}
+          disabled={
+            isAddingToCart ||
+            isUpdatingCart ||
+            isOutOfStock ||
+            !productVariantId
+          }
         >
-          <Link href={`/san-pham/${productSlug}`}>
+          {isAddingToCart || isUpdatingCart ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
             <ShoppingCart className="h-4 w-4 mr-2" />
-            Xem chi tiết
-          </Link>
+          )}
+          {isOutOfStock ? "Hết hàng" : "Thêm vào giỏ hàng"}
         </Button>
       </div>
     </div>

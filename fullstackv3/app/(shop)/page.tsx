@@ -59,6 +59,9 @@ export default async function HomePage() {
       <HeroBanner banners={banners} />
 
       <div className="container px-4 md:px-6 mx-auto space-y-16 md:space-y-24 mt-10 md:mt-16">
+        {/* Brands Section - Client Component with useClientFetch */}
+        <BrandsSection />
+
         {/* Featured Categories Section */}
         <FeaturedCategoriesSection categories={featuredCategories} />
 
@@ -70,9 +73,6 @@ export default async function HomePage() {
 
         {/* On Sale Section - Client Component with useClientFetch */}
         <OnSaleSection />
-
-        {/* Brands Section - Client Component with useClientFetch */}
-        <BrandsSection />
       </div>
     </div>
   );
