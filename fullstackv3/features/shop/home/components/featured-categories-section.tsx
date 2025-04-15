@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import ProductCard from "@/components/shared/product-card";
+import ProductCard from "@/features/shop/shared/components/product-card";
 import ProductSectionSkeleton from "./product-section-skeleton";
 import { cn } from "@/lib/utils";
 import { useFeaturedCategoryProducts } from "../hooks/use-featured-categories";

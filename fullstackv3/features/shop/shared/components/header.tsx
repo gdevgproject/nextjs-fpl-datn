@@ -11,7 +11,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { CartButton } from "@/features/shop/cart/components/cart-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DEFAULT_AVATAR_URL } from "@/lib/constants";
-import { SearchForm } from "./search-form";
+import { SearchForm } from "@/features/shop/shared/components/search-form";
 import { UserNav } from "./user-nav";
 import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings";
 import { useAuthQuery, useLogoutMutation } from "@/features/auth/hooks";

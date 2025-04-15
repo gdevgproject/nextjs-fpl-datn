@@ -3,7 +3,7 @@
 import Link from "next/link";
 import ProductSectionSkeleton from "./product-section-skeleton";
 import { Button } from "@/components/ui/button";
-import ProductCard from "@/components/shared/product-card";
+import ProductCard from "@/features/shop/shared/components/product-card";
 import { useNewArrivals } from "../hooks/use-new-arrivals";
 
 export default function NewArrivalsSection() {
