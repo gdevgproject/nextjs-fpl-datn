@@ -31,8 +31,8 @@ export async function register(values: z.infer<typeof registerSchema>) {
           display_name: values.display_name,
           phone_number: values.phone_number || null,
         },
-        // Sửa redirect về đúng route xác nhận email
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/(auth)/xac-nhan-email`,
+        // Sửa redirect về đúng route xác nhận email (không có group route)
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/xac-nhan-email`,
       },
     });
 
