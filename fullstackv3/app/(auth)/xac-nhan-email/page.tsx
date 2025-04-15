@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
 
-export default function Page({
+export default async function Page({
   searchParams,
 }: {
-  searchParams: ReadonlyURLSearchParams;
+  searchParams: Promise<{ code?: string }>;
 }) {
-  const code = searchParams.get("code");
-  if (code) {
-    redirect(`/api/auth/comfirm?code=${code}`);
+  const params = await searchParams;
+  if (params.code) {
+    redirect(`/api/auth/comfirm?code=${params.code}`);
   }
   redirect("/kiem-tra-email");
 }
