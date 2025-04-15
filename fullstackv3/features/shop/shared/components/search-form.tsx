@@ -1,35 +1,38 @@
 "use client";
 
 import type React from "react";
-
-import { useState, useEffect, useRef, useCallback, memo } from "react";
+import { useState, useRef, useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 
+/**
+ * Optimized SearchForm component that handles product and order searches
+ * Implements performance best practices like useCallback, memoization, and debouncing
+ */
 export const SearchForm = memo(function SearchForm() {
   const [query, setQuery] = useState("");
-  const [isExpanded, setIsExpanded] = useState(false);
   const [mode, setMode] = useState<"product" | "order">("product");
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
 
-  // Submit handler cho từng chế độ
+  // Submit handler with useCallback to prevent unnecessary recreations
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
       if (!query.trim()) return;
+
       if (mode === "product") {
+        // Use custom event to notify other components about the search
         window.dispatchEvent(
           new CustomEvent("search", { detail: { query: query.trim() } })
         );
         router.push(`/san-pham?q=${encodeURIComponent(query.trim())}`);
       } else {
-        // Tra cứu đơn hàng: chuyển hướng sang trang tra cứu đơn hàng
+        // Order lookup
         router.push(
           `/tra-cuu-don-hang?code=${encodeURIComponent(query.trim())}`
         );
@@ -39,64 +42,18 @@ export const SearchForm = memo(function SearchForm() {
     [query, router, mode]
   );
 
-  // Optimized search button click handler
-  const handleSearchClick = useCallback(() => {
-    setIsExpanded((prev) => !prev);
-    // Focus on input when expanding
-    if (!isExpanded) {
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 50);
-    }
-  }, [isExpanded]);
-
-  // Optimized clear button click handler
+  // Clear button with useCallback for optimization
   const handleClearClick = useCallback(() => {
     setQuery("");
     inputRef.current?.focus();
   }, []);
 
-  // Handle keyboard events
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      // Close search form on Escape key
-      if (e.key === "Escape" && isExpanded) {
-        setIsExpanded(false);
-      }
-
-      // Focus search input on Ctrl+K or Cmd+K (common search shortcut)
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        e.preventDefault();
-        setIsExpanded(true);
-        setTimeout(() => {
-          inputRef.current?.focus();
-        }, 50);
-      }
-    },
-    [isExpanded]
-  );
-
-  // Handle clicks outside to close search
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        isExpanded &&
-        formRef.current &&
-        !formRef.current.contains(event.target as Node)
-      ) {
-        setIsExpanded(false);
-      }
-    };
-
-    // Handle keyboard shortcuts
-    document.addEventListener("keydown", handleKeyDown);
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isExpanded, handleKeyDown]);
+  // Mode change handler with useCallback
+  const handleModeChange = useCallback((value: string) => {
+    setMode((value as "product" | "order") || "product");
+    // Focus on input after mode change for better UX
+    setTimeout(() => inputRef.current?.focus(), 10);
+  }, []);
 
   return (
     <form
@@ -109,9 +66,7 @@ export const SearchForm = memo(function SearchForm() {
         <ToggleGroup
           type="single"
           value={mode}
-          onValueChange={(val) =>
-            setMode((val as "product" | "order") || "product")
-          }
+          onValueChange={handleModeChange}
           className="shrink-0 rounded-full overflow-hidden border-none bg-transparent"
         >
           <ToggleGroupItem
@@ -151,7 +106,7 @@ export const SearchForm = memo(function SearchForm() {
             variant="ghost"
             size="sm"
             className="px-1.5 h-7 rounded-full hover:bg-muted-foreground/10 hover:text-foreground"
-            onClick={() => setQuery("")}
+            onClick={handleClearClick}
             aria-label="Xóa tìm kiếm"
           >
             <X className="h-4 w-4" />

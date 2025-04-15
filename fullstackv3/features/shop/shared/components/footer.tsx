@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -10,12 +11,59 @@ import {
   MapPin,
   MessageSquare,
   Youtube,
-  TwitterIcon as TikTok,
+  TikTok,
 } from "lucide-react";
 import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export function Footer() {
+// Memoized footer section component to prevent unnecessary re-renders
+const FooterSection = memo(function FooterSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <h3 className="text-lg font-semibold">{title}</h3>
+      <div className="mt-2 space-y-2 text-sm">{children}</div>
+    </div>
+  );
+});
+
+// Memoized social link component
+const SocialLink = memo(function SocialLink({
+  href,
+  icon: Icon,
+  label,
+}: {
+  href: string;
+  icon: React.ElementType;
+  label: string;
+}) {
+  if (!href) return null;
+
+  return (
+    <Link
+      href={href}
+      className="text-muted-foreground hover:text-primary"
+      aria-label={label}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <Icon className="h-5 w-5" />
+      <span className="sr-only">{label}</span>
+    </Link>
+  );
+});
+
+/**
+ * Footer component optimized for performance
+ * Uses memoization and conditional rendering to minimize re-renders
+ * Follows the dev-guide.txt recommendations for client components
+ */
+export const Footer = memo(function Footer() {
   const { settings, isLoading } = useShopSettings();
 
   // Fallback values if settings are not loaded yet
@@ -24,21 +72,29 @@ export function Footer() {
   const address = settings?.address || "Địa chỉ đang cập nhật";
   const email = settings?.contact_email || "info@mybeauty.vn";
   const phone = settings?.contact_phone || "0123 456 789";
+
+  // Social media URLs
   const facebookUrl = settings?.facebook_url || "";
   const instagramUrl = settings?.instagram_url || "";
   const tiktokUrl = settings?.tiktok_url || "";
   const youtubeUrl = settings?.youtube_url || "";
   const messengerUrl = settings?.messenger_url || "";
   const zaloUrl = settings?.zalo_url || "";
-  const refundPolicy = settings?.refund_policy_text;
-  const shippingPolicy = settings?.shipping_policy_text;
-  const privacyPolicy = settings?.privacy_policy_text;
-  const termsConditions = settings?.terms_conditions_text;
+
+  // Policy content flags
+  const hasRefundPolicy = !!settings?.refund_policy_text;
+  const hasShippingPolicy = !!settings?.shipping_policy_text;
+  const hasPrivacyPolicy = !!settings?.privacy_policy_text;
+  const hasTerms = !!settings?.terms_conditions_text;
+
+  // Year for copyright
+  const currentYear = new Date().getFullYear();
 
   return (
     <footer className="border-t bg-background">
       <div className="container py-8 md:py-12">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
+          {/* Company Info Section */}
           <div>
             <div className="flex items-center gap-2 mb-2">
               <div className="rounded-lg overflow-hidden">
@@ -55,70 +111,31 @@ export function Footer() {
               </span>
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
-              {settings?.shop_name
+              {shopName
                 ? `Cửa hàng ${shopName} - ${address}`
                 : "Cửa hàng nước hoa chính hãng với đa dạng thương hiệu cao cấp"}
             </p>
             <div className="mt-4 flex space-x-3">
-              {facebookUrl && (
-                <Link
-                  href={facebookUrl}
-                  className="text-muted-foreground hover:text-primary"
-                >
-                  <Facebook className="h-5 w-5" />
-                  <span className="sr-only">Facebook</span>
-                </Link>
-              )}
-              {instagramUrl && (
-                <Link
-                  href={instagramUrl}
-                  className="text-muted-foreground hover:text-primary"
-                >
-                  <Instagram className="h-5 w-5" />
-                  <span className="sr-only">Instagram</span>
-                </Link>
-              )}
-              {tiktokUrl && (
-                <Link
-                  href={tiktokUrl}
-                  className="text-muted-foreground hover:text-primary"
-                >
-                  <TikTok className="h-5 w-5" />
-                  <span className="sr-only">TikTok</span>
-                </Link>
-              )}
-              {youtubeUrl && (
-                <Link
-                  href={youtubeUrl}
-                  className="text-muted-foreground hover:text-primary"
-                >
-                  <Youtube className="h-5 w-5" />
-                  <span className="sr-only">Youtube</span>
-                </Link>
-              )}
-              {messengerUrl && (
-                <Link
-                  href={messengerUrl}
-                  className="text-muted-foreground hover:text-primary"
-                >
-                  <MessageSquare className="h-5 w-5" />
-                  <span className="sr-only">Messenger</span>
-                </Link>
-              )}
-              {zaloUrl && (
-                <Link
-                  href={zaloUrl}
-                  className="text-muted-foreground hover:text-primary"
-                >
-                  <Phone className="h-5 w-5" />
-                  <span className="sr-only">Zalo</span>
-                </Link>
-              )}
+              <SocialLink href={facebookUrl} icon={Facebook} label="Facebook" />
+              <SocialLink
+                href={instagramUrl}
+                icon={Instagram}
+                label="Instagram"
+              />
+              <SocialLink href={tiktokUrl} icon={TikTok} label="TikTok" />
+              <SocialLink href={youtubeUrl} icon={Youtube} label="Youtube" />
+              <SocialLink
+                href={messengerUrl}
+                icon={MessageSquare}
+                label="Messenger"
+              />
+              <SocialLink href={zaloUrl} icon={Phone} label="Zalo" />
             </div>
           </div>
-          <div>
-            <h3 className="text-lg font-semibold">Thông tin</h3>
-            <ul className="mt-2 space-y-2 text-sm">
+
+          {/* Information Section */}
+          <FooterSection title="Thông tin">
+            <ul>
               <li>
                 <Link
                   href="/gioi-thieu"
@@ -127,7 +144,7 @@ export function Footer() {
                   Giới thiệu
                 </Link>
               </li>
-              {privacyPolicy && (
+              {hasPrivacyPolicy && (
                 <li>
                   <Link
                     href="/chinh-sach-bao-mat"
@@ -137,7 +154,7 @@ export function Footer() {
                   </Link>
                 </li>
               )}
-              {termsConditions && (
+              {hasTerms && (
                 <li>
                   <Link
                     href="/dieu-khoan-dich-vu"
@@ -148,10 +165,11 @@ export function Footer() {
                 </li>
               )}
             </ul>
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold">Hỗ trợ</h3>
-            <ul className="mt-2 space-y-2 text-sm">
+          </FooterSection>
+
+          {/* Support Section */}
+          <FooterSection title="Hỗ trợ">
+            <ul>
               <li>
                 <Link
                   href="/lien-he"
@@ -160,7 +178,7 @@ export function Footer() {
                   Liên hệ
                 </Link>
               </li>
-              {refundPolicy && (
+              {hasRefundPolicy && (
                 <li>
                   <Link
                     href="/chinh-sach-doi-tra"
@@ -170,7 +188,7 @@ export function Footer() {
                   </Link>
                 </li>
               )}
-              {shippingPolicy && (
+              {hasShippingPolicy && (
                 <li>
                   <Link
                     href="/chinh-sach-van-chuyen"
@@ -189,10 +207,11 @@ export function Footer() {
                 </Link>
               </li>
             </ul>
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold">Liên hệ</h3>
-            <ul className="mt-2 space-y-2 text-sm">
+          </FooterSection>
+
+          {/* Contact Section */}
+          <FooterSection title="Liên hệ">
+            <ul>
               <li className="flex items-start gap-2 text-muted-foreground">
                 <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <span>
@@ -212,14 +231,16 @@ export function Footer() {
                 </span>
               </li>
             </ul>
-          </div>
+          </FooterSection>
         </div>
+
+        {/* Copyright Section */}
         <div className="mt-8 border-t pt-8 text-center text-sm text-muted-foreground">
           <p>
-            © {new Date().getFullYear()} {shopName}. Tất cả quyền được bảo lưu.
+            © {currentYear} {shopName}. Tất cả quyền được bảo lưu.
           </p>
         </div>
       </div>
     </footer>
   );
-}
+});

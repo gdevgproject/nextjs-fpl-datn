@@ -1,46 +1,24 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect } from "react";
+import { ThemeProvider } from "next-themes";
 import { QueryProvider } from "./query-provider";
-import { ThemeProvider } from "@/components/theme-provider";
 import { CartProvider } from "@/features/shop/cart/providers/cart-provider";
-import { CheckoutProvider } from "@/features/shop/cart/providers/checkout-provider";
+import { Toaster } from "@/components/ui/sonner";
 
+/**
+ * Central provider component that wraps all global providers.
+ * This follows the dev-guide.txt recommendation to centralize providers.
+ */
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
-
-  // Ensure component only renders on client-side
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   return (
     <QueryProvider>
-      {mounted && (
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <CartProvider>
-          <CheckoutProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-            >
-              {children}
-            </ThemeProvider>
-          </CheckoutProvider>
-        </CartProvider>
-      )}
-      {!mounted && (
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
           {children}
-        </ThemeProvider>
-      )}
+          <Toaster richColors closeButton position="bottom-right" />
+        </CartProvider>
+      </ThemeProvider>
     </QueryProvider>
   );
 }

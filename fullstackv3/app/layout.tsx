@@ -1,12 +1,11 @@
-import type React from "react"
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import "./globals.css"
-import { Providers } from "@/lib/providers/providers"
-import { Toaster } from "@/components/ui/toaster"
-import { AuthToastHandler } from "@/components/auth-toast-handler"
+import type React from "react";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { Providers } from "@/lib/providers/providers";
+import { AuthToastHandler } from "@/components/auth-toast-handler";
 
-const inter = Inter({ subsets: ["latin", "vietnamese"] })
+const inter = Inter({ subsets: ["latin", "vietnamese"] });
 
 export const metadata: Metadata = {
   title: "MyBeauty - Nước hoa chính hãng",
@@ -16,29 +15,20 @@ export const metadata: Metadata = {
     icon: "/images/logo.png",
     apple: "/images/logo.png",
   },
-}
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="vi" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers>
           <AuthToastHandler>{children}</AuthToastHandler>
-          <Toaster />
         </Providers>
       </body>
     </html>
-  )
+  );
 }
-
-import "./globals.css"
-
-import "./globals.css"
-
-
-
-import './globals.css'

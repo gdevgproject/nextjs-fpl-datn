@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect } from "react";
+import { memo, useCallback } from "react";
 import Link from "next/link";
 import { LogIn, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,36 +22,49 @@ import {
   useProfileQuery,
   useLogoutMutation,
 } from "@/features/auth/hooks";
+import type { ShopSettings } from "@/lib/types/shared.types";
 
-export const UserNav = memo(function UserNav({ settings }: { settings?: any }) {
-  const { data: session } = useAuthQuery();
+interface UserNavProps {
+  settings?: ShopSettings;
+}
+
+/**
+ * User navigation component that displays different UI based on authentication state
+ * Optimized with React.memo and useCallback for better performance
+ */
+export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
+  const { data: session, isLoading: isAuthLoading } = useAuthQuery();
   const isAuthenticated = !!session?.user;
+
+  // Only fetch profile if user is authenticated
   const { data: profile, isLoading: isProfileLoading } = useProfileQuery(
-    session?.user?.id
+    session?.user?.id,
+    { enabled: isAuthenticated }
   );
+
   const logoutMutation = useLogoutMutation();
   const queryClient = useQueryClient();
   const { success, error } = useSonnerToast();
 
-  // Debug thông tin profile
-  useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
-      console.log("Profile data:", profile);
-      console.log("Avatar URL:", profile?.avatar_url);
-    }
-  }, [profile]);
-
-  const handleSignOut = async () => {
+  // Optimized logout handler with useCallback
+  const handleSignOut = useCallback(async () => {
     try {
       await logoutMutation.mutateAsync();
+
+      // Clear all queries to prevent stale data when logging back in
       await queryClient.clear();
+
+      // Clear local storage items related to the user
       localStorage.removeItem("guestCart");
       localStorage.removeItem("mybeauty_cart");
       localStorage.removeItem("wishlist");
+
+      // Clear cookies (though Supabase handles this, we do it for extra safety)
       document.cookie =
         "sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       document.cookie =
         "sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+
       success("Đăng xuất thành công", {
         description: "Bạn đã đăng xuất khỏi tài khoản.",
       });
@@ -60,8 +73,9 @@ export const UserNav = memo(function UserNav({ settings }: { settings?: any }) {
         description: "Có lỗi xảy ra khi đăng xuất. Vui lòng thử lại.",
       });
     }
-  };
+  }, [logoutMutation, queryClient, success, error]);
 
+  // Show login button if not authenticated
   if (!isAuthenticated) {
     return (
       <Link href="/dang-nhap">
@@ -76,7 +90,7 @@ export const UserNav = memo(function UserNav({ settings }: { settings?: any }) {
   const role =
     session?.user?.app_metadata?.role || session?.user?.role || "user";
 
-  // Đảm bảo chỉ sử dụng avatar_url khi đã load xong profile
+  // Get user info with fallbacks for better UX
   const avatarUrl =
     !isProfileLoading && profile?.avatar_url
       ? profile.avatar_url
@@ -91,6 +105,7 @@ export const UserNav = memo(function UserNav({ settings }: { settings?: any }) {
     !isProfileLoading && profile?.phone_number ? profile.phone_number : "";
 
   const email = session?.user?.email || "";
+
   const userRoleDisplay =
     role === "admin"
       ? "Quản trị viên"
@@ -108,6 +123,7 @@ export const UserNav = memo(function UserNav({ settings }: { settings?: any }) {
             <AvatarImage
               src={avatarUrl}
               alt={displayName}
+              loading="lazy"
               onError={(e) => {
                 const target = e.currentTarget as HTMLImageElement;
                 target.src = DEFAULT_AVATAR_URL;
@@ -169,9 +185,15 @@ export const UserNav = memo(function UserNav({ settings }: { settings?: any }) {
             <DropdownMenuSeparator />
           </>
         )}
-        <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+        <DropdownMenuItem
+          onClick={handleSignOut}
+          disabled={logoutMutation.isPending}
+          className="text-destructive"
+        >
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Đăng xuất</span>
+          <span>
+            {logoutMutation.isPending ? "Đang đăng xuất..." : "Đăng xuất"}
+          </span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
