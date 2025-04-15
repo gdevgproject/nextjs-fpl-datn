@@ -14,6 +14,18 @@ export async function getProfileById(userId: string) {
   return data;
 }
 
+// Lấy profile theo userId (client)
+export async function getProfileByIdClient(userId: string) {
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 // Lấy session phía server
 export async function getSessionServer() {
   const supabase = await getSupabaseServerClient();

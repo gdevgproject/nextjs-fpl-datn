@@ -1,10 +1,8 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useEffect } from "react";
 import Link from "next/link";
-import {  LogIn,
-  LogOut,
-} from "lucide-react";
+import { LogIn, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -28,30 +26,32 @@ import {
 export const UserNav = memo(function UserNav({ settings }: { settings?: any }) {
   const { data: session } = useAuthQuery();
   const isAuthenticated = !!session?.user;
-  const { data: profile } = useProfileQuery(session?.user?.id);
+  const { data: profile, isLoading: isProfileLoading } = useProfileQuery(
+    session?.user?.id
+  );
   const logoutMutation = useLogoutMutation();
   const queryClient = useQueryClient();
   const { toast } = useSonnerToast();
 
+  // Debug thông tin profile
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      console.log("Profile data:", profile);
+      console.log("Avatar URL:", profile?.avatar_url);
+    }
+  }, [profile]);
+
   const handleSignOut = async () => {
     try {
-      // Đăng xuất Supabase (mutation, chờ promise)
       await logoutMutation.mutateAsync();
-
-      // Dọn sạch cache TanStack Query
       await queryClient.clear();
-
-      // Dọn sạch localStorage liên quan
       localStorage.removeItem("guestCart");
       localStorage.removeItem("mybeauty_cart");
       localStorage.removeItem("wishlist");
-      // Xóa thêm các key khác nếu có...
-
-      // Xóa session cookie Supabase nếu có (tùy setup, ví dụ):
-      document.cookie = "sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      document.cookie = "sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-
-      // Hiển thị Sonner toast thành công
+      document.cookie =
+        "sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      document.cookie =
+        "sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       toast.success("Đăng xuất thành công", {
         description: "Bạn đã đăng xuất khỏi tài khoản.",
       });
@@ -73,16 +73,37 @@ export const UserNav = memo(function UserNav({ settings }: { settings?: any }) {
     );
   }
 
-  const avatarUrl = profile?.avatar_url || DEFAULT_AVATAR_URL;
-  const displayName = profile?.display_name || "Người dùng";
-  const phone = profile?.phone_number || "";
+  const role =
+    session?.user?.app_metadata?.role || session?.user?.role || "user";
+
+  // Đảm bảo chỉ sử dụng avatar_url khi đã load xong profile
+  const avatarUrl =
+    !isProfileLoading && profile?.avatar_url
+      ? profile.avatar_url
+      : DEFAULT_AVATAR_URL;
+
+  const displayName =
+    !isProfileLoading && profile?.display_name
+      ? profile.display_name
+      : session?.user?.email?.split("@")[0] || "Người dùng";
+
+  const phone =
+    !isProfileLoading && profile?.phone_number ? profile.phone_number : "";
+
   const email = session?.user?.email || "";
-  const isAdmin = session?.user?.role === "admin" || session?.user?.role === "staff";
+  const userRoleDisplay =
+    role === "admin"
+      ? "Quản trị viên"
+      : role === "staff"
+      ? "Nhân viên"
+      : role === "shipper"
+      ? "Nhân viên giao hàng"
+      : "Khách hàng";
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+        <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0">
           <Avatar className="h-8 w-8">
             <AvatarImage
               src={avatarUrl}
@@ -92,31 +113,31 @@ export const UserNav = memo(function UserNav({ settings }: { settings?: any }) {
                 target.src = DEFAULT_AVATAR_URL;
               }}
             />
-            <AvatarFallback>{displayName.charAt(0)}</AvatarFallback>
+            <AvatarFallback>
+              {displayName.charAt(0).toUpperCase()}
+            </AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-64" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <div className="flex items-center gap-2">
-              <Avatar className="h-10 w-10">
-                <AvatarImage
-                  src={avatarUrl}
-                  alt={displayName}
-                  onError={(e) => {
-                    const target = e.currentTarget as HTMLImageElement;
-                    target.src = DEFAULT_AVATAR_URL;
-                  }}
-                />
-                <AvatarFallback>{displayName.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-base font-semibold leading-none line-clamp-1">{displayName}</p>
-                {phone && <p className="text-xs text-muted-foreground line-clamp-1">{phone}</p>}
-                {email && <p className="text-xs text-muted-foreground line-clamp-1">{email}</p>}
-              </div>
-            </div>
+            <p className="text-base font-semibold leading-none line-clamp-1">
+              {displayName}
+            </p>
+            {phone && (
+              <p className="text-xs text-muted-foreground line-clamp-1">
+                {phone}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground line-clamp-1 capitalize">
+              {userRoleDisplay}
+            </p>
+            {email && (
+              <p className="text-xs text-muted-foreground line-clamp-1">
+                {email}
+              </p>
+            )}
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -138,7 +159,7 @@ export const UserNav = memo(function UserNav({ settings }: { settings?: any }) {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        {isAdmin && (
+        {(role === "admin" || role === "staff" || role === "shipper") && (
           <>
             <DropdownMenuItem asChild>
               <Link href="/admin">

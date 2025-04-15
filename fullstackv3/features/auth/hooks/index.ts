@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { login, register, logout, updateProfile, verifyOtp } from "../actions";
-import { getSessionClient, getProfileById } from "../services";
+import { getSessionClient, getProfileById, getProfileByIdClient } from "../services";
 import type { LoginFormValues, RegisterFormValues } from "../types";
 import type { User, Session } from "@supabase/supabase-js";
 
@@ -55,7 +55,7 @@ export function useAuthQuery() {
 export function useProfileQuery(userId?: string) {
   return useQuery({
     queryKey: ["profile", userId],
-    queryFn: () => (userId ? getProfileById(userId) : null),
+    queryFn: () => (userId ? getProfileByIdClient(userId) : null),
     enabled: !!userId,
     staleTime: 1000 * 60 * 5,
   });
