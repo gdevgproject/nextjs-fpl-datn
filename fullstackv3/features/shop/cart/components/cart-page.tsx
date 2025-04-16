@@ -71,9 +71,12 @@ function SmartSummaryBar({
   settings,
   isAuthenticated,
   handleCheckout,
+  handleRemoveSelected,
+  setDiscountCode,
 }: any) {
   const subtotal = selectedCartItems.reduce(
-    (sum: number, item: any) => sum + (item.product?.price || 0) * item.quantity,
+    (sum: number, item: any) =>
+      sum + (item.product?.price || 0) * item.quantity,
     0
   );
   const saleDiscount = selectedCartItems.reduce((sum: number, item: any) => {
@@ -84,73 +87,219 @@ function SmartSummaryBar({
     }
     return sum;
   }, 0);
-  const voucherDiscount = (() => {
-    if (!discountInfo || !discountInfo.discount) return 0;
+
+  let voucherDiscount = 0;
+  if (discountInfo && discountInfo.discount) {
     const d = discountInfo.discount;
-    if (d.discount_type === "fixed" && d.discount_amount) {
-      return Math.min(d.discount_amount, subtotal - saleDiscount);
-    } else if (d.discount_percentage) {
-      let amount = ((subtotal - saleDiscount) * d.discount_percentage) / 100;
-      if (d.max_discount_amount && amount > d.max_discount_amount) {
-        amount = d.max_discount_amount;
+    const afterSale = Math.max(0, subtotal - saleDiscount);
+
+    // Check minimum order value first
+    if (d.min_order_value && afterSale < d.min_order_value) {
+      // Don't apply discount if minimum order value is not met
+      voucherDiscount = 0;
+    } else if (!d.discount_percentage) {
+      // Fixed amount discount (when discount_percentage is falsy)
+      voucherDiscount = d.max_discount_amount
+        ? Math.min(d.max_discount_amount, afterSale)
+        : 0;
+    } else {
+      // Percentage-based discount
+      let amount = (afterSale * d.discount_percentage) / 100;
+      if (d.max_discount_amount) {
+        amount = Math.min(amount, d.max_discount_amount);
       }
-      return amount;
+      voucherDiscount = Math.min(amount, afterSale); // Don't exceed total after sale
     }
-    return 0;
-  })();
+  }
+
   const isFreeShipping =
     freeShippingThreshold !== null &&
     subtotal - saleDiscount - voucherDiscount >= freeShippingThreshold;
   const finalShippingFee = isFreeShipping ? 0 : shippingFee;
-  const cartTotal = subtotal - saleDiscount - voucherDiscount;
+  const cartTotal =
+    Math.max(0, subtotal - saleDiscount - voucherDiscount) + finalShippingFee;
+
+  const [openRemoveDialog, setOpenRemoveDialog] = useState(false);
 
   if (!selectedCartItems || selectedCartItems.length === 0) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 w-full z-50 bg-background/95 border-t border-border shadow-lg px-2 py-3 sm:px-6 flex flex-col sm:flex-row items-center gap-2 sm:gap-6 animate-in fade-in slide-in-from-bottom-4">
-      <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+    <div className="fixed bottom-0 left-0 w-full z-50 bg-background/95 border-t border-border shadow-lg px-2 py-3 sm:px-6 flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full items-center">
+        <div className="flex items-center gap-2">
           <span className="font-semibold text-base">
             Đã chọn: {selectedCartItems.length} sản phẩm
           </span>
-          <span className="text-muted-foreground text-sm">
-            Tạm tính: <b>{formatCurrency(subtotal)}</b>
-          </span>
-          {saleDiscount > 0 && (
-            <span className="text-green-600 text-sm">
-              Khuyến mãi: -{formatCurrency(saleDiscount)}
-            </span>
+        </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Input
+            placeholder="Nhập mã giảm giá"
+            value={discountCode}
+            onChange={(e) => setDiscountCode(e.target.value)}
+            disabled={!!discountInfo || isApplyingDiscount}
+            className="max-w-[160px]"
+          />
+          {discountInfo ? (
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-2 focus:ring-primary"
+              onClick={onRemoveDiscount}
+            >
+              Xóa mã
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              onClick={onApplyDiscount}
+              disabled={isApplyingDiscount || !discountCode}
+            >
+              {isApplyingDiscount ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Receipt className="h-4 w-4 mr-2" />
+              )}
+              Áp dụng
+            </Button>
           )}
-          {voucherDiscount > 0 && (
-            <span className="text-green-600 text-sm">
-              Mã giảm giá: -{formatCurrency(voucherDiscount)}
-            </span>
-          )}
-          <span className="text-muted-foreground text-sm">
-            Phí ship:{" "}
-            {finalShippingFee > 0 ? (
-              formatCurrency(finalShippingFee)
-            ) : (
-              <span className="text-green-600">Miễn phí</span>
-            )}
+        </div>
+        <div className="flex items-center gap-2 justify-end w-full sm:w-auto">
+          <AlertDialog
+            open={openRemoveDialog}
+            onOpenChange={setOpenRemoveDialog}
+          >
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="border-primary text-primary hover:bg-primary/10 hover:border-primary"
+                onClick={() => setOpenRemoveDialog(true)}
+                disabled={selectedCartItems.length === 0}
+              >
+                Xóa sản phẩm đã chọn
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <Trash2 className="h-5 w-5 text-destructive" />
+                  Xác nhận xóa các sản phẩm đã chọn?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  Hành động này sẽ xóa các sản phẩm đã chọn khỏi giỏ hàng. Bạn
+                  không thể hoàn tác.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Hủy</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    handleRemoveSelected();
+                    setOpenRemoveDialog(false);
+                  }}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-2 focus:ring-primary"
+                >
+                  Xóa
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button
+            size="lg"
+            className="w-full sm:w-auto"
+            onClick={() => handleCheckout(selectedCartItems)}
+            disabled={selectedCartItems.length === 0}
+          >
+            Thanh toán{" "}
+            {selectedCartItems.length > 0
+              ? `(${selectedCartItems.length})`
+              : ""}
+          </Button>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 w-full text-sm mt-1">
+        <div className="flex flex-col gap-1">
+          <span className="text-muted-foreground">Tạm tính</span>
+          <span className="font-semibold">{formatCurrency(subtotal)}</span>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-muted-foreground">Khuyến mãi sản phẩm</span>
+          <span className="text-green-600 font-semibold">
+            -{saleDiscount > 0 ? formatCurrency(saleDiscount) : 0}
           </span>
         </div>
-        <div className="font-semibold text-lg">
-          Tổng:{" "}
-          <span className="text-primary">
-            {formatCurrency(cartTotal + finalShippingFee)}
+        <div className="flex flex-col gap-1">
+          <span className="text-muted-foreground">Mã giảm giá</span>
+          {voucherDiscount > 0 ? (
+            <span className="text-green-600 font-semibold">
+              -{formatCurrency(voucherDiscount)}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          )}
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-muted-foreground">Phí vận chuyển</span>
+          {finalShippingFee > 0 ? (
+            <span className="font-semibold">
+              {formatCurrency(finalShippingFee)}
+            </span>
+          ) : (
+            <span className="text-green-600 font-semibold">Miễn phí</span>
+          )}
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-muted-foreground">Tổng cộng</span>
+          <span className="font-bold text-primary text-lg">
+            {formatCurrency(cartTotal)}
           </span>
         </div>
       </div>
-      <Button
-        size="lg"
-        className="w-full sm:w-auto"
-        onClick={() => handleCheckout(selectedCartItems)}
-        disabled={selectedCartItems.length === 0}
-      >
-        Thanh toán{" "}
-        {selectedCartItems.length > 0 ? `(${selectedCartItems.length})` : ""}
-      </Button>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full mt-1">
+        {discountError && (
+          <Alert
+            variant="destructive"
+            className="py-2 flex items-center gap-2 !p-2"
+          >
+            <span className="flex items-center">
+              <AlertCircle className="h-4 w-4 flex-shrink-0 mr-1" />
+            </span>
+            <span className="text-sm leading-5">{discountError}</span>
+          </Alert>
+        )}
+        {discountInfo && (
+          <div className="text-sm text-green-600 flex flex-wrap gap-2 items-center">
+            <span>
+              Đã áp dụng: <b>{discountCode}</b>
+            </span>
+            {discountInfo.discount.discount_type === "fixed" && (
+              <span>
+                Giảm:{" "}
+                <b>{formatCurrency(discountInfo.discount.discount_amount)}</b>
+              </span>
+            )}
+            {discountInfo.discount.discount_percentage && (
+              <span>
+                Giảm: <b>{discountInfo.discount.discount_percentage}%</b>
+              </span>
+            )}
+            {discountInfo.discount.max_discount_amount && (
+              <span>
+                Tối đa:{" "}
+                {formatCurrency(discountInfo.discount.max_discount_amount)}
+              </span>
+            )}
+            {discountInfo.discount.min_order_value && (
+              <span>
+                Đơn tối thiểu:{" "}
+                {formatCurrency(discountInfo.discount.min_order_value)}
+              </span>
+            )}
+            {voucherDiscount > 0 && (
+              <span>
+                Đã giảm: <b>-{formatCurrency(voucherDiscount)}</b>
+              </span>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -231,16 +380,20 @@ export function CartPage() {
   const voucherDiscount = useMemo(() => {
     if (!discountInfo || !discountInfo.discount) return 0;
     const d = discountInfo.discount;
-    if (d.discount_type === "fixed" && d.discount_amount) {
-      return Math.min(d.discount_amount, subtotal - saleDiscount);
-    } else if (d.discount_percentage) {
-      let amount = ((subtotal - saleDiscount) * d.discount_percentage) / 100;
-      if (d.max_discount_amount && amount > d.max_discount_amount) {
-        amount = d.max_discount_amount;
+    const afterSale = Math.max(0, subtotal - saleDiscount);
+    if (d.min_order_value && afterSale < d.min_order_value) {
+      return 0;
+    } else if (!d.discount_percentage) {
+      return d.max_discount_amount
+        ? Math.min(d.max_discount_amount, afterSale)
+        : 0;
+    } else {
+      let amount = (afterSale * d.discount_percentage) / 100;
+      if (d.max_discount_amount) {
+        amount = Math.min(amount, d.max_discount_amount);
       }
-      return amount;
+      return Math.min(amount, afterSale);
     }
-    return 0;
   }, [discountInfo, subtotal, saleDiscount]);
 
   const isFreeShipping =
@@ -603,6 +756,8 @@ export function CartPage() {
         handleCheckout={(items: any[]) => {
           success("Chức năng thanh toán nhiều sản phẩm đã chọn sẽ sớm có!");
         }}
+        handleRemoveSelected={handleRemoveSelected}
+        setDiscountCode={setDiscountCode}
       />
       {selectedItems.length === 0 && (
         <div className="mt-8">

@@ -616,15 +616,15 @@ export async function validateDiscountCode(code: string, subtotal = 0) {
   }
 
   // Check if discount is valid
-  const now = new Date().toISOString();
+  const now = new Date();
 
   // Check start date
-  if (discount.start_date && new Date(discount.start_date) > new Date(now)) {
+  if (discount.start_date && new Date(discount.start_date) > now) {
     return { success: false, error: "Mã giảm giá chưa có hiệu lực" };
   }
 
   // Check end date
-  if (discount.end_date && new Date(discount.end_date) < new Date(now)) {
+  if (discount.end_date && new Date(discount.end_date) < now) {
     return { success: false, error: "Mã giảm giá đã hết hạn" };
   }
 
@@ -652,14 +652,30 @@ export async function validateDiscountCode(code: string, subtotal = 0) {
   }
 
   // Calculate discount amount
-  let discountAmount = (discount.discount_percentage / 100) * subtotal;
+  let discountAmount = 0;
+  if (!discount.discount_percentage) {
+    // Mã giảm giá cứng: lấy max_discount_amount (không vượt quá subtotal)
+    discountAmount =
+      discount.max_discount_amount && discount.max_discount_amount > 0
+        ? Math.min(discount.max_discount_amount, subtotal)
+        : 0;
+  } else {
+    // Mã giảm giá phần trăm
+    discountAmount = (subtotal * discount.discount_percentage) / 100;
+    if (
+      discount.max_discount_amount &&
+      discountAmount > discount.max_discount_amount
+    ) {
+      discountAmount = discount.max_discount_amount;
+    }
+  }
 
-  // Apply max discount amount if specified
-  if (
-    discount.max_discount_amount &&
-    discountAmount > discount.max_discount_amount
-  ) {
-    discountAmount = discount.max_discount_amount;
+  // Nếu không có giảm giá hợp lệ
+  if (!discountAmount || discountAmount <= 0) {
+    return {
+      success: false,
+      error: "Mã giảm giá không áp dụng được cho đơn hàng này",
+    };
   }
 
   return {

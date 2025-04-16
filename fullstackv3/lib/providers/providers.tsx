@@ -17,7 +17,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         {/* CartProvider removed: Cart state is managed by TanStack Query and guest-cart context if needed */}
         <CheckoutProvider>
           {children}
-          <Toaster richColors closeButton position="bottom-right" />
+          <Toaster richColors closeButton position="top-left" />
         </CheckoutProvider>
       </ThemeProvider>
     </QueryProvider>
