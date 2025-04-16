@@ -1,17 +1,23 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useCheckout } from "../../providers/checkout-provider"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { User, Mail, Phone } from "lucide-react"
+import { useState, useEffect } from "react";
+import { useCheckout } from "@/features/shop/checkout/checkout-provider";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { User, Mail, Phone } from "lucide-react";
 
 export function GuestInfo() {
-  const { guestInfo, setGuestInfo } = useCheckout()
-  const [name, setName] = useState(guestInfo?.name || "")
-  const [email, setEmail] = useState(guestInfo?.email || "")
-  const [phone, setPhone] = useState(guestInfo?.phone || "")
+  const { guestInfo, setGuestInfo } = useCheckout();
+  const [name, setName] = useState(guestInfo?.name || "");
+  const [email, setEmail] = useState(guestInfo?.email || "");
+  const [phone, setPhone] = useState(guestInfo?.phone || "");
 
   // Update guest info in checkout context when fields change
   useEffect(() => {
@@ -20,9 +26,9 @@ export function GuestInfo() {
         name,
         email,
         phone,
-      })
+      });
     }
-  }, [name, email, phone, setGuestInfo])
+  }, [name, email, phone, setGuestInfo]);
 
   return (
     <Card className="mb-6">
@@ -31,7 +37,9 @@ export function GuestInfo() {
           <User className="w-5 h-5" />
           Thông tin người mua
         </CardTitle>
-        <CardDescription>Vui lòng nhập thông tin của bạn để tiếp tục thanh toán</CardDescription>
+        <CardDescription>
+          Vui lòng nhập thông tin của bạn để tiếp tục thanh toán
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid gap-4">
@@ -83,6 +91,5 @@ export function GuestInfo() {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
-

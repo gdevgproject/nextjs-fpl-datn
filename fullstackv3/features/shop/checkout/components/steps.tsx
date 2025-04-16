@@ -1,25 +1,25 @@
-"use client"
+"use client";
 
-import { useCheckout } from "../../providers/checkout-provider"
-import { cn } from "@/lib/utils"
-import { CheckCircle, MapPin, CreditCard, ClipboardList } from "lucide-react"
+import { useCheckout } from "@/features/shop/checkout/checkout-provider";
+import { cn } from "@/lib/utils";
+import { CheckCircle, MapPin, CreditCard, ClipboardList } from "lucide-react";
 
 const steps = [
   { id: "address", label: "Địa chỉ", icon: MapPin },
   { id: "payment", label: "Thanh toán", icon: CreditCard },
   { id: "review", label: "Xác nhận", icon: ClipboardList },
-]
+];
 
 export function Steps() {
-  const { currentStep } = useCheckout()
+  const { currentStep } = useCheckout();
 
   return (
     <div className="relative flex justify-between">
       {steps.map((step, index) => {
         // Determine step status
-        const isActive = currentStep === step.id
-        const isCompleted = getStepIndex(currentStep) > index
-        const Icon = step.icon
+        const isActive = currentStep === step.id;
+        const isCompleted = getStepIndex(currentStep) > index;
+        const Icon = step.icon;
 
         return (
           <div
@@ -27,20 +27,26 @@ export function Steps() {
             className={cn(
               "flex flex-col items-center z-10 w-24",
               isActive && "text-primary",
-              isCompleted && "text-green-600",
+              isCompleted && "text-green-600"
             )}
           >
             <div
               className={cn(
                 "w-8 h-8 rounded-full flex items-center justify-center mb-2",
-                isActive || isCompleted ? "bg-primary text-primary-foreground" : "bg-muted",
+                isActive || isCompleted
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted"
               )}
             >
-              {isCompleted ? <CheckCircle className="w-6 h-6" /> : <Icon className="w-4 h-4" />}
+              {isCompleted ? (
+                <CheckCircle className="w-6 h-6" />
+              ) : (
+                <Icon className="w-4 h-4" />
+              )}
             </div>
             <span className="text-sm text-center">{step.label}</span>
           </div>
-        )
+        );
       })}
 
       {/* Connecting line */}
@@ -53,21 +59,20 @@ export function Steps() {
         />
       </div>
     </div>
-  )
+  );
 }
 
 // Helper functions for step progress
 function getStepIndex(step: string): number {
-  return steps.findIndex((s) => s.id === step)
+  return steps.findIndex((s) => s.id === step);
 }
 
 function getStepProgressPercentage(step: string): number {
-  const index = getStepIndex(step)
-  if (index === -1) return 0
+  const index = getStepIndex(step);
+  if (index === -1) return 0;
 
-  const stepCount = steps.length - 1
-  if (stepCount === 0) return 100
+  const stepCount = steps.length - 1;
+  if (stepCount === 0) return 100;
 
-  return (index / stepCount) * 100
+  return (index / stepCount) * 100;
 }
-

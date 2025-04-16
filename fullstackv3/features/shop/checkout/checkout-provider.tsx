@@ -3,11 +3,11 @@
 import type React from "react";
 import { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useCartContext } from "./cart-provider";
+import { useCartContext } from "@/features/shop/cart/cart-provider";
 import { useAuthQuery } from "@/features/auth/hooks";
-import { useToast } from "@/hooks/use-toast";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { securedPlaceOrder } from "../actions/secure-place-order";
+import { securedPlaceOrder } from "./secure-place-order";
 import type { Address } from "@/features/shop/account/types";
 
 // Checkout steps
@@ -73,7 +73,7 @@ const CheckoutContext = createContext<CheckoutContextType>({
 
 export function CheckoutProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { toast } = useToast();
+  const { toast } = useSonnerToast();
   const { data: session } = useAuthQuery();
   const isAuthenticated = !!session?.user;
   const {
@@ -104,11 +104,7 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("Error fetching payment methods:", error);
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải phương thức thanh toán",
-          variant: "destructive",
-        });
+        toast("Lỗi", { description: "Không thể tải phương thức thanh toán" });
       } else {
         setPaymentMethods(data || []);
       }
@@ -219,11 +215,9 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (cartItems.length === 0) {
-      toast({
-        title: "Giỏ hàng trống",
+      toast("Giỏ hàng trống", {
         description:
           "Vui lòng thêm sản phẩm vào giỏ hàng trước khi thanh toán.",
-        variant: "destructive",
       });
       router.push("/gio-hang");
       return;
@@ -272,11 +266,8 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
         throw new Error(result.error);
       }
 
-      // Show success notification for everyone (guest and logged-in users)
-      toast({
-        title: "Đặt hàng thành công",
+      toast("Đặt hàng thành công", {
         description: "Đơn hàng của bạn đã được tiếp nhận!",
-        variant: "success",
       });
 
       // Clear cart after successful order
@@ -296,13 +287,11 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error("Error placing order:", error);
-      toast({
-        title: "Đặt hàng thất bại",
+      toast("Đặt hàng thất bại", {
         description:
           error instanceof Error
             ? error.message
             : "Đã xảy ra lỗi khi đặt hàng. Vui lòng thử lại sau.",
-        variant: "destructive",
       });
     } finally {
       setIsProcessing(false);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useCheckout } from "../../providers/checkout-provider";
+import { useCheckout } from "@/features/shop/checkout/checkout-provider";
 import { useAuthQuery } from "@/features/auth/hooks";
 import {
   Card,

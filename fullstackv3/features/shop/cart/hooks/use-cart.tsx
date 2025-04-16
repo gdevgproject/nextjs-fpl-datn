@@ -258,10 +258,8 @@ export function useCart() {
           await mergeItems(cartData.id);
         } catch (error) {
           console.error("Error merging carts:", error);
-          toast({
-            title: "Lỗi đồng bộ giỏ hàng",
+          toast("Lỗi đồng bộ giỏ hàng", {
             description: handleApiError(error),
-            variant: "destructive",
           });
         }
       }
@@ -291,8 +289,7 @@ export function useCart() {
       // Invalidate cart query để fetch lại cart items
       queryClient.invalidateQueries({ queryKey: ["cart"] });
 
-      toast({
-        title: "Giỏ hàng đã được đồng bộ",
+      toast("Giỏ hàng đã được đồng bộ", {
         description:
           "Các sản phẩm trong giỏ hàng của bạn đã được lưu vào tài khoản.",
       });
@@ -384,20 +381,15 @@ export function useCart() {
         queryClient.invalidateQueries({ queryKey: ["cart"] });
       }
 
-      toast({
-        title: "Đã thêm vào giỏ hàng",
-        description: "Sản phẩm đã được thêm vào giỏ hàng của bạn.",
-      });
+      toast("Đã thêm sản phẩm vào giỏ hàng");
     },
     onError: (error) => {
       console.error("Error adding to cart:", error);
-      toast({
-        title: "Thêm vào giỏ hàng thất bại",
+      toast("Lỗi", {
         description:
           error instanceof Error
             ? error.message
-            : "Đã xảy ra lỗi khi thêm sản phẩm vào giỏ hàng.",
-        variant: "destructive",
+            : "Không thể thêm sản phẩm vào giỏ hàng",
       });
     },
   });
@@ -495,13 +487,11 @@ export function useCart() {
     },
     onError: (error) => {
       console.error("Error updating cart item:", error);
-      toast({
-        title: "Cập nhật giỏ hàng thất bại",
+      toast("Cập nhật giỏ hàng thất bại", {
         description:
           error instanceof Error
             ? error.message
             : "Đã xảy ra lỗi khi cập nhật sản phẩm trong giỏ hàng.",
-        variant: "destructive",
       });
     },
   });
@@ -560,20 +550,17 @@ export function useCart() {
         queryClient.invalidateQueries({ queryKey: ["cart"] });
       }
 
-      toast({
-        title: "Đã xóa khỏi giỏ hàng",
+      toast("Đã xóa khỏi giỏ hàng", {
         description: "Sản phẩm đã được xóa khỏi giỏ hàng của bạn.",
       });
     },
     onError: (error) => {
       console.error("Error removing from cart:", error);
-      toast({
-        title: "Xóa khỏi giỏ hàng thất bại",
+      toast("Xóa khỏi giỏ hàng thất bại", {
         description:
           error instanceof Error
             ? error.message
             : "Đã xảy ra lỗi khi xóa sản phẩm khỏi giỏ hàng.",
-        variant: "destructive",
       });
     },
   });

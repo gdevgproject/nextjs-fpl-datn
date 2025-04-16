@@ -6,7 +6,7 @@ import {
   getSupabaseServerClient,
 } from "@/lib/supabase/server";
 import type { Address } from "@/features/shop/account/types";
-import type { CartItem, GuestCheckoutInfo } from "../types";
+import type { CartItem, GuestCheckoutInfo } from "@/features/shop/cart/types";
 
 /**
  * Type definition for the Place Order response

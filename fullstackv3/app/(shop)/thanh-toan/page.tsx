@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CheckoutPage } from "@/features/shop/cart/components/checkout/checkout-page";
+import { CheckoutPage } from "@/features/shop/checkout/components/checkout-page";
 
 export const metadata: Metadata = {
   title: "Thanh toán | MyBeauty",

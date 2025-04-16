@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useCartContext } from "@/features/shop/cart/providers/cart-provider";
+import { useCartContext } from "@/features/shop/cart/cart-provider";
 import { formatCurrency } from "@/lib/utils/format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

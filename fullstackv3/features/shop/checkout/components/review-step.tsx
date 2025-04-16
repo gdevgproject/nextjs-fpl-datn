@@ -1,7 +1,7 @@
 "use client";
 
-import { useCheckout } from "../../providers/checkout-provider";
-import { useCartContext } from "../../providers/cart-provider";
+import { useCheckout } from "@/features/shop/checkout/checkout-provider";
+import { useCartContext } from "@/features/shop/cart/cart-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";

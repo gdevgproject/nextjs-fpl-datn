@@ -1,19 +1,34 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { useCartContext } from "../providers/cart-provider"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { ShoppingCart, Trash2, Plus, Minus, AlertCircle, ShoppingBag, Loader2, Receipt } from "lucide-react"
-import { formatCurrency } from "@/lib/utils/format"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { validateDiscountCode } from "../actions/cart-actions"
-import { EmptyCart } from "./empty-cart"
-import { toast } from "sonner"
+import { useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { useCartContext } from "@/features/shop/cart/cart-provider";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import {
+  ShoppingCart,
+  Trash2,
+  Plus,
+  Minus,
+  AlertCircle,
+  ShoppingBag,
+  Loader2,
+  Receipt,
+} from "lucide-react";
+import { formatCurrency } from "@/lib/utils/format";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { validateDiscountCode } from "../cart-actions";
+import { EmptyCart } from "./empty-cart";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 
 export function CartPage() {
   const {
@@ -31,56 +46,64 @@ export function CartPage() {
     removeDiscount,
     appliedDiscount,
     isUpdatingCart,
-  } = useCartContext()
+  } = useCartContext();
 
-  const [isApplyingDiscount, setIsApplyingDiscount] = useState(false)
-  const [discountError, setDiscountError] = useState<string | null>(null)
-  const [localDiscountCode, setLocalDiscountCode] = useState(discountCode || "")
+  const { success, error, info, warning, toast } = useSonnerToast();
+
+  const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [localDiscountCode, setLocalDiscountCode] = useState(
+    discountCode || ""
+  );
 
   // Handle applying discount code
   const handleApplyDiscount = async () => {
     if (!localDiscountCode.trim()) {
-      setDiscountError("Vui lòng nhập mã giảm giá")
-      return
+      setDiscountError("Vui lòng nhập mã giảm giá");
+      return;
     }
 
-    setIsApplyingDiscount(true)
-    setDiscountError(null)
+    setIsApplyingDiscount(true);
+    setDiscountError(null);
 
     try {
-      const result = await validateDiscountCode(localDiscountCode, subtotal)
+      const result = await validateDiscountCode(localDiscountCode, subtotal);
 
       if (result.success && result.data) {
         // Apply the discount to the cart
-        applyDiscount(localDiscountCode, result.data.discount, result.data.discountAmount)
-        setDiscountError(null)
+        applyDiscount(
+          localDiscountCode,
+          result.data.discount,
+          result.data.discountAmount
+        );
+        setDiscountError(null);
 
         // Show success message
-        toast({
-          title: "Áp dụng thành công",
-          description: `Đã áp dụng mã giảm giá ${localDiscountCode}`,
-        })
+        success(`Đã áp dụng mã giảm giá ${localDiscountCode}`);
       } else {
-        setDiscountError(result.error || "Mã giảm giá không hợp lệ")
+        setDiscountError(result.error || "Mã giảm giá không hợp lệ");
       }
-    } catch (error) {
-      console.error("Error applying discount:", error)
-      setDiscountError("Đã xảy ra lỗi khi áp dụng mã giảm giá")
+    } catch (err) {
+      console.error("Error applying discount:", err);
+      setDiscountError("Đã xảy ra lỗi khi áp dụng mã giảm giá");
+      error &&
+        typeof error === "function" &&
+        error("Đã xảy ra lỗi khi áp dụng mã giảm giá");
     } finally {
-      setIsApplyingDiscount(false)
+      setIsApplyingDiscount(false);
     }
-  }
+  };
 
   // Handle removing discount code
   const handleRemoveDiscount = () => {
-    removeDiscount()
-    setLocalDiscountCode("")
-    setDiscountError(null)
-  }
+    removeDiscount();
+    setLocalDiscountCode("");
+    setDiscountError(null);
+  };
 
   // If cart is empty, show empty state
   if (cartItemCount === 0) {
-    return <EmptyCart />
+    return <EmptyCart />;
   }
 
   return (
@@ -93,17 +116,23 @@ export function CartPage() {
           <div className="bg-card rounded-lg border shadow-sm">
             <div className="p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">Sản phẩm ({cartItemCount})</h2>
+                <h2 className="text-xl font-bold">
+                  Sản phẩm ({cartItemCount})
+                </h2>
               </div>
 
               {cartItems.map((item) => (
-                <div key={item.variant_id} className="py-4 border-b last:border-0">
+                <div
+                  key={item.variant_id}
+                  className="py-4 border-b last:border-0"
+                >
                   <div className="flex items-start gap-4">
                     {/* Product image */}
                     <div className="relative w-20 h-20 rounded overflow-hidden bg-secondary/20 flex-shrink-0">
                       <Image
                         src={
-                          item.product?.images?.find((img: any) => img.is_main)?.image_url ||
+                          item.product?.images?.find((img: any) => img.is_main)
+                            ?.image_url ||
                           item.product?.images?.[0]?.image_url ||
                           "/placeholder.jpg" ||
                           "/placeholder.svg" ||
@@ -120,20 +149,28 @@ export function CartPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between">
                         <div>
-                          <h3 className="font-medium line-clamp-2">{item.product?.name}</h3>
-                          <p className="text-sm text-muted-foreground">{item.product?.volume_ml}ml</p>
+                          <h3 className="font-medium line-clamp-2">
+                            {item.product?.name}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            {item.product?.volume_ml}ml
+                          </p>
 
                           {/* Price */}
                           <div className="mt-1">
                             {item.product?.sale_price ? (
                               <div className="flex items-center gap-2">
-                                <span className="font-medium">{formatCurrency(item.product.sale_price)}</span>
+                                <span className="font-medium">
+                                  {formatCurrency(item.product.sale_price)}
+                                </span>
                                 <span className="text-sm text-muted-foreground line-through">
                                   {formatCurrency(item.product.price)}
                                 </span>
                               </div>
                             ) : (
-                              <span className="font-medium">{formatCurrency(item.product?.price || 0)}</span>
+                              <span className="font-medium">
+                                {formatCurrency(item.product?.price || 0)}
+                              </span>
                             )}
                           </div>
                         </div>
@@ -159,21 +196,35 @@ export function CartPage() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 rounded-r-none"
-                            onClick={() => updateCartItemQuantity(item.variant_id, Math.max(1, item.quantity - 1))}
+                            onClick={() =>
+                              updateCartItemQuantity(
+                                item.variant_id,
+                                Math.max(1, item.quantity - 1)
+                              )
+                            }
                             disabled={item.quantity <= 1 || isUpdatingCart}
                           >
                             <Minus className="h-3 w-3" />
                           </Button>
 
                           <div className="w-10 text-center font-medium text-sm py-1">
-                            {isUpdatingCart ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : item.quantity}
+                            {isUpdatingCart ? (
+                              <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                            ) : (
+                              item.quantity
+                            )}
                           </div>
 
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 rounded-l-none"
-                            onClick={() => updateCartItemQuantity(item.variant_id, item.quantity + 1)}
+                            onClick={() =>
+                              updateCartItemQuantity(
+                                item.variant_id,
+                                item.quantity + 1
+                              )
+                            }
                             disabled={isUpdatingCart}
                           >
                             <Plus className="h-3 w-3" />
@@ -183,7 +234,11 @@ export function CartPage() {
                         <div className="flex items-center gap-4">
                           {/* Item total */}
                           <span className="font-medium">
-                            {formatCurrency((item.product?.sale_price || item.product?.price || 0) * item.quantity)}
+                            {formatCurrency(
+                              (item.product?.sale_price ||
+                                item.product?.price ||
+                                0) * item.quantity
+                            )}
                           </span>
 
                           {/* Remove button - desktop only */}
@@ -237,11 +292,18 @@ export function CartPage() {
                     />
                   </div>
                   {appliedDiscount ? (
-                    <Button variant="destructive" onClick={handleRemoveDiscount}>
+                    <Button
+                      variant="destructive"
+                      onClick={handleRemoveDiscount}
+                    >
                       Xóa
                     </Button>
                   ) : (
-                    <Button variant="secondary" onClick={handleApplyDiscount} disabled={isApplyingDiscount}>
+                    <Button
+                      variant="secondary"
+                      onClick={handleApplyDiscount}
+                      disabled={isApplyingDiscount}
+                    >
                       {isApplyingDiscount ? (
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
                       ) : (
@@ -265,7 +327,8 @@ export function CartPage() {
                 {/* Applied discount info */}
                 {appliedDiscount && (
                   <div className="mt-2 text-sm text-green-600">
-                    Đã áp dụng: {appliedDiscount.code} ({appliedDiscount.discount_percentage}%)
+                    Đã áp dụng: {appliedDiscount.code} (
+                    {appliedDiscount.discount_percentage}%)
                   </div>
                 )}
               </div>
@@ -281,7 +344,11 @@ export function CartPage() {
 
                 {discount > 0 && (
                   <div className="flex justify-between text-green-600">
-                    <span>Giảm giá {appliedDiscount && `(${appliedDiscount.discount_percentage}%)`}</span>
+                    <span>
+                      Giảm giá{" "}
+                      {appliedDiscount &&
+                        `(${appliedDiscount.discount_percentage}%)`}
+                    </span>
                     <span>-{formatCurrency(discount)}</span>
                   </div>
                 )}
@@ -315,6 +382,5 @@ export function CartPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
-
