@@ -13,7 +13,7 @@ import type {
   OrderDetails,
   OrderStats,
 } from "./types";
-import type { PaymentStatus } from "@/features/shop/orders/types";
+import type { PaymentStatus } from "@/features/shop/account/order-types";
 
 /**
  * Get a paginated list of orders with filtering and sorting

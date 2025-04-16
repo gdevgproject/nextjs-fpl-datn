@@ -1,7 +1,7 @@
 "use client";
 import OrderDetailsView from "./order-details-view";
 import type { OrderDetails, OrderActivityLog } from "../types";
-import type { PaymentStatus } from "@/features/shop/orders/types";
+import type { PaymentStatus } from "@/features/shop/account/order-types";
 import {
   useUpdateOrderStatus,
   useUpdateOrderTracking,

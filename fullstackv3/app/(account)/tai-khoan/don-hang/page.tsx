@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { OrderHistoryPage } from "@/features/shop/orders/components/order-history-page";
+import { OrderHistoryPage } from "@/features/shop/account/components/order-history-page";
 
 export const metadata: Metadata = {
   title: "Lịch sử đơn hàng - MyBeauty",

@@ -48,7 +48,7 @@ async function getOrderServerSide(
   }
 }
 
-export default async function OrderConfirmationPage(props: {
+export default async function OrderLookupPage(props: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   // Next.js App Router 15+: searchParams là Promise
@@ -78,25 +78,7 @@ export default async function OrderConfirmationPage(props: {
         </Card>
       ) : order ? (
         <div className="space-y-6">
-          <Card className="border-primary/20 bg-primary/5">
-            <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-              <div className="rounded-full bg-primary/10 p-3 mb-4">
-                <CheckCircle className="h-8 w-8 text-primary" />
-              </div>
-              <h2 className="text-2xl font-bold mb-2">Đặt hàng thành công!</h2>
-              <p className="text-muted-foreground">
-                Cảm ơn bạn đã đặt hàng. Chúng tôi đã gửi email xác nhận đơn
-                hàng.
-              </p>
-
-              {/* Display order access token for guests with copy functionality */}
-              {order.access_token && (
-                <div className="mt-4 w-full max-w-md">
-                  <CopyAccessToken accessToken={order.access_token} />
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {/* KHÔNG có phần "Đặt hàng thành công!" ở đây */}
 
           <Card>
             <CardHeader>
@@ -270,6 +252,13 @@ export default async function OrderConfirmationPage(props: {
                   </div>
                 </div>
               </div>
+
+              {/* Copy access token for guests */}
+              {order.access_token && (
+                <div className="mt-4 w-full max-w-md">
+                  <CopyAccessToken accessToken={order.access_token} />
+                </div>
+              )}
             </CardContent>
           </Card>
 

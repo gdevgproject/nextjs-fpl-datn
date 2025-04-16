@@ -8,7 +8,7 @@ import type {
   OrderActivityLog,
   OrderStats,
 } from "./types";
-import type { PaymentStatus } from "@/features/shop/orders/types";
+import type { PaymentStatus } from "@/features/shop/account/order-types";
 import {
   getOrdersList,
   getOrderDetails,

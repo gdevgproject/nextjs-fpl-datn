@@ -95,23 +95,34 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
   const [justPlacedOrder, setJustPlacedOrder] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+    if (paymentMethods.length > 0) return;
     const fetchPaymentMethods = async () => {
-      const supabase = getSupabaseBrowserClient();
-      const { data, error } = await supabase
-        .from("payment_methods")
-        .select("*")
-        .eq("is_active", true);
-
-      if (error) {
-        console.error("Error fetching payment methods:", error);
-        toast("Lỗi", { description: "Không thể tải phương thức thanh toán" });
-      } else {
-        setPaymentMethods(data || []);
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const { data, error } = await supabase
+          .from("payment_methods")
+          .select("*")
+          .eq("is_active", true)
+          .order("id");
+        if (error) {
+          console.error("Error fetching payment methods:", error);
+          if (isMounted)
+            toast("Lỗi", {
+              description: "Không thể tải phương thức thanh toán",
+            });
+        } else if (isMounted) {
+          setPaymentMethods(data || []);
+        }
+      } catch (err) {
+        if (isMounted) console.error("Failed to fetch payment methods:", err);
       }
     };
-
     fetchPaymentMethods();
-  }, [toast]);
+    return () => {
+      isMounted = false;
+    };
+  }, [toast, paymentMethods.length]);
 
   // Update form data
   const updateFormData = (data: Partial<CheckoutFormData>) => {

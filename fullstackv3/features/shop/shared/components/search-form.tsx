@@ -16,6 +16,12 @@ import {
 import { Search, Package, ChevronDown } from "lucide-react";
 import { useState } from "react";
 
+const uuidV4Regex =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const PRODUCT_SEARCH_MAX = 100;
+const ORDER_TOKEN_MAX = 50;
+
 const searchSchema = z.object({
   query: z.string().min(1, "Vui lòng nhập từ khóa tìm kiếm"),
 });
@@ -25,6 +31,7 @@ type SearchFormValues = z.infer<typeof searchSchema>;
 export function SearchForm() {
   const router = useRouter();
   const [searchMode, setSearchMode] = useState<"product" | "order">("product");
+  const [customError, setCustomError] = useState<string | null>(null);
   const {
     control,
     handleSubmit,
@@ -36,12 +43,31 @@ export function SearchForm() {
   });
 
   const onSubmit = (data: SearchFormValues) => {
+    setCustomError(null);
+    const value = data.query.trim();
     if (searchMode === "product") {
-      router.push(`/san-pham?search=${encodeURIComponent(data.query)}`);
+      if (value.length > PRODUCT_SEARCH_MAX) {
+        setCustomError(
+          `Từ khóa tìm kiếm không được vượt quá ${PRODUCT_SEARCH_MAX} ký tự`
+        );
+        return;
+      }
+      router.push(`/san-pham?search=${encodeURIComponent(value)}`);
+      reset();
     } else {
-      router.push(`/tra-cuu-don-hang?token=${encodeURIComponent(data.query)}`);
+      if (value.length > ORDER_TOKEN_MAX) {
+        setCustomError(
+          `Mã tra cứu đơn hàng không được vượt quá ${ORDER_TOKEN_MAX} ký tự`
+        );
+        return;
+      }
+      if (!uuidV4Regex.test(value)) {
+        setCustomError("Mã tra cứu đơn hàng không hợp lệ");
+        return;
+      }
+      router.push(`/tra-cuu-don-hang?token=${encodeURIComponent(value)}`);
+      reset();
     }
-    reset();
   };
 
   return (
@@ -82,12 +108,15 @@ export function SearchForm() {
               placeholder={
                 searchMode === "product"
                   ? "Tìm kiếm sản phẩm..."
-                  : "Nhập mã đơn hàng..."
+                  : "Nhập mã tra cứu đơn hàng..."
+              }
+              maxLength={
+                searchMode === "product" ? PRODUCT_SEARCH_MAX : ORDER_TOKEN_MAX
               }
               className={`w-full pl-[110px] pr-10 ${
-                errors.query ? "border-destructive" : ""
+                errors.query || customError ? "border-destructive" : ""
               }`}
-              aria-invalid={errors.query ? "true" : "false"}
+              aria-invalid={errors.query || customError ? "true" : "false"}
             />
           )}
         />
@@ -106,6 +135,9 @@ export function SearchForm() {
       </div>
       {errors.query && (
         <p className="text-xs text-destructive mt-1">{errors.query.message}</p>
+      )}
+      {customError && (
+        <p className="text-xs text-destructive mt-1">{customError}</p>
       )}
     </form>
   );

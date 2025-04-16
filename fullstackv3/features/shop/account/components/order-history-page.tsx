@@ -1,13 +1,25 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { useUserOrders, useOrderStatuses } from "../queries"
-import { OrderStatusBadge } from "./order-status-badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useState } from "react";
+import Link from "next/link";
+import { useUserOrders, useOrderStatuses } from "../order-queries";
+import { OrderStatusBadge } from "./order-status-badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Pagination,
   PaginationContent,
@@ -15,50 +27,59 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from "@/components/ui/pagination"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { format } from "date-fns"
-import { vi } from "date-fns/locale"
-import { CalendarIcon, ChevronRight, ShoppingBag } from "lucide-react"
-import { formatPrice } from "@/lib/utils"
-import { formatDate } from "@/lib/utils/format"
-import type { OrderFilter } from "../types"
+} from "@/components/ui/pagination";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { format } from "date-fns";
+import { vi } from "date-fns/locale";
+import { CalendarIcon, ChevronRight, ShoppingBag } from "lucide-react";
+import { formatPrice } from "@/lib/utils";
+import { formatDate } from "@/lib/utils/format";
+import type { OrderFilter } from "../order-types";
 
 export function OrderHistoryPage() {
-  const [page, setPage] = useState(1)
-  const [filter, setFilter] = useState<OrderFilter>({})
-  const pageSize = 5
+  const [page, setPage] = useState(1);
+  const [filter, setFilter] = useState<OrderFilter>({});
+  const pageSize = 5;
 
-  const { data: orderData, isLoading } = useUserOrders(page, pageSize, filter)
-  const { data: statuses, isLoading: isLoadingStatuses } = useOrderStatuses()
+  const { data: orderData, isLoading } = useUserOrders(page, pageSize, filter);
+  const { data: statuses, isLoading: isLoadingStatuses } = useOrderStatuses();
 
   // Xử lý khi thay đổi filter
   const handleStatusChange = (value: string) => {
     setFilter((prev) => ({
       ...prev,
       status: value === "all" ? undefined : Number.parseInt(value),
-    }))
-    setPage(1) // Reset về trang 1 khi thay đổi filter
-  }
+    }));
+    setPage(1); // Reset về trang 1 khi thay đổi filter
+  };
 
-  const handleDateRangeChange = (range: { from: Date | null; to: Date | null }) => {
+  const handleDateRangeChange = (range: {
+    from: Date | null;
+    to: Date | null;
+  }) => {
     setFilter((prev) => ({
       ...prev,
       dateRange: range.from ? range : null,
-    }))
-    setPage(1) // Reset về trang 1 khi thay đổi filter
-  }
+    }));
+    setPage(1); // Reset về trang 1 khi thay đổi filter
+  };
 
   // Tính toán tổng số trang
-  const totalPages = orderData ? Math.ceil(orderData.count / pageSize) : 0
+  const totalPages = orderData ? Math.ceil(orderData.count / pageSize) : 0;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Lịch sử đơn hàng</h1>
-          <p className="text-muted-foreground">Xem và quản lý các đơn hàng của bạn</p>
+          <p className="text-muted-foreground">
+            Xem và quản lý các đơn hàng của bạn
+          </p>
         </div>
       </div>
 
@@ -85,12 +106,16 @@ export function OrderHistoryPage() {
 
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full justify-start text-left font-normal sm:w-[240px]">
+              <Button
+                variant="outline"
+                className="w-full justify-start text-left font-normal sm:w-[240px]"
+              >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {filter.dateRange?.from ? (
                   filter.dateRange.to ? (
                     <>
-                      {format(filter.dateRange.from, "dd/MM/yyyy")} - {format(filter.dateRange.to, "dd/MM/yyyy")}
+                      {format(filter.dateRange.from, "dd/MM/yyyy")} -{" "}
+                      {format(filter.dateRange.to, "dd/MM/yyyy")}
                     </>
                   ) : (
                     format(filter.dateRange.from, "dd/MM/yyyy")
@@ -114,7 +139,13 @@ export function OrderHistoryPage() {
               />
               {filter.dateRange?.from && (
                 <div className="flex items-center justify-center gap-2 p-2 border-t">
-                  <Button variant="ghost" size="sm" onClick={() => handleDateRangeChange({ from: null, to: null })}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      handleDateRangeChange({ from: null, to: null })
+                    }
+                  >
                     Xóa
                   </Button>
                 </div>
@@ -164,19 +195,27 @@ export function OrderHistoryPage() {
             <Card key={order.id}>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Đơn hàng #{order.id}</CardTitle>
+                  <CardTitle className="text-base">
+                    Đơn hàng #{order.id}
+                  </CardTitle>
                   <OrderStatusBadge
                     status={order.order_status?.name || "Đang xử lý"}
                     statusId={order.order_status_id || undefined}
                   />
                 </div>
-                <CardDescription>Ngày đặt: {formatDate(order.order_date)}</CardDescription>
+                <CardDescription>
+                  Ngày đặt: {formatDate(order.order_date)}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="text-sm text-muted-foreground">Người nhận: {order.recipient_name}</p>
-                    <p className="font-medium mt-1">Tổng tiền: {formatPrice(order.total_amount)}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Người nhận: {order.recipient_name}
+                    </p>
+                    <p className="font-medium mt-1">
+                      Tổng tiền: {formatPrice(order.total_amount)}
+                    </p>
                   </div>
                   <Button asChild variant="outline" className="gap-1">
                     <Link href={`/tai-khoan/don-hang/${order.id}`}>
@@ -199,8 +238,8 @@ export function OrderHistoryPage() {
               <PaginationPrevious
                 href="#"
                 onClick={(e) => {
-                  e.preventDefault()
-                  if (page > 1) setPage(page - 1)
+                  e.preventDefault();
+                  if (page > 1) setPage(page - 1);
                 }}
                 className={page <= 1 ? "pointer-events-none opacity-50" : ""}
               />
@@ -211,8 +250,8 @@ export function OrderHistoryPage() {
                 <PaginationLink
                   href="#"
                   onClick={(e) => {
-                    e.preventDefault()
-                    setPage(i + 1)
+                    e.preventDefault();
+                    setPage(i + 1);
                   }}
                   isActive={page === i + 1}
                 >
@@ -225,16 +264,17 @@ export function OrderHistoryPage() {
               <PaginationNext
                 href="#"
                 onClick={(e) => {
-                  e.preventDefault()
-                  if (page < totalPages) setPage(page + 1)
+                  e.preventDefault();
+                  if (page < totalPages) setPage(page + 1);
                 }}
-                className={page >= totalPages ? "pointer-events-none opacity-50" : ""}
+                className={
+                  page >= totalPages ? "pointer-events-none opacity-50" : ""
+                }
               />
             </PaginationItem>
           </PaginationContent>
         </Pagination>
       )}
     </div>
-  )
+  );
 }
-
