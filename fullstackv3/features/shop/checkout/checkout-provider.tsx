@@ -107,7 +107,10 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
           .order("id");
         if (error) {
           console.error("Error fetching payment methods:", error);
-          if (isMounted) toast("Lỗi", { description: "Không thể tải phương thức thanh toán" });
+          if (isMounted)
+            toast("Lỗi", {
+              description: "Không thể tải phương thức thanh toán",
+            });
         } else if (isMounted) {
           setPaymentMethods(data || []);
         }
@@ -116,7 +119,9 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
       }
     };
     fetchPaymentMethods();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [toast, paymentMethods.length]);
 
   // Update form data

@@ -9,7 +9,7 @@ import { GuestInfoStep } from "./guest-info-step";
 import { AddressStep } from "./address-step";
 import { PaymentStep } from "./payment-step";
 import { ReviewStep } from "./review-step";
-import { OrderSummary } from "@/features/shop/orders/components/order-summary";
+import { OrderSummary } from "@/features/shop/checkout/components/order-summary";
 import { EmptyCart } from "@/features/shop/cart/components/empty-cart";
 import { useAuthQuery } from "@/features/auth/hooks";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";

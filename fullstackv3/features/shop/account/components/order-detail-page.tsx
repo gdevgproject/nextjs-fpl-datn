@@ -1,14 +1,20 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { useOrderDetail, useCancelOrder } from "../queries"
-import { OrderStatusBadge } from "./order-status-badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Separator } from "@/components/ui/separator"
+import { useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { useOrderDetail, useCancelOrder } from "../order-queries";
+import { OrderStatusBadge } from "./order-status-badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,39 +25,55 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { useSonnerToast } from "@/lib/hooks/use-sonner-toast"
-import { formatPrice } from "@/lib/utils"
-import { formatDate, formatPhoneNumber } from "@/lib/utils/format"
-import { ArrowLeft, CheckCircle, Loader2, Package, Star, Truck, XCircle } from "lucide-react"
-import { DEFAULT_AVATAR_URL } from "@/lib/constants"
+} from "@/components/ui/alert-dialog";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { formatPrice } from "@/lib/utils";
+import { formatDate, formatPhoneNumber } from "@/lib/utils/format";
+import {
+  ArrowLeft,
+  CheckCircle,
+  Loader2,
+  Package,
+  Star,
+  Truck,
+  XCircle,
+} from "lucide-react";
+import { DEFAULT_AVATAR_URL } from "@/lib/constants";
 
 interface OrderDetailPageProps {
-  orderId: number
+  orderId: number;
 }
 
 export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
-  const { data: order, isLoading, isError } = useOrderDetail(orderId)
-  const cancelOrderMutation = useCancelOrder()
-  const { toast } = useSonnerToast()
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
+  const { data: order, isLoading, isError } = useOrderDetail(orderId);
+  const cancelOrderMutation = useCancelOrder();
+  const { toast } = useSonnerToast();
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
   // Xử lý hủy đơn hàng
   const handleCancelOrder = async () => {
     try {
-      await cancelOrderMutation.mutateAsync(orderId)
+      await cancelOrderMutation.mutateAsync(orderId);
 
-      toast("Đơn hàng đã được hủy", { description: "Đơn hàng của bạn đã được hủy thành công" })
+      toast("Đơn hàng đã được hủy", {
+        description: "Đơn hàng của bạn đã được hủy thành công",
+      });
     } catch (error) {
-      toast("Hủy đơn hàng thất bại", { description: error instanceof Error ? error.message : "Đã xảy ra lỗi khi hủy đơn hàng" })
+      toast("Hủy đơn hàng thất bại", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Đã xảy ra lỗi khi hủy đơn hàng",
+      });
     }
-  }
+  };
 
   // Kiểm tra xem đơn hàng có thể hủy không
-  const canCancel = order?.order_status_id === 1 || order?.order_status_id === 2 // Pending hoặc Processing
+  const canCancel =
+    order?.order_status_id === 1 || order?.order_status_id === 2; // Pending hoặc Processing
 
   // Kiểm tra xem sản phẩm có thể đánh giá không
-  const canReview = order?.order_status_id === 4 // Delivered
+  const canReview = order?.order_status_id === 4; // Delivered
 
   if (isLoading) {
     return (
@@ -101,7 +123,7 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
           </Card>
         </div>
       </div>
-    )
+    );
   }
 
   if (isError || !order) {
@@ -124,12 +146,14 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
               Đơn hàng không tồn tại hoặc bạn không có quyền xem đơn hàng này
             </p>
             <Button asChild className="mt-4">
-              <Link href="/tai-khoan/don-hang">Quay lại danh sách đơn hàng</Link>
+              <Link href="/tai-khoan/don-hang">
+                Quay lại danh sách đơn hàng
+              </Link>
             </Button>
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -146,7 +170,9 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Chi tiết đơn hàng #{order.id}</h1>
-          <p className="text-muted-foreground">Ngày đặt: {formatDate(order.order_date)}</p>
+          <p className="text-muted-foreground">
+            Ngày đặt: {formatDate(order.order_date)}
+          </p>
         </div>
         <OrderStatusBadge
           status={order.order_status?.name || "Đang xử lý"}
@@ -166,13 +192,19 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div>
             <h3 className="font-medium">Người nhận</h3>
-            <p className="text-sm text-muted-foreground mt-1">{order.recipient_name}</p>
-            <p className="text-sm text-muted-foreground">{formatPhoneNumber(order.recipient_phone)}</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {order.recipient_name}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {formatPhoneNumber(order.recipient_phone)}
+            </p>
           </div>
 
           <div>
             <h3 className="font-medium">Địa chỉ giao hàng</h3>
-            <p className="text-sm text-muted-foreground mt-1">{order.street_address}</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {order.street_address}
+            </p>
             <p className="text-sm text-muted-foreground">
               {order.ward}, {order.district}, {order.province_city}
             </p>
@@ -181,14 +213,18 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
           {order.delivery_notes && (
             <div className="sm:col-span-2">
               <h3 className="font-medium">Ghi chú</h3>
-              <p className="text-sm text-muted-foreground mt-1">{order.delivery_notes}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {order.delivery_notes}
+              </p>
             </div>
           )}
 
           {order.tracking_number && (
             <div className="sm:col-span-2">
               <h3 className="font-medium">Mã vận đơn</h3>
-              <p className="text-sm text-muted-foreground mt-1">{order.tracking_number}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {order.tracking_number}
+              </p>
             </div>
           )}
         </CardContent>
@@ -205,8 +241,10 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
         <CardContent>
           <div className="space-y-4">
             {order.items?.map((item) => {
-              const product = item.variant?.products
-              const mainImage = product?.images?.find((img) => img.is_main)?.image_url || DEFAULT_AVATAR_URL
+              const product = item.variant?.products;
+              const mainImage =
+                product?.images?.find((img) => img.is_main)?.image_url ||
+                DEFAULT_AVATAR_URL;
 
               return (
                 <div key={item.id} className="flex gap-4">
@@ -224,7 +262,10 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
                     <div>
                       <h3 className="font-medium line-clamp-1">
                         {product ? (
-                          <Link href={`/san-pham/${product.slug}`} className="hover:underline">
+                          <Link
+                            href={`/san-pham/${product.slug}`}
+                            className="hover:underline"
+                          >
                             {product.name}
                           </Link>
                         ) : (
@@ -237,10 +278,17 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="font-medium">{formatPrice(item.unit_price_at_order)}</span>
+                      <span className="font-medium">
+                        {formatPrice(item.unit_price_at_order)}
+                      </span>
 
                       {canReview && product && (
-                        <Button variant="ghost" size="sm" asChild className="gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          asChild
+                          className="gap-1"
+                        >
                           <Link href={`/san-pham/${product.slug}?review=true`}>
                             <Star className="h-4 w-4" />
                             Đánh giá
@@ -250,7 +298,7 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
                     </div>
                   </div>
                 </div>
-              )
+              );
             })}
           </div>
 
@@ -265,7 +313,9 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
             {order.discount_amount > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Giảm giá</span>
-                <span className="text-green-600">-{formatPrice(order.discount_amount)}</span>
+                <span className="text-green-600">
+                  -{formatPrice(order.discount_amount)}
+                </span>
               </div>
             )}
 
@@ -295,7 +345,8 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Xác nhận hủy đơn hàng</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Bạn có chắc chắn muốn hủy đơn hàng này? Hành động này không thể hoàn tác.
+                    Bạn có chắc chắn muốn hủy đơn hàng này? Hành động này không
+                    thể hoàn tác.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -333,7 +384,9 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <h3 className="font-medium">Phương thức thanh toán</h3>
-              <p className="text-sm text-muted-foreground mt-1">{order.payment_method?.name || "Không có thông tin"}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {order.payment_method?.name || "Không có thông tin"}
+              </p>
             </div>
 
             <div>
@@ -343,18 +396,19 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
                   className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
                     order.payment_status === "Paid"
                       ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-500"
-                      : order.payment_status === "Failed" || order.payment_status === "Refunded"
-                        ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-500"
-                        : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-500"
+                      : order.payment_status === "Failed" ||
+                        order.payment_status === "Refunded"
+                      ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-500"
+                      : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-500"
                   }`}
                 >
                   {order.payment_status === "Paid"
                     ? "Đã thanh toán"
                     : order.payment_status === "Failed"
-                      ? "Thanh toán thất bại"
-                      : order.payment_status === "Refunded"
-                        ? "Đã hoàn tiền"
-                        : "Chờ thanh toán"}
+                    ? "Thanh toán thất bại"
+                    : order.payment_status === "Refunded"
+                    ? "Đã hoàn tiền"
+                    : "Chờ thanh toán"}
                 </span>
               </p>
             </div>
@@ -362,6 +416,5 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
-

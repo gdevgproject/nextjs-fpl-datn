@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import type { PaymentStatus } from "@/features/shop/orders/types";
+import type { PaymentStatus } from "@/features/shop/account/order-types";
 
 type StatusBadgeProps = {
   name: string;

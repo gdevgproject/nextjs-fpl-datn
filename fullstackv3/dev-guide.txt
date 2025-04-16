@@ -1,35 +1,24 @@
 MỤC TIÊU:
-Hướng dẫn này cung cấp quy ước và giải thích về cấu trúc dự án, vai trò của các thành phần chính, và cách sử dụng tối ưu các công nghệ được chọn (Next.js App Router, Supabase, TanStack Query, Server Actions, Context API, TypeScript, Zod, shadcn/ui, TailwindCSS, next-themes) để xây dựng một ứng dụng web full-stack mạnh mẽ, hiệu suất cao và dễ bảo trì, đáp ứng các yêu cầu phức tạp của schema database (schema.txt).
+Hướng dẫn này cung cấp quy ước về cấu trúc dự án, vai trò các thành phần và cách sử dụng tối ưu các công nghệ (Next.js App Router, Supabase, TanStack Query, Server Actions, Context API, TypeScript, Zod, shadcn/ui, TailwindCSS, next-themes) để xây dựng ứng dụng web full-stack mạnh mẽ, hiệu suất cao, dễ bảo trì, đáp ứng schema database phức tạp (schema.txt).
 
 NGUYÊN TẮC CỐT LÕI:
-1.  **Colocation (Đồng vị trí):** Giữ code liên quan đến một tính năng (feature)
-    cụ thể (UI, data fetching, mutations, types, context...) cùng một nơi
-    trong thư mục `features/`.
-2.  **Clear Boundaries (Ranh giới rõ ràng):** Hiểu rõ code chạy ở đâu
-    (Client Components, Server Components, Server Actions, API Routes,
-    Middleware) và mục đích của từng loại.
-3.  **Leverage Framework Features (Tận dụng tính năng Framework):** Sử dụng
-    Server Components cho data fetching server-side, Server Actions cho
-    mutations, TanStack Query cho quản lý server state phức tạp phía client,
-    Context API cho global client state, và API Routes cho các endpoint
-    công khai/webhook.
-4.  **Database as Source of Truth & Logic:** Tận dụng tối đa các tính năng
-    của Supabase/PostgreSQL (RLS, RPCs, Triggers) để đảm bảo tính toàn vẹn
-    dữ liệu và đóng gói logic nghiệp vụ phức tạp.
+1. Colocation (Đồng vị trí): Giữ code liên quan đến một tính năng (UI, data fetching, mutations, types, context...) cùng một nơi trong thư mục `features/`.
+2. Clear Boundaries (Ranh giới rõ ràng): Hiểu rõ code chạy ở đâu (Client/Server Components, Server Actions, API Routes, Middleware) và mục đích từng loại.
+3. Leverage Framework Features: Sử dụng Server Components cho data fetching server-side, Server Actions cho mutations, TanStack Query cho quản lý server state phức tạp phía client, Context API cho global client state, API Routes cho endpoint công khai/webhook.
+4. Database as Source of Truth & Logic: Tận dụng tối đa Supabase/PostgreSQL (RLS, RPCs, Triggers) để đảm bảo tính toàn vẹn dữ liệu và đóng gói logic nghiệp vụ.
 
-                         CẤU TRÚC THƯ MỤC CHÍNH
-
+CẤU TRÚC THƯ MỤC CHÍNH:
 .
 ├── app/                     # Routing, Layouts, Pages, API Routes (Core Next.js)
-│   ├── (admin)/             # Route group cho trang quản trị (có layout/auth riêng)
-│   ├── (auth)/              # Route group cho xác thực
-│   ├── (shop)/              # Route group cho giao diện khách hàng chính
+│   ├── (admin)/             # Route group trang quản trị (layout/auth riêng)
+│   ├── (auth)/              # Route group xác thực
+│   ├── (shop)/              # Route group giao diện khách hàng
 │   ├── api/                 # API Routes (Webhooks, OAuth Callbacks)
 │   └── layout.tsx           # Root layout
 ├── components/              # UI Components
 │   └── shared/              #   Components tái sử dụng cao, không thuộc feature cụ thể
 │       └── ui/              #     Primitives từ shadcn/ui (Button, Input, etc.)
-├── features/                # <<< TRUNG TÂM CỦA LOGIC NGHIỆP VỤ >>>
+├── features/                # Trung tâm logic nghiệp vụ
 │   ├── [feature_name]/      #   Mỗi thư mục là một chức năng (products, cart, auth, orders...)
 │   │   ├── components/      #     UI components chỉ dùng cho feature này
 │   │   ├── context/         #     (TÙY CHỌN) Context API cho state client của feature (vd: GuestCartContext)
@@ -58,130 +47,113 @@ NGUYÊN TẮC CỐT LÕI:
 ├── next.config.js
 └── tsconfig.json
 
-        VAI TRÒ CHI TIẾT CỦA CÁC FILE & CÁCH KẾT HỢP TỐI ƯU
+VAI TRÒ CHI TIẾT CỦA CÁC FILE & CÁCH KẾT HỢP TỐI ƯU:
 
---- 1. `features/[feature]/actions.ts` (Server Actions) ---
+1. features/[feature]/actions.ts (Server Actions)
+   - Mục đích: Xử lý mutations (CUD) và logic nghiệp vụ server-side, kích hoạt bởi UI.
+   - Chạy ở đâu: Server (cần 'use server'; ở đầu file).
+   - Trách nhiệm:
+     - Nhận dữ liệu từ Client Components (qua useMutation).
+     - Xác thực & Ủy quyền: Kiểm tra đăng nhập, vai trò (dùng user metadata/bảng profiles). RLS là lớp bảo vệ cuối.
+     - Validation Server-side: Validate lại dữ liệu bằng Zod schema (bảo mật).
+     - Tương tác Database: Dùng Supabase client server-side (`lib/supabase/server.ts`) cho CUD.
+     - Gọi RPCs: Gọi stored procedures phức tạp (`supabase.rpc(...)` như `adjust_stock`, `mergeGuestCartAction`).
+     - Xử lý Logic Nghiệp vụ Phức tạp: Kiểm tra tồn kho cuối (có thể dùng transaction/locking), merge giỏ hàng guest, áp dụng mã giảm giá...
+     - Tương tác Supabase Storage: Xóa file cũ khi cập nhật/xóa entity (`supabase.storage...remove()`).
+     - Revalidation: Gọi `revalidatePath()` hoặc `revalidateTag()` để báo Next.js fetch lại data cho Server Components bị ảnh hưởng.
+     - Trả kết quả (thành công/lỗi/dữ liệu) về hook `useMutation`.
+   - Kết hợp: Được gọi bởi `mutationFn` trong `hooks.ts`. Dùng `lib/supabase/server.ts`. Có thể gọi hàm trong `services.ts`.
+   - Ví dụ: `addToCartAction`, `createOrderAction`, `updateProfileAction`, `approveReviewAction` (admin), `deleteProductAction` (admin), `mergeGuestCartAction`.
 
-*   **Mục đích:** Xử lý các **mutations** (thay đổi dữ liệu: Create, Update, Delete) và logic nghiệp vụ phía server được kích hoạt bởi tương tác người dùng trên UI.
-*   **Chạy ở đâu:** **Server**.
-*   **Đánh dấu:** Bắt buộc có `'use server';` ở đầu file.
-*   **Trách nhiệm chính:**
-    *   Nhận dữ liệu đầu vào từ Client Components (thông qua các hook `useMutation`).
-    *   **Xác thực & Ủy quyền:** Kiểm tra người dùng đã đăng nhập chưa (`supabase.auth.getUser()`), kiểm tra vai trò (`user.app_metadata.role` hoặc query bảng `profiles`), đảm bảo người dùng có quyền thực hiện hành động. **RLS của Supabase là lớp bảo vệ cuối cùng.**
-    *   **Validation Server-side:** Validate lại dữ liệu nhận được bằng Zod schema (quan trọng để bảo mật).
-    *   **Tương tác Database:** Sử dụng Supabase client **phía server** (`lib/supabase/server.ts`) để thực hiện các thao tác CUD trên DB (insert, update, delete).
-    *   **Gọi RPCs:** Gọi các stored procedures phức tạp trong DB (`supabase.rpc(...)`) như `adjust_stock`, `cancel_order_by_admin`, `mergeGuestCartAction`...
-    *   **Xử lý Logic Nghiệp vụ Phức tạp:** Thực hiện các bước logic như kiểm tra tồn kho cuối cùng khi checkout (có thể dùng transaction, locking nếu cần), merge giỏ hàng guest, áp dụng mã giảm giá...
-    *   **Tương tác Supabase Storage (Xóa/Cập nhật):** Gọi `supabase.storage...remove()` để xóa file cũ khi cập nhật hoặc xóa entity.
-    *   **Revalidation:** Gọi `revalidatePath()` hoặc `revalidateTag()` để báo cho Next.js biết cần fetch lại dữ liệu cho Server Components bị ảnh hưởng.
-    *   Trả về kết quả (thành công, lỗi, dữ liệu) cho hook `useMutation` phía client.
-*   **Kết hợp:** Được gọi bởi `mutationFn` trong các hook `useMutation` (từ `hooks.ts`). Sử dụng `lib/supabase/server.ts`. Có thể gọi các hàm trong `services.ts` nếu cần chia sẻ logic.
-*   **Ví dụ:** `addToCartAction` (logged-in), `createOrderAction`, `updateProfileAction`, `approveReviewAction` (admin), `deleteProductAction` (admin), `mergeGuestCartAction`.
+2. features/[feature]/hooks.ts
+   - Mục đích: Quản lý server state phía client bằng TanStack Query và cung cấp hàm kích hoạt mutations.
+   - Chạy ở đâu: Client (vì dùng hooks).
+   - Trách nhiệm:
+     - Data Fetching (`useQuery`, `useInfiniteQuery`):
+       - Định nghĩa hook lấy dữ liệu từ server (vd: `useProductList`, `useCart`, `useCurrentUser`).
+       - Cung cấp `queryKey` duy nhất, chính xác (bao gồm dependencies: filters, user ID, page...).
+       - Cung cấp `queryFn`: Hàm async fetch dữ liệu (có thể gọi trực tiếp Supabase client-side `lib/supabase/client.ts` hoặc hàm trong `services.ts`).
+       - Quản lý trạng thái fetch (isLoading, isSuccess, isError, data, error).
+       - Quản lý caching, background updates, refetching (`staleTime`, `cacheTime`, `refetchOnWindowFocus`...).
+     - Data Mutation (`useMutation`):
+       - Định nghĩa hook thực hiện thay đổi dữ liệu (vd: `useAddToCartMutation`, `useCreateOrderMutation`).
+       - Cung cấp `mutationFn`: Hàm async gọi Server Action tương ứng trong `actions.ts`.
+       - Quản lý trạng thái mutation (isLoading, isSuccess, isError...).
+       - Xử lý Callbacks:
+         - `onSuccess`: Quan trọng! Gọi `queryClient.invalidateQueries()` với `queryKey` phù hợp để làm mới data đã fetch (vd: sau khi thêm vào giỏ, invalidate `['cart']`). Có thể dùng `queryClient.setQueryData()` cho optimistic updates. Hiển thị toast thành công.
+         - `onError`: Xử lý lỗi, hiển thị toast lỗi.
+   - Kết hợp: Dùng `queryClient` từ `lib/query-client.ts`. Gọi hàm trong `services.ts` (`queryFn`) hoặc `actions.ts` (`mutationFn`). Được dùng bởi Client Components hoặc Pages.
+   - Tối ưu TanStack Query:
+     - Query Keys: Dùng mảng, bắt đầu bằng tên feature/entity, bao gồm *tất cả* tham số ảnh hưởng (ID, filters, page, sort...). Vd: `['products', { category: 'nam', brand: 1 }, 2, 'price_asc']`, `['cart', userId]`, `['currentUser']`.
+     - Invalidation: Invalidate chính xác trong `onSuccess` của mutation. Dùng `invalidateQueries({ queryKey: ['entity'] })` hoặc key cụ thể.
+     - Refetching: TanStack Query tự động refetch. Cấu hình `staleTime` (thời gian data được coi là mới). `staleTime: Infinity` nếu data ít thay đổi.
+     - Prefetching: Dùng `queryClient.prefetchQuery()` để tải trước data (vd: hover link).
 
---- 2. `features/[feature]/hooks.ts` ---
+3. features/[feature]/services.ts (TÙY CHỌN - Khuyến khích cho Logic Phức tạp)
+   - Mục đích: Đóng gói hàm logic cụ thể (fetch data, helper xử lý data) tái sử dụng bởi `hooks.ts` và `actions.ts`.
+   - Chạy ở đâu: Client hoặc Server (tùy hàm nào gọi và dùng Supabase client nào).
+   - Trách nhiệm:
+     - Chứa hàm `async` thực hiện query Supabase phức tạp (join, RPC).
+     - Xử lý/định dạng dữ liệu trả về từ Supabase.
+     - Đóng gói logic nghiệp vụ nhỏ tái sử dụng.
+   - Kết hợp: Được import và gọi bởi `queryFn` trong `hooks.ts` hoặc hàm trong `actions.ts`. Dùng Supabase client phù hợp (client/server).
+   - Ví dụ: `fetchFilteredProducts(filters)`, `fetchProductDetails(slug)`, `calculateCartTotals(cartItems)`.
 
-*   **Mục đích:** Quản lý **trạng thái server (server state)** phía client bằng TanStack Query và cung cấp các hàm để kích hoạt mutations.
-*   **Chạy ở đâu:** **Client** (vì sử dụng hooks).
-*   **Trách nhiệm chính:**
-    *   **Data Fetching (`useQuery`, `useInfiniteQuery`):**
-        *   Định nghĩa các hook để lấy dữ liệu từ server (Supabase DB). Ví dụ: `useProductList`, `useCart` (logged-in), `useCurrentUser`, `useOrderDetails`.
-        *   Cung cấp `queryKey` duy nhất và chính xác (bao gồm tất cả dependencies như filters, user ID, page...).
-        *   Cung cấp `queryFn`: Hàm bất đồng bộ thực hiện việc fetch dữ liệu. `queryFn` này có thể:
-            *   Gọi trực tiếp Supabase client **phía client** (`lib/supabase/client.ts`) để thực hiện `select` hoặc gọi `rpc`.
-            *   Gọi một hàm fetch được tách ra trong `services.ts`.
-        *   Quản lý trạng thái fetch (isLoading, isFetching, isSuccess, isError, data, error).
-        *   Quản lý caching, background updates, refetching (`staleTime`, `cacheTime`, `refetchOnWindowFocus`...).
-    *   **Data Mutation (`useMutation`):**
-        *   Định nghĩa các hook để thực hiện các hành động thay đổi dữ liệu. Ví dụ: `useAddToCartMutation`, `useCreateOrderMutation`, `useUpdateProfileMutation`.
-        *   Cung cấp `mutationFn`: Hàm bất đồng bộ này sẽ **gọi Server Action** tương ứng trong `actions.ts`.
-        *   Quản lý trạng thái mutation (isLoading, isSuccess, isError...).
-        *   **Xử lý Callbacks:**
-            *   `onSuccess`: **Rất quan trọng!** Gọi `queryClient.invalidateQueries()` với các `queryKey` phù hợp để làm mới dữ liệu đã fetch trước đó (ví dụ: sau khi thêm vào giỏ hàng, invalidate `['cart']`). Có thể dùng `queryClient.setQueryData()` cho optimistic updates (nâng cao). Hiển thị toast thành công.
-            *   `onError`: Xử lý lỗi, hiển thị toast lỗi.
-*   **Kết hợp:** Sử dụng `queryClient` từ `lib/query-client.ts`. Gọi các hàm trong `services.ts` (cho `queryFn`) hoặc các hàm trong `actions.ts` (cho `mutationFn`). Được sử dụng bởi các Client Components trong `features/[feature]/components/` hoặc các trang trong `app/`.
-*   **Tối ưu TanStack Query:**
-    *   **Query Keys:** Sử dụng mảng, bắt đầu bằng tên feature/entity, bao gồm *tất cả* tham số ảnh hưởng đến kết quả (ID, filters, page, sort...). Ví dụ: `['products', { category: 'nam', brand: 1 }, 2, 'price_asc']`, `['cart', userId]`, `['currentUser']`.
-    *   **Invalidation:** Invalidate các query liên quan một cách chính xác trong `onSuccess` của mutation. Dùng `invalidateQueries({ queryKey: ['entity'] })` để invalidate tất cả query liên quan đến entity đó, hoặc chỉ định key cụ thể nếu cần.
-    *   **Refetching:** TanStack Query tự động refetch trong nhiều trường hợp (window focus, reconnect, mount). Cấu hình `staleTime` để kiểm soát tần suất refetch khi dữ liệu được coi là "cũ". `staleTime: Infinity` nếu dữ liệu gần như không đổi trừ khi có mutation.
-    *   **Prefetching:** Sử dụng `queryClient.prefetchQuery()` để tải trước dữ liệu khi người dùng có khả năng sẽ cần (ví dụ: hover lên link sản phẩm). Cải thiện trải nghiệm người dùng.
+4. features/[feature]/context/... (Context API)
+   - Mục đích: Quản lý global client state không liên quan trực tiếp đến server state. KHÔNG DÙNG CHO SERVER STATE.
+   - Chạy ở đâu: Client.
+   - Trách nhiệm:
+     - Định nghĩa Context (`React.createContext`).
+     - Tạo Provider component: quản lý state nội bộ (`useState`, `useReducer`), cung cấp state/hàm cập nhật.
+     - (Ví dụ Guest Cart): Tương tác với `localStorage`.
+   - Kết hợp: Provider đặt ở layout cha (`app/(shop)/layout.tsx`). Component con dùng `useContext`. Hoạt động song song với TanStack Query.
+   - Ví dụ: `GuestCartContext` (quản lý giỏ hàng guest trong localStorage). Theme được quản lý bởi `next-themes`.
 
---- 3. `features/[feature]/services.ts` (TÙY CHỌN nhưng Khuyến khích cho Logic Phức tạp) ---
+5. app/api/.../route.ts (API Routes)
+   - Mục đích: Tạo HTTP endpoints chuẩn nhận yêu cầu từ bên ngoài.
+   - Chạy ở đâu: Server.
+   - Trách nhiệm:
+     - Xử lý yêu cầu HTTP (GET, POST...).
+     - Webhooks: Nhận thông báo từ bên thứ ba (Momo, Stripe...). Cần xác thực chữ ký webhook. Vai trò chính trong dự án.
+     - OAuth Callbacks: Xử lý redirect từ nhà cung cấp OAuth, gọi `exchangeCodeForSession` server-side.
+     - API công khai (Nếu cần).
+     - Tương tác Supabase (thường dùng client server-side, có thể dùng service role nếu cần bỏ qua RLS cho webhook/tác vụ hệ thống).
+   - Kết hợp: Được gọi từ bên ngoài qua HTTP. Độc lập với Server Actions và client hooks.
+   - Ví dụ: `app/api/webhooks/momo/route.ts`, `app/api/auth/callback/route.ts`.
 
-*   **Mục đích:** Đóng gói các hàm logic cụ thể, thường là các hàm bất đồng bộ để fetch dữ liệu hoặc các hàm helper xử lý dữ liệu phức tạp, có thể được tái sử dụng bởi cả `hooks.ts` và `actions.ts`.
-*   **Chạy ở đâu:** Có thể chứa code chạy cả **Client** và **Server** (tùy thuộc vào hàm nào gọi nó và nó dùng Supabase client nào). Các hàm fetch dữ liệu dùng trong `queryFn` của hooks thường dùng client-side client. Các hàm được gọi từ Server Actions sẽ chạy trên server.
-*   **Trách nhiệm chính:**
-    *   Chứa các hàm `async` thực hiện các query Supabase phức tạp (join nhiều bảng, gọi RPC).
-    *   Xử lý, định dạng dữ liệu trả về từ Supabase trước khi cung cấp cho hooks hoặc actions.
-    *   Đóng gói logic nghiệp vụ nhỏ có thể tái sử dụng.
-*   **Kết hợp:** Được import và gọi bởi `queryFn` trong `hooks.ts` hoặc bởi các hàm trong `actions.ts`. Sử dụng Supabase client phù hợp (client hoặc server) tùy ngữ cảnh.
-*   **Ví dụ:** `fetchFilteredProducts(filters)` gọi RPC `filter_products`, `fetchProductDetails(slug)` lấy chi tiết sản phẩm kèm variants/images/notes, `calculateCartTotals(cartItems)`.
+6. lib/ (Thư viện và Tiện ích)
+   - Mục đích: Chứa code nền tảng, cấu hình, tiện ích dùng chung, không thuộc feature.
+   - `lib/supabase/`: Quản lý các Supabase client (`client`, `server`, `serviceRoleClient`) và middleware helper (`@supabase/ssr`). Quan trọng để tương tác đúng ngữ cảnh.
+   - `lib/providers/providers.tsx`: Tập trung wrap global providers (QueryClientProvider, GuestCartProvider, NextThemesProvider).
+   - `lib/query-client.ts`: Khởi tạo instance `QueryClient`.
+   - `lib/hooks/`: Hooks dùng chung (vd: `use-sonner-toast.tsx`).
+   - `lib/types/database.types.ts`: Types tự động từ schema Supabase (quan trọng cho type safety).
+   - `lib/utils/`: Hàm tiện ích nhỏ, tái sử dụng cao.
+   - `lib/constants.ts`: Hằng số.
 
---- 4. `features/[feature]/context/...` (Context API) ---
+QUẢN LÝ STATE: SERVER vs. CLIENT
+- Server State: Dữ liệu trên server (Supabase DB: sản phẩm, đơn hàng, cart logged-in, profile).
+  - Công cụ quản lý chính: TanStack Query (`features/[feature]/hooks.ts`).
+  - Lợi ích: Caching, auto refetching, xử lý loading/error, đồng bộ client-server.
+- Client State: Dữ liệu chỉ tồn tại phía client (tạm thời/UI state: cart guest, trạng thái modal, theme).
+  - Công cụ quản lý chính: Context API (cho global state đơn giản như Guest Cart), `useState`/`useReducer` (local state), `next-themes` (theme).
+  - Lưu ý: KHÔNG dùng TanStack Query cho client state thuần túy.
 
-*   **Mục đích:** Quản lý **trạng thái client toàn cục (global client state)** mà không liên quan trực tiếp đến dữ liệu từ server hoặc không phù hợp để quản lý bằng TanStack Query. **KHÔNG DÙNG CHO SERVER STATE.**
-*   **Chạy ở đâu:** **Client**.
-*   **Trách nhiệm chính:**
-    *   Định nghĩa Context object (`React.createContext`).
-    *   Tạo Provider component:
-        *   Quản lý state nội bộ (dùng `useState`, `useReducer`).
-        *   Cung cấp state và các hàm cập nhật state cho các components con.
-        *   (Ví dụ Guest Cart): Tương tác với `localStorage` để đọc/ghi state.
-*   **Kết hợp:** Provider được đặt ở một component layout cha (ví dụ: `app/(shop)/layout.tsx`). Các Client Components con sử dụng hook `useContext` để truy cập state và các hàm cập nhật. **Hoạt động độc lập nhưng song song với TanStack Query.**
-*   **Ví dụ:** `GuestCartContext` quản lý giỏ hàng của khách chưa đăng nhập (lưu trong localStorage). Có thể dùng cho `ThemeContext` (quản lý theme sáng/tối, kết hợp với `next-themes`).
-*   **Lưu ý:** Dự án này dùng `next-themes` cho theme, nên bạn có thể không cần Context riêng cho theme. **Guest Cart là trường hợp sử dụng Context rõ ràng nhất trong dự án này.**
+VALIDATION VỚI ZOD & REACT HOOK FORM
+- Zod Schemas: Định nghĩa trong `features/[feature]/types.ts` (hoặc file riêng) mô tả cấu trúc, ràng buộc data.
+- Client-side Validation: Dùng `react-hook-form` + `@hookform/resolvers/zod` trong Client Components để validate form *trước khi* gọi action. Phản hồi người dùng tức thì.
+- Server-side Validation: BẮT BUỘC! Trong Server Actions (`actions.ts`), dùng lại Zod schema để parse/validate data nhận từ client *trước khi* ghi vào DB. Lớp bảo mật quan trọng.
 
---- 5. `app/api/.../route.ts` (API Routes) ---
+UI & STYLING (shadcn/ui, Tailwind, next-themes)
+- shadcn/ui: Dùng primitives (Button, Input, Card...) làm nền tảng (`components/shared/ui/`), tùy chỉnh/kết hợp trong `components/shared/` hoặc `features/[feature]/components/`.
+- TailwindCSS: Styling trực tiếp trên components. Config trong `tailwind.config.js`.
+- next-themes: Quản lý theme sáng/tối. Provider (`ThemeProvider`) trong `lib/providers/providers.tsx`. Dùng hook `useTheme` để chuyển đổi/style có điều kiện.
 
-*   **Mục đích:** Tạo các **HTTP endpoints** chuẩn để nhận yêu cầu từ bên ngoài ứng dụng Next.js.
-*   **Chạy ở đâu:** **Server**.
-*   **Trách nhiệm chính:**
-    *   Xử lý các yêu cầu HTTP đến (GET, POST, PUT, DELETE...).
-    *   **Webhooks:** Nhận thông báo từ các dịch vụ bên thứ ba (Momo, Stripe...). **Đây là vai trò chính và gần như bắt buộc trong dự án này.** Cần xác thực chữ ký webhook.
-    *   **OAuth Callbacks:** Xử lý chuyển hướng callback từ nhà cung cấp OAuth (Google, Github...), gọi `exchangeCodeForSession` phía server. (Có thể thay thế bằng Server Component Page nhưng API Route thường rõ ràng hơn).
-    *   API công khai (Nếu cần cung cấp dữ liệu cho bên thứ ba).
-    *   Tương tác với Supabase (thường dùng client server-side, có thể dùng service role nếu cần bỏ qua RLS cho webhook/tác vụ hệ thống).
-*   **Kết hợp:** Được gọi từ bên ngoài qua HTTP. Hoạt động độc lập với Server Actions và hooks phía client.
-*   **Ví dụ:** `app/api/webhooks/momo/route.ts`, `app/api/auth/callback/route.ts`.
+XỬ LÝ CÁC KỊCH BẢN PHỨC TẠP (TÓM TẮT)
+- Guest vs. Logged-in Cart & Merge: Context API (localStorage) cho guest, TanStack Query (DB) cho logged-in. Server Action `mergeGuestCartAction` xử lý merge khi đăng nhập.
+- Check Tồn kho khi Checkout: Thực hiện trong Server Action `createOrderAction`, lý tưởng trong transaction DB (có thể dùng `SELECT...FOR UPDATE` để khóa).
+- Role Management & Authorization: Kết hợp kiểm tra role (Server Actions/Middleware/Server Components) với RLS mạnh mẽ ở database.
+- Supabase Storage (Ảnh): Upload từ client (dùng client-side client), cập nhật URL vào DB qua Server Action. Xóa file cũ từ Server Action (dùng server-side client).
 
---- 6. `lib/` (Thư viện và Tiện ích) ---
-
-*   **Mục đích:** Chứa code nền tảng, cấu hình, tiện ích dùng chung, không thuộc về feature cụ thể.
-*   **`lib/supabase/`:** Quản lý các cách khởi tạo Supabase client khác nhau (`client`, `server`, `serviceRoleClient`) và middleware helper (`@supabase/ssr`). Rất quan trọng để tương tác đúng cách với Supabase từ các ngữ cảnh khác nhau.
-*   **`lib/providers/providers.tsx`:** Tập trung việc wrap các global providers (QueryClientProvider, GuestCartProvider nếu có, NextThemesProvider) giúp layout gọn gàng.
-*   **`lib/query-client.ts`:** Khởi tạo instance `QueryClient` của TanStack Query.
-*   **`lib/hooks/`:** Hooks dùng chung không thuộc feature (ví dụ: `use-sonner-toast.tsx` để đảm bảo toast sonner nhất quán).
-*   **`lib/types/database.types.ts`:** Types được tạo tự động từ schema Supabase. Cực kỳ quan trọng cho type safety khi làm việc với dữ liệu.
-*   **`lib/utils/`:** Các hàm tiện ích nhỏ, tái sử dụng cao.
-*   **`lib/constants.ts`:** Định nghĩa hằng số.
-
-                 QUẢN LÝ STATE: SERVER vs. CLIENT
-
-*   **Server State:** Dữ liệu tồn tại trên server (trong Supabase DB). Ví dụ: sản phẩm, đơn hàng, giỏ hàng của người dùng đăng nhập, thông tin user profile.
-    *   **Công cụ quản lý chính:** **TanStack Query** (thông qua `features/[feature]/hooks.ts`).
-    *   **Lợi ích:** Caching, tự động refetching, xử lý loading/error state, đồng bộ hóa trạng thái client với server.
-*   **Client State:** Dữ liệu chỉ tồn tại phía client, thường là tạm thời hoặc liên quan đến trạng thái UI. Ví dụ: giỏ hàng của guest (lưu trong localStorage), trạng thái mở/đóng của modal, theme hiện tại.
-    *   **Công cụ quản lý chính:** **Context API** (cho state toàn cục đơn giản như Guest Cart) hoặc state cục bộ của component (`useState`, `useReducer`). `next-themes` quản lý state theme.
-    *   **Lưu ý:** **Không** dùng TanStack Query để quản lý state thuần túy client này.
-
-                VALIDATION VỚI ZOD & REACT HOOK FORM
-
-*   **Zod Schemas:** Định nghĩa trong `features/[feature]/types.ts` (hoặc file validation riêng). Dùng để mô tả cấu trúc và ràng buộc dữ liệu.
-*   **Client-side Validation:** Sử dụng `react-hook-form` kết hợp với `@hookform/resolvers/zod` trong các Client Components để validate dữ liệu form *trước khi* gọi mutation/action. Cung cấp phản hồi tức thì cho người dùng.
-*   **Server-side Validation:** **BẮT BUỘC!** Bên trong Server Actions (`actions.ts`), sử dụng lại Zod schema để parse và validate dữ liệu nhận được từ client *trước khi* ghi vào DB. Đây là lớp bảo mật quan trọng, không tin tưởng dữ liệu từ client.
-
-                 UI & STYLING (shadcn/ui, Tailwind, next-themes)
-
-*   **shadcn/ui:** Sử dụng các component primitives được cung cấp (Button, Input, Card, Dialog...) làm nền tảng. Các component này thường nằm trong `components/shared/ui/` và được tùy chỉnh/kết hợp trong `components/shared/` hoặc `features/[feature]/components/`.
-*   **TailwindCSS:** Sử dụng để styling trực tiếp trên các component. Cấu hình trong `tailwind.config.js`.
-*   **next-themes:** Quản lý theme sáng/tối. Provider (`ThemeProvider`) được thêm vào `lib/providers/providers.tsx`. Sử dụng hook `useTheme` từ `next-themes` trong các component để chuyển đổi theme hoặc áp dụng style có điều kiện.
-
-                 XỬ LÝ CÁC KỊCH BẢN PHỨC TẠP (TÓM TẮT)
-
-*   **Guest vs. Logged-in Cart & Merge:** Dùng Context API (localStorage) cho guest, TanStack Query (DB) cho logged-in. Server Action `mergeGuestCartAction` xử lý việc chuyển dữ liệu khi đăng nhập.
-*   **Check Tồn kho khi Checkout:** Thực hiện trong Server Action `createOrderAction`, lý tưởng là bên trong một transaction DB, có thể dùng `SELECT...FOR UPDATE` để khóa và kiểm tra lại tồn kho trước khi tạo đơn hàng và giảm số lượng.
-*   **Role Management & Authorization:** Kết hợp kiểm tra role trong Server Actions/Middleware/Server Components với RLS mạnh mẽ ở tầng database.
-*   **Supabase Storage (Ảnh):** Upload từ client (dùng client-side client), cập nhật URL vào DB qua Server Action. Xóa file cũ từ Server Action khi cập nhật/xóa entity (dùng server-side client). Xây dựng quy tắc đặt tên path rõ ràng.
-
-                                KẾT LUẬN
-
-Cấu trúc dự án và cách tiếp cận công nghệ này cung cấp một nền tảng vững chắc, có tổ chức và khả năng mở rộng cho dự án cửa hàng nước hoa phức tạp. Việc tuân thủ các vai trò đã định nghĩa cho từng loại file và tận dụng đúng thế mạnh của từng công nghệ sẽ giúp đội ngũ phát triển hiệu quả, tạo ra sản phẩm chất lượng cao với hiệu suất tốt. Luôn ưu tiên sự rõ ràng, bảo mật (validation server-side, RLS) và trải nghiệm người dùng.
+KẾT LUẬN:
+Cấu trúc và cách tiếp cận này cung cấp nền tảng vững chắc, có tổ chức, khả năng mở rộng. Tuân thủ vai trò các file và tận dụng đúng công nghệ giúp phát triển hiệu quả, tạo sản phẩm chất lượng, hiệu suất tốt. Ưu tiên sự rõ ràng, bảo mật (validation server-side, RLS) và trải nghiệm người dùng.

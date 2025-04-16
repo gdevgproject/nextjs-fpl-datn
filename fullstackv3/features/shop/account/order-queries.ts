@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { QUERY_STALE_TIME } from "@/lib/hooks/use-query-config";
 import type { Order, OrderFilter, OrdersResponse } from "./types";
-import { cancelOrder } from "./actions";
+import { cancelOrder } from "../order-confirmation/actions";
 
 // Lấy danh sách đơn hàng của người dùng
 export function useUserOrders(

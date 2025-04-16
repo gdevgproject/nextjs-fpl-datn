@@ -8,12 +8,11 @@ export function OrderConfirmationClient() {
 
   // Reset the justPlacedOrder flag when navigating to order confirmation page
   useEffect(() => {
-    // Reset the flag after a short delay to ensure checkout navigation completes
-    const timer = setTimeout(() => {
-      setJustPlacedOrder(false);
-    }, 1000);
+    // Reset the flag immediately - the delay isn't really necessary
+    // and could cause issues with navigation
+    setJustPlacedOrder(false);
 
-    return () => clearTimeout(timer);
+    // No need for a cleanup function since this is a one-time operation
   }, [setJustPlacedOrder]);
 
   // This component doesn't render anything, it just manages state

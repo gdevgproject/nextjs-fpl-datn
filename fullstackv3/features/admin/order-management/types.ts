@@ -1,4 +1,4 @@
-import type { PaymentStatus } from "@/features/shop/orders/types";
+import type { PaymentStatus } from "@/features/shop/account/order-types";
 
 /**
  * Order filter parameters for listing orders

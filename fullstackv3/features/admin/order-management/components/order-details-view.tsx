@@ -60,7 +60,7 @@ import {
   formatPhoneNumber,
 } from "@/lib/utils/format";
 import type { OrderDetails, OrderActivityLog } from "../types";
-import type { PaymentStatus } from "@/features/shop/orders/types";
+import type { PaymentStatus } from "@/features/shop/account/order-types";
 import { DEFAULT_AVATAR_URL } from "@/lib/constants";
 
 interface OrderDetailsViewProps {
