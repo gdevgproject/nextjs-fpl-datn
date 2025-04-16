@@ -74,15 +74,33 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
     }
   }, [logoutMutation, queryClient, success, error]);
 
-  // Show login button if not authenticated
+  // Show login/register if not authenticated
   if (!isAuthenticated) {
     return (
-      <Link href="/dang-nhap">
-        <Button variant="ghost" size="icon">
-          <LogIn className="h-5 w-5" />
-          <span className="sr-only">Đăng nhập</span>
-        </Button>
-      </Link>
+      <>
+        {/* Desktop: Hiện chữ Đăng nhập/Đăng ký */}
+        <div className="gap-2 hidden md:flex">
+          <Link href="/dang-nhap">
+            <Button variant="ghost" className="font-semibold px-4">
+              Đăng nhập
+            </Button>
+          </Link>
+          <Link href="/dang-ky">
+            <Button variant="outline" className="font-semibold px-4">
+              Đăng ký
+            </Button>
+          </Link>
+        </div>
+        {/* Mobile: Chỉ hiện nút đăng nhập, không cần đăng ký */}
+        <div className="flex gap-2 md:hidden">
+          <Link href="/dang-nhap">
+            <Button variant="ghost" size="icon">
+              <LogIn className="h-5 w-5" />
+              <span className="sr-only">Đăng nhập</span>
+            </Button>
+          </Link>
+        </div>
+      </>
     );
   }
 
