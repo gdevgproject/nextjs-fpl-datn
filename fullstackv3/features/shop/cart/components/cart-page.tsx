@@ -444,44 +444,8 @@ export function CartPage() {
     });
   };
 
-  const renderDiscountInfo = () => {
-    if (!discountInfo) return null;
-    const d = discountInfo.discount;
-    return (
-      <div className="mt-2 text-sm text-green-600">
-        <div>
-          Đã áp dụng: <b>{discountCode}</b>
-        </div>
-        {d.discount_type === "fixed" ? (
-          <div>
-            Giảm: <b>{formatCurrency(d.discount_amount)}</b>
-            {d.max_discount_amount
-              ? ` (tối đa ${formatCurrency(d.max_discount_amount)})`
-              : ""}
-          </div>
-        ) : d.discount_percentage ? (
-          <div>
-            Giảm: <b>{d.discount_percentage}%</b>
-            {d.max_discount_amount
-              ? ` (tối đa ${formatCurrency(d.max_discount_amount)})`
-              : ""}
-          </div>
-        ) : null}
-        {d.min_order_value && (
-          <div>Đơn tối thiểu: {formatCurrency(d.min_order_value)}</div>
-        )}
-        {d.remaining_uses !== undefined && d.max_uses && (
-          <div>
-            Lượt dùng còn lại: {d.remaining_uses}/{d.max_uses}
-          </div>
-        )}
-        {voucherDiscount > 0 && (
-          <div>
-            Đã giảm: <b>-{formatCurrency(voucherDiscount)}</b>
-          </div>
-        )}
-      </div>
-    );
+  const handleCheckout = (items: any[]) => {
+    success("Chức năng thanh toán nhiều sản phẩm đã chọn sẽ sớm có!");
   };
 
   const smartBarRef = useRef<HTMLDivElement>(null);
@@ -518,38 +482,6 @@ export function CartPage() {
           {totalQuantity} số lượng
         </span>
         <div className="flex-1" />
-        <AlertDialog open={openClearDialog} onOpenChange={setOpenClearDialog}>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="outline"
-              className="bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-2 focus:ring-primary"
-              onClick={() => setOpenClearDialog(true)}
-            >
-              Xóa toàn bộ giỏ hàng
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2">
-                <Trash2 className="h-5 w-5 text-destructive" />
-                Xác nhận xóa toàn bộ giỏ hàng?
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                Hành động này sẽ xóa tất cả sản phẩm khỏi giỏ hàng của bạn. Bạn
-                không thể hoàn tác.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Hủy</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleClearCart}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-2 focus:ring-primary"
-              >
-                Xóa
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
       <div className="overflow-x-auto rounded-lg border bg-card shadow-sm">
         <Table className="min-w-[700px]">
@@ -699,38 +631,12 @@ export function CartPage() {
                   <TableCell className="text-center font-semibold">
                     {formatCurrency(price * item.quantity)}
                   </TableCell>
-                  <TableCell className="text-center">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive"
-                      onClick={() =>
-                        removeCartItem(
-                          isAuthenticated ? String(item.id) : item.variant_id
-                        )
-                      }
-                      disabled={isRemoving}
-                      aria-label="Xóa sản phẩm"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
+                  <TableCell className="text-center"></TableCell>
                 </TableRow>
               );
             })}
           </TableBody>
         </Table>
-        {selectedItems.length > 0 && (
-          <div className="flex justify-end mt-2">
-            <Button
-              variant="destructive"
-              onClick={handleRemoveSelected}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-2 focus:ring-primary"
-            >
-              Xóa các sản phẩm đã chọn
-            </Button>
-          </div>
-        )}
       </div>
       <div className="mt-4">
         <Button variant="outline" asChild>
@@ -753,113 +659,10 @@ export function CartPage() {
         freeShippingThreshold={freeShippingThreshold}
         settings={settings}
         isAuthenticated={isAuthenticated}
-        handleCheckout={(items: any[]) => {
-          success("Chức năng thanh toán nhiều sản phẩm đã chọn sẽ sớm có!");
-        }}
+        handleCheckout={handleCheckout}
         handleRemoveSelected={handleRemoveSelected}
         setDiscountCode={setDiscountCode}
       />
-      {selectedItems.length === 0 && (
-        <div className="mt-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Tóm tắt đơn hàng</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <div className="flex space-x-2">
-                  <div className="flex-1">
-                    <Input
-                      placeholder="Nhập mã giảm giá"
-                      value={discountCode}
-                      onChange={(e) => setDiscountCode(e.target.value)}
-                      disabled={isApplyingDiscount}
-                    />
-                  </div>
-                  {discountInfo ? (
-                    <Button
-                      className="bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-2 focus:ring-primary"
-                      onClick={handleRemoveDiscount}
-                    >
-                      Xóa
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="secondary"
-                      onClick={handleApplyDiscount}
-                      disabled={isApplyingDiscount}
-                    >
-                      {isApplyingDiscount ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Receipt className="h-4 w-4 mr-2" />
-                      )}
-                      Áp dụng
-                    </Button>
-                  )}
-                </div>
-                {discountError && (
-                  <div className="mt-2">
-                    <Alert variant="destructive" className="py-2">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{discountError}</AlertDescription>
-                    </Alert>
-                  </div>
-                )}
-                {renderDiscountInfo()}
-              </div>
-              <Separator />
-              <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Tạm tính</span>
-                  <span>{formatCurrency(subtotal)}</span>
-                </div>
-                {saleDiscount > 0 && (
-                  <div className="flex justify-between text-green-600">
-                    <span>Khuyến mãi sản phẩm</span>
-                    <span>-{formatCurrency(saleDiscount)}</span>
-                  </div>
-                )}
-                {voucherDiscount > 0 && (
-                  <div className="flex justify-between text-green-600">
-                    <span>
-                      {discountInfo?.discount.discount_type === "fixed"
-                        ? "Mã giảm giá"
-                        : discountInfo?.discount.discount_percentage
-                        ? `Giảm giá (${discountInfo.discount.discount_percentage}%)`
-                        : "Mã giảm giá"}
-                    </span>
-                    <span>-{formatCurrency(voucherDiscount)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Phí vận chuyển</span>
-                  {finalShippingFee > 0 ? (
-                    <span>{formatCurrency(finalShippingFee)}</span>
-                  ) : (
-                    <span className="text-green-600">Miễn phí</span>
-                  )}
-                </div>
-                <Separator className="my-2" />
-                <div className="flex justify-between items-center font-semibold pt-1">
-                  <span>Tổng cộng</span>
-                  <span className="text-lg">
-                    {formatCurrency(cartTotal + finalShippingFee)}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button asChild size="lg" className="w-full">
-                <Link href="/thanh-toan">
-                  <ShoppingCart className="mr-2 h-4 w-4" />
-                  Tiến hành thanh toán
-                </Link>
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
-      )}
     </div>
   );
 }
