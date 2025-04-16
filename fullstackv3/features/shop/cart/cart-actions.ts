@@ -728,3 +728,80 @@ export async function getProductVariantDetails(variantId: number) {
     return createErrorResponse(error);
   }
 }
+
+/**
+ * Merge guest cart items into the authenticated user's cart after login
+ * - guestItems: array of CartItem from localStorage
+ * - userId: Supabase user id
+ *
+ * This function will:
+ * 1. Get or create the user's shopping cart
+ * 2. For each guest item, upsert (add or update) into cart_items
+ * 3. Return success or error
+ */
+export async function mergeGuestCartAction(
+  guestItems: CartItem[],
+  userId: string
+) {
+  if (!userId) return { error: "User not authenticated" };
+  if (!Array.isArray(guestItems) || guestItems.length === 0)
+    return { success: true };
+
+  const supabase = await getSupabaseServerClient();
+
+  // Get or create shopping cart
+  let cartId: number;
+  const { data: cart, error: cartError } = await supabase
+    .from("shopping_carts")
+    .select("id")
+    .eq("user_id", userId)
+    .single();
+
+  if (cartError) {
+    if (cartError.code === "PGRST116") {
+      // Not found, create
+      const { data: newCart, error: createError } = await supabase
+        .from("shopping_carts")
+        .insert({ user_id: userId })
+        .select("id")
+        .single();
+      if (createError) return { error: createError.message };
+      cartId = newCart.id;
+    } else {
+      return { error: cartError.message };
+    }
+  } else {
+    cartId = cart.id;
+  }
+
+  // Upsert each guest item
+  for (const item of guestItems) {
+    // Check if item exists
+    const { data: existing, error: checkError } = await supabase
+      .from("cart_items")
+      .select("id, quantity")
+      .eq("cart_id", cartId)
+      .eq("variant_id", item.variant_id)
+      .maybeSingle();
+    if (checkError && checkError.code !== "PGRST116")
+      return { error: checkError.message };
+    if (existing) {
+      // Update quantity (sum)
+      const { error: updateError } = await supabase
+        .from("cart_items")
+        .update({ quantity: existing.quantity + item.quantity })
+        .eq("id", existing.id);
+      if (updateError) return { error: updateError.message };
+    } else {
+      // Insert new
+      const { error: insertError } = await supabase.from("cart_items").insert({
+        cart_id: cartId,
+        variant_id: item.variant_id,
+        quantity: item.quantity,
+      });
+      if (insertError) return { error: insertError.message };
+    }
+  }
+
+  return { success: true };
+}

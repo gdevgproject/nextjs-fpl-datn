@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { memo } from "react";
 import { ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useCartContext } from "@/features/shop/cart/cart-provider";
+import { useCartQuery } from "../hooks";
 
-const CartButton = memo(function CartButton() {
-  const { cartItemCount } = useCartContext();
+export function CartButton() {
+  const { data: cartItems = [] } = useCartQuery();
+  const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <Button
@@ -28,6 +28,4 @@ const CartButton = memo(function CartButton() {
       </Link>
     </Button>
   );
-});
-
-export { CartButton };
+}
