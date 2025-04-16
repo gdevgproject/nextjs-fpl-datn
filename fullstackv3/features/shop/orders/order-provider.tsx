@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { createContext, useContext, useState, useMemo } from "react";
-import { useAuth } from "@/features/auth/context/auth-context";
+import { useAuthQuery, useProfileQuery } from "@/features/auth/hooks";
 import { useCartContext } from "@/features/shop/cart/cart-provider";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { useRouter } from "next/navigation";
@@ -57,7 +57,10 @@ export const useOrderContext = () => useContext(OrderContext);
 
 // Provider component
 export function OrderProvider({ children }: { children: React.ReactNode }) {
-  const { user, profile } = useAuth();
+  // Lấy session và profile từ hooks mới
+  const { data: session } = useAuthQuery();
+  const user = session?.user || null;
+  const { data: profile } = useProfileQuery(user?.id);
   const { cartItems, cartTotal, subtotal, discount, shippingFee, clearCart } =
     useCartContext();
   const { toast } = useSonnerToast();
