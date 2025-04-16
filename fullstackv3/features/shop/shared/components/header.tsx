@@ -7,11 +7,17 @@ import { usePathname } from "next/navigation";
 import { Menu, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { CartButton } from "@/features/shop/cart/components/cart-button";
 import { SearchForm } from "@/features/shop/shared/components/search-form";
 import { UserNav } from "@/features/shop/shared/components/user-nav";
 import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings";
+import { useAuthQuery } from "@/features/auth/hooks";
 
 interface HeaderProps {
   categories: Array<{ id: number; name: string; slug: string }>;
@@ -26,8 +32,10 @@ export function Header({ categories, genders }: HeaderProps) {
     []
   );
   const { settings } = useShopSettings();
+  const { data: session } = useAuthQuery();
+  const isAuthenticated = !!session?.user;
   const shopLogo = settings?.shop_logo_url || "/placeholder-logo.svg";
-  const shopName = settings?.shop_name || "MyBeauty";
+  const shopName = settings?.shop_name || "";
 
   // Main nav items (genders + categories)
   const mainNavItems = [
@@ -47,7 +55,7 @@ export function Header({ categories, genders }: HeaderProps) {
           <Link href="/" className="flex items-center space-x-2">
             <img
               src={shopLogo}
-              alt="Logo"
+              alt={shopName ? `${shopName} Logo` : "Logo"}
               className="h-8 w-auto mr-2 rounded-md border border-border"
             />
             <span className="text-xl font-bold text-primary">{shopName}</span>
@@ -81,8 +89,32 @@ export function Header({ categories, genders }: HeaderProps) {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="p-0">
+                <SheetTitle className="sr-only">
+                  {shopName ? `Menu - ${shopName}` : "Menu"}
+                </SheetTitle>
                 {/* Mobile nav content */}
                 <nav className="p-6 space-y-2">
+                  {/* Show login/register if not authenticated */}
+                  {!isAuthenticated && (
+                    <div className="flex flex-col gap-3 mb-4">
+                      <Link
+                        href="/dang-nhap"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <Button className="w-full" variant="outline">
+                          Đăng nhập
+                        </Button>
+                      </Link>
+                      <Link
+                        href="/dang-ky"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <Button className="w-full" variant="default">
+                          Đăng ký
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
                   {mainNavItems.map((item) => (
                     <Link
                       key={item.href}
