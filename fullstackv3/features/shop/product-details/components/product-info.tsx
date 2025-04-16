@@ -8,62 +8,18 @@ import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Heart, AlertCircle } from "lucide-react";
 import VariantSelector from "./variant-selector";
 import { toast } from "sonner";
+import type { ProductDetail } from "../types";
 
 interface ProductInfoProps {
-  product: {
-    id: number;
-    name: string;
-    short_description: string | null;
-    release_year: number | null;
-  };
-  brand: {
-    id: number;
-    name: string;
-    logo_url: string | null;
-  };
-  variants: Array<{
-    id: number;
-    product_id: number;
-    volume_ml: number;
-    price: number;
-    sale_price: number | null;
-    sku: string;
-    stock_quantity: number;
-  }>;
-  gender: {
-    id: number;
-    name: string;
-  } | null;
-  concentration: {
-    id: number;
-    name: string;
-  } | null;
-  perfumeType: {
-    id: number;
-    name: string;
-  } | null;
+  product: ProductDetail;
 }
 
-export default function ProductInfo({
-  product,
-  brand,
-  variants,
-  gender,
-  concentration,
-  perfumeType,
-}: ProductInfoProps) {
+export default function ProductInfo({ product }: ProductInfoProps) {
   const { addToCart, isUpdatingCart } = useCartContext();
-  const [selectedVariant, setSelectedVariant] = useState(variants[0] || null);
+  const [selectedVariant, setSelectedVariant] = useState(
+    product.variants[0] || null
+  );
   const [quantity, setQuantity] = useState(1);
-
-  // Map variants to match VariantSelector's expected shape
-  const variantSelectorVariants = variants.map((v) => ({
-    id: v.id,
-    volume_ml: v.volume_ml,
-    price: v.price,
-    sale_price: v.sale_price,
-    stock_quantity: v.stock_quantity,
-  }));
 
   // Check if the product is on sale
   const isOnSale = selectedVariant && selectedVariant.sale_price !== null;
@@ -84,9 +40,7 @@ export default function ProductInfo({
   // Get stock status text and color
   const getStockStatusDisplay = () => {
     if (!selectedVariant) return null;
-
     const stockQty = selectedVariant.stock_quantity;
-
     if (stockQty <= 0) {
       return {
         text: "Hết hàng",
@@ -112,12 +66,10 @@ export default function ProductInfo({
       toast.error("Vui lòng chọn phiên bản sản phẩm");
       return;
     }
-
     if (!isInStock) {
       toast.error("Sản phẩm đã hết hàng");
       return;
     }
-
     try {
       await addToCart(selectedVariant.id, quantity);
     } catch (error) {
@@ -129,23 +81,21 @@ export default function ProductInfo({
   // Handle quantity change
   const handleQuantityChange = (newQuantity: number) => {
     if (!selectedVariant) return;
-
-    // Ensure quantity doesn't exceed stock
     const maxQuantity = selectedVariant.stock_quantity;
     const validQuantity = Math.min(Math.max(1, newQuantity), maxQuantity);
-
     setQuantity(validQuantity);
   };
+
+  const { brand, gender, concentration, perfumeType } = product;
 
   return (
     <div className="space-y-4 sm:space-y-6 md:space-y-8">
       {/* Brand */}
       <div>
         <h3 className="text-sm font-medium text-muted-foreground">
-          {brand.name}
+          {brand?.name}
         </h3>
       </div>
-
       {/* Product Name */}
       <div>
         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
@@ -157,31 +107,27 @@ export default function ProductInfo({
           </p>
         )}
       </div>
-
       {/* Product Attributes */}
       <div className="flex flex-wrap gap-2">
         {gender && <Badge variant="outline">{gender.name}</Badge>}
         {concentration && <Badge variant="outline">{concentration.name}</Badge>}
         {perfumeType && <Badge variant="outline">{perfumeType.name}</Badge>}
       </div>
-
       {/* Short Description */}
       {product.short_description && (
         <p className="text-base text-muted-foreground">
           {product.short_description}
         </p>
       )}
-
       {/* Variant Selector */}
       <div>
         <h3 className="text-sm font-medium mb-2">Dung tích</h3>
         <VariantSelector
-          variants={variantSelectorVariants}
+          variants={product.variants}
           selectedVariant={selectedVariant}
           onSelectVariant={setSelectedVariant as any}
         />
       </div>
-
       {/* Price */}
       <div className="flex items-baseline gap-2">
         {isOnSale ? (
@@ -202,7 +148,6 @@ export default function ProductInfo({
           </span>
         )}
       </div>
-
       {/* Stock Status */}
       <div className="flex items-center gap-2">
         {stockStatus && (
@@ -210,7 +155,6 @@ export default function ProductInfo({
             {stockStatus.text}
           </Badge>
         )}
-
         {selectedVariant &&
           selectedVariant.stock_quantity <= 5 &&
           selectedVariant.stock_quantity > 0 && (
@@ -220,7 +164,6 @@ export default function ProductInfo({
             </div>
           )}
       </div>
-
       {/* Quantity Selector */}
       {isInStock && (
         <div>
@@ -248,7 +191,6 @@ export default function ProductInfo({
           </div>
         </div>
       )}
-
       {/* Add to Cart */}
       <div className="flex gap-2">
         <Button
@@ -264,7 +206,6 @@ export default function ProductInfo({
           <span className="sr-only">Add to wishlist</span>
         </Button>
       </div>
-
       {/* SKU */}
       {selectedVariant && (
         <p className="text-xs text-muted-foreground">
