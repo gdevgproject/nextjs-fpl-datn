@@ -3,7 +3,7 @@
 import type React from "react";
 import { ThemeProvider } from "next-themes";
 import { QueryProvider } from "./query-provider";
-import { CartProvider } from "@/features/shop/cart/providers/cart-provider";
+import { CartProvider } from "@/features/shop/cart/cart-provider";
 import { Toaster } from "@/components/ui/sonner";
 
 /**

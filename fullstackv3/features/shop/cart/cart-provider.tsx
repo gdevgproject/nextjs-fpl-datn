@@ -4,7 +4,7 @@ import type React from "react";
 import { createContext, useContext, useEffect, useState } from "react";
 import { useAuthQuery } from "@/features/auth/hooks";
 import { useToast } from "@/hooks/use-toast";
-import type { CartItem, CartState, Discount } from "../types";
+import type { CartItem, CartState, Discount } from "./types";
 import {
   addToCart as addToCartAction,
   updateCartItemQuantity as updateCartItemQuantityAction,
@@ -12,7 +12,7 @@ import {
   clearCart as clearCartAction,
   removeDiscountCode as removeDiscountCodeAction,
   getProductVariantDetails,
-} from "../actions/cart-actions";
+} from "./cart-actions";
 import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings";
 
 // Initial cart state

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useCheckout } from "@/features/shop/cart/providers/checkout-provider";
+import { useCheckout } from "@/features/shop/checkout/checkout-provider";
 
 export function OrderConfirmationClient() {
   const { setJustPlacedOrder } = useCheckout();

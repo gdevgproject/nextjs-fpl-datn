@@ -2,21 +2,21 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useCartContext } from "../../providers/cart-provider";
-import { useCheckout } from "../../providers/checkout-provider";
+import { useCartContext } from "@/features/shop/cart/cart-provider";
+import { useCheckout } from "@/features/shop/checkout/checkout-provider";
 import { CheckoutSteps } from "./checkout-steps";
 import { GuestInfoStep } from "./guest-info-step";
 import { AddressStep } from "./address-step";
 import { PaymentStep } from "./payment-step";
 import { ReviewStep } from "./review-step";
-import { OrderSummary } from "../../../orders/components/order-summary";
-import { useToast } from "@/hooks/use-toast";
+import { OrderSummary } from "@/features/shop/orders/components/order-summary";
 import { EmptyCart } from "@/features/shop/cart/components/empty-cart";
 import { useAuthQuery } from "@/features/auth/hooks";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 
 export function CheckoutPage() {
   const router = useRouter();
-  const { toast } = useToast();
+  const { toast } = useSonnerToast();
   const { cartItemCount } = useCartContext();
   const { currentStep, justPlacedOrder } = useCheckout();
   const { data: session } = useAuthQuery();
@@ -25,11 +25,9 @@ export function CheckoutPage() {
   // Check if cart is empty and redirect to cart page if it is
   useEffect(() => {
     if (cartItemCount === 0 && !justPlacedOrder) {
-      toast({
-        title: "Giỏ hàng trống",
+      toast("Giỏ hàng trống", {
         description:
           "Vui lòng thêm sản phẩm vào giỏ hàng trước khi thanh toán.",
-        variant: "destructive",
       });
       router.push("/gio-hang");
     }

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Heart, AlertCircle, Loader2 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
-import { useCartContext } from "@/features/shop/cart/providers/cart-provider";
+import { useCartContext } from "@/features/shop/cart/cart-provider";
 
 export interface ProductImageType {
   image_url: string;

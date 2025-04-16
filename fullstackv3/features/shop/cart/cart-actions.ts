@@ -6,7 +6,7 @@ import {
   createErrorResponse,
   createSuccessResponse,
 } from "@/lib/utils/error-utils";
-import type { CartItem, GuestCheckoutInfo } from "../types";
+import type { CartItem, GuestCheckoutInfo } from "./types";
 import type { Address } from "@/features/shop/account/types";
 
 /**

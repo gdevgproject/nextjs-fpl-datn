@@ -1,6 +1,6 @@
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/utils/format";
-import { useCartContext } from "../../cart/providers/cart-provider";
+import { useCartContext } from "../../cart/cart-provider";
 
 export function OrderSummary() {
   const {
