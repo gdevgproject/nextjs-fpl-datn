@@ -11,7 +11,6 @@ import {
   MapPin,
   MessageSquare,
   Youtube,
-  TikTok,
 } from "lucide-react";
 import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -76,7 +75,6 @@ export const Footer = memo(function Footer() {
   // Social media URLs
   const facebookUrl = settings?.facebook_url || "";
   const instagramUrl = settings?.instagram_url || "";
-  const tiktokUrl = settings?.tiktok_url || "";
   const youtubeUrl = settings?.youtube_url || "";
   const messengerUrl = settings?.messenger_url || "";
   const zaloUrl = settings?.zalo_url || "";
@@ -122,7 +120,6 @@ export const Footer = memo(function Footer() {
                 icon={Instagram}
                 label="Instagram"
               />
-              <SocialLink href={tiktokUrl} icon={TikTok} label="TikTok" />
               <SocialLink href={youtubeUrl} icon={Youtube} label="Youtube" />
               <SocialLink
                 href={messengerUrl}
