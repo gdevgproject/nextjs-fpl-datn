@@ -105,7 +105,9 @@ export async function getOrderDetails(orderIdOrToken: string, isToken = false) {
 
     // Helper to get product info for each item
     async function enrichOrderItems(serviceClient: any, items: any[]) {
-      const variantIds = items.map((item) => item.variant_id).filter(Boolean);
+      const variantIds = items
+        .map((item: any) => item.variant_id)
+        .filter(Boolean);
       if (!variantIds.length) return items;
 
       // Lấy tất cả variant (kể cả đã xóa mềm), nếu không còn bản ghi thì fallback snapshot
@@ -128,16 +130,35 @@ export async function getOrderDetails(orderIdOrToken: string, isToken = false) {
         )
         .in("id", variantIds);
 
-      const variantMap = new Map();
-      (variants || []).forEach((v) => variantMap.set(v.id, v));
+      type ProductImage = { image_url: string; is_main: boolean };
+      type Product = {
+        id: number;
+        name: string;
+        slug: string;
+        deleted_at: string | null;
+        images?: ProductImage[];
+      };
+      type Variant = {
+        id: number;
+        price: number;
+        sale_price: number | null;
+        deleted_at: string | null;
+        product?: Product;
+      };
 
-      return items.map((item) => {
+      const variantMap = new Map<number, Variant>();
+      (variants || []).forEach((v: Variant) => variantMap.set(v.id, v));
+
+      return items.map((item: any) => {
         const variant = variantMap.get(item.variant_id);
         // Nếu còn bản ghi variant và product (dù đã xóa mềm), luôn ưu tiên hiển thị thông tin hiện tại
         if (variant && variant.product) {
-          const productImages = variant.product.images || [];
+          const productImages = Array.isArray(variant.product.images)
+            ? variant.product.images
+            : [];
           const mainImage =
-            productImages.find((img) => img.is_main) || productImages[0];
+            productImages.find((img: ProductImage) => img.is_main) ||
+            productImages[0];
           const originalPrice = Number(variant.price);
           const salePrice =
             variant.sale_price !== null && variant.sale_price !== undefined
