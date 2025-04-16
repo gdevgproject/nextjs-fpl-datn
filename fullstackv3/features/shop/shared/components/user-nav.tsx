@@ -2,7 +2,14 @@
 
 import { memo, useCallback } from "react";
 import Link from "next/link";
-import { LogIn, LogOut } from "lucide-react";
+import {
+  LogIn,
+  LogOut,
+  User,
+  ShoppingBag,
+  Heart,
+  Settings,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -181,7 +188,7 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
               href="/tai-khoan"
               className="flex items-center gap-2 rounded-[8px]"
             >
-              <span className="inline-block w-4 h-4 bg-primary/10 rounded-[6px]" />
+              <User className="w-4 h-4" />
               <span>Tài khoản</span>
             </Link>
           </DropdownMenuItem>
@@ -190,7 +197,7 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
               href="/tai-khoan/don-hang"
               className="flex items-center gap-2 rounded-[8px]"
             >
-              <span className="inline-block w-4 h-4 bg-primary/10 rounded-[6px]" />
+              <ShoppingBag className="w-4 h-4" />
               <span>Đơn hàng</span>
             </Link>
           </DropdownMenuItem>
@@ -199,7 +206,7 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
               href="/tai-khoan/yeu-thich"
               className="flex items-center gap-2 rounded-[8px]"
             >
-              <span className="inline-block w-4 h-4 bg-primary/10 rounded-[6px]" />
+              <Heart className="w-4 h-4" />
               <span>Yêu thích</span>
             </Link>
           </DropdownMenuItem>
@@ -212,7 +219,7 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
                 href="/admin"
                 className="flex items-center gap-2 rounded-[8px]"
               >
-                <span className="inline-block w-4 h-4 bg-primary/10 rounded-[6px]" />
+                <Settings className="w-4 h-4" />
                 <span>Quản trị</span>
               </Link>
             </DropdownMenuItem>
