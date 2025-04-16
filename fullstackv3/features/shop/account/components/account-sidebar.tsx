@@ -4,9 +4,13 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { CreditCard, Heart, LogOut, Package, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAuthQuery, useProfileQuery, useLogoutMutation } from "@/features/auth/hooks";
+import {
+  useAuthQuery,
+  useProfileQuery,
+  useLogoutMutation,
+} from "@/features/auth/hooks";
 import { useState, useMemo } from "react";
 
 const accountNavItems = [
@@ -23,7 +27,7 @@ export function AccountSidebar() {
   const { data: profile } = useProfileQuery(session?.user?.id);
   const logoutMutation = useLogoutMutation();
   const signOut = () => logoutMutation.mutate();
-  const { toast } = useToast();
+  const { toast } = useSonnerToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const queryClient = useQueryClient();
 
@@ -36,16 +40,13 @@ export function AccountSidebar() {
       queryClient.removeQueries({ queryKey: ["cart"] });
       queryClient.removeQueries({ queryKey: ["wishlist"] });
       signOut();
-      toast({
-        title: "Đăng xuất thành công",
+      toast("Đăng xuất thành công", {
         description: "Bạn đã đăng xuất khỏi tài khoản.",
       });
     } catch (error) {
       console.error("Logout error:", error);
-      toast({
-        title: "Lỗi đăng xuất",
+      toast("Lỗi đăng xuất", {
         description: "Có lỗi xảy ra khi đăng xuất. Vui lòng thử lại.",
-        variant: "destructive",
       });
     } finally {
       setIsLoggingOut(false);

@@ -1,42 +1,57 @@
-"use client"
+"use client";
 
-import { useEffect } from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
-import { Button } from "@/components/ui/button"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
-import { useToast } from "@/hooks/use-toast"
-import { useAddAddress, useUpdateAddress } from "../queries"
-import type { Address } from "../types"
-import { Loader2 } from "lucide-react"
+import { useEffect } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { useAddAddress, useUpdateAddress } from "../queries";
+import type { Address } from "../types";
+import { Loader2 } from "lucide-react";
 
 const addressSchema = z.object({
   recipient_name: z.string().min(2, "Tên người nhận phải có ít nhất 2 ký tự"),
-  recipient_phone: z.string().regex(/^(0|\+84)[3|5|7|8|9][0-9]{8}$/, "Số điện thoại không hợp lệ"),
+  recipient_phone: z
+    .string()
+    .regex(/^(0|\+84)[3|5|7|8|9][0-9]{8}$/, "Số điện thoại không hợp lệ"),
   province_city: z.string().min(1, "Vui lòng nhập tỉnh/thành phố"),
   district: z.string().min(1, "Vui lòng nhập quận/huyện"),
   ward: z.string().min(1, "Vui lòng nhập phường/xã"),
   street_address: z.string().min(5, "Địa chỉ phải có ít nhất 5 ký tự"),
   postal_code: z.string().optional(),
   is_default: z.boolean().default(false),
-})
+});
 
-type AddressFormValues = z.infer<typeof addressSchema>
+type AddressFormValues = z.infer<typeof addressSchema>;
 
 interface AddressFormProps {
-  address?: Address
-  onCancel: () => void
-  onSuccess: () => void
+  address?: Address;
+  onCancel: () => void;
+  onSuccess: () => void;
 }
 
-export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) {
-  const { toast } = useToast()
-  const addAddressMutation = useAddAddress()
-  const updateAddressMutation = useUpdateAddress()
-  const isSubmitting = addAddressMutation.isPending || updateAddressMutation.isPending
+export function AddressForm({
+  address,
+  onCancel,
+  onSuccess,
+}: AddressFormProps) {
+  const { toast } = useSonnerToast();
+  const addAddressMutation = useAddAddress();
+  const updateAddressMutation = useUpdateAddress();
+  const isSubmitting =
+    addAddressMutation.isPending || updateAddressMutation.isPending;
 
   // Form setup with default values
   const form = useForm<AddressFormValues>({
@@ -62,7 +77,7 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
           postal_code: "",
           is_default: false,
         },
-  })
+  });
 
   // Update form if address changes
   useEffect(() => {
@@ -76,9 +91,9 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
         street_address: address.street_address,
         postal_code: address.postal_code || "",
         is_default: address.is_default,
-      })
+      });
     }
-  }, [address, form])
+  }, [address, form]);
 
   // Form submission handler
   async function onSubmit(values: AddressFormValues) {
@@ -88,39 +103,40 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
         { id: address.id, ...values },
         {
           onSuccess: () => {
-            toast({
-              title: "Địa chỉ đã được cập nhật",
-              description: "Thông tin địa chỉ của bạn đã được cập nhật thành công",
-            })
-            onSuccess()
+            toast("Địa chỉ đã được cập nhật", {
+              description:
+                "Thông tin địa chỉ của bạn đã được cập nhật thành công",
+            });
+            onSuccess();
           },
           onError: (error) => {
-            toast({
-              title: "Không thể cập nhật địa chỉ",
-              description: error instanceof Error ? error.message : "Đã xảy ra lỗi khi cập nhật địa chỉ",
-              variant: "destructive",
-            })
+            toast("Không thể cập nhật địa chỉ", {
+              description:
+                error instanceof Error
+                  ? error.message
+                  : "Đã xảy ra lỗi khi cập nhật địa chỉ",
+            });
           },
-        },
-      )
+        }
+      );
     } else {
       // Adding a new address
       addAddressMutation.mutate(values, {
         onSuccess: () => {
-          toast({
-            title: "Địa chỉ đã được thêm",
+          toast("Địa chỉ đã được thêm", {
             description: "Địa chỉ mới đã được thêm thành công",
-          })
-          onSuccess()
+          });
+          onSuccess();
         },
         onError: (error) => {
-          toast({
-            title: "Không thể thêm địa chỉ",
-            description: error instanceof Error ? error.message : "Đã xảy ra lỗi khi thêm địa chỉ mới",
-            variant: "destructive",
-          })
+          toast("Không thể thêm địa chỉ", {
+            description:
+              error instanceof Error
+                ? error.message
+                : "Đã xảy ra lỗi khi thêm địa chỉ mới",
+          });
         },
-      })
+      });
     }
   }
 
@@ -135,7 +151,11 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
               <FormItem>
                 <FormLabel>Tên người nhận</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="Nguyễn Văn A" disabled={isSubmitting} />
+                  <Input
+                    {...field}
+                    placeholder="Nguyễn Văn A"
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -149,7 +169,11 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
               <FormItem>
                 <FormLabel>Số điện thoại</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="0912345678" disabled={isSubmitting} />
+                  <Input
+                    {...field}
+                    placeholder="0912345678"
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -165,7 +189,11 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
               <FormItem>
                 <FormLabel>Tỉnh/Thành phố</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="Hà Nội" disabled={isSubmitting} />
+                  <Input
+                    {...field}
+                    placeholder="Hà Nội"
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -179,7 +207,11 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
               <FormItem>
                 <FormLabel>Quận/Huyện</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="Cầu Giấy" disabled={isSubmitting} />
+                  <Input
+                    {...field}
+                    placeholder="Cầu Giấy"
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -193,7 +225,11 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
               <FormItem>
                 <FormLabel>Phường/Xã</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="Dịch Vọng" disabled={isSubmitting} />
+                  <Input
+                    {...field}
+                    placeholder="Dịch Vọng"
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -209,7 +245,11 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
               <FormItem>
                 <FormLabel>Địa chỉ cụ thể</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="Số 1, Đường ABC" disabled={isSubmitting} />
+                  <Input
+                    {...field}
+                    placeholder="Số 1, Đường ABC"
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -223,7 +263,11 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
               <FormItem>
                 <FormLabel>Mã bưu điện (không bắt buộc)</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="100000" disabled={isSubmitting} />
+                  <Input
+                    {...field}
+                    placeholder="100000"
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -238,7 +282,9 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
             <FormItem className="flex flex-row items-center justify-between space-x-3 space-y-0 rounded-md border p-4">
               <div className="space-y-1 leading-none">
                 <FormLabel>Đặt làm địa chỉ mặc định</FormLabel>
-                <FormDescription>Địa chỉ này sẽ được sử dụng mặc định cho đơn hàng của bạn</FormDescription>
+                <FormDescription>
+                  Địa chỉ này sẽ được sử dụng mặc định cho đơn hàng của bạn
+                </FormDescription>
               </div>
               <FormControl>
                 <Switch
@@ -252,7 +298,12 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
         />
 
         <div className="flex justify-end space-x-2">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
             Hủy
           </Button>
           <Button type="submit" disabled={isSubmitting}>
@@ -270,6 +321,5 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
         </div>
       </form>
     </Form>
-  )
+  );
 }
-

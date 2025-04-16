@@ -15,14 +15,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle2 } from "lucide-react";
 import { AvatarUpload } from "./avatar-upload";
 import { ProfileForm } from "./profile-form";
-import { useToast } from "@/hooks/use-toast";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 
 export function AccountPage() {
   const { data: session } = useAuthQuery();
   const { data: profile } = useProfileQuery(session?.user?.id);
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("profile");
-  const { toast } = useToast();
+  const { toast } = useSonnerToast();
 
   // Check if user just confirmed email
   const isNewConfirmation =
@@ -40,13 +40,11 @@ export function AccountPage() {
   useEffect(() => {
     const status = searchParams.get("status");
     if (status === "profile_updated") {
-      toast({
-        title: "Cập nhật thành công",
+      toast("Cập nhật thành công", {
         description: "Thông tin cá nhân của bạn đã được cập nhật",
       });
     } else if (status === "avatar_updated") {
-      toast({
-        title: "Cập nhật thành công",
+      toast("Cập nhật thành công", {
         description: "Ảnh đại diện của bạn đã được cập nhật",
       });
     }

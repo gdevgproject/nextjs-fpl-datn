@@ -8,7 +8,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Trash2, ShoppingCart, Loader2 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { useCartContext } from "@/features/shop/cart/cart-provider";
-import { useToast } from "@/hooks/use-toast";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { DEFAULT_AVATAR_URL } from "@/lib/constants";
 import { useWishlist } from "../hooks/use-wishlist";
 import type { WishlistItem as WishlistItemType } from "../hooks/use-wishlist";
@@ -20,7 +20,7 @@ interface WishlistItemProps {
 export function WishlistItem({ item }: WishlistItemProps) {
   const { removeFromWishlist } = useWishlist();
   const { addToCart } = useCartContext();
-  const { toast } = useToast();
+  const { toast } = useSonnerToast();
   const [isRemoving, setIsRemoving] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
 
@@ -54,16 +54,13 @@ export function WishlistItem({ item }: WishlistItemProps) {
       // Giả định variant_id là product_id (đơn giản hóa)
       await addToCart(item.product_id, 1, item.product_id.toString());
 
-      toast({
-        title: "Đã thêm vào giỏ hàng",
+      toast("Đã thêm vào giỏ hàng", {
         description: `${product.name} đã được thêm vào giỏ hàng của bạn.`,
       });
     } catch (error) {
       console.error("Error adding to cart:", error);
-      toast({
-        title: "Thêm vào giỏ hàng thất bại",
+      toast("Thêm vào giỏ hàng thất bại", {
         description: "Đã xảy ra lỗi khi thêm sản phẩm vào giỏ hàng.",
-        variant: "destructive",
       });
     } finally {
       setIsAddingToCart(false);

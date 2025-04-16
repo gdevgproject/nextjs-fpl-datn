@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { useUpdateUserProfile } from "../queries";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -52,7 +52,7 @@ const ProfileForm = memo(function ProfileForm() {
   const { data: session } = useAuthQuery();
   const user = session?.user;
   const { data: profile } = useProfileQuery(user?.id);
-  const { toast } = useToast();
+  const { toast } = useSonnerToast();
   const router = useRouter();
   const updateProfileMutation = useUpdateUserProfile();
   const queryClient = useQueryClient();
@@ -124,13 +124,11 @@ const ProfileForm = memo(function ProfileForm() {
           // Revert optimistic update on error
           queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
 
-          toast({
-            title: "Cập nhật thất bại",
+          toast("Cập nhật thất bại", {
             description:
               error instanceof Error
                 ? error.message
                 : "Đã xảy ra lỗi khi cập nhật thông tin",
-            variant: "destructive",
           });
         },
       });

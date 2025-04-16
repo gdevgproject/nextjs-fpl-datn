@@ -5,7 +5,7 @@ import type React from "react";
 import { useState, useRef, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useToast } from "@/hooks/use-toast";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { Camera, Loader2, X } from "lucide-react";
 import { uploadAvatar } from "../actions";
 import { DEFAULT_AVATAR_URL } from "@/lib/constants";
@@ -21,7 +21,7 @@ export const AvatarUpload = memo(function AvatarUpload() {
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
+  const { toast } = useSonnerToast();
 
   // Handle file selection with validation and preview
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,20 +30,16 @@ export const AvatarUpload = memo(function AvatarUpload() {
 
     // Validate file type - only allow images
     if (!file.type.match(/image\/(jpeg|png|webp|gif)/)) {
-      toast({
-        title: "File không hợp lệ",
+      toast("File không hợp lệ", {
         description: "Vui lòng chọn file hình ảnh (JPEG, PNG, WebP, GIF)",
-        variant: "destructive",
       });
       return;
     }
 
     // Validate file size - max 5MB
     if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "File quá lớn",
+      toast("File quá lớn", {
         description: "Kích thước file tối đa là 5MB",
-        variant: "destructive",
       });
       return;
     }
@@ -71,18 +67,15 @@ export const AvatarUpload = memo(function AvatarUpload() {
       // Refresh profile query
       await queryClient.invalidateQueries({ queryKey: ["profile", userId] });
 
-      toast({
-        title: "Cập nhật thành công",
+      toast("Cập nhật thành công", {
         description: "Ảnh đại diện của bạn đã được cập nhật",
       });
     } catch (error) {
-      toast({
-        title: "Cập nhật thất bại",
+      toast("Cập nhật thất bại", {
         description:
           error instanceof Error
             ? error.message
             : "Đã xảy ra lỗi khi cập nhật ảnh đại diện",
-        variant: "destructive",
       });
       // Reset preview on error
       setPreviewUrl(null);

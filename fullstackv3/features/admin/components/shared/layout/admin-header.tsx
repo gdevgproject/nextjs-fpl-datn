@@ -4,7 +4,6 @@ import Link from "next/link";
 import { LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { useAuth } from "@/features/auth/context/auth-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,18 +12,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-// Thêm import Image từ next/image
 import Image from "next/image";
+import {
+  useAuthQuery,
+  useProfileQuery,
+  useLogoutMutation,
+} from "@/features/auth/hooks";
 
 export function AdminHeader() {
-  const { profile, signOut } = useAuth();
+  const { data: session } = useAuthQuery();
+  const user = session?.user || null;
+  const { data: profile } = useProfileQuery(user?.id);
+  const logoutMutation = useLogoutMutation();
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-6 md:gap-10">
-          {/* Thay thế phần link logo */}
           <Link href="/admin" className="flex items-center space-x-2">
             <Image
               src="/images/logo.png"
@@ -55,7 +59,7 @@ export function AdminHeader() {
                 <Link href="/tai-khoan">Tài khoản của tôi</Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => signOut()}>
+              <DropdownMenuItem onClick={() => logoutMutation.mutate()}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Đăng xuất</span>
               </DropdownMenuItem>

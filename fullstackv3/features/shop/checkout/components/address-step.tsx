@@ -19,12 +19,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useUserAddresses } from "@/features/shop/account/queries";
 import { LoaderCircle } from "lucide-react";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 
 export function AddressStep() {
   const { data: session } = useAuthQuery();
   const isAuthenticated = !!session?.user;
   const userId = session?.user?.id;
   const { formData, updateFormData, errors, goToNextStep } = useCheckout();
+  const { toast } = useSonnerToast();
 
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
     null
@@ -277,7 +279,25 @@ export function AddressStep() {
         )}
       </CardContent>
       <CardFooter>
-        <Button onClick={goToNextStep}>Tiếp tục</Button>
+        <Button
+          onClick={() => {
+            // Nếu có lỗi validate, hiển thị toast cảnh báo
+            if (
+              errors.address ||
+              errors.province ||
+              errors.district ||
+              errors.ward
+            ) {
+              toast("Vui lòng nhập đầy đủ thông tin địa chỉ", {
+                description: Object.values(errors).filter(Boolean).join("; "),
+              });
+              return;
+            }
+            goToNextStep();
+          }}
+        >
+          Tiếp tục
+        </Button>
       </CardFooter>
     </Card>
   );

@@ -3,13 +3,13 @@
 import type React from "react";
 import { useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useToast } from "@/hooks/use-toast";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { useAuthQuery, useProfileQuery } from "@/features/auth/hooks";
 
 export function AuthToastHandler({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { toast } = useToast();
+  const { toast } = useSonnerToast();
   const { data: session } = useAuthQuery();
   const isAuthenticated = !!session?.user;
   const { data: profile } = useProfileQuery(session?.user?.id);
@@ -28,11 +28,7 @@ export function AuthToastHandler({ children }: { children: React.ReactNode }) {
     processedRef.current = authAction;
 
     if (authError) {
-      toast({
-        title: "Lỗi xác thực",
-        description: decodeURIComponent(authError),
-        variant: "destructive",
-      });
+      toast("Lỗi xác thực", { description: decodeURIComponent(authError) });
 
       // Xóa query param để tránh hiển thị toast lại khi refresh
       const newUrl = new URL(window.location.href);
@@ -46,30 +42,26 @@ export function AuthToastHandler({ children }: { children: React.ReactNode }) {
     if (authAction) {
       switch (authAction) {
         case "email_confirmed":
-          toast({
-            title: "Xác nhận email thành công!",
+          toast("Xác nhận email thành công!", {
             description:
               "Tài khoản của bạn đã được xác nhận. Vui lòng đăng nhập để tiếp tục.",
           });
           break;
         case "password_reset":
-          toast({
-            title: "Đặt lại mật khẩu thành công!",
+          toast("Đặt lại mật khẩu thành công!", {
             description:
               "Mật khẩu của bạn đã được cập nhật. Vui lòng đăng nhập với mật khẩu mới.",
           });
           break;
         case "signed_in":
-          toast({
-            title: "Đăng nhập thành công!",
+          toast("Đăng nhập thành công!", {
             description: `Chào mừng ${
               profile?.display_name || "bạn"
             } quay trở lại.`,
           });
           break;
         case "password_changed":
-          toast({
-            title: "Đổi mật khẩu thành công!",
+          toast("Đổi mật khẩu thành công!", {
             description: "Mật khẩu của bạn đã được cập nhật thành công.",
           });
           break;
