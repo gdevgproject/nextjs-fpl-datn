@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useCheckout } from "@/features/shop/checkout/checkout-provider";
 import {
   Card,
@@ -14,8 +13,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { CreditCard, Landmark, Wallet } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 
 // Define PaymentMethod type based on your database schema
 interface PaymentMethod {
@@ -26,32 +23,7 @@ interface PaymentMethod {
 }
 
 export function PaymentStep() {
-  const { formData, updateFormData, paymentMethods, goToNextStep } =
-    useCheckout();
-  const [availablePaymentMethods, setAvailablePaymentMethods] = useState<
-    PaymentMethod[]
-  >([]);
-  const { toast } = useSonnerToast();
-
-  useEffect(() => {
-    const fetchPaymentMethods = async () => {
-      const supabase = getSupabaseBrowserClient();
-      const { data, error } = await supabase
-        .from("payment_methods")
-        .select("*")
-        .eq("is_active", true)
-        .order("id"); // Ensure consistent order
-
-      if (error) {
-        console.error("Error fetching payment methods:", error);
-        toast("Lỗi", { description: "Không thể tải phương thức thanh toán" });
-      } else {
-        setAvailablePaymentMethods(data || []);
-      }
-    };
-
-    fetchPaymentMethods();
-  }, [toast]);
+  const { formData, updateFormData, paymentMethods, goToNextStep } = useCheckout();
 
   // Handle payment method selection
   const handlePaymentMethodChange = (paymentMethodId: number) => {
@@ -70,7 +42,7 @@ export function PaymentStep() {
           onValueChange={(value) => handlePaymentMethodChange(Number(value))}
           className="space-y-3"
         >
-          {availablePaymentMethods.map((method) => (
+          {paymentMethods.map((method) => (
             <div
               key={method.id}
               className="flex items-start space-x-3 border p-3 rounded-md"
