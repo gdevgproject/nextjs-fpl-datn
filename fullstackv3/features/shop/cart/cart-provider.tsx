@@ -73,6 +73,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // Fetch cart items on mount and when auth state changes
   useEffect(() => {
+    let didCancel = false;
     const fetchCartItems = async () => {
       try {
         setState((prev) => ({ ...prev, isLoading: true }));
@@ -87,7 +88,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               // Fetch complete product details for each cart item
               const updatedCartItems = await Promise.all(
                 parsedCart.map(async (item) => {
-                  // If the item already has complete product data, use it
                   if (
                     item.product &&
                     item.product.name !== "Loading..." &&
@@ -95,8 +95,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                   ) {
                     return item;
                   }
-
-                  // Otherwise fetch the product details
                   try {
                     const variantDetails = await getProductVariantDetails(
                       item.variant_id
@@ -120,14 +118,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                 "guestCart",
                 JSON.stringify(updatedCartItems)
               );
-              updateCartState(updatedCartItems);
+              if (!didCancel) updateCartState(updatedCartItems);
             } catch (error) {
               console.error("Error parsing local cart:", error);
               localStorage.removeItem("guestCart");
-              setState((prev) => ({ ...prev, isLoading: false }));
+              if (!didCancel)
+                setState((prev) => ({ ...prev, isLoading: false }));
             }
           } else {
-            setState((prev) => ({ ...prev, isLoading: false }));
+            if (!didCancel) setState((prev) => ({ ...prev, isLoading: false }));
           }
           return;
         }
@@ -145,16 +144,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
 
         const data = await response.json();
-        updateCartState(data.items || [], data.appliedDiscount);
+        if (!didCancel) updateCartState(data.items || [], data.appliedDiscount);
       } catch (error) {
         console.error("Error fetching cart:", error);
-        toast("Lỗi", { description: "Không thể tải giỏ hàng" });
-        setState((prev) => ({ ...prev, isLoading: false }));
+        if (!didCancel) {
+          toast("Lỗi", { description: "Không thể tải giỏ hàng" });
+          setState((prev) => ({ ...prev, isLoading: false }));
+        }
       }
     };
 
     fetchCartItems();
-  }, [isAuthenticated, user?.id, toast]);
+    return () => {
+      didCancel = true;
+    };
+  }, [isAuthenticated, user?.id]);
 
   // Update cart state with new items and calculate totals
   const updateCartState = (items: CartItem[], appliedDiscount = null) => {
