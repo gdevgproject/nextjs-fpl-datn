@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,103 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 
+function SmartSummaryBar({
+  selectedCartItems,
+  discountInfo,
+  discountCode,
+  onRemoveDiscount,
+  onApplyDiscount,
+  discountError,
+  isApplyingDiscount,
+  shippingFee,
+  freeShippingThreshold,
+  settings,
+  isAuthenticated,
+  handleCheckout,
+}: any) {
+  const subtotal = selectedCartItems.reduce(
+    (sum: number, item: any) => sum + (item.product?.price || 0) * item.quantity,
+    0
+  );
+  const saleDiscount = selectedCartItems.reduce((sum: number, item: any) => {
+    const price = item.product?.price || 0;
+    const sale = item.product?.sale_price;
+    if (sale && sale < price) {
+      return sum + (price - sale) * item.quantity;
+    }
+    return sum;
+  }, 0);
+  const voucherDiscount = (() => {
+    if (!discountInfo || !discountInfo.discount) return 0;
+    const d = discountInfo.discount;
+    if (d.discount_type === "fixed" && d.discount_amount) {
+      return Math.min(d.discount_amount, subtotal - saleDiscount);
+    } else if (d.discount_percentage) {
+      let amount = ((subtotal - saleDiscount) * d.discount_percentage) / 100;
+      if (d.max_discount_amount && amount > d.max_discount_amount) {
+        amount = d.max_discount_amount;
+      }
+      return amount;
+    }
+    return 0;
+  })();
+  const isFreeShipping =
+    freeShippingThreshold !== null &&
+    subtotal - saleDiscount - voucherDiscount >= freeShippingThreshold;
+  const finalShippingFee = isFreeShipping ? 0 : shippingFee;
+  const cartTotal = subtotal - saleDiscount - voucherDiscount;
+
+  if (!selectedCartItems || selectedCartItems.length === 0) return null;
+
+  return (
+    <div className="fixed bottom-0 left-0 w-full z-50 bg-background/95 border-t border-border shadow-lg px-2 py-3 sm:px-6 flex flex-col sm:flex-row items-center gap-2 sm:gap-6 animate-in fade-in slide-in-from-bottom-4">
+      <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+          <span className="font-semibold text-base">
+            Đã chọn: {selectedCartItems.length} sản phẩm
+          </span>
+          <span className="text-muted-foreground text-sm">
+            Tạm tính: <b>{formatCurrency(subtotal)}</b>
+          </span>
+          {saleDiscount > 0 && (
+            <span className="text-green-600 text-sm">
+              Khuyến mãi: -{formatCurrency(saleDiscount)}
+            </span>
+          )}
+          {voucherDiscount > 0 && (
+            <span className="text-green-600 text-sm">
+              Mã giảm giá: -{formatCurrency(voucherDiscount)}
+            </span>
+          )}
+          <span className="text-muted-foreground text-sm">
+            Phí ship:{" "}
+            {finalShippingFee > 0 ? (
+              formatCurrency(finalShippingFee)
+            ) : (
+              <span className="text-green-600">Miễn phí</span>
+            )}
+          </span>
+        </div>
+        <div className="font-semibold text-lg">
+          Tổng:{" "}
+          <span className="text-primary">
+            {formatCurrency(cartTotal + finalShippingFee)}
+          </span>
+        </div>
+      </div>
+      <Button
+        size="lg"
+        className="w-full sm:w-auto"
+        onClick={() => handleCheckout(selectedCartItems)}
+        disabled={selectedCartItems.length === 0}
+      >
+        Thanh toán{" "}
+        {selectedCartItems.length > 0 ? `(${selectedCartItems.length})` : ""}
+      </Button>
+    </div>
+  );
+}
+
 export function CartPage() {
   const { data: cartItems = [], isLoading } = useCartQuery();
   const { mutate: updateCartItem, isLoading: isUpdating } = useUpdateCartItem();
@@ -70,7 +167,6 @@ export function CartPage() {
   const shippingFee = settings?.shipping_fee || 0;
   const freeShippingThreshold = settings?.free_shipping_threshold || null;
 
-  // Discount state for guest
   const [discountCode, setDiscountCode] = useState("");
   const [discountInfo, setDiscountInfo] = useState<{
     discount: any;
@@ -79,10 +175,8 @@ export function CartPage() {
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
 
-  // State for clear cart dialog
   const [openClearDialog, setOpenClearDialog] = useState(false);
 
-  // State for selected items
   const [selectedItems, setSelectedItems] = useState<(string | number)[]>([]);
   const isItemSelected = (item: any) =>
     selectedItems.includes(isAuthenticated ? String(item.id) : item.variant_id);
@@ -109,7 +203,6 @@ export function CartPage() {
     success("Đã xóa các sản phẩm đã chọn khỏi giỏ hàng");
   };
 
-  // Calculate subtotal (always use price, not sale_price, for base)
   const subtotal = useMemo(
     () =>
       cartItems.reduce(
@@ -119,7 +212,6 @@ export function CartPage() {
     [cartItems]
   );
 
-  // Calculate total sale discount (from sale_price of variants)
   const saleDiscount = useMemo(
     () =>
       cartItems.reduce((sum, item) => {
@@ -133,20 +225,15 @@ export function CartPage() {
     [cartItems]
   );
 
-  // Tính số sản phẩm (không phải tổng quantity)
   const productCount = cartItems.length;
-  // Tính tổng quantity (tổng số lượng các biến thể)
   const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Tính toán giảm giá voucher chính xác cho nhiều loại mã
   const voucherDiscount = useMemo(() => {
     if (!discountInfo || !discountInfo.discount) return 0;
     const d = discountInfo.discount;
     if (d.discount_type === "fixed" && d.discount_amount) {
-      // Giảm giá cố định
       return Math.min(d.discount_amount, subtotal - saleDiscount);
     } else if (d.discount_percentage) {
-      // Giảm theo %
       let amount = ((subtotal - saleDiscount) * d.discount_percentage) / 100;
       if (d.max_discount_amount && amount > d.max_discount_amount) {
         amount = d.max_discount_amount;
@@ -156,16 +243,13 @@ export function CartPage() {
     return 0;
   }, [discountInfo, subtotal, saleDiscount]);
 
-  // Calculate shipping fee (free if subtotal - saleDiscount - voucherDiscount >= threshold)
   const isFreeShipping =
     freeShippingThreshold !== null &&
     subtotal - saleDiscount - voucherDiscount >= freeShippingThreshold;
   const finalShippingFee = isFreeShipping ? 0 : shippingFee;
 
-  // Calculate total
   const cartTotal = subtotal - saleDiscount - voucherDiscount;
 
-  // Handle apply discount code (works for both guest and user)
   const handleApplyDiscount = async () => {
     setIsApplyingDiscount(true);
     setDiscountError(null);
@@ -188,14 +272,12 @@ export function CartPage() {
     }
   };
 
-  // Handle remove discount code
   const handleRemoveDiscount = () => {
     setDiscountInfo(null);
     setDiscountCode("");
     setDiscountError(null);
   };
 
-  // Handle clear cart
   const handleClearCart = () => {
     clearCart(undefined, {
       onSuccess: () => {
@@ -209,7 +291,6 @@ export function CartPage() {
     });
   };
 
-  // Hiển thị thông tin chi tiết mã giảm giá
   const renderDiscountInfo = () => {
     if (!discountInfo) return null;
     const d = discountInfo.discount;
@@ -250,7 +331,22 @@ export function CartPage() {
     );
   };
 
-  // If cart is empty, show empty state
+  const smartBarRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (selectedItems.length > 0 && smartBarRef.current) {
+      smartBarRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+  }, [selectedItems.length]);
+
+  const selectedCartItems =
+    selectedItems.length > 0
+      ? cartItems.filter((item) =>
+          selectedItems.includes(
+            isAuthenticated ? String(item.id) : item.variant_id
+          )
+        )
+      : [];
+
   if (cartItems.length === 0) {
     return <EmptyCart />;
   }
@@ -491,109 +587,124 @@ export function CartPage() {
           </Link>
         </Button>
       </div>
-      <div className="mt-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Tóm tắt đơn hàng</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Discount code input */}
-            <div>
-              <div className="flex space-x-2">
-                <div className="flex-1">
-                  <Input
-                    placeholder="Nhập mã giảm giá"
-                    value={discountCode}
-                    onChange={(e) => setDiscountCode(e.target.value)}
-                    disabled={isApplyingDiscount}
-                  />
+      <div ref={smartBarRef} />
+      <SmartSummaryBar
+        selectedCartItems={selectedCartItems}
+        discountInfo={discountInfo}
+        discountCode={discountCode}
+        onRemoveDiscount={handleRemoveDiscount}
+        onApplyDiscount={handleApplyDiscount}
+        discountError={discountError}
+        isApplyingDiscount={isApplyingDiscount}
+        shippingFee={shippingFee}
+        freeShippingThreshold={freeShippingThreshold}
+        settings={settings}
+        isAuthenticated={isAuthenticated}
+        handleCheckout={(items: any[]) => {
+          success("Chức năng thanh toán nhiều sản phẩm đã chọn sẽ sớm có!");
+        }}
+      />
+      {selectedItems.length === 0 && (
+        <div className="mt-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Tóm tắt đơn hàng</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <div className="flex space-x-2">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Nhập mã giảm giá"
+                      value={discountCode}
+                      onChange={(e) => setDiscountCode(e.target.value)}
+                      disabled={isApplyingDiscount}
+                    />
+                  </div>
+                  {discountInfo ? (
+                    <Button
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-2 focus:ring-primary"
+                      onClick={handleRemoveDiscount}
+                    >
+                      Xóa
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="secondary"
+                      onClick={handleApplyDiscount}
+                      disabled={isApplyingDiscount}
+                    >
+                      {isApplyingDiscount ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Receipt className="h-4 w-4 mr-2" />
+                      )}
+                      Áp dụng
+                    </Button>
+                  )}
                 </div>
-                {discountInfo ? (
-                  <Button
-                    className="bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-2 focus:ring-primary"
-                    onClick={handleRemoveDiscount}
-                  >
-                    Xóa
-                  </Button>
-                ) : (
-                  <Button
-                    variant="secondary"
-                    onClick={handleApplyDiscount}
-                    disabled={isApplyingDiscount}
-                  >
-                    {isApplyingDiscount ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Receipt className="h-4 w-4 mr-2" />
-                    )}
-                    Áp dụng
-                  </Button>
+                {discountError && (
+                  <div className="mt-2">
+                    <Alert variant="destructive" className="py-2">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{discountError}</AlertDescription>
+                    </Alert>
+                  </div>
                 )}
+                {renderDiscountInfo()}
               </div>
-              {/* Discount error */}
-              {discountError && (
-                <div className="mt-2">
-                  <Alert variant="destructive" className="py-2">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{discountError}</AlertDescription>
-                  </Alert>
+              <Separator />
+              <div className="space-y-1.5 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tạm tính</span>
+                  <span>{formatCurrency(subtotal)}</span>
                 </div>
-              )}
-              {/* Applied discount info */}
-              {renderDiscountInfo()}
-            </div>
-            <Separator />
-            {/* Price details */}
-            <div className="space-y-1.5 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Tạm tính</span>
-                <span>{formatCurrency(subtotal)}</span>
-              </div>
-              {saleDiscount > 0 && (
-                <div className="flex justify-between text-green-600">
-                  <span>Khuyến mãi sản phẩm</span>
-                  <span>-{formatCurrency(saleDiscount)}</span>
+                {saleDiscount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Khuyến mãi sản phẩm</span>
+                    <span>-{formatCurrency(saleDiscount)}</span>
+                  </div>
+                )}
+                {voucherDiscount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>
+                      {discountInfo?.discount.discount_type === "fixed"
+                        ? "Mã giảm giá"
+                        : discountInfo?.discount.discount_percentage
+                        ? `Giảm giá (${discountInfo.discount.discount_percentage}%)`
+                        : "Mã giảm giá"}
+                    </span>
+                    <span>-{formatCurrency(voucherDiscount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Phí vận chuyển</span>
+                  {finalShippingFee > 0 ? (
+                    <span>{formatCurrency(finalShippingFee)}</span>
+                  ) : (
+                    <span className="text-green-600">Miễn phí</span>
+                  )}
                 </div>
-              )}
-              {voucherDiscount > 0 && (
-                <div className="flex justify-between text-green-600">
-                  <span>
-                    {discountInfo?.discount.discount_type === "fixed"
-                      ? "Mã giảm giá"
-                      : discountInfo?.discount.discount_percentage
-                      ? `Giảm giá (${discountInfo.discount.discount_percentage}%)`
-                      : "Mã giảm giá"}
+                <Separator className="my-2" />
+                <div className="flex justify-between items-center font-semibold pt-1">
+                  <span>Tổng cộng</span>
+                  <span className="text-lg">
+                    {formatCurrency(cartTotal + finalShippingFee)}
                   </span>
-                  <span>-{formatCurrency(voucherDiscount)}</span>
                 </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Phí vận chuyển</span>
-                {finalShippingFee > 0 ? (
-                  <span>{formatCurrency(finalShippingFee)}</span>
-                ) : (
-                  <span className="text-green-600">Miễn phí</span>
-                )}
               </div>
-              <Separator className="my-2" />
-              <div className="flex justify-between items-center font-semibold pt-1">
-                <span>Tổng cộng</span>
-                <span className="text-lg">
-                  {formatCurrency(cartTotal + finalShippingFee)}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button asChild size="lg" className="w-full">
-              <Link href="/thanh-toan">
-                <ShoppingCart className="mr-2 h-4 w-4" />
-                Tiến hành thanh toán
-              </Link>
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
+            </CardContent>
+            <CardFooter>
+              <Button asChild size="lg" className="w-full">
+                <Link href="/thanh-toan">
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  Tiến hành thanh toán
+                </Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
