@@ -7,7 +7,8 @@ import { useCartQuery } from "../hooks";
 
 export function CartButton() {
   const { data: cartItems = [] } = useCartQuery();
-  const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  // Số sản phẩm là số biến thể khác nhau trong giỏ hàng
+  const productCount = cartItems.length;
 
   return (
     <Button
@@ -19,9 +20,9 @@ export function CartButton() {
     >
       <Link href="/gio-hang">
         <ShoppingCart className="h-5 w-5" />
-        {cartItemCount > 0 && (
+        {productCount > 0 && (
           <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-            {cartItemCount > 99 ? "99+" : cartItemCount}
+            {productCount > 99 ? "99+" : productCount}
           </span>
         )}
         <span className="sr-only">Giỏ hàng</span>

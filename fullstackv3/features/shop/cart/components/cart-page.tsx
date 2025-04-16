@@ -97,6 +97,11 @@ export function CartPage() {
     [cartItems]
   );
 
+  // Tính số sản phẩm (không phải tổng quantity)
+  const productCount = cartItems.length;
+  // Tính tổng quantity (tổng số lượng các biến thể)
+  const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
   // Tính toán giảm giá voucher chính xác cho nhiều loại mã
   const voucherDiscount = useMemo(() => {
     if (!discountInfo || !discountInfo.discount) return 0;
@@ -222,7 +227,10 @@ export function CartPage() {
         </span>
         <h1 className="text-3xl font-bold">Giỏ hàng của bạn</h1>
         <span className="ml-2 px-3 py-1 rounded-full bg-muted text-muted-foreground text-base font-semibold">
-          {cartItems.reduce((sum, item) => sum + item.quantity, 0)} sản phẩm
+          {productCount} sản phẩm
+        </span>
+        <span className="ml-2 px-3 py-1 rounded-full bg-accent text-accent-foreground text-base font-semibold">
+          {totalQuantity} số lượng
         </span>
       </div>
       <div className="flex justify-end mb-4">
@@ -264,12 +272,6 @@ export function CartPage() {
         <div className="lg:col-span-2">
           <div className="bg-card rounded-lg border shadow-sm">
             <div className="p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">
-                  Sản phẩm (
-                  {cartItems.reduce((sum, item) => sum + item.quantity, 0)})
-                </h2>
-              </div>
               {cartItems.map((item) => (
                 <div
                   key={isAuthenticated ? item.id : item.variant_id}
@@ -448,7 +450,7 @@ export function CartPage() {
                   </div>
                   {discountInfo ? (
                     <Button
-                      variant="destructive"
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-2 focus:ring-primary"
                       onClick={handleRemoveDiscount}
                     >
                       Xóa
