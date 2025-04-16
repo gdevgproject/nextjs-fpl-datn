@@ -48,6 +48,15 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export function CartPage() {
   const { data: cartItems = [], isLoading } = useCartQuery();
@@ -72,6 +81,33 @@ export function CartPage() {
 
   // State for clear cart dialog
   const [openClearDialog, setOpenClearDialog] = useState(false);
+
+  // State for selected items
+  const [selectedItems, setSelectedItems] = useState<(string | number)[]>([]);
+  const isItemSelected = (item: any) =>
+    selectedItems.includes(isAuthenticated ? String(item.id) : item.variant_id);
+  const handleSelectItem = (item: any, checked: boolean) => {
+    const key = isAuthenticated ? String(item.id) : item.variant_id;
+    setSelectedItems((prev) =>
+      checked ? [...prev, key] : prev.filter((k) => k !== key)
+    );
+  };
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedItems(
+        cartItems.map((item) =>
+          isAuthenticated ? String(item.id) : item.variant_id
+        )
+      );
+    } else {
+      setSelectedItems([]);
+    }
+  };
+  const handleRemoveSelected = () => {
+    selectedItems.forEach((key) => removeCartItem(key));
+    setSelectedItems([]);
+    success("Đã xóa các sản phẩm đã chọn khỏi giỏ hàng");
+  };
 
   // Calculate subtotal (always use price, not sale_price, for base)
   const subtotal = useMemo(
@@ -220,8 +256,8 @@ export function CartPage() {
   }
 
   return (
-    <div className="container py-8 px-4">
-      <div className="flex items-center gap-3 mb-8">
+    <div className="container py-8 px-2 sm:px-4">
+      <div className="flex flex-wrap items-center gap-3 mb-8">
         <span className="inline-flex items-center justify-center rounded-full bg-primary/10 text-primary p-2">
           <ShoppingCartIcon className="h-7 w-7" />
         </span>
@@ -232,8 +268,7 @@ export function CartPage() {
         <span className="ml-2 px-3 py-1 rounded-full bg-accent text-accent-foreground text-base font-semibold">
           {totalQuantity} số lượng
         </span>
-      </div>
-      <div className="flex justify-end mb-4">
+        <div className="flex-1" />
         <AlertDialog open={openClearDialog} onOpenChange={setOpenClearDialog}>
           <AlertDialogTrigger asChild>
             <Button
@@ -267,273 +302,297 @@ export function CartPage() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Cart items */}
-        <div className="lg:col-span-2">
-          <div className="bg-card rounded-lg border shadow-sm">
-            <div className="p-4 sm:p-6">
-              {cartItems.map((item) => (
-                <div
-                  key={isAuthenticated ? item.id : item.variant_id}
-                  className="py-4 border-b last:border-0"
-                >
-                  <div className="flex items-start gap-4">
-                    {/* Product image */}
-                    <div className="relative w-20 h-20 rounded overflow-hidden bg-secondary/20 flex-shrink-0">
-                      <Image
-                        src={
-                          item.product?.images?.find((img) => img.is_main)
-                            ?.image_url ||
-                          item.product?.images?.[0]?.image_url ||
-                          "/placeholder.jpg"
-                        }
-                        alt={item.product?.name || "Product image"}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                    {/* Product details with clear labels */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="mb-1 text-sm text-muted-foreground">
-                            <span className="font-semibold">Tên sản phẩm:</span>{" "}
-                            {item.product?.name}
-                          </div>
-                          <div className="mb-1 text-sm text-muted-foreground">
-                            <span className="font-semibold">Dung tích:</span>{" "}
-                            {item.product?.volume_ml}ml
-                          </div>
-                          <div className="mb-1 text-sm text-muted-foreground">
-                            <span className="font-semibold">Giá:</span>{" "}
-                            {item.product?.sale_price ? (
-                              <>
-                                <span className="font-medium text-primary">
-                                  {formatCurrency(item.product.sale_price)}
-                                </span>
-                                <span className="text-xs text-muted-foreground line-through ml-2">
-                                  {formatCurrency(item.product.price)}
-                                </span>
-                              </>
-                            ) : (
-                              <span className="font-medium">
-                                {formatCurrency(item.product?.price || 0)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {/* Remove button - mobile only */}
-                        <div className="md:hidden">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive"
-                            onClick={() =>
-                              removeCartItem(
-                                isAuthenticated
-                                  ? String(item.id)
-                                  : item.variant_id
-                              )
-                            }
-                            disabled={isRemoving}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+      <div className="overflow-x-auto rounded-lg border bg-card shadow-sm">
+        <Table className="min-w-[700px]">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10 text-center">
+                <Checkbox
+                  checked={
+                    selectedItems.length === cartItems.length &&
+                    cartItems.length > 0
+                  }
+                  indeterminate={
+                    selectedItems.length > 0 &&
+                    selectedItems.length < cartItems.length
+                      ? "true"
+                      : undefined
+                  }
+                  onCheckedChange={handleSelectAll}
+                  aria-label="Chọn tất cả"
+                />
+              </TableHead>
+              <TableHead className="min-w-[180px]">Sản phẩm</TableHead>
+              <TableHead className="w-28 text-center">Đơn giá</TableHead>
+              <TableHead className="w-32 text-center">Số lượng</TableHead>
+              <TableHead className="w-32 text-center">Thành tiền</TableHead>
+              <TableHead className="w-16 text-center">Thao tác</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {cartItems.map((item) => {
+              const key = isAuthenticated ? String(item.id) : item.variant_id;
+              const price =
+                item.product?.sale_price &&
+                item.product.sale_price < item.product.price
+                  ? item.product.sale_price
+                  : item.product.price || 0;
+              return (
+                <TableRow key={key} className="align-middle">
+                  <TableCell className="text-center">
+                    <Checkbox
+                      checked={isItemSelected(item)}
+                      onCheckedChange={(checked) =>
+                        handleSelectItem(item, !!checked)
+                      }
+                      aria-label="Chọn sản phẩm"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <div className="relative w-14 h-14 rounded bg-secondary/20 border overflow-hidden flex-shrink-0">
+                        <Image
+                          src={
+                            item.product?.images?.find((img) => img.is_main)
+                              ?.image_url ||
+                            item.product?.images?.[0]?.image_url ||
+                            "/placeholder.jpg"
+                          }
+                          alt={item.product?.name || "Product image"}
+                          fill
+                          className="object-cover"
+                        />
                       </div>
-                      {/* Quantity control and subtotal */}
-                      <div className="flex items-center justify-between mt-4">
-                        <div className="flex items-center border rounded-md">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 rounded-r-none"
-                            onClick={() =>
-                              updateCartItem({
-                                itemIdOrVariantId: isAuthenticated
-                                  ? String(item.id)
-                                  : item.variant_id,
-                                quantity: Math.max(1, item.quantity - 1),
-                              })
-                            }
-                            disabled={item.quantity <= 1 || isUpdating}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <div className="w-10 text-center font-medium text-sm py-1">
-                            {isUpdating ? (
-                              <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-                            ) : (
-                              item.quantity
-                            )}
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 rounded-l-none"
-                            onClick={() =>
-                              updateCartItem({
-                                itemIdOrVariantId: isAuthenticated
-                                  ? String(item.id)
-                                  : item.variant_id,
-                                quantity: item.quantity + 1,
-                              })
-                            }
-                            disabled={isUpdating}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
+                      <div className="min-w-0">
+                        <div className="font-medium line-clamp-1 text-sm">
+                          <span className="text-muted-foreground">Tên:</span>{" "}
+                          {item.product?.name}
                         </div>
-                        <div className="flex items-center gap-4">
-                          {/* Item total */}
-                          <span className="font-medium">
-                            {formatCurrency(
-                              (item.product?.sale_price &&
-                              item.product.sale_price < item.product.price
-                                ? item.product.sale_price
-                                : item.product.price || 0) * item.quantity
-                            )}
+                        {item.product?.brand?.name && (
+                          <div className="text-xs text-muted-foreground">
+                            <span className="font-medium">Thương hiệu:</span>{" "}
+                            {item.product.brand.name}
+                          </div>
+                        )}
+                        {item.product?.volume_ml && (
+                          <div className="text-xs text-muted-foreground">
+                            <span className="font-medium">Dung tích:</span>{" "}
+                            {item.product.volume_ml}ml
+                          </div>
+                        )}
+                        {item.product?.slug && (
+                          <div className="text-xs text-muted-foreground">
+                            <span className="font-medium">Mã SP:</span>{" "}
+                            {item.product.slug}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex flex-col items-center">
+                      <span className="font-semibold text-primary">
+                        {formatCurrency(price)}
+                      </span>
+                      {item.product?.sale_price &&
+                        item.product.sale_price < item.product.price && (
+                          <span className="text-xs text-muted-foreground line-through">
+                            {formatCurrency(item.product.price)}
                           </span>
-                          {/* Remove button - desktop only */}
-                          <div className="hidden md:block">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive"
-                              onClick={() =>
-                                removeCartItem(
-                                  isAuthenticated
-                                    ? String(item.id)
-                                    : item.variant_id
-                                )
-                              }
-                              disabled={isRemoving}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
+                        )}
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          {/* Continue shopping button */}
-          <div className="mt-4">
-            <Button variant="outline" asChild>
-              <Link href="/san-pham">
-                <ShoppingBag className="mr-2 h-4 w-4" />
-                Tiếp tục mua sắm
-              </Link>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-r-none"
+                        onClick={() =>
+                          updateCartItem({
+                            itemIdOrVariantId: isAuthenticated
+                              ? String(item.id)
+                              : item.variant_id,
+                            quantity: Math.max(1, item.quantity - 1),
+                          })
+                        }
+                        disabled={item.quantity <= 1 || isUpdating}
+                        aria-label="Giảm số lượng"
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <div className="w-8 text-center font-medium text-sm py-1">
+                        {isUpdating ? (
+                          <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                        ) : (
+                          item.quantity
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-l-none"
+                        onClick={() =>
+                          updateCartItem({
+                            itemIdOrVariantId: isAuthenticated
+                              ? String(item.id)
+                              : item.variant_id,
+                            quantity: item.quantity + 1,
+                          })
+                        }
+                        disabled={isUpdating}
+                        aria-label="Tăng số lượng"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center font-semibold">
+                    {formatCurrency(price * item.quantity)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive"
+                      onClick={() =>
+                        removeCartItem(
+                          isAuthenticated ? String(item.id) : item.variant_id
+                        )
+                      }
+                      disabled={isRemoving}
+                      aria-label="Xóa sản phẩm"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+        {selectedItems.length > 0 && (
+          <div className="flex justify-end mt-2">
+            <Button
+              variant="destructive"
+              onClick={handleRemoveSelected}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-2 focus:ring-primary"
+            >
+              Xóa các sản phẩm đã chọn
             </Button>
           </div>
-        </div>
-        {/* Order summary */}
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle>Tóm tắt đơn hàng</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Discount code input */}
-              <div>
-                <div className="flex space-x-2">
-                  <div className="flex-1">
-                    <Input
-                      placeholder="Nhập mã giảm giá"
-                      value={discountCode}
-                      onChange={(e) => setDiscountCode(e.target.value)}
-                      disabled={isApplyingDiscount}
-                    />
-                  </div>
-                  {discountInfo ? (
-                    <Button
-                      className="bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-2 focus:ring-primary"
-                      onClick={handleRemoveDiscount}
-                    >
-                      Xóa
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="secondary"
-                      onClick={handleApplyDiscount}
-                      disabled={isApplyingDiscount}
-                    >
-                      {isApplyingDiscount ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Receipt className="h-4 w-4 mr-2" />
-                      )}
-                      Áp dụng
-                    </Button>
-                  )}
+        )}
+      </div>
+      <div className="mt-4">
+        <Button variant="outline" asChild>
+          <Link href="/san-pham">
+            <ShoppingBag className="mr-2 h-4 w-4" />
+            Tiếp tục mua sắm
+          </Link>
+        </Button>
+      </div>
+      <div className="mt-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Tóm tắt đơn hàng</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Discount code input */}
+            <div>
+              <div className="flex space-x-2">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Nhập mã giảm giá"
+                    value={discountCode}
+                    onChange={(e) => setDiscountCode(e.target.value)}
+                    disabled={isApplyingDiscount}
+                  />
                 </div>
-                {/* Discount error */}
-                {discountError && (
-                  <div className="mt-2">
-                    <Alert variant="destructive" className="py-2">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{discountError}</AlertDescription>
-                    </Alert>
-                  </div>
+                {discountInfo ? (
+                  <Button
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-2 focus:ring-primary"
+                    onClick={handleRemoveDiscount}
+                  >
+                    Xóa
+                  </Button>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    onClick={handleApplyDiscount}
+                    disabled={isApplyingDiscount}
+                  >
+                    {isApplyingDiscount ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Receipt className="h-4 w-4 mr-2" />
+                    )}
+                    Áp dụng
+                  </Button>
                 )}
-                {/* Applied discount info */}
-                {renderDiscountInfo()}
               </div>
-              <Separator />
-              {/* Price details */}
-              <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Tạm tính</span>
-                  <span>{formatCurrency(subtotal)}</span>
+              {/* Discount error */}
+              {discountError && (
+                <div className="mt-2">
+                  <Alert variant="destructive" className="py-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{discountError}</AlertDescription>
+                  </Alert>
                 </div>
-                {saleDiscount > 0 && (
-                  <div className="flex justify-between text-green-600">
-                    <span>Khuyến mãi sản phẩm</span>
-                    <span>-{formatCurrency(saleDiscount)}</span>
-                  </div>
-                )}
-                {voucherDiscount > 0 && (
-                  <div className="flex justify-between text-green-600">
-                    <span>
-                      {discountInfo?.discount.discount_type === "fixed"
-                        ? "Mã giảm giá"
-                        : discountInfo?.discount.discount_percentage
-                        ? `Giảm giá (${discountInfo.discount.discount_percentage}%)`
-                        : "Mã giảm giá"}
-                    </span>
-                    <span>-{formatCurrency(voucherDiscount)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Phí vận chuyển</span>
-                  {finalShippingFee > 0 ? (
-                    <span>{formatCurrency(finalShippingFee)}</span>
-                  ) : (
-                    <span className="text-green-600">Miễn phí</span>
-                  )}
+              )}
+              {/* Applied discount info */}
+              {renderDiscountInfo()}
+            </div>
+            <Separator />
+            {/* Price details */}
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Tạm tính</span>
+                <span>{formatCurrency(subtotal)}</span>
+              </div>
+              {saleDiscount > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Khuyến mãi sản phẩm</span>
+                  <span>-{formatCurrency(saleDiscount)}</span>
                 </div>
-                <Separator className="my-2" />
-                <div className="flex justify-between items-center font-semibold pt-1">
-                  <span>Tổng cộng</span>
-                  <span className="text-lg">
-                    {formatCurrency(cartTotal + finalShippingFee)}
+              )}
+              {voucherDiscount > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>
+                    {discountInfo?.discount.discount_type === "fixed"
+                      ? "Mã giảm giá"
+                      : discountInfo?.discount.discount_percentage
+                      ? `Giảm giá (${discountInfo.discount.discount_percentage}%)`
+                      : "Mã giảm giá"}
                   </span>
+                  <span>-{formatCurrency(voucherDiscount)}</span>
                 </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Phí vận chuyển</span>
+                {finalShippingFee > 0 ? (
+                  <span>{formatCurrency(finalShippingFee)}</span>
+                ) : (
+                  <span className="text-green-600">Miễn phí</span>
+                )}
               </div>
-            </CardContent>
-            <CardFooter>
-              <Button asChild size="lg" className="w-full">
-                <Link href="/thanh-toan">
-                  <ShoppingCart className="mr-2 h-4 w-4" />
-                  Tiến hành thanh toán
-                </Link>
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
+              <Separator className="my-2" />
+              <div className="flex justify-between items-center font-semibold pt-1">
+                <span>Tổng cộng</span>
+                <span className="text-lg">
+                  {formatCurrency(cartTotal + finalShippingFee)}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button asChild size="lg" className="w-full">
+              <Link href="/thanh-toan">
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Tiến hành thanh toán
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     </div>
   );
