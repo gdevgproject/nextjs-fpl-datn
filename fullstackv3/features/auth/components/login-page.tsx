@@ -29,14 +29,14 @@ export function LoginPage() {
 
   return (
     <>
-      <div className="flex flex-col space-y-2 text-center">
+      <div className="flex flex-col space-y-2 text-center mb-4">
         <h1 className="text-2xl font-semibold tracking-tight">Đăng nhập</h1>
         <p className="text-sm text-muted-foreground">
           Nhập thông tin đăng nhập của bạn để tiếp tục
         </p>
       </div>
       <LoginForm />
-      <div className="text-center text-sm">
+      <div className="text-center text-sm mt-4">
         Chưa có tài khoản?{" "}
         <Link href="/dang-ky" className="text-primary hover:underline">
           Đăng ký

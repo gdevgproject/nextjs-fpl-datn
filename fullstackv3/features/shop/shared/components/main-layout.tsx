@@ -1,11 +1,11 @@
 "use client";
 
-import { memo } from "react";
 import type React from "react";
-import { Header } from "./header";
-import { Footer } from "./footer";
-import { Suspense } from "react";
+import { Header } from "@/features/shop/shared/components/header";
+import { Footer } from "@/features/shop/shared/components/footer";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCategories } from "@/features/shop/shared/hooks/use-categories";
+import { useGenders } from "@/features/shop/shared/hooks/use-genders";
 
 /**
  * Skeleton for Header component to improve UX while loading
@@ -73,20 +73,22 @@ function FooterSkeleton() {
  * Uses React.memo to prevent unnecessary re-renders
  * Implements Suspense boundaries for a better loading experience
  */
-export const MainLayout = memo(function MainLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function MainLayout({ children }: { children: React.ReactNode }) {
+  const { categories, isLoading: loadingCategories } = useCategories();
+  const { genders, isLoading: loadingGenders } = useGenders();
+  const shopLogo = "/placeholder-logo.svg";
+
   return (
     <div className="flex min-h-screen flex-col">
-      <Suspense fallback={<HeaderSkeleton />}>
-        <Header />
-      </Suspense>
+      <Header
+        shopLogo={shopLogo}
+        categories={categories}
+        genders={genders}
+        loadingCategories={loadingCategories}
+        loadingGenders={loadingGenders}
+      />
       <main className="flex-1">{children}</main>
-      <Suspense fallback={<FooterSkeleton />}>
-        <Footer />
-      </Suspense>
+      <Footer />
     </div>
   );
-});
+}

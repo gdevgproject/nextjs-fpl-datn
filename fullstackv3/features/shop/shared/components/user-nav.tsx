@@ -2,7 +2,14 @@
 
 import { memo, useCallback } from "react";
 import Link from "next/link";
-import { LogIn, LogOut } from "lucide-react";
+import {
+  LogIn,
+  LogOut,
+  User,
+  ShoppingBag,
+  Heart,
+  Settings,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -74,15 +81,33 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
     }
   }, [logoutMutation, queryClient, success, error]);
 
-  // Show login button if not authenticated
+  // Show login/register if not authenticated
   if (!isAuthenticated) {
     return (
-      <Link href="/dang-nhap">
-        <Button variant="ghost" size="icon">
-          <LogIn className="h-5 w-5" />
-          <span className="sr-only">Đăng nhập</span>
-        </Button>
-      </Link>
+      <>
+        {/* Desktop: Hiện chữ Đăng nhập/Đăng ký */}
+        <div className="gap-2 hidden md:flex">
+          <Link href="/dang-nhap">
+            <Button variant="ghost" className="font-semibold px-4">
+              Đăng nhập
+            </Button>
+          </Link>
+          <Link href="/dang-ky">
+            <Button variant="outline" className="font-semibold px-4">
+              Đăng ký
+            </Button>
+          </Link>
+        </div>
+        {/* Mobile: Chỉ hiện nút đăng nhập, không cần đăng ký */}
+        <div className="flex gap-2 md:hidden">
+          <Link href="/dang-nhap">
+            <Button variant="ghost" size="icon">
+              <LogIn className="h-5 w-5" />
+              <span className="sr-only">Đăng nhập</span>
+            </Button>
+          </Link>
+        </div>
+      </>
     );
   }
 
@@ -163,7 +188,7 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
               href="/tai-khoan"
               className="flex items-center gap-2 rounded-[8px]"
             >
-              <span className="inline-block w-4 h-4 bg-primary/10 rounded-[6px]" />
+              <User className="w-4 h-4" />
               <span>Tài khoản</span>
             </Link>
           </DropdownMenuItem>
@@ -172,7 +197,7 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
               href="/tai-khoan/don-hang"
               className="flex items-center gap-2 rounded-[8px]"
             >
-              <span className="inline-block w-4 h-4 bg-primary/10 rounded-[6px]" />
+              <ShoppingBag className="w-4 h-4" />
               <span>Đơn hàng</span>
             </Link>
           </DropdownMenuItem>
@@ -181,7 +206,7 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
               href="/tai-khoan/yeu-thich"
               className="flex items-center gap-2 rounded-[8px]"
             >
-              <span className="inline-block w-4 h-4 bg-primary/10 rounded-[6px]" />
+              <Heart className="w-4 h-4" />
               <span>Yêu thích</span>
             </Link>
           </DropdownMenuItem>
@@ -194,7 +219,7 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
                 href="/admin"
                 className="flex items-center gap-2 rounded-[8px]"
               >
-                <span className="inline-block w-4 h-4 bg-primary/10 rounded-[6px]" />
+                <Settings className="w-4 h-4" />
                 <span>Quản trị</span>
               </Link>
             </DropdownMenuItem>
