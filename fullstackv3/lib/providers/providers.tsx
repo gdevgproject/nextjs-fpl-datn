@@ -4,6 +4,7 @@ import type React from "react";
 import { ThemeProvider } from "next-themes";
 import { QueryProvider } from "./query-provider";
 import { CartProvider } from "@/features/shop/cart/cart-provider";
+import { CheckoutProvider } from "@/features/shop/checkout/checkout-provider";
 import { Toaster } from "@/components/ui/sonner";
 
 /**
@@ -15,8 +16,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryProvider>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <CartProvider>
+        <CheckoutProvider>
           {children}
           <Toaster richColors closeButton position="bottom-right" />
+          </CheckoutProvider>
         </CartProvider>
       </ThemeProvider>
     </QueryProvider>
