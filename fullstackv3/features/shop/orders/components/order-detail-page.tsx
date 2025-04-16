@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { useToast } from "@/hooks/use-toast"
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast"
 import { formatPrice } from "@/lib/utils"
 import { formatDate, formatPhoneNumber } from "@/lib/utils/format"
 import { ArrowLeft, CheckCircle, Loader2, Package, Star, Truck, XCircle } from "lucide-react"
@@ -33,7 +33,7 @@ interface OrderDetailPageProps {
 export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
   const { data: order, isLoading, isError } = useOrderDetail(orderId)
   const cancelOrderMutation = useCancelOrder()
-  const { toast } = useToast()
+  const { toast } = useSonnerToast()
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
 
   // Xử lý hủy đơn hàng
@@ -41,16 +41,9 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
     try {
       await cancelOrderMutation.mutateAsync(orderId)
 
-      toast({
-        title: "Đơn hàng đã được hủy",
-        description: "Đơn hàng của bạn đã được hủy thành công",
-      })
+      toast("Đơn hàng đã được hủy", { description: "Đơn hàng của bạn đã được hủy thành công" })
     } catch (error) {
-      toast({
-        title: "Hủy đơn hàng thất bại",
-        description: error instanceof Error ? error.message : "Đã xảy ra lỗi khi hủy đơn hàng",
-        variant: "destructive",
-      })
+      toast("Hủy đơn hàng thất bại", { description: error instanceof Error ? error.message : "Đã xảy ra lỗi khi hủy đơn hàng" })
     }
   }
 

@@ -3,30 +3,26 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { LoginForm } from "./login-form";
 
 export function LoginPage() {
   const searchParams = useSearchParams();
-  const { toast } = useToast();
+  const { toast } = useSonnerToast();
 
   // Hiển thị thông báo dựa trên auth_action
   useEffect(() => {
     const authAction = searchParams.get("auth_action");
 
     if (authAction === "email_confirmed") {
-      toast({
-        title: "Xác nhận email thành công!",
+      toast("Xác nhận email thành công!", {
         description:
           "Tài khoản của bạn đã được xác nhận. Vui lòng đăng nhập để tiếp tục.",
-        variant: "default",
       });
     } else if (authAction === "password_reset") {
-      toast({
-        title: "Đặt lại mật khẩu thành công!",
+      toast("Đặt lại mật khẩu thành công!", {
         description:
           "Mật khẩu của bạn đã được cập nhật. Vui lòng đăng nhập với mật khẩu mới.",
-        variant: "default",
       });
     }
   }, [searchParams, toast]);

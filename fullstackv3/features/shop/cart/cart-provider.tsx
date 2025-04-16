@@ -3,7 +3,7 @@
 import type React from "react";
 import { createContext, useContext, useEffect, useState } from "react";
 import { useAuthQuery } from "@/features/auth/hooks";
-import { useToast } from "@/hooks/use-toast";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import type { CartItem, CartState, Discount } from "./types";
 import {
   addToCart as addToCartAction,
@@ -64,7 +64,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useAuthQuery();
   const user = session?.user;
   const isAuthenticated = !!user;
-  const { toast } = useToast();
+  const { toast } = useSonnerToast();
   const { settings } = useShopSettings();
 
   // Get shipping fee from settings
@@ -148,11 +148,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         updateCartState(data.items || [], data.appliedDiscount);
       } catch (error) {
         console.error("Error fetching cart:", error);
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải giỏ hàng",
-          variant: "destructive",
-        });
+        toast("Lỗi", { description: "Không thể tải giỏ hàng" });
         setState((prev) => ({ ...prev, isLoading: false }));
       }
     };
@@ -272,10 +268,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem("guestCart", JSON.stringify(cartItems));
         updateCartState(cartItems);
 
-        toast({
-          title: "Thành công",
-          description: "Đã thêm sản phẩm vào giỏ hàng",
-        });
+        toast("Thành công", { description: "Đã thêm sản phẩm vào giỏ hàng" });
 
         setState((prev) => ({ ...prev, isUpdatingCart: false }));
         return;
@@ -303,19 +296,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json();
       updateCartState(data.items || [], data.appliedDiscount);
 
-      toast({
-        title: "Thành công",
-        description: "Đã thêm sản phẩm vào giỏ hàng",
-      });
+      toast("Thành công", { description: "Đã thêm sản phẩm vào giỏ hàng" });
     } catch (error) {
       console.error("Error adding to cart:", error);
-      toast({
-        title: "Lỗi",
+      toast("Lỗi", {
         description:
           error instanceof Error
             ? error.message
             : "Không thể thêm sản phẩm vào giỏ hàng",
-        variant: "destructive",
       });
     } finally {
       setState((prev) => ({ ...prev, isUpdatingCart: false }));
@@ -401,13 +389,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       updateCartState(data.items || [], data.appliedDiscount);
     } catch (error) {
       console.error("Error updating cart item:", error);
-      toast({
-        title: "Lỗi",
+      toast("Lỗi", {
         description:
           error instanceof Error
             ? error.message
             : "Không thể cập nhật số lượng sản phẩm",
-        variant: "destructive",
       });
     } finally {
       setState((prev) => ({ ...prev, isUpdatingCart: false }));
@@ -431,10 +417,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem("guestCart", JSON.stringify(cartItems));
         updateCartState(cartItems);
 
-        toast({
-          title: "Thành công",
-          description: "Đã xóa sản phẩm khỏi giỏ hàng",
-        });
+        toast("Thành công", { description: "Đã xóa sản phẩm khỏi giỏ hàng" });
 
         setState((prev) => ({ ...prev, isUpdatingCart: false }));
         return;
@@ -480,19 +463,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json();
       updateCartState(data.items || [], data.appliedDiscount);
 
-      toast({
-        title: "Thành công",
-        description: "Đã xóa sản phẩm khỏi giỏ hàng",
-      });
+      toast("Thành công", { description: "Đã xóa sản phẩm khỏi giỏ hàng" });
     } catch (error) {
       console.error("Error removing from cart:", error);
-      toast({
-        title: "Lỗi",
+      toast("Lỗi", {
         description:
           error instanceof Error
             ? error.message
             : "Không thể xóa sản phẩm khỏi giỏ hàng",
-        variant: "destructive",
       });
     } finally {
       setState((prev) => ({ ...prev, isUpdatingCart: false }));
@@ -524,11 +502,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       updateCartState([]);
     } catch (error) {
       console.error("Error clearing cart:", error);
-      toast({
-        title: "Lỗi",
+      toast("Lỗi", {
         description:
           error instanceof Error ? error.message : "Không thể xóa giỏ hàng",
-        variant: "destructive",
       });
     } finally {
       setState((prev) => ({ ...prev, isUpdatingCart: false }));
@@ -576,11 +552,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }));
     } catch (error) {
       console.error("Error removing discount:", error);
-      toast({
-        title: "Lỗi",
+      toast("Lỗi", {
         description:
           error instanceof Error ? error.message : "Không thể xóa mã giảm giá",
-        variant: "destructive",
       });
     }
   };

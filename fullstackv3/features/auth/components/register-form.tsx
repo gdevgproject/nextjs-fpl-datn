@@ -15,7 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { registerSchema } from "../validators";
 import { PasswordStrengthIndicator } from "./password-strength-indicator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -29,7 +29,7 @@ import { useRegisterMutation, getErrorAndCodeFromResult } from "../hooks";
 
 export function RegisterForm() {
   const router = useRouter();
-  const { toast } = useToast();
+  const { toast } = useSonnerToast();
   const [serverError, setServerError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -63,26 +63,17 @@ export function RegisterForm() {
             setErrorCode(code);
           } else {
             setServerError(error);
-            toast({
-              title: "Đăng ký thất bại",
-              description: error,
-              variant: "destructive",
-            });
+            toast("Đăng ký thất bại", { description: error });
           }
           return;
         }
-        toast({
-          title: "Đăng ký thành công",
+        toast("Đăng ký thành công", {
           description: "Vui lòng kiểm tra email để xác nhận tài khoản",
         });
         router.push("/kiem-tra-email");
       },
       onError: (error) => {
-        toast({
-          title: "Đăng ký thất bại",
-          description: getFormErrorMessage(error),
-          variant: "destructive",
-        });
+        toast("Đăng ký thất bại", { description: getFormErrorMessage(error) });
       },
     });
   }

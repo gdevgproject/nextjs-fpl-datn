@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/hooks/use-toast";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { loginSchema } from "../validators";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -43,7 +43,7 @@ type LoginResult = {
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { toast } = useToast();
+  const { toast } = useSonnerToast();
   const [serverError, setServerError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -85,11 +85,7 @@ export function LoginForm() {
             setErrorCode(code);
           } else {
             setServerError(error);
-            toast({
-              title: "Đăng nhập thất bại",
-              description: error,
-              variant: "destructive",
-            });
+            toast("Đăng nhập thất bại", { description: error });
           }
           return;
         }
@@ -100,10 +96,8 @@ export function LoginForm() {
         window.location.href = redirectUrl.toString();
       },
       onError: (error) => {
-        toast({
-          title: "Đăng nhập thất bại",
+        toast("Đăng nhập thất bại", {
           description: "Đã xảy ra lỗi không mong muốn. Vui lòng thử lại sau.",
-          variant: "destructive",
         });
       },
     });

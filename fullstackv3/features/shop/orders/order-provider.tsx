@@ -4,7 +4,7 @@ import type React from "react";
 import { createContext, useContext, useState, useMemo } from "react";
 import { useAuth } from "@/features/auth/context/auth-context";
 import { useCartContext } from "@/features/shop/cart/cart-provider";
-import { useToast } from "@/hooks/use-toast";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { useRouter } from "next/navigation";
 import type { Address } from "@/features/shop/account/types";
 
@@ -60,7 +60,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
   const { user, profile } = useAuth();
   const { cartItems, cartTotal, subtotal, discount, shippingFee, clearCart } =
     useCartContext();
-  const { toast } = useToast();
+  const { toast } = useSonnerToast();
   const router = useRouter();
 
   // State
@@ -98,29 +98,17 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
   const placeOrder = async (): Promise<boolean> => {
     // Kiểm tra thông tin đơn hàng
     if (!orderInfo.shippingAddress) {
-      toast({
-        title: "Lỗi",
-        description: "Vui lòng chọn địa chỉ giao hàng",
-        variant: "destructive",
-      });
+      toast("Lỗi", { description: "Vui lòng chọn địa chỉ giao hàng" });
       return false;
     }
 
     if (!orderInfo.paymentMethod) {
-      toast({
-        title: "Lỗi",
-        description: "Vui lòng chọn phương thức thanh toán",
-        variant: "destructive",
-      });
+      toast("Lỗi", { description: "Vui lòng chọn phương thức thanh toán" });
       return false;
     }
 
     if (cartItems.length === 0) {
-      toast({
-        title: "Lỗi",
-        description: "Giỏ hàng của bạn đang trống",
-        variant: "destructive",
-      });
+      toast("Lỗi", { description: "Giỏ hàng của bạn đang trống" });
       return false;
     }
 
@@ -137,8 +125,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       // Chuyển đến bước hoàn thành
       setCurrentStep("complete");
 
-      toast({
-        title: "Đặt hàng thành công",
+      toast("Đặt hàng thành công", {
         description: "Cảm ơn bạn đã mua hàng tại MyBeauty",
       });
 
@@ -147,10 +134,8 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
       return true;
     } catch (error) {
-      toast({
-        title: "Đặt hàng thất bại",
+      toast("Đặt hàng thất bại", {
         description: "Đã xảy ra lỗi khi đặt hàng. Vui lòng thử lại sau.",
-        variant: "destructive",
       });
       return false;
     } finally {

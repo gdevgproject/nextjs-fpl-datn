@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useAuthQuery } from "@/features/auth/hooks";
-import { useToast } from "@/hooks/use-toast";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { QUERY_STALE_TIME } from "@/lib/hooks/use-query-config";
 import { handleApiError } from "@/lib/utils/error-utils";
 
@@ -35,7 +35,7 @@ export function useWishlist(filter?: WishlistFilter) {
   const isAuthenticated = !!user;
   const supabase = getSupabaseBrowserClient();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const { toast } = useSonnerToast();
   const [localWishlist, setLocalWishlist] = useState<number[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -178,17 +178,14 @@ export function useWishlist(filter?: WishlistFilter) {
           // Invalidate wishlist query để fetch lại wishlist items
           queryClient.invalidateQueries({ queryKey: ["wishlist", user.id] });
 
-          toast({
-            title: "Danh sách yêu thích đã được đồng bộ",
+          toast("Danh sách yêu thích đã được đồng bộ", {
             description:
               "Các sản phẩm yêu thích của bạn đã được lưu vào tài khoản.",
           });
         } catch (error) {
           console.error("Error merging wishlists:", error);
-          toast({
-            title: "Lỗi đồng bộ danh sách yêu thích",
+          toast("Lỗi đồng bộ danh sách yêu thích", {
             description: handleApiError(error),
-            variant: "destructive",
           });
         }
       }
@@ -237,20 +234,17 @@ export function useWishlist(filter?: WishlistFilter) {
         queryClient.invalidateQueries({ queryKey: ["wishlist", user.id] });
       }
 
-      toast({
-        title: "Đã thêm vào danh sách yêu thích",
+      toast("Đã thêm vào danh sách yêu thích", {
         description: "Sản phẩm đã được thêm vào danh sách yêu thích của bạn.",
       });
     },
     onError: (error) => {
       console.error("Error adding to wishlist:", error);
-      toast({
-        title: "Thêm vào danh sách yêu thích thất bại",
+      toast("Thêm vào danh sách yêu thích thất bại", {
         description:
           error instanceof Error
             ? error.message
             : "Đã xảy ra lỗi khi thêm sản phẩm vào danh sách yêu thích.",
-        variant: "destructive",
       });
     },
   });
@@ -285,20 +279,17 @@ export function useWishlist(filter?: WishlistFilter) {
         queryClient.invalidateQueries({ queryKey: ["wishlist", user.id] });
       }
 
-      toast({
-        title: "Đã xóa khỏi danh sách yêu thích",
+      toast("Đã xóa khỏi danh sách yêu thích", {
         description: "Sản phẩm đã được xóa khỏi danh sách yêu thích của bạn.",
       });
     },
     onError: (error) => {
       console.error("Error removing from wishlist:", error);
-      toast({
-        title: "Xóa khỏi danh sách yêu thích thất bại",
+      toast("Xóa khỏi danh sách yêu thích thất bại", {
         description:
           error instanceof Error
             ? error.message
             : "Đã xảy ra lỗi khi xóa sản phẩm khỏi danh sách yêu thích.",
-        variant: "destructive",
       });
     },
   });

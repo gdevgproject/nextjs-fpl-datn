@@ -53,7 +53,7 @@ import {
   PaymentStatusBadge,
   StatusBadge,
 } from "@/features/shop/shared/ui/status-badges";
-import { useToast } from "@/hooks/use-toast";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import {
   formatCurrency,
   formatDate,
@@ -92,7 +92,7 @@ export default function OrderDetailsView({
   updatePaymentStatus,
 }: OrderDetailsViewProps) {
   const router = useRouter();
-  const { toast } = useToast();
+  const { toast } = useSonnerToast();
 
   // State for editable fields
   const [selectedStatus, setSelectedStatus] = useState<number>(
@@ -118,22 +118,15 @@ export default function OrderDetailsView({
       const result = await updateOrderStatus(order.id, selectedStatus);
 
       if (result.success) {
-        toast({
-          title: "Cập nhật thành công",
-          description: result.message,
-        });
+        toast("Cập nhật thành công", { description: result.message });
       } else {
-        toast({
-          title: "Cập nhật thất bại",
+        toast("Cập nhật thất bại", {
           description: result.error || "Đã xảy ra lỗi",
-          variant: "destructive",
         });
       }
     } catch (error) {
-      toast({
-        title: "Cập nhật thất bại",
+      toast("Cập nhật thất bại", {
         description: "Đã xảy ra lỗi không mong muốn",
-        variant: "destructive",
       });
     } finally {
       setUpdatingStatus(false);
@@ -149,22 +142,15 @@ export default function OrderDetailsView({
       const result = await updateOrderTracking(order.id, trackingNumber);
 
       if (result.success) {
-        toast({
-          title: "Cập nhật thành công",
-          description: result.message,
-        });
+        toast("Cập nhật thành công", { description: result.message });
       } else {
-        toast({
-          title: "Cập nhật thất bại",
+        toast("Cập nhật thất bại", {
           description: result.error || "Đã xảy ra lỗi",
-          variant: "destructive",
         });
       }
     } catch (error) {
-      toast({
-        title: "Cập nhật thất bại",
+      toast("Cập nhật thất bại", {
         description: "Đã xảy ra lỗi không mong muốn",
-        variant: "destructive",
       });
     } finally {
       setUpdatingTracking(false);
@@ -180,22 +166,15 @@ export default function OrderDetailsView({
       const result = await updatePaymentStatus(order.id, selectedPaymentStatus);
 
       if (result.success) {
-        toast({
-          title: "Cập nhật thành công",
-          description: result.message,
-        });
+        toast("Cập nhật thành công", { description: result.message });
       } else {
-        toast({
-          title: "Cập nhật thất bại",
+        toast("Cập nhật thất bại", {
           description: result.error || "Đã xảy ra lỗi",
-          variant: "destructive",
         });
       }
     } catch (error) {
-      toast({
-        title: "Cập nhật thất bại",
+      toast("Cập nhật thất bại", {
         description: "Đã xảy ra lỗi không mong muốn",
-        variant: "destructive",
       });
     } finally {
       setUpdatingPayment(false);
