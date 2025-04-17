@@ -7,6 +7,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCategories } from "@/features/shop/shared/hooks/use-categories";
 import { useGenders } from "@/features/shop/shared/hooks/use-genders";
 import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings";
+import type { Category } from "@/features/shop/shared/hooks/use-categories";
+import type { Gender } from "@/features/shop/shared/hooks/use-genders";
+import type { ShopSettings } from "@/lib/types/shared.types";
 
 /**
  * Skeleton for Header component to improve UX while loading
