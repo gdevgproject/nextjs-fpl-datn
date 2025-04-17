@@ -5,9 +5,22 @@ import ProductSectionSkeleton from "./product-section-skeleton";
 import { Button } from "@/components/ui/button";
 import ProductCard from "@/features/shop/shared/components/product-card";
 import { useOnSaleProducts } from "../hooks/use-on-sale";
+import type { ProductData } from "../hooks/use-new-arrivals";
 
-export default function OnSaleSection() {
-  const { data: products, isLoading, error } = useOnSaleProducts();
+export default function OnSaleSection({
+  initialData,
+}: {
+  initialData?: ProductData[];
+}) {
+  let products = initialData;
+  let isLoading = false;
+  let error: unknown = null;
+  if (!initialData) {
+    const query = useOnSaleProducts();
+    products = query.data;
+    isLoading = query.isLoading;
+    error = query.error;
+  }
 
   // Handle loading state
   if (isLoading) {

@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import ProductCard from "@/features/shop/shared/components/product-card";
 import ProductSectionSkeleton from "./product-section-skeleton";
 import { cn } from "@/lib/utils";
+import type { ProductData } from "../hooks/use-new-arrivals";
 import { useFeaturedCategoryProducts } from "../hooks/use-featured-categories";
 
 interface Category {
@@ -21,10 +22,12 @@ interface Category {
 
 interface FeaturedCategoriesSectionProps {
   categories: Category[];
+  initialProducts?: ProductData[];
 }
 
 export default function FeaturedCategoriesSection({
   categories,
+  initialProducts,
 }: FeaturedCategoriesSectionProps) {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(
     categories.length > 0 ? categories[0] : null
@@ -32,12 +35,18 @@ export default function FeaturedCategoriesSection({
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Use the extracted hook
+  // Conditionally hydrate or fetch products for selected category
+  const categoryId = selectedCategory?.id || null;
   const {
     data: productsData,
     isLoading,
     error,
-  } = useFeaturedCategoryProducts(selectedCategory?.id || null);
+  } = useFeaturedCategoryProducts(
+    categoryId,
+    initialProducts && categoryId === categories[0].id
+      ? initialProducts
+      : undefined
+  );
 
   const scrollLeft = () => {
     if (scrollContainerRef.current) {

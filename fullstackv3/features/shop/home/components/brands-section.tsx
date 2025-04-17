@@ -9,9 +9,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBrands, type Brand } from "../hooks/use-brands";
 
-export default function BrandsSection() {
+export default function BrandsSection({
+  initialData,
+}: {
+  initialData?: Brand[];
+}) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const { data, isLoading, error } = useBrands();
+  const dataFromProps = initialData;
+  const query = !initialData
+    ? useBrands()
+    : { data: initialData, isLoading: false, error: null };
+  const { data, isLoading, error } = query;
 
   const scrollLeft = () => {
     if (scrollContainerRef.current) {

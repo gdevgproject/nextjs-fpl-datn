@@ -28,7 +28,10 @@ interface ProductVariantResponse {
   };
 }
 
-export const useFeaturedCategoryProducts = (categoryId: number | null) => {
+export const useFeaturedCategoryProducts = (
+  categoryId: number | null,
+  initialData?: ProductData[]
+) => {
   return useQuery<{ data: ProductData[] }>({
     queryKey: ["products", "category", categoryId],
     queryFn: async () => {
@@ -130,5 +133,6 @@ export const useFeaturedCategoryProducts = (categoryId: number | null) => {
     },
     enabled: !!categoryId,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    initialData: initialData ? { data: initialData } : undefined,
   });
 };

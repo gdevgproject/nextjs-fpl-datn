@@ -5,9 +5,22 @@ import ProductSectionSkeleton from "./product-section-skeleton";
 import { Button } from "@/components/ui/button";
 import ProductCard from "@/features/shop/shared/components/product-card";
 import { useBestSellers } from "../hooks/use-best-sellers";
+import type { ProductData } from "../hooks/use-new-arrivals";
 
-export default function BestSellersSection() {
-  const { data: products, isLoading, error } = useBestSellers();
+export default function BestSellersSection({
+  initialData,
+}: {
+  initialData?: ProductData[];
+}) {
+  let products = initialData;
+  let isLoading = false;
+  let error: unknown = null;
+  if (!initialData) {
+    const query = useBestSellers();
+    products = query.data;
+    isLoading = query.isLoading;
+    error = query.error;
+  }
 
   // Handle loading state
   if (isLoading) {

@@ -21,7 +21,7 @@ interface OnSaleData {
   is_generally_in_stock: boolean; // Sản phẩm này có bất kỳ biến thể nào còn hàng không?
 }
 
-export const useOnSaleProducts = () => {
+export const useOnSaleProducts = (initialData?: ProductData[]) => {
   return useQuery<ProductData[]>({
     queryKey: ["products", "on-sale"],
     queryFn: async () => {
@@ -74,5 +74,6 @@ export const useOnSaleProducts = () => {
       return products;
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
+    initialData,
   });
 };
