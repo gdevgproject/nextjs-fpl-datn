@@ -17,6 +17,7 @@ import {
   Wallet,
   AlertCircle,
   LoaderCircle,
+  QrCode,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -67,7 +68,7 @@ export function PaymentStep() {
                     className="font-medium cursor-pointer flex items-center"
                   >
                     {method.id === 1 && <Wallet className="h-4 w-4 mr-2" />}
-                    {method.id === 2 && <Landmark className="h-4 w-4 mr-2" />}
+                    {method.id === 2 && <QrCode className="h-4 w-4 mr-2" />}
                     {method.id === 3 && <CreditCard className="h-4 w-4 mr-2" />}
                     {method.id === 4 && <CreditCard className="h-4 w-4 mr-2" />}
                     {method.id === 5 && <CreditCard className="h-4 w-4 mr-2" />}
@@ -89,34 +90,6 @@ export function PaymentStep() {
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{errors.paymentMethodId}</AlertDescription>
           </Alert>
-        )}
-
-        {/* Show bank details if payment method is bank transfer */}
-        {(formData.paymentMethodId === 2 || formData.paymentMethodId === 7) && (
-          <div className="mt-4 p-3 bg-muted rounded-md">
-            <p className="text-sm font-medium">Thông tin chuyển khoản:</p>
-            <div className="mt-2 text-sm">
-              <p>
-                Ngân hàng:{" "}
-                <span className="font-medium">
-                  BIDV - Ngân hàng TMCP Đầu tư và Phát triển Việt Nam
-                </span>
-              </p>
-              <p>
-                Số tài khoản: <span className="font-medium">1234567890</span>
-              </p>
-              <p>
-                Chủ tài khoản:{" "}
-                <span className="font-medium">CÔNG TY TNHH MYBEAUTY</span>
-              </p>
-              <p>
-                Nội dung:{" "}
-                <span className="font-medium">
-                  Thanh toan [Họ tên] [Số điện thoại]
-                </span>
-              </p>
-            </div>
-          </div>
         )}
 
         {/* Order Note */}
