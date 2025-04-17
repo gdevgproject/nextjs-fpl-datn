@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import type { CheckoutStep } from "@/features/shop/cart/types";
+import type { CheckoutStep } from "@/features/shop/checkout/types";
 import { useCheckout } from "@/features/shop/checkout/checkout-provider";
 import { cn } from "@/lib/utils";
 import {

@@ -18,7 +18,7 @@ interface BestSellerData {
   total_sold: number;
 }
 
-export const useBestSellers = () => {
+export const useBestSellers = (initialData?: ProductData[]) => {
   return useQuery<ProductData[]>({
     queryKey: ["products", "best-sellers"],
     queryFn: async () => {
@@ -69,5 +69,6 @@ export const useBestSellers = () => {
       return products;
     },
     staleTime: 1000 * 60 * 10, // 10 minutes
+    initialData,
   });
 };

@@ -29,12 +29,13 @@ export function useCartQuery() {
       if (isAuthenticated) {
         return fetchCartItems();
       } else {
-        const guestItems = getGuestCart();
-        return guestItems;
+        return getGuestCart();
       }
     },
     staleTime: QUERY_STALE_TIME.CART,
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    placeholderData: isAuthenticated ? [] : getGuestCart(),
     enabled: typeof window !== "undefined",
   });
 }

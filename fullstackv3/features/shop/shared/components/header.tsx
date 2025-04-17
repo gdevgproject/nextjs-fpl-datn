@@ -18,24 +18,76 @@ import { SearchForm } from "@/features/shop/shared/components/search-form";
 import { UserNav } from "@/features/shop/shared/components/user-nav";
 import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings";
 import { useAuthQuery } from "@/features/auth/hooks";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { ShopSettings } from "@/lib/types/shared.types";
 
-interface HeaderProps {
-  categories: Array<{ id: number; name: string; slug: string }>;
-  genders: Array<{ id: number; name: string }>;
+// Placeholder skeleton for Header while loading
+function HeaderPlaceholder() {
+  return (
+    <header className="sticky top-0 z-50 w-full border-b bg-background animate-pulse">
+      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+        <Skeleton className="h-8 w-24 rounded" />
+        <div className="flex space-x-4">
+          <Skeleton className="h-6 w-6 rounded-full" />
+          <Skeleton className="h-6 w-6 rounded-full" />
+          <Skeleton className="h-6 w-6 rounded-full" />
+        </div>
+      </div>
+      <nav className="hidden md:block border-t">
+        <div className="container mx-auto px-4 py-2">
+          <ul className="flex items-center space-x-8">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <li key={i}>
+                <Skeleton className="h-6 w-16 rounded" />
+              </li>
+            ))}
+          </ul>
+        </div>
+      </nav>
+    </header>
+  );
 }
 
-export function Header({ categories, genders }: HeaderProps) {
+interface HeaderProps {
+  shopLogo: string;
+  categories: Array<{ id: number; name: string; slug: string }>;
+  genders: Array<{ id: number; name: string }>;
+  loadingCategories?: boolean;
+  loadingGenders?: boolean;
+  initialSettings?: ShopSettings;
+  loadingSettings?: boolean;
+}
+
+export function Header({
+  shopLogo,
+  categories,
+  genders,
+  loadingCategories,
+  loadingGenders,
+  initialSettings,
+  loadingSettings,
+}: HeaderProps) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const handleMobileMenuToggle = useCallback(
     (open: boolean) => setMobileMenuOpen(open),
     []
   );
-  const { settings } = useShopSettings();
+  // Use server-provided settings if available, else fetch on client
+  const settingsHook = useShopSettings();
+  const settings = initialSettings ?? settingsHook.settings;
+  const isSettingsLoading =
+    initialSettings !== undefined ? loadingSettings : settingsHook.isLoading;
   const { data: session } = useAuthQuery();
   const isAuthenticated = !!session?.user;
-  const shopLogo = settings?.shop_logo_url || "/placeholder-logo.svg";
+  const logoUrl =
+    shopLogo || settings?.shop_logo_url || "/placeholder-logo.svg";
   const shopName = settings?.shop_name || "";
+
+  // If still loading settings, categories, or genders, render placeholder
+  if (isSettingsLoading || loadingCategories || loadingGenders) {
+    return <HeaderPlaceholder />;
+  }
 
   // Main nav items (genders + categories)
   const mainNavItems = [
@@ -54,7 +106,7 @@ export function Header({ categories, genders }: HeaderProps) {
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
             <img
-              src={shopLogo}
+              src={logoUrl}
               alt={shopName ? `${shopName} Logo` : "Logo"}
               className="h-8 w-auto mr-2 rounded-md border border-border"
             />

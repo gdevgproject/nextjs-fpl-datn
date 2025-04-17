@@ -12,7 +12,7 @@ export interface Brand {
   updated_at: string;
 }
 
-export const useBrands = () => {
+export const useBrands = (initialData?: Brand[]) => {
   return useQuery<Brand[]>({
     queryKey: ["brands", "all"],
     queryFn: async () => {
@@ -30,5 +30,6 @@ export const useBrands = () => {
       return data || [];
     },
     staleTime: 1000 * 60 * 30, // 30 minutes
+    initialData,
   });
 };

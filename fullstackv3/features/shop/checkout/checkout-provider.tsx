@@ -11,6 +11,7 @@ import { useCartQuery, useClearCart } from "@/features/shop/cart/use-cart";
 import { validateDiscountCode } from "@/features/shop/cart/cart-actions";
 import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings";
 import type { Address } from "@/features/shop/account/types";
+import type { CartItem } from "@/features/shop/cart/types";
 
 // Checkout steps
 type CheckoutStep = "address" | "payment" | "review";
@@ -28,15 +29,7 @@ interface CheckoutFormData {
   district?: string;
   ward?: string;
   deliveryNotes?: string;
-  paymentMethod?: number;
-}
-
-// Payment Method Type
-interface PaymentMethod {
-  id: number;
-  name: string;
-  description?: string;
-  is_active: boolean;
+  paymentMethodId?: number;
 }
 
 // Context type
@@ -45,7 +38,6 @@ interface CheckoutContextType {
   formData: CheckoutFormData;
   errors: Record<string, string>;
   isProcessing: boolean;
-  paymentMethods: PaymentMethod[];
   updateFormData: (data: Partial<CheckoutFormData>) => void;
   goToNextStep: () => void;
   goToPreviousStep: () => void;
@@ -67,7 +59,6 @@ const CheckoutContext = createContext<CheckoutContextType>({
   formData: {},
   errors: {},
   isProcessing: false,
-  paymentMethods: [],
   updateFormData: () => {},
   goToNextStep: () => {},
   goToPreviousStep: () => {},
@@ -104,7 +95,6 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
   const [formData, setFormData] = useState<CheckoutFormData>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [justPlacedOrder, setJustPlacedOrder] = useState(false);
 
   // Discount state
@@ -115,66 +105,27 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
   } | null>(null);
 
   // Compute subtotal & totals
-  const shippingFee = settings?.shipping_fee || 0;
-  const freeThreshold = settings?.free_shipping_threshold ?? null;
-  const subtotal = useMemo(
-    () =>
-      cartItems.reduce((s, i) => {
-        const price =
-          i.product?.sale_price && i.product.sale_price < i.product.price
-            ? i.product.sale_price
-            : i.product?.price || 0;
-        return s + price * i.quantity;
-      }, 0),
-    [cartItems]
-  );
-  const saleDiscount = useMemo(
-    () =>
-      cartItems.reduce((s, i) => {
-        const full = i.product?.price || 0;
-        const sale = i.product?.sale_price;
-        return sale && sale < full ? s + (full - sale) * i.quantity : s;
-      }, 0),
-    [cartItems]
-  );
-  const discountAmount = discountInfo?.discountAmount || 0;
-  const appliedDiscount = discountInfo?.discount || null;
-  const isFreeShipping =
-    freeThreshold !== null &&
-    subtotal - saleDiscount - discountAmount >= freeThreshold;
-  const cartTotal =
-    Math.max(0, subtotal - saleDiscount - discountAmount) +
-    (isFreeShipping ? 0 : shippingFee);
+  const shippingFee = settings?.default_shipping_fee ?? 0;
+  const subtotal = useMemo((): number => {
+    return cartItems.reduce((sum: number, item: CartItem) => {
+      const price = item.product?.salePrice ?? item.product?.price ?? 0;
+      return sum + price * item.quantity;
+    }, 0);
+  }, [cartItems]);
 
-  useEffect(() => {
-    let isMounted = true;
-    if (paymentMethods.length > 0) return;
-    const fetchPaymentMethods = async () => {
-      try {
-        const supabase = getSupabaseBrowserClient();
-        const { data, error } = await supabase
-          .from("payment_methods")
-          .select("*")
-          .eq("is_active", true)
-          .order("id");
-        if (error) {
-          console.error("Error fetching payment methods:", error);
-          if (isMounted)
-            toast("Lỗi", {
-              description: "Không thể tải phương thức thanh toán",
-            });
-        } else if (isMounted) {
-          setPaymentMethods(data || []);
-        }
-      } catch (err) {
-        if (isMounted) console.error("Failed to fetch payment methods:", err);
-      }
-    };
-    fetchPaymentMethods();
-    return () => {
-      isMounted = false;
-    };
-  }, [toast, paymentMethods.length]);
+  const saleDiscount = useMemo((): number => {
+    return cartItems.reduce((sum: number, item: CartItem) => {
+      const full = item.product?.price ?? 0;
+      const sale = item.product?.salePrice ?? full;
+      return sum + (full - sale) * item.quantity;
+    }, 0);
+  }, [cartItems]);
+
+  const discountAmount = discountInfo?.discountAmount ?? 0;
+  const appliedDiscount = discountInfo?.discount ?? null;
+
+  const cartTotal =
+    Math.max(0, subtotal - saleDiscount - discountAmount) + shippingFee;
 
   // Initialize discount from URL
   useEffect(() => {
@@ -261,8 +212,8 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
       }
     } else if (currentStep === "payment") {
       // Validate payment method
-      if (!formData.paymentMethod) {
-        newErrors.paymentMethod = "Vui lòng chọn phương thức thanh toán";
+      if (!formData.paymentMethodId) {
+        newErrors.paymentMethodId = "Vui lòng chọn phương thức thanh toán";
       }
     }
 
@@ -315,12 +266,12 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsProcessing(true);
 
-      // Prepare shipping address
+      // Prepare shipping address matching Address type
       const shippingAddress: Address = {
-        id: 0, // Temporary ID for guest
-        user_id: "", // Will be filled for authenticated users
+        id: 0,
+        user_id: session?.user?.id || "",
         recipient_name: formData.fullName || "",
-        phone_number: formData.phoneNumber || "",
+        recipient_phone: formData.phoneNumber || "",
         province_city: formData.province || "",
         district: formData.district || "",
         ward: formData.ward || "",
@@ -340,7 +291,7 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
       // Place order using the secured transaction method that bypasses RLS
       const result = await securedPlaceOrder({
         shippingAddress,
-        paymentMethodId: formData.paymentMethod || 1, // Default to COD if not selected
+        paymentMethodId: formData.paymentMethodId || 1,
         deliveryNotes: formData.deliveryNotes,
         discountId: appliedDiscount?.id,
         cartItems,
@@ -395,7 +346,6 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
         formData,
         errors,
         isProcessing,
-        paymentMethods,
         updateFormData,
         goToNextStep,
         goToPreviousStep,

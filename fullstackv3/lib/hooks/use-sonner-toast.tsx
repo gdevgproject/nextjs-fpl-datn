@@ -49,7 +49,7 @@ export interface UseSonnerToastReturn {
 
 // Tùy chọn mặc định
 const defaultOptions: ToastOptions = {
-  duration: 5000,
+  duration: 3500,
 };
 
 /**

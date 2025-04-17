@@ -48,7 +48,7 @@ export interface ProductData {
   }[];
 }
 
-export const useNewArrivals = () => {
+export const useNewArrivals = (initialData?: ProductData[]) => {
   return useQuery<{ data: ProductData[] }>({
     queryKey: ["products", "new-arrivals"],
     queryFn: async () => {
@@ -124,5 +124,7 @@ export const useNewArrivals = () => {
       return { data: products };
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
+    // hydrate cache with server-provided data
+    initialData: initialData ? { data: initialData } : undefined,
   });
 };

@@ -5,9 +5,22 @@ import ProductSectionSkeleton from "./product-section-skeleton";
 import { Button } from "@/components/ui/button";
 import ProductCard from "@/features/shop/shared/components/product-card";
 import { useNewArrivals } from "../hooks/use-new-arrivals";
+import type { ProductData } from "../hooks/use-new-arrivals";
 
-export default function NewArrivalsSection() {
-  const { data, isLoading, error } = useNewArrivals();
+export default function NewArrivalsSection({
+  initialData,
+}: {
+  initialData?: ProductData[];
+}) {
+  let products = initialData;
+  let isLoading = false;
+  let error: unknown = null;
+  if (!initialData) {
+    const query = useNewArrivals();
+    products = query.data?.data;
+    isLoading = query.isLoading;
+    error = query.error;
+  }
 
   // Handle loading state
   if (isLoading) {
@@ -30,7 +43,7 @@ export default function NewArrivalsSection() {
   }
 
   // Handle error state
-  if (error || !data?.data) {
+  if (error || !products) {
     return (
       <section className="space-y-6">
         <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
@@ -49,7 +62,7 @@ export default function NewArrivalsSection() {
   }
 
   // If no products found
-  if (data.data.length === 0) {
+  if (products.length === 0) {
     return null;
   }
 
@@ -67,7 +80,7 @@ export default function NewArrivalsSection() {
         </Link>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-        {data.data.map((product) => (
+        {products.map((product) => (
           <ProductCard
             key={`new-${product.id}-${product.variants?.[0]?.id || "default"}`}
             product={product}

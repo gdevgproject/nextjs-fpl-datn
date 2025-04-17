@@ -628,7 +628,19 @@ export function CartPage() {
                   <TableCell className="text-center font-semibold">
                     {formatCurrency(price * item.quantity)}
                   </TableCell>
-                  <TableCell className="text-center"></TableCell>
+                  <TableCell className="text-center">
+                    <button
+                      type="button"
+                      className="text-destructive hover:bg-destructive/10 rounded p-1"
+                      onClick={async () => {
+                        await removeCartItem(key);
+                        success("Đã xóa sản phẩm khỏi giỏ hàng");
+                      }}
+                      title="Xóa sản phẩm"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </TableCell>
                 </TableRow>
               );
             })}

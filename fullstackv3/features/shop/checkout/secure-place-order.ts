@@ -69,10 +69,32 @@ export async function securedPlaceOrder({
 
     // PRE-COMMIT VALIDATION: Verify current product variant data
     console.log("Performing pre-commit validation...");
-    const variantIds = cartItems.map((item) => item.variant_id);
+
+    // Extract variant IDs, supporting both variantId (camelCase) and variant_id (snake_case)
+    const variantIds = cartItems
+      .map((item) => {
+        // Kiểm tra xem trường nào tồn tại và có giá trị hợp lệ
+        if (typeof item.variantId === "number") return item.variantId;
+        if (typeof (item as any).variant_id === "number")
+          return (item as any).variant_id;
+        console.error("Invalid cart item:", item);
+        return null;
+      })
+      .filter(Boolean);
+
+    if (variantIds.length !== cartItems.length) {
+      console.error(
+        "Some cart items have invalid variant ID format",
+        cartItems
+      );
+      return {
+        success: false,
+        error: "Lỗi định dạng giỏ hàng. Vui lòng làm mới trang và thử lại.",
+      };
+    }
 
     // Fetch the latest data for all variants being ordered
-    const { data: latestVariants, error: variantsError } = await supabase
+    const { data: latestVariantsRaw, error: variantsError } = await supabase
       .from("product_variants")
       .select(
         `
@@ -91,13 +113,28 @@ export async function securedPlaceOrder({
       )
       .in("id", variantIds);
 
-    if (variantsError) {
+    if (variantsError || !latestVariantsRaw) {
       console.error("Error fetching latest variant data:", variantsError);
       return {
         success: false,
         error: "Không thể xác minh thông tin sản phẩm. Vui lòng thử lại sau.",
       };
     }
+
+    // Chuyển đổi cấu trúc dữ liệu Supabase trả về sang định dạng an toàn hơn
+    const latestVariants = latestVariantsRaw.map((variant) => ({
+      id: variant.id,
+      volume_ml: variant.volume_ml,
+      price: variant.price,
+      sale_price: variant.sale_price,
+      stock_quantity: variant.stock_quantity,
+      deleted_at: variant.deleted_at,
+      products: variant.products as unknown as {
+        id: number;
+        name: string;
+        deleted_at: string | null;
+      },
+    }));
 
     // Validate the variants
     const unavailableVariants: { id: number; reason: string }[] = [];
@@ -108,15 +145,24 @@ export async function securedPlaceOrder({
     }[] = [];
 
     for (const item of cartItems) {
-      const currentVariant = latestVariants.find(
-        (v) => v.id === item.variant_id
-      );
+      // Sử dụng variantId hoặc variant_id nếu cái trước không tồn tại
+      const itemVariantId = item.variantId || (item as any).variant_id;
+      const currentVariant = latestVariants.find((v) => v.id === itemVariantId);
 
       // Check if variant exists and is not deleted
-      if (!currentVariant || currentVariant.deleted_at) {
+      if (!currentVariant) {
+        console.error(`Variant ID ${itemVariantId} not found in database`);
         unavailableVariants.push({
-          id: item.variant_id,
+          id: itemVariantId,
           reason: "Sản phẩm không còn tồn tại trong hệ thống.",
+        });
+        continue;
+      }
+
+      if (currentVariant.deleted_at) {
+        unavailableVariants.push({
+          id: itemVariantId,
+          reason: "Sản phẩm đã bị xóa khỏi hệ thống.",
         });
         continue;
       }
@@ -124,7 +170,7 @@ export async function securedPlaceOrder({
       // Check if product is deleted
       if (currentVariant.products.deleted_at) {
         unavailableVariants.push({
-          id: item.variant_id,
+          id: itemVariantId,
           reason: `Sản phẩm "${currentVariant.products.name}" không còn kinh doanh.`,
         });
         continue;
@@ -133,19 +179,24 @@ export async function securedPlaceOrder({
       // Check stock quantity
       if (currentVariant.stock_quantity < item.quantity) {
         unavailableVariants.push({
-          id: item.variant_id,
+          id: itemVariantId,
           reason: `Chỉ còn ${currentVariant.stock_quantity} sản phẩm "${currentVariant.products.name}" trong kho.`,
         });
         continue;
       }
 
       // Check price changes (using the effective price - sale price if available, otherwise regular price)
-      const clientPrice = item.product?.sale_price || item.product?.price;
+      // Kiểm tra cả hai cấu trúc có thể có của item.product
+      const clientPrice =
+        item.product?.salePrice ||
+        item.product?.sale_price ||
+        item.product?.price ||
+        0;
       const currentPrice = currentVariant.sale_price || currentVariant.price;
 
       if (clientPrice !== currentPrice) {
         priceChangedVariants.push({
-          id: item.variant_id,
+          id: itemVariantId,
           oldPrice: clientPrice,
           newPrice: currentPrice,
         });
@@ -263,7 +314,7 @@ export async function securedPlaceOrder({
         guest_phone: !userId && guestInfo ? guestInfo.phone : null,
         // Address information
         recipient_name: shippingAddress.recipient_name,
-        recipient_phone: shippingAddress.phone_number,
+        recipient_phone: shippingAddress.recipient_phone, // Sửa từ phone_number sang recipient_phone
         province_city: shippingAddress.province_city,
         district: shippingAddress.district,
         ward: shippingAddress.ward,
@@ -292,8 +343,9 @@ export async function securedPlaceOrder({
 
     // Step 2: Insert order items
     for (const item of cartItems) {
+      const itemVariantId = item.variantId || (item as any).variant_id;
       // Fetch variant details from our already validated data
-      const variant = latestVariants.find((v) => v.id === item.variant_id)!;
+      const variant = latestVariants.find((v) => v.id === itemVariantId)!;
 
       // Calculate unit price (use sale_price if available)
       const unitPrice =
@@ -302,7 +354,7 @@ export async function securedPlaceOrder({
       // Insert order item
       const { error: itemError } = await supabase.from("order_items").insert({
         order_id: orderId,
-        variant_id: item.variant_id,
+        variant_id: itemVariantId,
         product_name: variant.products.name,
         variant_volume_ml: variant.volume_ml,
         quantity: item.quantity,

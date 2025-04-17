@@ -1,19 +1,21 @@
 "use client";
 
 import { useCheckout } from "@/features/shop/checkout/checkout-provider";
+import type { PaymentMethod } from "@/features/shop/checkout/types";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, MapPin, User, CreditCard, FileText } from "lucide-react";
 import { useAuthQuery } from "@/features/auth/hooks";
 import { formatCurrency } from "@/lib/utils/format";
+import { usePaymentMethods } from "../hooks/use-payment-methods";
 
 export function ReviewStep() {
   const { data: session } = useAuthQuery();
   const isAuthenticated = !!session?.user;
   const {
     formData,
-    paymentMethods,
     placeOrderHandler,
     isProcessing,
     goToPreviousStep,
@@ -21,12 +23,15 @@ export function ReviewStep() {
     discountInfo,
   } = useCheckout();
 
-  // Lookup payment method name from fetched list
-  const selectedPayment = paymentMethods.find(
-    (m) => m.id === formData.paymentMethod
+  const { paymentMethods, isLoading } = usePaymentMethods();
+
+  // Lấy thông tin phương thức thanh toán đã chọn
+  const selectedPaymentMethod = paymentMethods.find(
+    (m) => m.id === formData.paymentMethodId
   );
-  const paymentName =
-    selectedPayment?.name || "Chưa chọn phương thức thanh toán";
+  const paymentName = selectedPaymentMethod
+    ? selectedPaymentMethod.name
+    : "Không xác định";
 
   return (
     <Card>
