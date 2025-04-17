@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useCartContext } from "@/features/shop/cart/cart-provider";
+import { useCartQuery } from "@/features/shop/cart/use-cart";
 import { useCheckout } from "@/features/shop/checkout/checkout-provider";
 import { CheckoutSteps } from "./checkout-steps";
 import { GuestInfoStep } from "./guest-info-step";
@@ -17,7 +17,8 @@ import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 export function CheckoutPage() {
   const router = useRouter();
   const { toast } = useSonnerToast();
-  const { cartItemCount } = useCartContext();
+  const { data: cartItems = [] } = useCartQuery();
+  const cartItemCount = cartItems.length;
   const { currentStep, justPlacedOrder } = useCheckout();
   const { data: session } = useAuthQuery();
   const isAuthenticated = !!session?.user;

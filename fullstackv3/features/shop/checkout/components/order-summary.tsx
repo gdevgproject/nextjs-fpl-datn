@@ -1,40 +1,46 @@
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/utils/format";
-import { useCartContext } from "../../cart/cart-provider";
+import { useCartQuery } from "@/features/shop/cart/use-cart";
+import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings";
+import { useCheckout } from "@/features/shop/checkout/checkout-provider";
 
 export function OrderSummary() {
-  const {
-    cartItems,
-    subtotal,
-    discount,
-    shippingFee,
-    cartTotal,
-    appliedDiscount,
-  } = useCartContext();
+  const { data: cartItems = [] } = useCartQuery();
+  const { settings } = useShopSettings();
+  const { discountAmount, appliedDiscount } = useCheckout();
+  const shippingFee = settings?.shipping_fee || 0;
+  const freeThreshold = settings?.free_shipping_threshold ?? null;
+
+  // compute subtotal & total
+  const subtotal = cartItems.reduce((sum, item) => {
+    const price =
+      item.product?.sale_price && item.product.sale_price < item.product.price
+        ? item.product.sale_price
+        : item.product?.price || 0;
+    return sum + price * item.quantity;
+  }, 0);
+  const isFree = freeThreshold !== null && subtotal >= freeThreshold;
+  const finalShipping = isFree ? 0 : shippingFee;
+  const total = subtotal - discountAmount + finalShipping;
 
   return (
     <div className="space-y-4">
-      <div>
-        <h3 className="font-medium mb-3">Chi tiết đơn hàng</h3>
-        <div className="space-y-3">
-          {cartItems.map((item) => (
-            <div key={item.variant_id} className="flex justify-between text-sm">
-              <div className="flex-1">
-                <span className="font-medium">{item.product?.name}</span>
-                <span className="text-muted-foreground">
-                  {" "}
-                  × {item.quantity}
-                </span>
-              </div>
-              <div className="text-right">
-                {formatCurrency(
-                  (item.product?.sale_price || item.product?.price || 0) *
-                    item.quantity
-                )}
-              </div>
+      <h3 className="font-medium mb-3">Chi tiết đơn hàng</h3>
+      <div className="space-y-3">
+        {cartItems.map((item) => (
+          <div key={item.variant_id} className="flex justify-between text-sm">
+            <div className="flex-1">
+              <span className="font-medium">{item.product?.name}</span>
+              <span className="text-muted-foreground"> × {item.quantity}</span>
             </div>
-          ))}
-        </div>
+            <div className="text-right">
+              {formatCurrency(
+                ((item.product?.sale_price ?? item.product?.price) || 0) *
+                  item.quantity
+              )}
+            </div>
+          </div>
+        ))}
       </div>
 
       <Separator />
@@ -45,20 +51,22 @@ export function OrderSummary() {
           <span>{formatCurrency(subtotal)}</span>
         </div>
 
-        {discount > 0 && (
+        {discountAmount > 0 && (
           <div className="flex justify-between text-green-600">
             <span>
               Giảm giá{" "}
-              {appliedDiscount && `(${appliedDiscount.discount_percentage}%)`}
+              {appliedDiscount?.discount_percentage
+                ? `(${appliedDiscount.discount_percentage}%)`
+                : ""}
             </span>
-            <span>-{formatCurrency(discount)}</span>
+            <span>-{formatCurrency(discountAmount)}</span>
           </div>
         )}
 
         <div className="flex justify-between">
           <span className="text-muted-foreground">Phí vận chuyển</span>
-          {shippingFee > 0 ? (
-            <span>{formatCurrency(shippingFee)}</span>
+          {finalShipping > 0 ? (
+            <span>{formatCurrency(finalShipping)}</span>
           ) : (
             <span className="text-green-600">Miễn phí</span>
           )}
@@ -68,7 +76,7 @@ export function OrderSummary() {
 
         <div className="flex justify-between items-center font-semibold pt-1">
           <span>Tổng cộng</span>
-          <span className="text-lg">{formatCurrency(cartTotal)}</span>
+          <span className="text-lg">{formatCurrency(total)}</span>
         </div>
       </div>
     </div>

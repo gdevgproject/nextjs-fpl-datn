@@ -3,7 +3,7 @@
 import type React from "react";
 import { createContext, useContext, useState, useMemo } from "react";
 import { useAuthQuery, useProfileQuery } from "@/features/auth/hooks";
-import { useCartContext } from "@/features/shop/cart/cart-provider";
+import { useCartQuery, useClearCart } from "@/features/shop/cart/use-cart";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { useRouter } from "next/navigation";
 import type { Address } from "@/features/shop/account/types";
@@ -61,8 +61,9 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useAuthQuery();
   const user = session?.user || null;
   const { data: profile } = useProfileQuery(user?.id);
-  const { cartItems, cartTotal, subtotal, discount, shippingFee, clearCart } =
-    useCartContext();
+  // Use new cart query hook
+  const { data: cartItems = [] } = useCartQuery();
+  const { mutateAsync: clearCart } = useClearCart();
   const { toast } = useSonnerToast();
   const router = useRouter();
 
@@ -95,6 +96,11 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
   const setDiscountCode = (code: string | null) => {
     setOrderInfo((prev) => ({ ...prev, discountCode: code }));
+    if (code) {
+      applyDiscountCode(code);
+    } else {
+      removeDiscountCode();
+    }
   };
 
   // Đặt hàng
@@ -119,11 +125,10 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
     try {
       // Giả lập API call để tạo đơn hàng
-      // Trong thực tế, cần gọi API để tạo đơn hàng
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Xóa giỏ hàng sau khi đặt hàng thành công
-      clearCart();
+      await clearCart();
 
       // Chuyển đến bước hoàn thành
       setCurrentStep("complete");

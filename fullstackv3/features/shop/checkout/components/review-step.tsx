@@ -1,34 +1,32 @@
 "use client";
 
 import { useCheckout } from "@/features/shop/checkout/checkout-provider";
-import { useCartContext } from "@/features/shop/cart/cart-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, MapPin, User, CreditCard, FileText } from "lucide-react";
-import { formatCurrency } from "@/lib/utils/format";
 import { useAuthQuery } from "@/features/auth/hooks";
+import { formatCurrency } from "@/lib/utils/format";
 
 export function ReviewStep() {
   const { data: session } = useAuthQuery();
   const isAuthenticated = !!session?.user;
-  const { formData, placeOrderHandler, isProcessing, goToPreviousStep } =
-    useCheckout();
-  const { appliedDiscount } = useCartContext();
+  const {
+    formData,
+    paymentMethods,
+    placeOrderHandler,
+    isProcessing,
+    goToPreviousStep,
+    discountCode,
+    discountInfo,
+  } = useCheckout();
 
-  // Get payment method name
-  const getPaymentMethodName = (id?: number) => {
-    switch (id) {
-      case 1:
-        return "Thanh toán khi nhận hàng (COD)";
-      case 2:
-        return "Chuyển khoản ngân hàng";
-      case 3:
-        return "Thanh toán qua ví điện tử";
-      default:
-        return "Chưa chọn phương thức thanh toán";
-    }
-  };
+  // Lookup payment method name from fetched list
+  const selectedPayment = paymentMethods.find(
+    (m) => m.id === formData.paymentMethod
+  );
+  const paymentName =
+    selectedPayment?.name || "Chưa chọn phương thức thanh toán";
 
   return (
     <Card>
@@ -52,7 +50,7 @@ export function ReviewStep() {
           </div>
         </div>
 
-        {/* Guest Info (only for non-authenticated users) */}
+        {/* Guest Info */}
         {!isAuthenticated && (
           <div className="space-y-2">
             <h3 className="font-medium flex items-center">
@@ -81,9 +79,34 @@ export function ReviewStep() {
             Phương thức thanh toán
           </h3>
           <div className="bg-muted p-3 rounded-md text-sm">
-            <p>{getPaymentMethodName(formData.paymentMethod)}</p>
+            <p>{paymentName}</p>
           </div>
         </div>
+
+        {/* Discount Info */}
+        {discountInfo && (
+          <div className="space-y-2">
+            <h3 className="font-medium">Mã giảm giá</h3>
+            <div className="bg-muted p-3 rounded-md text-sm">
+              <p>
+                Mã: <b>{discountCode}</b>
+              </p>
+              <p>Giảm: {formatCurrency(discountInfo.discountAmount)}</p>
+              {discountInfo.discount.max_discount_amount && (
+                <p>
+                  Tối đa:{" "}
+                  {formatCurrency(discountInfo.discount.max_discount_amount)}
+                </p>
+              )}
+              {discountInfo.discount.min_order_value && (
+                <p>
+                  Đơn tối thiểu:{" "}
+                  {formatCurrency(discountInfo.discount.min_order_value)}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Delivery Notes */}
         {formData.deliveryNotes && (
@@ -98,27 +121,9 @@ export function ReviewStep() {
           </div>
         )}
 
-        {/* Discount Info */}
-        {appliedDiscount && (
-          <div className="space-y-2">
-            <h3 className="font-medium">Mã giảm giá</h3>
-            <div className="bg-muted p-3 rounded-md text-sm">
-              <p>
-                <span className="font-medium">{appliedDiscount.code}</span> -
-                Giảm {appliedDiscount.discount_percentage}%
-                {appliedDiscount.max_discount_amount
-                  ? ` (tối đa ${formatCurrency(
-                      appliedDiscount.max_discount_amount
-                    )})`
-                  : ""}
-              </p>
-            </div>
-          </div>
-        )}
-
         <Separator />
 
-        {/* Action Buttons */}
+        {/* Actions */}
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
           <Button
             variant="outline"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useCartContext } from "@/features/shop/cart/cart-provider";
+import { useAddCartItem } from "@/features/shop/cart/use-cart";
 import { formatCurrency } from "@/lib/utils/format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,8 @@ interface ProductInfoProps {
 }
 
 export default function ProductInfo({ product }: ProductInfoProps) {
-  const { addToCart, isUpdatingCart } = useCartContext();
+  const { mutateAsync: addToCart, isLoading: isAddingToCart } =
+    useAddCartItem();
   const [selectedVariant, setSelectedVariant] = useState(
     product.variants[0] || null
   );
@@ -71,7 +72,8 @@ export default function ProductInfo({ product }: ProductInfoProps) {
       return;
     }
     try {
-      await addToCart(selectedVariant.id, quantity);
+      await addToCart({ variantId: selectedVariant.id, quantity });
+      toast.success("Đã thêm vào giỏ hàng");
     } catch (error) {
       console.error("Error adding item to cart:", error);
       toast.error("Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng");
@@ -195,7 +197,7 @@ export default function ProductInfo({ product }: ProductInfoProps) {
       <div className="flex gap-2">
         <Button
           onClick={handleAddToCart}
-          disabled={!isInStock || isUpdatingCart}
+          disabled={!isInStock || isAddingToCart}
           className="flex-1"
         >
           <ShoppingCart className="mr-2 h-4 w-4" />

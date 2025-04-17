@@ -2,12 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Heart, AlertCircle, Loader2 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
-import { useCartContext } from "@/features/shop/cart/cart-provider";
+import { useAddCartItem } from "@/features/shop/cart/use-cart";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 
 export interface ProductImageType {
   image_url: string;
@@ -37,6 +37,7 @@ export interface ProductCardProps {
     price?: number;
     sale_price?: number | null;
     variants?: ProductVariantType[];
+    defaultVariantId?: number;
   };
   // Support for legacy format
   id?: number;
@@ -62,8 +63,8 @@ export function ProductCard({
   variant_id,
   stock_quantity,
 }: ProductCardProps) {
-  const { addToCart, isUpdatingCart } = useCartContext();
-  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const { mutate: addToCart, isLoading: isAdding } = useAddCartItem();
+  const { toast } = useSonnerToast();
 
   // Support both new format (product object) and legacy format (direct props)
   const productId = product?.id || id;
@@ -120,17 +121,20 @@ export function ProductCard({
   // Handle add to cart
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
-
-    if (!productVariantId || isOutOfStock) return;
-
-    setIsAddingToCart(true);
-    try {
-      await addToCart(productVariantId, 1, productId?.toString());
-    } catch (error) {
-      console.error("Failed to add product to cart:", error);
-    } finally {
-      setIsAddingToCart(false);
-    }
+    addToCart(
+      {
+        variantId: product?.defaultVariantId || productVariantId,
+        quantity: 1,
+        productId: productId?.toString(),
+      },
+      {
+        onSuccess: () => toast("Đã thêm vào giỏ hàng"),
+        onError: (err) =>
+          toast("Lỗi", {
+            description: err?.message || "Không thể thêm vào giỏ hàng",
+          }),
+      }
+    );
   };
 
   return (
@@ -205,14 +209,9 @@ export function ProductCard({
           className="w-full mt-2"
           size="sm"
           onClick={handleAddToCart}
-          disabled={
-            isAddingToCart ||
-            isUpdatingCart ||
-            isOutOfStock ||
-            !productVariantId
-          }
+          disabled={isAdding || isOutOfStock || !productVariantId}
         >
-          {isAddingToCart || isUpdatingCart ? (
+          {isAdding ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (
             <ShoppingCart className="h-4 w-4 mr-2" />

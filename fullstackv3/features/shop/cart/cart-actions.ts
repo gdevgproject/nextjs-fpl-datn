@@ -481,7 +481,7 @@ export async function placeOrder({
         guest_email: !userId ? guestInfo?.email : null,
         guest_phone: !userId ? guestInfo?.phone : null,
         recipient_name: shippingAddress.recipient_name,
-        recipient_phone: shippingAddress.phone,
+        recipient_phone: shippingAddress.phone_number,
         province_city: shippingAddress.province_city,
         district: shippingAddress.district,
         ward: shippingAddress.ward,
@@ -616,15 +616,15 @@ export async function validateDiscountCode(code: string, subtotal = 0) {
   }
 
   // Check if discount is valid
-  const now = new Date().toISOString();
+  const now = new Date();
 
   // Check start date
-  if (discount.start_date && new Date(discount.start_date) > new Date(now)) {
+  if (discount.start_date && new Date(discount.start_date) > now) {
     return { success: false, error: "Mã giảm giá chưa có hiệu lực" };
   }
 
   // Check end date
-  if (discount.end_date && new Date(discount.end_date) < new Date(now)) {
+  if (discount.end_date && new Date(discount.end_date) < now) {
     return { success: false, error: "Mã giảm giá đã hết hạn" };
   }
 
@@ -652,14 +652,30 @@ export async function validateDiscountCode(code: string, subtotal = 0) {
   }
 
   // Calculate discount amount
-  let discountAmount = (discount.discount_percentage / 100) * subtotal;
+  let discountAmount = 0;
+  if (!discount.discount_percentage) {
+    // Mã giảm giá cứng: lấy max_discount_amount (không vượt quá subtotal)
+    discountAmount =
+      discount.max_discount_amount && discount.max_discount_amount > 0
+        ? Math.min(discount.max_discount_amount, subtotal)
+        : 0;
+  } else {
+    // Mã giảm giá phần trăm
+    discountAmount = (subtotal * discount.discount_percentage) / 100;
+    if (
+      discount.max_discount_amount &&
+      discountAmount > discount.max_discount_amount
+    ) {
+      discountAmount = discount.max_discount_amount;
+    }
+  }
 
-  // Apply max discount amount if specified
-  if (
-    discount.max_discount_amount &&
-    discountAmount > discount.max_discount_amount
-  ) {
-    discountAmount = discount.max_discount_amount;
+  // Nếu không có giảm giá hợp lệ
+  if (!discountAmount || discountAmount <= 0) {
+    return {
+      success: false,
+      error: "Mã giảm giá không áp dụng được cho đơn hàng này",
+    };
   }
 
   return {
@@ -727,4 +743,81 @@ export async function getProductVariantDetails(variantId: number) {
   } catch (error) {
     return createErrorResponse(error);
   }
+}
+
+/**
+ * Merge guest cart items into the authenticated user's cart after login
+ * - guestItems: array of CartItem from localStorage
+ * - userId: Supabase user id
+ *
+ * This function will:
+ * 1. Get or create the user's shopping cart
+ * 2. For each guest item, upsert (add or update) into cart_items
+ * 3. Return success or error
+ */
+export async function mergeGuestCartAction(
+  guestItems: CartItem[],
+  userId: string
+) {
+  if (!userId) return { error: "User not authenticated" };
+  if (!Array.isArray(guestItems) || guestItems.length === 0)
+    return { success: true };
+
+  const supabase = await getSupabaseServerClient();
+
+  // Get or create shopping cart
+  let cartId: number;
+  const { data: cart, error: cartError } = await supabase
+    .from("shopping_carts")
+    .select("id")
+    .eq("user_id", userId)
+    .single();
+
+  if (cartError) {
+    if (cartError.code === "PGRST116") {
+      // Not found, create
+      const { data: newCart, error: createError } = await supabase
+        .from("shopping_carts")
+        .insert({ user_id: userId })
+        .select("id")
+        .single();
+      if (createError) return { error: createError.message };
+      cartId = newCart.id;
+    } else {
+      return { error: cartError.message };
+    }
+  } else {
+    cartId = cart.id;
+  }
+
+  // Upsert each guest item
+  for (const item of guestItems) {
+    // Check if item exists
+    const { data: existing, error: checkError } = await supabase
+      .from("cart_items")
+      .select("id, quantity")
+      .eq("cart_id", cartId)
+      .eq("variant_id", item.variant_id)
+      .maybeSingle();
+    if (checkError && checkError.code !== "PGRST116")
+      return { error: checkError.message };
+    if (existing) {
+      // Update quantity (sum)
+      const { error: updateError } = await supabase
+        .from("cart_items")
+        .update({ quantity: existing.quantity + item.quantity })
+        .eq("id", existing.id);
+      if (updateError) return { error: updateError.message };
+    } else {
+      // Insert new
+      const { error: insertError } = await supabase.from("cart_items").insert({
+        cart_id: cartId,
+        variant_id: item.variant_id,
+        quantity: item.quantity,
+      });
+      if (insertError) return { error: insertError.message };
+    }
+  }
+
+  return { success: true };
 }

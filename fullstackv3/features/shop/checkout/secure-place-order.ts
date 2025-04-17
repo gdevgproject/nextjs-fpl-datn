@@ -263,7 +263,7 @@ export async function securedPlaceOrder({
         guest_phone: !userId && guestInfo ? guestInfo.phone : null,
         // Address information
         recipient_name: shippingAddress.recipient_name,
-        recipient_phone: shippingAddress.phone,
+        recipient_phone: shippingAddress.phone_number,
         province_city: shippingAddress.province_city,
         district: shippingAddress.district,
         ward: shippingAddress.ward,

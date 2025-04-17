@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Trash2, ShoppingCart, Loader2 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
-import { useCartContext } from "@/features/shop/cart/cart-provider";
+import { useAddCartItem } from "@/features/shop/cart/use-cart";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { DEFAULT_AVATAR_URL } from "@/lib/constants";
 import { useWishlist } from "../hooks/use-wishlist";
@@ -19,10 +19,10 @@ interface WishlistItemProps {
 
 export function WishlistItem({ item }: WishlistItemProps) {
   const { removeFromWishlist } = useWishlist();
-  const { addToCart } = useCartContext();
+  const { mutateAsync: addToCart, isLoading: isAddingToCart } =
+    useAddCartItem();
   const { toast } = useSonnerToast();
   const [isRemoving, setIsRemoving] = useState(false);
-  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   const product = item.product;
   const mainImage =
@@ -46,13 +46,7 @@ export function WishlistItem({ item }: WishlistItemProps) {
   // Xử lý thêm vào giỏ hàng
   const handleAddToCart = async () => {
     try {
-      setIsAddingToCart(true);
-      // Giả định rằng sản phẩm có ít nhất một variant
-      // Trong thực tế, bạn có thể cần fetch variants và chọn variant phù hợp
-      // hoặc mở modal để người dùng chọn variant
-
-      // Giả định variant_id là product_id (đơn giản hóa)
-      await addToCart(item.product_id, 1, item.product_id.toString());
+      await addToCart({ variantId: item.product_id, quantity: 1 });
 
       toast("Đã thêm vào giỏ hàng", {
         description: `${product.name} đã được thêm vào giỏ hàng của bạn.`,
@@ -62,8 +56,6 @@ export function WishlistItem({ item }: WishlistItemProps) {
       toast("Thêm vào giỏ hàng thất bại", {
         description: "Đã xảy ra lỗi khi thêm sản phẩm vào giỏ hàng.",
       });
-    } finally {
-      setIsAddingToCart(false);
     }
   };
 

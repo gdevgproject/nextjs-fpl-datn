@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { memo } from "react";
 import { ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useCartContext } from "@/features/shop/cart/cart-provider";
+import { useCartQuery } from "../use-cart";
 
-const CartButton = memo(function CartButton() {
-  const { cartItemCount } = useCartContext();
+export function CartButton() {
+  const { data: cartItems = [] } = useCartQuery();
+  // Số sản phẩm là số biến thể khác nhau trong giỏ hàng
+  const productCount = cartItems.length;
 
   return (
     <Button
@@ -19,15 +20,13 @@ const CartButton = memo(function CartButton() {
     >
       <Link href="/gio-hang">
         <ShoppingCart className="h-5 w-5" />
-        {cartItemCount > 0 && (
+        {productCount > 0 && (
           <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-            {cartItemCount > 99 ? "99+" : cartItemCount}
+            {productCount > 99 ? "99+" : productCount}
           </span>
         )}
         <span className="sr-only">Giỏ hàng</span>
       </Link>
     </Button>
   );
-});
-
-export { CartButton };
+}
