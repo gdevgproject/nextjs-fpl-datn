@@ -32,21 +32,12 @@ interface CheckoutFormData {
   paymentMethodId?: number;
 }
 
-// Payment Method Type
-interface PaymentMethod {
-  id: number;
-  name: string;
-  description?: string;
-  is_active: boolean;
-}
-
 // Context type
 interface CheckoutContextType {
   currentStep: CheckoutStep;
   formData: CheckoutFormData;
   errors: Record<string, string>;
   isProcessing: boolean;
-  paymentMethods: PaymentMethod[];
   updateFormData: (data: Partial<CheckoutFormData>) => void;
   goToNextStep: () => void;
   goToPreviousStep: () => void;
@@ -68,7 +59,6 @@ const CheckoutContext = createContext<CheckoutContextType>({
   formData: {},
   errors: {},
   isProcessing: false,
-  paymentMethods: [],
   updateFormData: () => {},
   goToNextStep: () => {},
   goToPreviousStep: () => {},
@@ -105,7 +95,6 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
   const [formData, setFormData] = useState<CheckoutFormData>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [justPlacedOrder, setJustPlacedOrder] = useState(false);
 
   // Discount state
@@ -137,36 +126,6 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
 
   const cartTotal =
     Math.max(0, subtotal - saleDiscount - discountAmount) + shippingFee;
-
-  useEffect(() => {
-    let isMounted = true;
-    if (paymentMethods.length > 0) return;
-    const fetchPaymentMethods = async () => {
-      try {
-        const supabase = getSupabaseBrowserClient();
-        const { data, error } = await supabase
-          .from("payment_methods")
-          .select("*")
-          .eq("is_active", true)
-          .order("id");
-        if (error) {
-          console.error("Error fetching payment methods:", error);
-          if (isMounted)
-            toast("Lỗi", {
-              description: "Không thể tải phương thức thanh toán",
-            });
-        } else if (isMounted) {
-          setPaymentMethods(data || []);
-        }
-      } catch (err) {
-        if (isMounted) console.error("Failed to fetch payment methods:", err);
-      }
-    };
-    fetchPaymentMethods();
-    return () => {
-      isMounted = false;
-    };
-  }, [toast, paymentMethods.length]);
 
   // Initialize discount from URL
   useEffect(() => {
@@ -387,7 +346,6 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
         formData,
         errors,
         isProcessing,
-        paymentMethods,
         updateFormData,
         goToNextStep,
         goToPreviousStep,
