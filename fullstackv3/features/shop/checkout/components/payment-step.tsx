@@ -1,7 +1,6 @@
 "use client";
 
 import { useCheckout } from "@/features/shop/checkout/checkout-provider";
-import type { PaymentMethod } from "@/features/shop/checkout/types";
 import {
   Card,
   CardContent,
@@ -17,17 +16,30 @@ import {
   Wallet,
   AlertCircle,
   LoaderCircle,
+  QrCode,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { usePaymentMethods } from "../hooks/use-payment-methods";
+import { useMomoPayment } from "../hooks";
 
 export function PaymentStep() {
   const { formData, updateFormData, goToNextStep, errors } = useCheckout();
-
-  // Sử dụng custom hook để dùng chung cache
   const { paymentMethods, isLoading } = usePaymentMethods();
+
+  // Xác định id phương thức Momo QR là 2 theo schema
+  const MOMO_QR_ID = 2;
+  const isMomoQR = formData.paymentMethodId === MOMO_QR_ID;
+
+  // Hook xử lý thanh toán Momo
+  const orderId = formData.orderId || 0;
+  // Đảm bảo amount là số dương, fallback 10000 nếu chưa có
+  const amount =
+    typeof formData.totalAmount === "number" && formData.totalAmount > 0
+      ? formData.totalAmount
+      : 10000;
+  const momo = useMomoPayment(orderId, amount);
 
   const handlePaymentMethodChange = (paymentMethodId: number) => {
     updateFormData({ paymentMethodId });
@@ -42,8 +54,8 @@ export function PaymentStep() {
         {/* Payment Method Selection */}
         {isLoading ? (
           <div className="flex items-center gap-2 text-muted-foreground">
-            <LoaderCircle className="animate-spin w-4 h-4" /> Đang tải phương
-            thức thanh toán...
+            <LoaderCircle className="animate-spin w-4 h-4" />
+            Đang tải phương thức thanh toán...
           </div>
         ) : (
           <RadioGroup
@@ -67,10 +79,8 @@ export function PaymentStep() {
                     className="font-medium cursor-pointer flex items-center"
                   >
                     {method.id === 1 && <Wallet className="h-4 w-4 mr-2" />}
-                    {method.id === 2 && <Landmark className="h-4 w-4 mr-2" />}
+                    {method.id === 2 && <QrCode className="h-4 w-4 mr-2" />}
                     {method.id === 3 && <CreditCard className="h-4 w-4 mr-2" />}
-                    {method.id === 4 && <CreditCard className="h-4 w-4 mr-2" />}
-                    {method.id === 5 && <CreditCard className="h-4 w-4 mr-2" />}
                     {method.id === 7 && <Landmark className="h-4 w-4 mr-2" />}
                     {method.name}
                   </Label>
@@ -91,8 +101,8 @@ export function PaymentStep() {
           </Alert>
         )}
 
-        {/* Show bank details if payment method is bank transfer */}
-        {(formData.paymentMethodId === 2 || formData.paymentMethodId === 7) && (
+        {/* Show bank transfer info ONLY for bank transfer method (id=7) */}
+        {formData.paymentMethodId === 7 && (
           <div className="mt-4 p-3 bg-muted rounded-md">
             <p className="text-sm font-medium">Thông tin chuyển khoản:</p>
             <div className="mt-2 text-sm">
@@ -116,6 +126,72 @@ export function PaymentStep() {
                 </span>
               </p>
             </div>
+          </div>
+        )}
+
+        {/* Show QR payment UI for Momo (id=2) */}
+        {isMomoQR && (
+          <div className="mt-4 p-3 bg-muted rounded-md space-y-2">
+            <p className="font-medium">Thanh toán qua Momo</p>
+            {!momo.qrCodeUrl ? (
+              <Button onClick={momo.createPayment} disabled={momo.loading}>
+                {momo.loading ? "Đang tạo mã QR..." : "Tạo mã QR/thanh toán"}
+              </Button>
+            ) : (
+              <>
+                <div className="text-sm mb-2">
+                  Quét mã QR bằng app Momo để thanh toán:
+                </div>
+                <img
+                  src={momo.qrCodeUrl}
+                  alt="QR Momo"
+                  style={{ width: 200, height: 200 }}
+                />
+                <div className="mt-2">
+                  <a
+                    href={momo.payUrl || undefined}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 underline"
+                  >
+                    Hoặc bấm vào đây để thanh toán trên web Momo
+                  </a>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <Button
+                    onClick={momo.checkStatus}
+                    disabled={momo.loading || momo.status === "success"}
+                  >
+                    {momo.loading
+                      ? "Đang kiểm tra..."
+                      : "Kiểm tra trạng thái thanh toán"}
+                  </Button>
+                  <span
+                    className={
+                      momo.status === "success"
+                        ? "text-green-600"
+                        : momo.status === "failed"
+                        ? "text-red-600"
+                        : "text-yellow-600"
+                    }
+                  >
+                    {momo.status === "success" && "Đã thanh toán thành công!"}
+                    {momo.status === "failed" && "Thanh toán thất bại"}
+                    {momo.status === "pending" && "Chờ thanh toán..."}
+                  </span>
+                </div>
+                {momo.status === "success" && (
+                  <div className="mt-2">
+                    <Button onClick={goToNextStep}>
+                      Tiếp tục xác nhận đơn hàng
+                    </Button>
+                  </div>
+                )}
+                {momo.error && (
+                  <div className="text-red-600 text-sm">{momo.error}</div>
+                )}
+              </>
+            )}
           </div>
         )}
 
