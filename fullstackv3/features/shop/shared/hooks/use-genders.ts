@@ -18,11 +18,12 @@ async function fetchGenders(): Promise<Gender[]> {
   return data || [];
 }
 
-export function useGenders() {
+export function useGenders(initialData?: Gender[]) {
   const { data, isLoading, error } = useQuery<Gender[]>({
     queryKey: ["genders"],
     queryFn: fetchGenders,
     staleTime: 1000 * 60 * 60,
+    initialData,
   });
   return { genders: data || [], isLoading, error };
 }

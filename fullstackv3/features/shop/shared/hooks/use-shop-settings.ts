@@ -15,17 +15,12 @@ export const SHOP_QUERY_KEYS = {
  * Uses TanStack Query for client-side data fetching with caching
  * This follows the dev-guide.txt pattern for client-side data fetching
  */
-export function useShopSettings() {
+export function useShopSettings(initialData?: ShopSettings) {
   const { data, isLoading, error } = useQuery({
     queryKey: SHOP_QUERY_KEYS.SHOP_SETTINGS,
     queryFn: fetchShopSettings,
     staleTime: QUERY_STALE_TIME.CATEGORY, // Using a long stale time since shop settings rarely change
-    // Providing default data improves UX by avoiding null checks
-    placeholderData: {
-      id: 0,
-      shop_name: "MyBeauty",
-      shop_logo_url: "/placeholder-logo.png",
-    } as ShopSettings,
+    initialData,
   });
 
   return {

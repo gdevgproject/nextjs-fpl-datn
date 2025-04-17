@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Youtube,
 } from "lucide-react";
+import type { ShopSettings } from "@/lib/types/shared.types";
 import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -62,8 +63,19 @@ const SocialLink = memo(function SocialLink({
  * Uses memoization and conditional rendering to minimize re-renders
  * Follows the dev-guide.txt recommendations for client components
  */
-export const Footer = memo(function Footer() {
-  const { settings, isLoading } = useShopSettings();
+export const Footer = memo(function Footer({
+  initialSettings,
+  loadingSettings,
+}: {
+  initialSettings?: ShopSettings;
+  loadingSettings?: boolean;
+}) {
+  // Use server-provided settings if available, else fetch on client
+  const { settings: fetchedSettings, isLoading: fetchedLoading } =
+    useShopSettings(initialSettings);
+  const settings = initialSettings ?? fetchedSettings;
+  // Choose loading flag based on SSR prop
+  const isLoading = initialSettings !== undefined ? !!loadingSettings : fetchedLoading;
 
   // Fallback values if settings are not loaded yet
   const logoUrl = settings?.shop_logo_url || "/placeholder-logo.png";

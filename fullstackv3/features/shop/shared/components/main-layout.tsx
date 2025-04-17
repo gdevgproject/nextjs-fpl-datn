@@ -6,6 +6,7 @@ import { Footer } from "@/features/shop/shared/components/footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCategories } from "@/features/shop/shared/hooks/use-categories";
 import { useGenders } from "@/features/shop/shared/hooks/use-genders";
+import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings";
 
 /**
  * Skeleton for Header component to improve UX while loading
@@ -73,10 +74,23 @@ function FooterSkeleton() {
  * Uses React.memo to prevent unnecessary re-renders
  * Implements Suspense boundaries for a better loading experience
  */
-export function MainLayout({ children }: { children: React.ReactNode }) {
-  const { categories, isLoading: loadingCategories } = useCategories();
-  const { genders, isLoading: loadingGenders } = useGenders();
-  const shopLogo = "/placeholder-logo.svg";
+export function MainLayout({
+  children,
+  initialCategories,
+  initialGenders,
+  initialSettings,
+}: {
+  children: React.ReactNode;
+  initialCategories?: Category[];
+  initialGenders?: Gender[];
+  initialSettings?: ShopSettings;
+}) {
+  const { categories, isLoading: loadingCategories } =
+    useCategories(initialCategories);
+  const { genders, isLoading: loadingGenders } = useGenders(initialGenders);
+  const { settings, isLoading: loadingSettings } =
+    useShopSettings(initialSettings);
+  const shopLogo = settings?.shop_logo_url || "/placeholder-logo.svg";
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -86,9 +100,11 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         genders={genders}
         loadingCategories={loadingCategories}
         loadingGenders={loadingGenders}
+        initialSettings={settings}
+        loadingSettings={loadingSettings}
       />
       <main className="flex-1">{children}</main>
-      <Footer />
+      <Footer initialSettings={settings} loadingSettings={loadingSettings} />
     </div>
   );
 }

@@ -19,11 +19,12 @@ async function fetchCategories(): Promise<Category[]> {
   return data || [];
 }
 
-export function useCategories() {
+export function useCategories(initialData?: Category[]) {
   const { data, isLoading, error } = useQuery<Category[]>({
     queryKey: ["categories"],
     queryFn: fetchCategories,
     staleTime: 1000 * 60 * 10,
+    initialData,
   });
   return { categories: data || [], isLoading, error };
 }
