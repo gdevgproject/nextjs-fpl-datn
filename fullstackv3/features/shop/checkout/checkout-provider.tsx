@@ -1,13 +1,15 @@
 "use client";
 
 import type React from "react";
-import { createContext, useContext, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useCartContext } from "@/features/shop/cart/cart-provider";
+import { createContext, useContext, useState, useEffect, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthQuery } from "@/features/auth/hooks";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { securedPlaceOrder } from "./secure-place-order";
+import { useCartQuery, useClearCart } from "@/features/shop/cart/use-cart";
+import { validateDiscountCode } from "@/features/shop/cart/cart-actions";
+import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings";
 import type { Address } from "@/features/shop/account/types";
 
 // Checkout steps
@@ -52,6 +54,11 @@ interface CheckoutContextType {
   validateCurrentStep: () => boolean;
   justPlacedOrder: boolean;
   setJustPlacedOrder: (value: boolean) => void;
+  discountCode: string;
+  setDiscountCode: (code: string) => void;
+  discountInfo: { discount: any; discountAmount: number } | null;
+  discountAmount: number;
+  appliedDiscount: any;
 }
 
 // Create context
@@ -69,22 +76,28 @@ const CheckoutContext = createContext<CheckoutContextType>({
   validateCurrentStep: () => false,
   justPlacedOrder: false,
   setJustPlacedOrder: () => {},
+  discountCode: "",
+  setDiscountCode: () => {},
+  discountInfo: null,
+  discountAmount: 0,
+  appliedDiscount: null,
 });
 
 export function CheckoutProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useSonnerToast();
   const { data: session } = useAuthQuery();
   const isAuthenticated = !!session?.user;
+
+  // Use the new cart query hook
   const {
-    cartItems,
-    subtotal,
-    discount,
-    shippingFee,
-    cartTotal,
-    appliedDiscount,
-    clearCart,
-  } = useCartContext();
+    data: cartItems = [],
+    isLoading: cartLoading,
+    error: cartError,
+  } = useCartQuery();
+  const { mutateAsync: clearCart } = useClearCart();
+  const { settings } = useShopSettings();
 
   // State
   const [currentStep, setCurrentStep] = useState<CheckoutStep>("address");
@@ -93,6 +106,45 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [justPlacedOrder, setJustPlacedOrder] = useState(false);
+
+  // Discount state
+  const [discountCode, setDiscountCode] = useState("");
+  const [discountInfo, setDiscountInfo] = useState<{
+    discount: any;
+    discountAmount: number;
+  } | null>(null);
+
+  // Compute subtotal & totals
+  const shippingFee = settings?.shipping_fee || 0;
+  const freeThreshold = settings?.free_shipping_threshold ?? null;
+  const subtotal = useMemo(
+    () =>
+      cartItems.reduce((s, i) => {
+        const price =
+          i.product?.sale_price && i.product.sale_price < i.product.price
+            ? i.product.sale_price
+            : i.product?.price || 0;
+        return s + price * i.quantity;
+      }, 0),
+    [cartItems]
+  );
+  const saleDiscount = useMemo(
+    () =>
+      cartItems.reduce((s, i) => {
+        const full = i.product?.price || 0;
+        const sale = i.product?.sale_price;
+        return sale && sale < full ? s + (full - sale) * i.quantity : s;
+      }, 0),
+    [cartItems]
+  );
+  const discountAmount = discountInfo?.discountAmount || 0;
+  const appliedDiscount = discountInfo?.discount || null;
+  const isFreeShipping =
+    freeThreshold !== null &&
+    subtotal - saleDiscount - discountAmount >= freeThreshold;
+  const cartTotal =
+    Math.max(0, subtotal - saleDiscount - discountAmount) +
+    (isFreeShipping ? 0 : shippingFee);
 
   useEffect(() => {
     let isMounted = true;
@@ -123,6 +175,32 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
       isMounted = false;
     };
   }, [toast, paymentMethods.length]);
+
+  // Initialize discount from URL
+  useEffect(() => {
+    const code = searchParams.get("code");
+    if (code) {
+      (async () => {
+        const result = await validateDiscountCode(code, subtotal);
+        if (result.success && result.data) {
+          setDiscountCode(code);
+          setDiscountInfo(result.data);
+        }
+      })();
+    }
+  }, [searchParams, subtotal]);
+
+  // Reset checkout when user logs out
+  useEffect(() => {
+    if (!session?.user) {
+      setCurrentStep("address");
+      setFormData({});
+      setErrors({});
+      setDiscountCode("");
+      setDiscountInfo(null);
+      setJustPlacedOrder(false);
+    }
+  }, [session]);
 
   // Update form data
   const updateFormData = (data: Partial<CheckoutFormData>) => {
@@ -242,7 +320,7 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
         id: 0, // Temporary ID for guest
         user_id: "", // Will be filled for authenticated users
         recipient_name: formData.fullName || "",
-        phone: formData.phoneNumber || "",
+        phone_number: formData.phoneNumber || "",
         province_city: formData.province || "",
         district: formData.district || "",
         ward: formData.ward || "",
@@ -267,7 +345,7 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
         discountId: appliedDiscount?.id,
         cartItems,
         subtotal,
-        discountAmount: discount,
+        discountAmount,
         shippingFee,
         total: cartTotal,
         guestInfo,
@@ -326,6 +404,11 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
         validateCurrentStep,
         justPlacedOrder,
         setJustPlacedOrder,
+        discountCode,
+        setDiscountCode,
+        discountInfo,
+        discountAmount,
+        appliedDiscount,
       }}
     >
       {children}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useCartContext } from "@/features/shop/cart/cart-provider";
+import { useCartContext } from "@/features/shop/cart/cart-provider"; // cần sửa lại vì cart-provider được chuyển thành tanstack query
 import { formatCurrency } from "@/lib/utils/format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

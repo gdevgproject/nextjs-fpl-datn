@@ -3,16 +3,9 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import {
   ShoppingCart,
   Trash2,
@@ -34,7 +27,7 @@ import {
   useUpdateCartItem,
   useRemoveCartItem,
   useClearCart,
-} from "../hooks";
+} from "../use-cart";
 import { useAuthQuery } from "@/features/auth/hooks";
 import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings";
 import {
@@ -305,6 +298,7 @@ function SmartSummaryBar({
 }
 
 export function CartPage() {
+  const router = useRouter();
   const { data: cartItems = [], isLoading } = useCartQuery();
   const { mutate: updateCartItem, isLoading: isUpdating } = useUpdateCartItem();
   const { mutate: removeCartItem, isLoading: isRemoving } = useRemoveCartItem();
@@ -445,7 +439,10 @@ export function CartPage() {
   };
 
   const handleCheckout = (items: any[]) => {
-    success("Chức năng thanh toán nhiều sản phẩm đã chọn sẽ sớm có!");
+    const query = discountCode
+      ? `?code=${encodeURIComponent(discountCode)}`
+      : "";
+    router.push(`/thanh-toan${query}`);
   };
 
   const smartBarRef = useRef<HTMLDivElement>(null);

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useCartQuery } from "../hooks";
+import { useCartQuery } from "../use-cart";
 
 export function CartButton() {
   const { data: cartItems = [] } = useCartQuery();

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Heart, AlertCircle, Loader2 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
-import { useAddCartItem } from "@/features/shop/cart/hooks";
+import { useAddCartItem } from "@/features/shop/cart/use-cart";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 
 export interface ProductImageType {
