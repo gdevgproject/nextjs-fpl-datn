@@ -69,10 +69,18 @@ export async function securedPlaceOrder({
 
     // PRE-COMMIT VALIDATION: Verify current product variant data
     console.log("Performing pre-commit validation...");
-    const variantIds = cartItems.map((item) => item.variant_id);
+
+    // Extract and validate variant IDs (support both camelCase and snake_case)
+    const variantIds = cartItems
+      .map((item) =>
+        typeof (item as any).variantId === "number"
+          ? (item as any).variantId
+          : (item as any).variant_id
+      )
+      .filter((id): id is number => typeof id === "number");
 
     // Fetch the latest data for all variants being ordered
-    const { data: latestVariants, error: variantsError } = await supabase
+    const { data: latestVariantsRaw, error: variantsError } = await supabase
       .from("product_variants")
       .select(
         `
@@ -91,13 +99,27 @@ export async function securedPlaceOrder({
       )
       .in("id", variantIds);
 
-    if (variantsError) {
+    if (variantsError || !latestVariantsRaw) {
       console.error("Error fetching latest variant data:", variantsError);
       return {
         success: false,
         error: "Không thể xác minh thông tin sản phẩm. Vui lòng thử lại sau.",
       };
     }
+
+    // Cast to known shape
+    const latestVariants = latestVariantsRaw.map((variant) => ({
+      id: variant.id as number,
+      volume_ml: variant.volume_ml as number,
+      price: variant.price as number,
+      sale_price: variant.sale_price as number | null,
+      stock_quantity: variant.stock_quantity as number,
+      deleted_at: variant.deleted_at as string | null,
+      products:
+        Array.isArray(variant.products) && variant.products.length > 0
+          ? variant.products[0]
+          : { id: 0, name: "", deleted_at: null },
+    }));
 
     // Validate the variants
     const unavailableVariants: { id: number; reason: string }[] = [];
@@ -109,13 +131,13 @@ export async function securedPlaceOrder({
 
     for (const item of cartItems) {
       const currentVariant = latestVariants.find(
-        (v) => v.id === item.variant_id
+        (v) => v.id === item.variantId
       );
 
       // Check if variant exists and is not deleted
       if (!currentVariant || currentVariant.deleted_at) {
         unavailableVariants.push({
-          id: item.variant_id,
+          id: item.variantId,
           reason: "Sản phẩm không còn tồn tại trong hệ thống.",
         });
         continue;
@@ -124,7 +146,7 @@ export async function securedPlaceOrder({
       // Check if product is deleted
       if (currentVariant.products.deleted_at) {
         unavailableVariants.push({
-          id: item.variant_id,
+          id: item.variantId,
           reason: `Sản phẩm "${currentVariant.products.name}" không còn kinh doanh.`,
         });
         continue;
@@ -133,19 +155,19 @@ export async function securedPlaceOrder({
       // Check stock quantity
       if (currentVariant.stock_quantity < item.quantity) {
         unavailableVariants.push({
-          id: item.variant_id,
+          id: item.variantId,
           reason: `Chỉ còn ${currentVariant.stock_quantity} sản phẩm "${currentVariant.products.name}" trong kho.`,
         });
         continue;
       }
 
       // Check price changes (using the effective price - sale price if available, otherwise regular price)
-      const clientPrice = item.product?.sale_price || item.product?.price;
+      const clientPrice = item.product?.salePrice ?? item.product?.price ?? 0;
       const currentPrice = currentVariant.sale_price || currentVariant.price;
 
       if (clientPrice !== currentPrice) {
         priceChangedVariants.push({
-          id: item.variant_id,
+          id: item.variantId,
           oldPrice: clientPrice,
           newPrice: currentPrice,
         });
@@ -293,7 +315,7 @@ export async function securedPlaceOrder({
     // Step 2: Insert order items
     for (const item of cartItems) {
       // Fetch variant details from our already validated data
-      const variant = latestVariants.find((v) => v.id === item.variant_id)!;
+      const variant = latestVariants.find((v) => v.id === item.variantId)!;
 
       // Calculate unit price (use sale_price if available)
       const unitPrice =
@@ -302,7 +324,7 @@ export async function securedPlaceOrder({
       // Insert order item
       const { error: itemError } = await supabase.from("order_items").insert({
         order_id: orderId,
-        variant_id: item.variant_id,
+        variant_id: item.variantId,
         product_name: variant.products.name,
         variant_volume_ml: variant.volume_ml,
         quantity: item.quantity,

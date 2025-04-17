@@ -1,6 +1,7 @@
 "use client";
 
 import { useCheckout } from "@/features/shop/checkout/checkout-provider";
+import type { PaymentMethod } from "@/features/shop/checkout/types";
 import {
   Card,
   CardContent,
@@ -10,24 +11,18 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CreditCard, Landmark, Wallet } from "lucide-react";
+import { CreditCard, Landmark, Wallet, AlertCircle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-
-// Define PaymentMethod type based on your database schema
-interface PaymentMethod {
-  id: number;
-  name: string;
-  description?: string;
-  is_active: boolean;
-}
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function PaymentStep() {
-  const { formData, updateFormData, paymentMethods, goToNextStep } = useCheckout();
+  const { formData, updateFormData, paymentMethods, goToNextStep, errors } =
+    useCheckout();
 
   // Handle payment method selection
   const handlePaymentMethodChange = (paymentMethodId: number) => {
-    updateFormData({ paymentMethod: paymentMethodId });
+    updateFormData({ paymentMethodId });
   };
 
   return (
@@ -38,7 +33,7 @@ export function PaymentStep() {
       <CardContent className="space-y-6">
         {/* Payment Method Selection */}
         <RadioGroup
-          value={formData.paymentMethod?.toString() || ""}
+          value={formData.paymentMethodId?.toString() || ""}
           onValueChange={(value) => handlePaymentMethodChange(Number(value))}
           className="space-y-3"
         >
@@ -73,8 +68,16 @@ export function PaymentStep() {
           ))}
         </RadioGroup>
 
+        {/* Show error if no payment method selected */}
+        {errors.paymentMethodId && (
+          <Alert variant="destructive" className="mt-2">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{errors.paymentMethodId}</AlertDescription>
+          </Alert>
+        )}
+
         {/* Show bank details if payment method is bank transfer */}
-        {formData.paymentMethod === 2 || formData.paymentMethod === 7 ? (
+        {(formData.paymentMethodId === 2 || formData.paymentMethodId === 7) && (
           <div className="mt-4 p-3 bg-muted rounded-md">
             <p className="text-sm font-medium">Thông tin chuyển khoản:</p>
             <div className="mt-2 text-sm">
@@ -99,7 +102,7 @@ export function PaymentStep() {
               </p>
             </div>
           </div>
-        ) : null}
+        )}
 
         {/* Order Note */}
         <Textarea
@@ -110,7 +113,9 @@ export function PaymentStep() {
         />
       </CardContent>
       <CardFooter>
-        <Button onClick={goToNextStep}>Tiếp tục</Button>
+        <Button onClick={goToNextStep} disabled={!formData.paymentMethodId}>
+          Tiếp tục
+        </Button>
       </CardFooter>
     </Card>
   );

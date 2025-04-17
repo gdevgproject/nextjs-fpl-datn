@@ -19,6 +19,19 @@ export function OrderSummary() {
         : item.product?.price || 0;
     return sum + price * item.quantity;
   }, 0);
+
+  // Tính tổng khuyến mãi từ giá sản phẩm (chênh lệch giữa price và sale_price)
+  const saleDiscount = cartItems.reduce((sum, item) => {
+    const originalPrice = item.product?.price || 0;
+    const salePrice = item.product?.sale_price || originalPrice;
+    return (
+      sum +
+      (originalPrice > salePrice
+        ? (originalPrice - salePrice) * item.quantity
+        : 0)
+    );
+  }, 0);
+
   const isFree = freeThreshold !== null && subtotal >= freeThreshold;
   const finalShipping = isFree ? 0 : shippingFee;
   const total = subtotal - discountAmount + finalShipping;
@@ -48,8 +61,16 @@ export function OrderSummary() {
       <div className="space-y-1.5 text-sm">
         <div className="flex justify-between">
           <span className="text-muted-foreground">Tạm tính</span>
-          <span>{formatCurrency(subtotal)}</span>
+          <span>{formatCurrency(subtotal + saleDiscount)}</span>
         </div>
+
+        {/* Hiển thị dòng khuyến mãi sản phẩm khi có sản phẩm được giảm giá */}
+        {saleDiscount > 0 && (
+          <div className="flex justify-between text-green-600">
+            <span>Khuyến mãi sản phẩm</span>
+            <span>-{formatCurrency(saleDiscount)}</span>
+          </div>
+        )}
 
         {discountAmount > 0 && (
           <div className="flex justify-between text-green-600">

@@ -27,14 +27,44 @@ export interface Discount {
   isActive: boolean;
 }
 
+/** Shipping address to persist or submit */
 export interface ShippingAddress {
   recipientName: string;
-  recipientPhone: string;
+  phoneNumber: string;
   provinceCity: string;
   district: string;
   ward: string;
   streetAddress: string;
   postalCode?: string;
+}
+
+/** Guest checkout information */
+export interface GuestCheckoutInfo {
+  name: string;
+  email: string;
+  phone: string;
+}
+
+/** Parameters to place an order */
+export interface PlaceOrderParams {
+  shippingAddress: ShippingAddress;
+  paymentMethodId: number;
+  deliveryNotes?: string;
+  discountId?: number;
+  cartItems: CartItem[];
+  subtotal: number;
+  discountAmount: number;
+  shippingFee: number;
+  total: number;
+  guestInfo?: GuestCheckoutInfo | null;
+}
+
+/** Response from place order action */
+export interface PlaceOrderResponse {
+  success: boolean;
+  orderId?: number;
+  accessToken?: string;
+  error?: string;
 }
 
 export interface PaymentMethod {
@@ -44,49 +74,18 @@ export interface PaymentMethod {
   isActive: boolean;
 }
 
-export interface GuestCheckoutInfo {
-  name: string;
-  email: string;
-  phone: string;
-}
-
-export interface OrderItemData {
-  productVariantId: number;
-  quantity: number;
-  price: number;
-}
-
-export interface OrderData {
-  customerInfo: ShippingAddress & { email: string; note?: string };
+/** Form data collected during checkout */
+export interface CheckoutFormData {
+  fullName: string;
+  email?: string;
+  phoneNumber: string;
+  address: string;
+  province: string;
+  district: string;
+  ward: string;
+  deliveryNotes?: string;
   paymentMethodId: number;
-  shippingMethod: string;
-  items: OrderItemData[];
-  subtotal: number;
-  discount: number;
-  shippingFee: number;
-  total: number;
-  discountCode?: string;
 }
 
-export interface OrderResponse {
-  orderId?: number;
-  error?: string;
-}
-
-export interface CheckoutState {
-  cartItems: CartItem[];
-  shippingAddress: ShippingAddress;
-  paymentMethod: PaymentMethod;
-  appliedDiscount: Discount | null;
-  discountAmount: number;
-  shippingFee: number;
-  subtotal: number;
-  total: number;
-}
-
-export type CheckoutStep =
-  | "cart"
-  | "shipping"
-  | "payment"
-  | "review"
-  | "confirmation";
+/** Steps in checkout process */
+export type CheckoutStep = "address" | "payment" | "review";
