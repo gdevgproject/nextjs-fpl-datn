@@ -48,12 +48,12 @@ import {
   ArrowUpDown,
   Loader2,
 } from "lucide-react";
-import { useConcentrations } from "../../../../../../features/admin/concentrations/hooks/use-concentrations";
-import { useDeleteConcentration } from "../../../../../../features/admin/concentrations/hooks/use-delete-concentration";
-import { useSonnerToast } from "@/shared/hooks/use-sonner-toast";
-import { useDebounce } from "../../../../../../features/admin/concentrations/hooks/use-debounce";
-import { ConcentrationDialog } from "../../../../../../features/admin/concentrations/components/concentration-dialog";
-import { formatDate } from "@/shared/lib/utils";
+import { useConcentrations } from "@/features/admin/concentrations/hooks/use-concentrations";
+import { useDeleteConcentration } from "@/features/admin/concentrations/hooks/use-delete-concentration";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { useDebounce } from "@/features/admin/concentrations/hooks/use-debounce";
+import { ConcentrationDialog } from "@/features/admin/concentrations/components/concentration-dialog";
+import { formatDate } from "@/lib/utils";
 
 export default function ConcentrationsPage() {
   const toast = useSonnerToast();

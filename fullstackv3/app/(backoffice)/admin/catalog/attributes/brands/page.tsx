@@ -52,12 +52,12 @@ import {
   ArrowUpDown,
   Loader2,
 } from "lucide-react";
-import { useBrands } from "../../../../../../features/admin/brands/hooks/use-brands";
-import { useDeleteBrand } from "../../../../../../features/admin/brands/hooks/use-delete-brand";
-import { useSonnerToast } from "@/shared/hooks/use-sonner-toast";
-import { useDebounce } from "../../../../../../features/admin/brands/hooks/use-debounce";
-import { BrandDialog } from "../../../../../../features/admin/brands/components/brand-dialog";
-import { formatDate } from "@/shared/lib/utils";
+import { useBrands } from "@/features/admin/brands/hooks/use-brands";
+import { useDeleteBrand } from "@/features/admin/brands/hooks/use-delete-brand";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { useDebounce } from "@/features/admin/brands/hooks/use-debounce";
+import { BrandDialog } from "@/features/admin/brands/components/brand-dialog";
+import { formatDate } from "@/lib/utils";
 
 export default function BrandsPage() {
   const router = useRouter();

@@ -48,12 +48,12 @@ import {
   ArrowUpDown,
   Loader2,
 } from "lucide-react";
-import { useGenders } from "../../../../../../features/admin/genders/hooks/use-genders";
-import { useDeleteGender } from "../../../../../../features/admin/genders/hooks/use-delete-gender";
-import { useSonnerToast } from "@/shared/hooks/use-sonner-toast";
-import { useDebounce } from "../../../../../../features/admin/genders/hooks/use-debounce";
-import { GenderDialog } from "../../../../../../features/admin/genders/components/gender-dialog";
-import { formatDate } from "@/shared/lib/utils";
+import { useGenders } from "@/features/admin/genders/hooks/use-genders";
+import { useDeleteGender } from "@/features/admin/genders/hooks/use-delete-gender";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { useDebounce } from "@/features/admin/genders/hooks/use-debounce";
+import { GenderDialog } from "@/features/admin/genders/components/gender-dialog";
+import { formatDate } from "@/lib/utils";
 
 export default function GendersPage() {
   const toast = useSonnerToast();

@@ -48,12 +48,12 @@ import {
   ArrowUpDown,
   Loader2,
 } from "lucide-react";
-import { useIngredients } from "../../../../../../features/admin/ingredients/hooks/use-ingredients";
-import { useDeleteIngredient } from "../../../../../../features/admin/ingredients/hooks/use-delete-ingredient";
-import { useSonnerToast } from "@/shared/hooks/use-sonner-toast";
-import { useDebounce } from "../../../../../../features/admin/ingredients/hooks/use-debounce";
-import { IngredientDialog } from "../../../../../../features/admin/ingredients/components/ingredient-dialog";
-import { formatDate } from "@/shared/lib/utils";
+import { useIngredients } from "@/features/admin/ingredients/hooks/use-ingredients";
+import { useDeleteIngredient } from "@/features/admin/ingredients/hooks/use-delete-ingredient";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { useDebounce } from "@/features/admin/ingredients/hooks/use-debounce";
+import { IngredientDialog } from "@/features/admin/ingredients/components/ingredient-dialog";
+import { formatDate } from "@/lib/utils";
 
 export default function IngredientsPage() {
   const toast = useSonnerToast();

@@ -48,12 +48,12 @@ import {
   ArrowUpDown,
   Loader2,
 } from "lucide-react";
-import { useScents } from "../../../../../../features/admin/scents/hooks/use-scents";
-import { useDeleteScent } from "../../../../../../features/admin/scents/hooks/use-delete-scent";
-import { useSonnerToast } from "@/shared/hooks/use-sonner-toast";
-import { useDebounce } from "../../../../../../features/admin/scents/hooks/use-debounce";
-import { ScentDialog } from "../../../../../../features/admin/scents/components/scent-dialog";
-import { formatDate } from "@/shared/lib/utils";
+import { useScents } from "@/features/admin/scents/hooks/use-scents";
+import { useDeleteScent } from "@/features/admin/scents/hooks/use-delete-scent";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { useDebounce } from "@/features/admin/scents/hooks/use-debounce";
+import { ScentDialog } from "@/features/admin/scents/components/scent-dialog";
+import { formatDate } from "@/lib/utils";
 
 export default function ScentsPage() {
   const toast = useSonnerToast();

@@ -50,12 +50,12 @@ import {
   ArrowUpDown,
   Loader2,
 } from "lucide-react";
-import { useProductLabels } from "../../../../../features/admin/labels/hooks/use-product-labels";
-import { useDeleteProductLabel } from "../../../../../features/admin/labels/hooks/use-delete-product-label";
-import { useSonnerToast } from "@/shared/hooks/use-sonner-toast";
-import { useDebounce } from "../../../../../features/admin/labels/hooks/use-debounce";
-import { ProductLabelDialog } from "../../../../../features/admin/labels/components/product-label-dialog";
-import { formatDate } from "@/shared/lib/utils";
+import { useProductLabels } from "@/features/admin/labels/hooks/use-product-labels";
+import { useDeleteProductLabel } from "@/features/admin/labels/hooks/use-delete-product-label";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { useDebounce } from "@/features/admin/labels/hooks/use-debounce";
+import { ProductLabelDialog } from "@/features/admin/labels/components/product-label-dialog";
+import { formatDate } from "@/lib/utils";
 
 export default function ProductLabelsPage() {
   const toast = useSonnerToast();

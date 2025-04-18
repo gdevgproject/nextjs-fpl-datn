@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/features/auth/context/auth-context";
+import { useAuthQuery } from "@/features/auth/hooks";
 import {
   BarChart,
   Bar,
@@ -73,14 +73,17 @@ const formatCurrency = (value: number) => {
 };
 
 export default function AdminDashboardPage() {
-  const { user } = useAuth();
-  const [timeRange, setTimeRange] = useState("7days");
+  // Sử dụng TanStack Query để lấy session
+  const { data: session } = useAuthQuery();
+  const user = session?.user;
 
   // Get user display name from metadata
   const displayName =
     user?.user_metadata?.display_name ||
     user?.user_metadata?.full_name ||
     user?.email?.split("@")[0];
+
+  const [timeRange, setTimeRange] = useState("7days");
 
   return (
     <AdminLayout>

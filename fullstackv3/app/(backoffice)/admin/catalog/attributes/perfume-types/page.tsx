@@ -48,12 +48,12 @@ import {
   ArrowUpDown,
   Loader2,
 } from "lucide-react";
-import { usePerfumeTypes } from "../../../../../../features/admin/perfume-types/hooks/use-perfume-types";
-import { useDeletePerfumeType } from "../../../../../../features/admin/perfume-types/hooks/use-delete-perfume-type";
-import { useSonnerToast } from "@/shared/hooks/use-sonner-toast";
-import { useDebounce } from "../../../../../../features/admin/perfume-types/hooks/use-debounce";
-import { PerfumeTypeDialog } from "../../../../../../features/admin/perfume-types/components/perfume-type-dialog";
-import { formatDate } from "@/shared/lib/utils";
+import { usePerfumeTypes } from "@/features/admin/perfume-types/hooks/use-perfume-types";
+import { useDeletePerfumeType } from "@/features/admin/perfume-types/hooks/use-delete-perfume-type";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { useDebounce } from "@/features/admin/perfume-types/hooks/use-debounce";
+import { PerfumeTypeDialog } from "@/features/admin/perfume-types/components/perfume-type-dialog";
+import { formatDate } from "@/lib/utils";
 
 export default function PerfumeTypesPage() {
   const toast = useSonnerToast();
