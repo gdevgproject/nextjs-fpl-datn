@@ -4,7 +4,7 @@ import { memo, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, Heart } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -119,17 +119,6 @@ export function Header({
           {/* Actions */}
           <div className="flex items-center space-x-1 md:space-x-3">
             <ThemeToggle />
-            <Button
-              variant="ghost"
-              size="icon"
-              asChild
-              className="hidden sm:flex relative"
-            >
-              <Link href="/tai-khoan/yeu-thich">
-                <Heart className="h-5 w-5" />
-                <span className="sr-only">Yêu thích</span>
-              </Link>
-            </Button>
             <CartButton />
             <UserNav />
             {/* Mobile menu button */}
@@ -181,13 +170,6 @@ export function Header({
                       {item.name}
                     </Link>
                   ))}
-                  <Link
-                    href="/tai-khoan/yeu-thich"
-                    className="block py-2 px-3 rounded hover:bg-muted text-muted-foreground"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Yêu thích
-                  </Link>
                   <Link
                     href="/gio-hang"
                     className="block py-2 px-3 rounded hover:bg-muted text-muted-foreground"
