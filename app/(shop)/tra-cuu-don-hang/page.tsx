@@ -13,6 +13,7 @@ import { CheckCircle, ShoppingBag } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { OrderConfirmationClient } from "@/features/shop/order-confirmation/components/order-confirmation-client";
 import { CopyAccessToken } from "@/features/shop/order-confirmation/components/copy-access-token";
+import { OrderLookupClient } from "@/features/shop/order-confirmation/components/order-lookup-client";
 
 // Server-side fetch for order details
 async function getOrderServerSide(
@@ -262,14 +263,8 @@ export default async function OrderLookupPage(props: {
             </CardContent>
           </Card>
 
-          <div className="flex justify-center gap-4">
-            <Button asChild variant="outline">
-              <Link href="/tai-khoan/don-hang">Xem đơn hàng của tôi</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/san-pham">Tiếp tục mua sắm</Link>
-            </Button>
-          </div>
+          {/* Client component để quản lý hủy đơn hàng */}
+          <OrderLookupClient order={order} />
         </div>
       ) : (
         <Card>

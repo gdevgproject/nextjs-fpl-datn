@@ -90,6 +90,200 @@ export async function cancelOrder(orderId: number) {
   }
 }
 
+// Hủy đơn hàng bằng access token (dành cho khách vãng lai)
+export async function cancelOrderByToken(token: string, reason: string) {
+  try {
+    if (!token) {
+      return createErrorResponse("Token không hợp lệ", "invalid_token");
+    }
+
+    if (!reason || reason.trim() === "") {
+      return createErrorResponse(
+        "Vui lòng cung cấp lý do hủy đơn hàng",
+        "reason_required"
+      );
+    }
+
+    // Sử dụng service role client để truy cập đơn hàng qua token
+    const serviceClient = await createServiceRoleClient();
+
+    // Lấy thông tin đơn hàng từ token
+    const { data: orderData, error: orderError } = await serviceClient
+      .from("orders")
+      .select(
+        "id, order_status_id, order_status:order_statuses(name), payment_status, payment_method_id"
+      )
+      .eq("access_token", token)
+      .single();
+
+    if (orderError || !orderData) {
+      return createErrorResponse(
+        "Không tìm thấy đơn hàng với mã tra cứu này",
+        "not_found"
+      );
+    }
+
+    // Kiểm tra xem đơn hàng có thể hủy hay không
+    // Chỉ hủy được khi đang ở trạng thái "Chờ xác nhận" hoặc "Đã xác nhận"
+    if (orderData.order_status_id !== 1 && orderData.order_status_id !== 2) {
+      return createErrorResponse(
+        `Không thể hủy đơn hàng ở trạng thái ${orderData.order_status?.name}. Chỉ có thể hủy đơn hàng ở trạng thái Chờ xác nhận hoặc Đã xác nhận.`,
+        "invalid_status"
+      );
+    }
+
+    // Kiểm tra nếu đã thanh toán online
+    const isCOD = orderData.payment_method_id === 1; // ID 1 là COD theo seed data
+    if (orderData.payment_status === "Paid" && !isCOD) {
+      return createErrorResponse(
+        "Đơn hàng đã thanh toán online không thể hủy trực tiếp. Vui lòng liên hệ hỗ trợ.",
+        "already_paid"
+      );
+    }
+
+    // Cập nhật trạng thái đơn hàng thành "Đã hủy" (id = 7 theo seed data)
+    const { error: updateError } = await serviceClient
+      .from("orders")
+      .update({
+        order_status_id: 7, // "Đã hủy"
+        cancellation_reason: reason,
+        cancelled_by: "user", // Mặc dù là guest nhưng vẫn gán 'user' để phân biệt với 'admin'
+      })
+      .eq("id", orderData.id);
+
+    if (updateError) {
+      return createErrorResponse(updateError.message);
+    }
+
+    // Ghi log hoạt động
+    try {
+      await serviceClient.from("admin_activity_log").insert({
+        admin_user_id: null,
+        activity_type: "ORDER_CANCELLED_BY_GUEST",
+        description: `Đơn hàng #${orderData.id} đã bị hủy bởi khách vãng lai`,
+        entity_type: "order",
+        entity_id: orderData.id.toString(),
+        details: { reason, token },
+      });
+    } catch (logError) {
+      console.error("Error logging activity:", logError);
+      // Không trả về lỗi vì việc ghi log không quan trọng bằng việc hủy đơn hàng
+    }
+
+    revalidatePath(`/tra-cuu-don-hang?token=${token}`);
+
+    return createSuccessResponse({
+      message: "Đơn hàng đã được hủy thành công",
+      orderId: orderData.id,
+    });
+  } catch (error) {
+    return createErrorResponse(error);
+  }
+}
+
+// Hủy đơn hàng cho người dùng đã đăng nhập
+export async function cancelOrderByUser(orderId: number, reason: string) {
+  const supabase = await getSupabaseServerClient();
+
+  try {
+    // Kiểm tra xem người dùng đã đăng nhập chưa
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      return createErrorResponse(
+        "Bạn cần đăng nhập để thực hiện hành động này",
+        "unauthorized"
+      );
+    }
+
+    if (!reason || reason.trim() === "") {
+      return createErrorResponse(
+        "Vui lòng cung cấp lý do hủy đơn hàng",
+        "reason_required"
+      );
+    }
+
+    const userId = session.user.id;
+
+    // Kiểm tra xem đơn hàng có thuộc về người dùng không
+    const { data: orderData, error: orderError } = await supabase
+      .from("orders")
+      .select(
+        "id, order_status_id, order_status:order_statuses(name), payment_status, payment_method_id"
+      )
+      .eq("id", orderId)
+      .eq("user_id", userId)
+      .single();
+
+    if (orderError || !orderData) {
+      return createErrorResponse(
+        "Đơn hàng không tồn tại hoặc không thuộc về bạn",
+        "not_found"
+      );
+    }
+
+    // Kiểm tra xem đơn hàng có thể hủy không
+    if (orderData.order_status_id !== 1 && orderData.order_status_id !== 2) {
+      return createErrorResponse(
+        `Không thể hủy đơn hàng ở trạng thái ${orderData.order_status?.name}. Chỉ có thể hủy đơn hàng ở trạng thái Chờ xác nhận hoặc Đã xác nhận.`,
+        "invalid_status"
+      );
+    }
+
+    // Kiểm tra nếu đã thanh toán online
+    const isCOD = orderData.payment_method_id === 1; // ID 1 là COD theo seed data
+    if (orderData.payment_status === "Paid" && !isCOD) {
+      return createErrorResponse(
+        "Đơn hàng đã thanh toán online không thể hủy trực tiếp. Vui lòng liên hệ hỗ trợ.",
+        "already_paid"
+      );
+    }
+
+    // Cập nhật trạng thái đơn hàng thành "Đã hủy" (id = 7 theo seed data)
+    const { error: updateError } = await supabase
+      .from("orders")
+      .update({
+        order_status_id: 7,
+        cancellation_reason: reason,
+        cancelled_by: "user",
+        cancelled_by_user_id: userId,
+      })
+      .eq("id", orderId);
+
+    if (updateError) {
+      return createErrorResponse(updateError.message);
+    }
+
+    // Ghi log hoạt động
+    try {
+      await supabase.from("admin_activity_log").insert({
+        admin_user_id: null,
+        activity_type: "ORDER_CANCELLED_BY_USER",
+        description: `Đơn hàng #${orderId} đã bị hủy bởi người dùng`,
+        entity_type: "order",
+        entity_id: orderId.toString(),
+        details: { cancelled_by_user_id: userId, reason },
+      });
+    } catch (logError) {
+      console.error("Error logging activity:", logError);
+      // Không trả về lỗi vì việc ghi log không quan trọng bằng việc hủy đơn hàng
+    }
+
+    revalidatePath(`/tai-khoan/don-hang/${orderId}`);
+    revalidatePath("/tai-khoan/don-hang");
+    revalidatePath(`/tra-cuu-don-hang?orderId=${orderId}`);
+
+    return createSuccessResponse({
+      message: "Đơn hàng đã được hủy thành công",
+      orderId: orderId,
+    });
+  } catch (error) {
+    return createErrorResponse(error);
+  }
+}
+
 /**
  * Get order details by ID or access token
  * This is a server action that supports both authenticated users and guest orders
