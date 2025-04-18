@@ -40,13 +40,24 @@ import { CalendarIcon, ChevronRight, ShoppingBag } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { formatDate } from "@/lib/utils/format";
 import type { OrderFilter } from "../order-types";
+import { useAuthQuery } from "@/features/auth/hooks";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export function OrderHistoryPage() {
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState<OrderFilter>({});
   const pageSize = 5;
 
-  const { data: orderData, isLoading } = useUserOrders(page, pageSize, filter);
+  // Lấy thông tin người dùng từ session
+  const { data: session, isLoading: isLoadingSession } = useAuthQuery();
+  const userId = session?.user?.id;
+
+  const { data: orderData, isLoading: isLoadingOrders } = useUserOrders(
+    userId,
+    page,
+    pageSize,
+    filter
+  );
   const { data: statuses, isLoading: isLoadingStatuses } = useOrderStatuses();
 
   // Xử lý khi thay đổi filter
@@ -71,6 +82,35 @@ export function OrderHistoryPage() {
 
   // Tính toán tổng số trang
   const totalPages = orderData ? Math.ceil(orderData.count / pageSize) : 0;
+
+  // Nếu chưa đăng nhập, hiển thị thông báo
+  if (!isLoadingSession && !userId) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Lịch sử đơn hàng</h1>
+          <p className="text-muted-foreground">
+            Xem và quản lý các đơn hàng của bạn
+          </p>
+        </div>
+
+        <Alert variant="destructive">
+          <AlertTitle>Bạn chưa đăng nhập</AlertTitle>
+          <AlertDescription>
+            Vui lòng đăng nhập để xem lịch sử đơn hàng của bạn.
+          </AlertDescription>
+        </Alert>
+
+        <div className="flex justify-center">
+          <Button asChild>
+            <Link href="/dang-nhap">Đăng nhập</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const isLoading = isLoadingSession || isLoadingOrders;
 
   return (
     <div className="space-y-6">
