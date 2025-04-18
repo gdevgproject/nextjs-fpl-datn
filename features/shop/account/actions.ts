@@ -243,3 +243,19 @@ export async function setDefaultAddress(addressId: number) {
     return createErrorResponse(error);
   }
 }
+
+// Cập nhật avatar_url trong profile (server action, không nhận file, chỉ nhận url)
+export async function updateAvatarUrl(userId: string, avatarUrl: string) {
+  const supabase = await getSupabaseServerClient();
+  try {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ avatar_url: avatarUrl })
+      .eq("id", userId);
+    if (error) return createErrorResponse(error.message);
+    revalidatePath("/tai-khoan");
+    return createSuccessResponse({ avatarUrl });
+  } catch (error) {
+    return createErrorResponse(error);
+  }
+}

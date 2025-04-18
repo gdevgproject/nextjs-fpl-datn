@@ -12,6 +12,8 @@ import { useAuthQuery, useProfileQuery } from "@/features/auth/hooks";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAvatarMutation } from "../hooks/useAvatarMutation";
 
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024; // 5MB
+
 // Using memo to prevent unnecessary re-renders
 export const AvatarUpload = memo(function AvatarUpload() {
   const { data: session } = useAuthQuery();
@@ -20,6 +22,7 @@ export const AvatarUpload = memo(function AvatarUpload() {
   const queryClient = useQueryClient();
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useSonnerToast();
   const { upload: uploadAvatarMutation, remove: deleteAvatarMutation } =
@@ -39,7 +42,7 @@ export const AvatarUpload = memo(function AvatarUpload() {
     }
 
     // Validate file size - max 5MB
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > MAX_AVATAR_SIZE) {
       toast("File quá lớn", {
         description: "Kích thước file tối đa là 5MB",
       });
@@ -103,6 +106,7 @@ export const AvatarUpload = memo(function AvatarUpload() {
     try {
       await deleteAvatarMutation.mutateAsync(profile.avatar_url);
       setPreviewUrl(null);
+      setShowDeleteConfirm(false);
     } finally {
       setIsUploading(false);
     }
@@ -145,18 +149,45 @@ export const AvatarUpload = memo(function AvatarUpload() {
         </Button>
 
         {/* Show delete button if có avatar */}
-        {profile?.avatar_url && !previewUrl && (
+        {profile?.avatar_url && !previewUrl && !showDeleteConfirm && (
           <Button
             type="button"
             size="icon"
             variant="destructive"
-            onClick={handleDeleteAvatar}
+            onClick={() => setShowDeleteConfirm(true)}
             className="absolute top-0 right-0 rounded-full p-1 shadow-md"
             disabled={isUploading}
           >
             <X className="h-4 w-4" />
             <span className="sr-only">Xóa ảnh đại diện</span>
           </Button>
+        )}
+
+        {/* Xác nhận xóa */}
+        {showDeleteConfirm && (
+          <div className="absolute top-0 right-0 z-10 bg-white border rounded shadow p-2 flex flex-col items-center">
+            <span className="text-sm mb-2">
+              Bạn có chắc muốn xóa ảnh đại diện?
+            </span>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={handleDeleteAvatar}
+                disabled={isUploading}
+              >
+                Xóa
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isUploading}
+              >
+                Hủy
+              </Button>
+            </div>
+          </div>
         )}
 
         {/* Show cancel button when previewing */}

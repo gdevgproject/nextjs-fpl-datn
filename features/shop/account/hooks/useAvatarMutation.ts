@@ -1,16 +1,20 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { uploadAvatar, deleteAvatar } from "../actions";
+import { updateAvatarUrl, deleteAvatar } from "../actions";
+import { uploadAvatarClient } from "./uploadAvatarClient";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 
 export function useAvatarMutation(userId?: string) {
   const queryClient = useQueryClient();
   const { toast } = useSonnerToast();
 
-  // Upload avatar
+  // Upload avatar (client upload, then update DB)
   const upload = useMutation({
     mutationFn: async (file: File) => {
       if (!userId) throw new Error("Thiếu userId");
-      const result = await uploadAvatar(userId, file);
+      // Upload file lên storage client-side
+      const publicUrl = await uploadAvatarClient(userId, file);
+      // Gọi server action để update avatar_url vào DB
+      const result = await updateAvatarUrl(userId, publicUrl);
       if (result.error) throw new Error(result.error);
       return result;
     },
