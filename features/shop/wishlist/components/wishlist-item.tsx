@@ -19,7 +19,7 @@ interface WishlistItemProps {
 
 export function WishlistItem({ item }: WishlistItemProps) {
   const { removeFromWishlist } = useWishlist();
-  const { mutateAsync: addToCart, isLoading: isAddingToCart } =
+  const { mutateAsync: addToCart, isPending: isAddingToCart } =
     useAddCartItem();
   const { toast } = useSonnerToast();
   const [isRemoving, setIsRemoving] = useState(false);
