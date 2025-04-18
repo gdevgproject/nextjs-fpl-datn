@@ -258,7 +258,7 @@ export function OrderHistoryPage() {
                     </p>
                   </div>
                   <Button asChild variant="outline" className="gap-1">
-                    <Link href={`/tai-khoan/don-hang/${order.id}`}>
+                    <Link href={`/tra-cuu-don-hang?orderId=${order.id}`}>
                       Chi tiết
                       <ChevronRight className="h-4 w-4" />
                     </Link>
