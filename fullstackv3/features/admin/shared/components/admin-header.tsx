@@ -1,12 +1,25 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { useAuth } from "@/features/auth/context/auth-context"
-import { Button } from "@/components/ui/button"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { Bell, Menu, Search, Settings, User, LogOut, ChevronDown, Store, Home, Phone, Shield, Mail } from "lucide-react"
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useAuthQuery, useLogoutMutation } from "@/features/auth/hooks";
+import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
+import {
+  Bell,
+  Menu,
+  Search,
+  Settings,
+  User,
+  LogOut,
+  ChevronDown,
+  Store,
+  Home,
+  Phone,
+  Shield,
+  Mail,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,33 +28,41 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuGroup,
-} from "@/components/ui/dropdown-menu"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { AdminSidebar } from "./admin-sidebar"
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { AdminSidebar } from "./admin-sidebar";
 
 export function AdminHeader() {
-  const { user, logout } = useAuth()
-  const pathname = usePathname()
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [notificationCount] = useState(3) // Example notification count
+  // Lấy session từ TanStack Query
+  const { data: session } = useAuthQuery();
+  const user = session?.user;
+  const logoutMutation = useLogoutMutation();
+  const pathname = usePathname();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [notificationCount] = useState(3); // Example notification count
 
   // Get user display name from metadata
-  const displayName = user?.user_metadata?.display_name || user?.user_metadata?.full_name || user?.email?.split("@")[0]
+  const displayName =
+    user?.user_metadata?.display_name ||
+    user?.user_metadata?.full_name ||
+    user?.email?.split("@")[0];
   // Get user role from metadata
-  const userRole = user?.app_metadata?.role || "authenticated"
+  const userRole = user?.app_metadata?.role || "authenticated";
 
   const handleLogout = async () => {
-    setIsLoggingOut(true)
+    setIsLoggingOut(true);
     try {
-      await logout()
+      await logoutMutation.mutateAsync();
+      // Optionally: redirect after logout
+      // window.location.href = "/"
     } finally {
-      setIsLoggingOut(false)
+      setIsLoggingOut(false);
     }
-  }
+  };
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background">
@@ -61,14 +82,20 @@ export function AdminHeader() {
 
         {/* Logo */}
         <Link href="/admin" className="mr-4 flex items-center space-x-2">
-          <span className="hidden font-bold sm:inline-block">MyBeauty Admin</span>
+          <span className="hidden font-bold sm:inline-block">
+            MyBeauty Admin
+          </span>
         </Link>
 
         {/* Search */}
         <div className="flex-1 flex items-center">
           <div className="w-full max-w-md relative hidden sm:flex">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input type="search" placeholder="Tìm kiếm..." className="pl-8 w-full md:w-[300px] lg:w-[400px]" />
+            <Input
+              type="search"
+              placeholder="Tìm kiếm..."
+              className="pl-8 w-full md:w-[300px] lg:w-[400px]"
+            />
           </div>
         </div>
 
@@ -111,7 +138,10 @@ export function AdminHeader() {
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/admin/notifications" className="w-full cursor-pointer justify-center">
+                <Link
+                  href="/admin/notifications"
+                  className="w-full cursor-pointer justify-center"
+                >
                   Xem tất cả
                 </Link>
               </DropdownMenuItem>
@@ -131,9 +161,14 @@ export function AdminHeader() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="gap-1 pl-1">
                 <Avatar className="h-7 w-7">
-                  <AvatarImage src={user?.user_metadata?.avatar_url} alt={displayName || ""} />
+                  <AvatarImage
+                    src={user?.user_metadata?.avatar_url}
+                    alt={displayName || ""}
+                  />
                   <AvatarFallback>
-                    {displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "A"}
+                    {displayName?.charAt(0).toUpperCase() ||
+                      user?.email?.charAt(0).toUpperCase() ||
+                      "A"}
                   </AvatarFallback>
                 </Avatar>
                 <span className="hidden md:inline-block text-sm font-medium truncate max-w-[100px] lg:max-w-[200px]">
@@ -145,7 +180,9 @@ export function AdminHeader() {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{displayName}</p>
+                  <p className="text-sm font-medium leading-none">
+                    {displayName}
+                  </p>
                   <p className="text-xs leading-none text-muted-foreground flex items-center">
                     <Mail className="mr-1 h-3 w-3" />
                     <span>{user?.email}</span>
@@ -182,7 +219,9 @@ export function AdminHeader() {
 
               {/* Thêm nhóm chuyển đổi giữa Admin và Shop */}
               <DropdownMenuGroup>
-                <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Chuyển đổi</DropdownMenuLabel>
+                <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                  Chuyển đổi
+                </DropdownMenuLabel>
                 <DropdownMenuItem asChild>
                   <Link href="/">
                     <Store className="mr-2 h-4 w-4" />
@@ -211,5 +250,5 @@ export function AdminHeader() {
         </div>
       </div>
     </header>
-  )
+  );
 }

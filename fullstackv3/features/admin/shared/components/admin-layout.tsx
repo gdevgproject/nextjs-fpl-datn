@@ -1,26 +1,28 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useEffect } from "react"
-import { usePathname } from "next/navigation"
-import { AdminHeader } from "./admin-header"
-import { AdminSidebar } from "./admin-sidebar"
-import { useAuth } from "@/features/auth/context/auth-context"
-import { Loader2 } from "lucide-react"
+import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { AdminHeader } from "./admin-header";
+import { AdminSidebar } from "./admin-sidebar";
+import { useAuthQuery } from "@/features/auth/hooks";
+import { Loader2 } from "lucide-react";
 
 interface AdminLayoutProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export function AdminLayout({ children }: AdminLayoutProps) {
-  const { user, isLoading, isAdmin } = useAuth()
-  const pathname = usePathname()
-  const [isMounted, setIsMounted] = useState(false)
+  const { data: session, isLoading } = useAuthQuery();
+  const user = session?.user;
+  const isAdmin = user?.app_metadata?.role === "admin";
+  const pathname = usePathname();
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true)
-  }, [])
+    setIsMounted(true);
+  }, []);
 
   // Show loading state
   if (!isMounted || isLoading) {
@@ -28,7 +30,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       <div className="flex h-screen w-screen items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
-    )
+    );
   }
 
   // Check if user is admin
@@ -36,9 +38,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     return (
       <div className="flex h-screen w-screen flex-col items-center justify-center p-4 text-center">
         <h1 className="text-2xl font-bold mb-2">Quyền truy cập bị từ chối</h1>
-        <p className="text-muted-foreground mb-4">Bạn không có quyền truy cập vào trang quản trị.</p>
+        <p className="text-muted-foreground mb-4">
+          Bạn không có quyền truy cập vào trang quản trị.
+        </p>
       </div>
-    )
+    );
   }
 
   return (
@@ -49,9 +53,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           <AdminSidebar />
         </aside>
         <main className="flex-1 overflow-x-auto">
-          <div className="container py-4 sm:py-6 px-3 sm:px-4 md:px-6 max-w-full">{children}</div>
+          <div className="container py-4 sm:py-6 px-3 sm:px-4 md:px-6 max-w-full">
+            {children}
+          </div>
         </main>
       </div>
     </div>
-  )
+  );
 }
