@@ -22,6 +22,7 @@ interface AddressListProps {
   onEdit: (id: number) => void;
   isEditing: boolean;
   isAdding: boolean;
+  userId: string; // Thêm userId vào props
 }
 
 export const AddressList = memo(function AddressList({
@@ -29,14 +30,15 @@ export const AddressList = memo(function AddressList({
   onEdit,
   isEditing,
   isAdding,
+  userId, // Nhận userId từ props
 }: AddressListProps) {
   const { toast } = useSonnerToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [addressToDelete, setAddressToDelete] = useState<number | null>(null);
 
   // Set up mutation hooks for address operations
-  const deleteAddressMutation = useDeleteAddress();
-  const setDefaultAddressMutation = useSetDefaultAddress();
+  const deleteAddressMutation = useDeleteAddress(userId);
+  const setDefaultAddressMutation = useSetDefaultAddress(userId);
 
   // Handle setting an address as default
   const handleSetDefault = useCallback(

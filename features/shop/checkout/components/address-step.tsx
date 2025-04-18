@@ -47,7 +47,7 @@ export function AddressStep() {
   });
   const [addErrors, setAddErrors] = useState<Record<string, string>>({});
 
-  const { data: addresses = [], isLoading: addressesLoading } =
+  const { data: addresses = [], isPending: addressesLoading } =
     useUserAddresses(userId);
   const addAddressMutation = useAddAddress(userId);
 
@@ -443,8 +443,8 @@ export function AddressStep() {
                   </Alert>
                 )}
                 <div className="flex gap-2 mt-2">
-                  <Button type="submit" disabled={addAddressMutation.isLoading}>
-                    {addAddressMutation.isLoading ? (
+                  <Button type="submit" disabled={addAddressMutation.isPending}>
+                    {addAddressMutation.isPending ? (
                       <span className="flex items-center gap-2">
                         <LoaderCircle className="animate-spin w-4 h-4" /> Đang
                         lưu...

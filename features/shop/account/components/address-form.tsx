@@ -20,6 +20,7 @@ import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { useAddAddress, useUpdateAddress } from "../queries";
 import type { Address } from "../types";
 import { Loader2 } from "lucide-react";
+import { useAuthQuery } from "@/features/auth/hooks";
 
 const addressSchema = z.object({
   recipient_name: z.string().min(2, "Tên người nhận phải có ít nhất 2 ký tự"),
@@ -40,16 +41,20 @@ interface AddressFormProps {
   address?: Address;
   onCancel: () => void;
   onSuccess: () => void;
+  isFirstAddress?: boolean;
 }
 
 export function AddressForm({
   address,
   onCancel,
   onSuccess,
+  isFirstAddress = false,
 }: AddressFormProps) {
   const { toast } = useSonnerToast();
-  const addAddressMutation = useAddAddress();
-  const updateAddressMutation = useUpdateAddress();
+  const { data: session } = useAuthQuery();
+  const userId = session?.user?.id;
+  const addAddressMutation = useAddAddress(userId);
+  const updateAddressMutation = useUpdateAddress(userId);
   const isSubmitting =
     addAddressMutation.isPending || updateAddressMutation.isPending;
 
@@ -75,7 +80,7 @@ export function AddressForm({
           ward: "",
           street_address: "",
           postal_code: "",
-          is_default: false,
+          is_default: isFirstAddress,
         },
   });
 

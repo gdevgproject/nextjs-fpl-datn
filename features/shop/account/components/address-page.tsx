@@ -20,7 +20,8 @@ import { motion, AnimatePresence } from "framer-motion";
 export function AddressPage() {
   const { data: session } = useAuthQuery();
   const isAuthenticated = !!session?.user;
-  const { data: addresses, isLoading } = useUserAddresses();
+  const userId = session?.user?.id ?? "";
+  const { data: addresses, isLoading } = useUserAddresses(userId);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState<number | null>(null);
 
@@ -98,6 +99,7 @@ export function AddressPage() {
                 <AddressForm
                   onCancel={handleCancel}
                   onSuccess={handleSuccess}
+                  isFirstAddress={(addresses?.length ?? 0) === 0}
                 />
               </CardContent>
             </Card>
@@ -157,6 +159,7 @@ export function AddressPage() {
               onEdit={handleEdit}
               isEditing={!!editingAddressId}
               isAdding={isAddingNew}
+              userId={userId}
             />
           </motion.div>
         )}
