@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query"
-import { createClient } from "@/shared/supabase/client"
+import { useQuery } from "@tanstack/react-query";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-const supabase = createClient()
+const supabase = getSupabaseBrowserClient();
 
 export function useShopSettings() {
   return useQuery({
@@ -12,14 +12,14 @@ export function useShopSettings() {
         .select("*")
         .order("id", { ascending: true })
         .limit(1)
-        .single()
+        .single();
 
       if (error) {
-        console.error("Error fetching shop settings:", error)
-        throw error
+        console.error("Error fetching shop settings:", error);
+        throw error;
       }
 
-      return data
+      return data;
     },
-  })
+  });
 }

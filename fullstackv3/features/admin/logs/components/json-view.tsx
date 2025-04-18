@@ -1,67 +1,69 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { ChevronDown, ChevronRight, CopyIcon } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useToast } from "@/components/ui/use-toast"
+import { useState } from "react";
+import { ChevronDown, ChevronRight, CopyIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast"; // Đổi hook toast
 
 interface JsonViewProps {
-  data: any
-  level?: number
-  isLast?: boolean
-  property?: string
+  data: any;
+  level?: number;
+  isLast?: boolean;
+  property?: string;
 }
 
-export function JsonView({ data, level = 0, isLast = true, property }: JsonViewProps) {
-  const [isExpanded, setIsExpanded] = useState(level < 2)
-  const { toast } = useToast()
+export function JsonView({
+  data,
+  level = 0,
+  isLast = true,
+  property,
+}: JsonViewProps) {
+  const [isExpanded, setIsExpanded] = useState(level < 2);
+  const toast = useSonnerToast(); // Sử dụng hook mới
 
   const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text)
-    toast({
-      description: "Đã sao chép vào clipboard",
-      duration: 2000,
-    })
-  }
+    navigator.clipboard.writeText(text);
+    toast.success("Đã sao chép vào clipboard", { duration: 2000 });
+  };
 
   const getIndent = (level: number) => {
-    return { paddingLeft: `${level * 16}px` }
-  }
+    return { paddingLeft: `${level * 16}px` };
+  };
 
   const getType = (value: any) => {
-    if (value === null) return "null"
-    if (Array.isArray(value)) return "array"
-    return typeof value
-  }
+    if (value === null) return "null";
+    if (Array.isArray(value)) return "array";
+    return typeof value;
+  };
 
   const getTypeColor = (type: string) => {
     switch (type) {
       case "string":
-        return "text-green-600 dark:text-green-400"
+        return "text-green-600 dark:text-green-400";
       case "number":
-        return "text-blue-600 dark:text-blue-400"
+        return "text-blue-600 dark:text-blue-400";
       case "boolean":
-        return "text-purple-600 dark:text-purple-400"
+        return "text-purple-600 dark:text-purple-400";
       case "null":
-        return "text-gray-500"
+        return "text-gray-500";
       default:
-        return ""
+        return "";
     }
-  }
+  };
 
   const renderValue = (value: any, type: string) => {
     switch (type) {
       case "string":
-        return `"${value}"`
+        return `"${value}"`;
       case "null":
-        return "null"
+        return "null";
       default:
-        return String(value)
+        return String(value);
     }
-  }
+  };
 
-  const type = getType(data)
-  const isExpandable = type === "object" || type === "array"
+  const type = getType(data);
+  const isExpandable = type === "object" || type === "array";
 
   if (!isExpandable) {
     return (
@@ -70,17 +72,26 @@ export function JsonView({ data, level = 0, isLast = true, property }: JsonViewP
         <span className={getTypeColor(type)}>{renderValue(data, type)}</span>
         {!isLast && <span>,</span>}
       </div>
-    )
+    );
   }
 
-  const isEmpty = Object.keys(data).length === 0
+  const isEmpty = Object.keys(data).length === 0;
 
   return (
     <div>
       <div className="flex items-center" style={getIndent(level)}>
         {isExpandable && !isEmpty && (
-          <Button variant="ghost" size="icon" className="h-5 w-5 p-0 mr-1" onClick={() => setIsExpanded(!isExpanded)}>
-            {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5 p-0 mr-1"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            {isExpanded ? (
+              <ChevronDown className="h-3 w-3" />
+            ) : (
+              <ChevronRight className="h-3 w-3" />
+            )}
           </Button>
         )}
 
@@ -126,5 +137,5 @@ export function JsonView({ data, level = 0, isLast = true, property }: JsonViewP
         </div>
       )}
     </div>
-  )
+  );
 }

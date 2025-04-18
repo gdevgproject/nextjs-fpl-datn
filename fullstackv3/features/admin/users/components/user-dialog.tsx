@@ -35,8 +35,8 @@ import { useCreateUser } from "../hooks/use-create-user";
 import { useUpdateUser } from "../hooks/use-update-user";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { PasswordInput } from "@/components/ui/password-input";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { Eye, EyeOff } from "lucide-react";
 
 // Define the form schema with Zod
 const userFormSchema = z.object({
@@ -65,10 +65,11 @@ interface UserDialogProps {
 
 export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
   const isEditing = !!user;
-  const { toast } = useSonnerToast();
+  const { toast, success, error } = useSonnerToast();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(
     user?.avatar_url || null
   );
+  const [showPassword, setShowPassword] = useState(false);
 
   // Initialize the form with default values or user data if editing
   const form = useForm<UserFormValues>({
@@ -101,22 +102,23 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
           // Only include password if it's provided
           ...(values.password ? { password: values.password } : {}),
         });
-        toast.success("Cập nhật người dùng thành công");
+        success("Cập nhật người dùng thành công");
       } else {
         // Create new user
         if (!values.password) {
-          return toast.error("Mật khẩu là bắt buộc khi tạo người dùng mới");
+          return error("Mật khẩu là bắt buộc khi tạo người dùng mới");
         }
         await createUser.mutateAsync({
           ...values,
           avatar_url: avatarUrl,
+          password: values.password as string, // Assert that password is a string since we checked it's not empty
         });
-        toast.success("Tạo người dùng thành công");
+        success("Tạo người dùng thành công");
       }
       onOpenChange(false);
       form.reset();
-    } catch (error: any) {
-      toast.error(error.message || "Đã xảy ra lỗi");
+    } catch (err: any) {
+      error(err?.message || "Đã xảy ra lỗi");
     }
   };
 
@@ -171,14 +173,34 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                           {isEditing ? "Mật khẩu mới (tùy chọn)" : "Mật khẩu"}
                         </FormLabel>
                         <FormControl>
-                          <PasswordInput
-                            placeholder={
-                              isEditing
-                                ? "Để trống nếu không thay đổi"
-                                : "Nhập mật khẩu"
-                            }
-                            {...field}
-                          />
+                          <div className="relative">
+                            <Input
+                              type={showPassword ? "text" : "password"}
+                              placeholder={
+                                isEditing
+                                  ? "Để trống nếu không thay đổi"
+                                  : "Nhập mật khẩu"
+                              }
+                              {...field}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground"
+                              onClick={() => setShowPassword((v) => !v)}
+                              tabIndex={-1}
+                            >
+                              {showPassword ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                              <span className="sr-only">
+                                {showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                              </span>
+                            </Button>
+                          </div>
                         </FormControl>
                         {isEditing && (
                           <FormDescription>

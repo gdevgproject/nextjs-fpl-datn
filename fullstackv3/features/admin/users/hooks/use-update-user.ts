@@ -1,20 +1,20 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { createClient } from "@/shared/supabase/client"
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface UpdateUserParams {
-  id: string
-  display_name: string
-  phone_number?: string
-  role: string
-  gender?: string
-  birth_date?: string
-  avatar_url?: string | null
-  password?: string
+  id: string;
+  display_name: string;
+  phone_number?: string;
+  role: string;
+  gender?: string;
+  birth_date?: string;
+  avatar_url?: string | null;
+  password?: string;
 }
 
 export function useUpdateUser() {
-  const queryClient = useQueryClient()
-  const supabase = createClient()
+  const queryClient = useQueryClient();
+  const supabase = getSupabaseBrowserClient();
 
   return useMutation({
     mutationFn: async (params: UpdateUserParams) => {
@@ -27,18 +27,19 @@ export function useUpdateUser() {
           display_name: params.display_name,
           phone_number: params.phone_number,
         },
-      }
+      };
 
       // Only include password if it's provided
       if (params.password) {
-        updateData.password = params.password
+        updateData.password = params.password;
       }
 
       // Update the user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.updateUserById(params.id, updateData)
+      const { data: authData, error: authError } =
+        await supabase.auth.admin.updateUserById(params.id, updateData);
 
       if (authError) {
-        throw new Error(authError.message)
+        throw new Error(authError.message);
       }
 
       // Update the profile with additional information
@@ -51,19 +52,19 @@ export function useUpdateUser() {
           birth_date: params.birth_date,
           avatar_url: params.avatar_url,
         })
-        .eq("id", params.id)
+        .eq("id", params.id);
 
       if (profileError) {
-        throw new Error(profileError.message)
+        throw new Error(profileError.message);
       }
 
-      return authData.user
+      return authData.user;
     },
     onSuccess: (_, variables) => {
       // Invalidate specific user query
-      queryClient.invalidateQueries({ queryKey: ["users", variables.id] })
+      queryClient.invalidateQueries({ queryKey: ["users", variables.id] });
       // Invalidate users list query
-      queryClient.invalidateQueries({ queryKey: ["users"] })
+      queryClient.invalidateQueries({ queryKey: ["users"] });
     },
-  })
+  });
 }

@@ -1,9 +1,9 @@
 "use client";
 
 import { useStorageDelete } from "@/shared/hooks/use-client-storage";
-import { createClient } from "@/shared/supabase/client";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-const supabase = createClient();
+const supabase = getSupabaseBrowserClient();
 
 export function useDeleteBannerImage() {
   const deleteStorageMutation = useStorageDelete("banners", {

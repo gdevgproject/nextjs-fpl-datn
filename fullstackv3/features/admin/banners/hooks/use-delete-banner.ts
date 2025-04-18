@@ -2,9 +2,9 @@
 
 import { useClientMutation } from "@/shared/hooks/use-client-mutation";
 import { useDeleteBannerImage } from "./use-delete-banner-image";
-import { createClient } from "@/shared/supabase/client";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-const supabase = createClient();
+const supabase = getSupabaseBrowserClient();
 
 export function useDeleteBanner() {
   const deleteBannerMutation = useClientMutation("banners", "delete", {
