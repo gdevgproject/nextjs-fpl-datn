@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -12,46 +12,76 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { useCreateCategory } from "../hooks/use-create-category"
-import { useUpdateCategory } from "../hooks/use-update-category"
-import { useUploadCategoryImage } from "../hooks/use-upload-category-image"
-import { useSonnerToast } from "@/shared/hooks/use-sonner-toast"
-import { CategoryImageUploader } from "./category-image-uploader"
-import { useCategories } from "../hooks/use-categories"
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { useCreateCategory } from "../hooks/use-create-category";
+import { useUpdateCategory } from "../hooks/use-update-category";
+import { useUploadCategoryImage } from "../hooks/use-upload-category-image";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { CategoryImageUploader } from "./category-image-uploader";
+import { useCategories } from "../hooks/use-categories";
 
 // Define the form schema with Zod
 const categoryFormSchema = z.object({
-  name: z.string().min(1, "Tên danh mục không được để trống").max(100, "Tên danh mục không được vượt quá 100 ký tự"),
-  description: z.string().max(500, "Mô tả không được vượt quá 500 ký tự").optional().nullable(),
+  name: z
+    .string()
+    .min(1, "Tên danh mục không được để trống")
+    .max(100, "Tên danh mục không được vượt quá 100 ký tự"),
+  description: z
+    .string()
+    .max(500, "Mô tả không được vượt quá 500 ký tự")
+    .optional()
+    .nullable(),
   image_url: z.string().optional().nullable(),
   is_featured: z.boolean().default(false),
   display_order: z.coerce.number().int().default(0),
   parent_category_id: z.coerce.number().nullable().optional(),
-})
+});
 
-type CategoryFormValues = z.infer<typeof categoryFormSchema>
+type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 
 interface CategoryDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  mode: "create" | "edit"
-  category?: any
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  mode: "create" | "edit";
+  category?: any;
 }
 
-export function CategoryDialog({ open, onOpenChange, mode, category }: CategoryDialogProps) {
-  const toast = useSonnerToast()
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [oldImageUrl, setOldImageUrl] = useState<string | null>(null)
+export function CategoryDialog({
+  open,
+  onOpenChange,
+  mode,
+  category,
+}: CategoryDialogProps) {
+  const toast = useSonnerToast();
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [oldImageUrl, setOldImageUrl] = useState<string | null>(null);
 
   // Fetch all categories for parent selection
-  const { data: categoriesData } = useCategories({}, { page: 1, pageSize: 100 }, { column: "name", direction: "asc" })
+  const { data: categoriesData } = useCategories(
+    {},
+    { page: 1, pageSize: 100 },
+    { column: "name", direction: "asc" }
+  );
 
   // Initialize the form with default values
   const form = useForm<CategoryFormValues>({
@@ -64,7 +94,7 @@ export function CategoryDialog({ open, onOpenChange, mode, category }: CategoryD
       display_order: 0,
       parent_category_id: null,
     },
-  })
+  });
 
   // Set form values when editing an existing category
   useEffect(() => {
@@ -76,8 +106,8 @@ export function CategoryDialog({ open, onOpenChange, mode, category }: CategoryD
         is_featured: category.is_featured,
         display_order: category.display_order,
         parent_category_id: category.parent_category_id,
-      })
-      setOldImageUrl(category.image_url)
+      });
+      setOldImageUrl(category.image_url);
     } else {
       form.reset({
         name: "",
@@ -86,21 +116,21 @@ export function CategoryDialog({ open, onOpenChange, mode, category }: CategoryD
         is_featured: false,
         display_order: 0,
         parent_category_id: null,
-      })
-      setImageFile(null)
-      setOldImageUrl(null)
+      });
+      setImageFile(null);
+      setOldImageUrl(null);
     }
-  }, [mode, category, form, open])
+  }, [mode, category, form, open]);
 
   // Mutations for creating and updating categories
-  const createCategoryMutation = useCreateCategory()
-  const updateCategoryMutation = useUpdateCategory()
-  const uploadImageMutation = useUploadCategoryImage()
+  const createCategoryMutation = useCreateCategory();
+  const updateCategoryMutation = useUpdateCategory();
+  const uploadImageMutation = useUploadCategoryImage();
 
   // Handle form submission
   const onSubmit = async (values: CategoryFormValues) => {
     try {
-      setIsProcessing(true)
+      setIsProcessing(true);
 
       if (mode === "create") {
         // Step 1: Create new category without image_url first
@@ -111,18 +141,19 @@ export function CategoryDialog({ open, onOpenChange, mode, category }: CategoryD
           display_order: values.display_order,
           parent_category_id: values.parent_category_id || null,
           image_url: null, // We'll update this after upload
-        }
+        };
 
         // Create category
-        const result = await createCategoryMutation.mutateAsync(categoryData)
-        const newCategoryId = Array.isArray(result) && result.length > 0 ? result[0].id : null
+        const result = await createCategoryMutation.mutateAsync(categoryData);
+        const newCategoryId =
+          Array.isArray(result) && result.length > 0 ? result[0].id : null;
 
         // Step 2: If we have an image file and category was created successfully, upload the image
         if (imageFile && newCategoryId) {
           try {
             // Create file path
-            const fileExt = imageFile.name.split(".").pop()
-            const filePath = `categories/${newCategoryId}/image.${fileExt}`
+            const fileExt = imageFile.name.split(".").pop();
+            const filePath = `categories/${newCategoryId}/image.${fileExt}`;
 
             // Upload file
             const uploadResult = await uploadImageMutation.mutateAsync({
@@ -132,33 +163,33 @@ export function CategoryDialog({ open, onOpenChange, mode, category }: CategoryD
                 contentType: imageFile.type,
                 upsert: true,
               },
-            })
+            });
 
             // Step 3: Update the category with the image URL
             await updateCategoryMutation.mutateAsync({
               id: newCategoryId,
               image_url: uploadResult.publicUrl,
-            })
+            });
           } catch (error) {
-            console.error("Error uploading image:", error)
+            console.error("Error uploading image:", error);
             // Category is created but image upload failed
             toast.error(
               `Danh mục đã được tạo nhưng tải lên ảnh thất bại: ${
                 error instanceof Error ? error.message : "Unknown error"
-              }`,
-            )
+              }`
+            );
           }
         }
 
         // Show success message
-        toast.success("Danh mục đã được tạo thành công")
+        toast.success("Danh mục đã được tạo thành công");
 
         // Close the dialog
-        onOpenChange(false)
+        onOpenChange(false);
 
         // Reset the form
-        form.reset()
-        setImageFile(null)
+        form.reset();
+        setImageFile(null);
       } else if (mode === "edit" && category) {
         // Update existing category
         await updateCategoryMutation.mutateAsync({
@@ -169,42 +200,47 @@ export function CategoryDialog({ open, onOpenChange, mode, category }: CategoryD
           is_featured: values.is_featured,
           display_order: values.display_order,
           parent_category_id: values.parent_category_id || null,
-        })
+        });
 
         // Show success message
-        toast.success("Danh mục đã được cập nhật thành công")
+        toast.success("Danh mục đã được cập nhật thành công");
 
         // Close the dialog
-        onOpenChange(false)
+        onOpenChange(false);
       }
     } catch (error) {
       // Show error message
       toast.error(
         `Lỗi khi ${mode === "create" ? "tạo" : "cập nhật"} danh mục: ${
           error instanceof Error ? error.message : "Unknown error"
-        }`,
-      )
+        }`
+      );
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
-  }
+  };
 
   // Handle image upload
   const handleImageChange = (file: File | null, url: string | null) => {
-    setImageFile(file)
-    form.setValue("image_url", url)
-  }
+    setImageFile(file);
+    form.setValue("image_url", url);
+  };
 
   // Filter out the current category from parent options to prevent circular references
-  const parentOptions = categoriesData?.data.filter((c) => c.id !== category?.id) || []
+  const parentOptions =
+    categoriesData?.data.filter((c) => c.id !== category?.id) || [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>{mode === "create" ? "Thêm danh mục mới" : "Chỉnh sửa danh mục"}</DialogTitle>
+          <DialogTitle>
+            {mode === "create" ? "Thêm danh mục mới" : "Chỉnh sửa danh mục"}
+          </DialogTitle>
           <DialogDescription>
-            {mode === "create" ? "Thêm một danh mục mới vào hệ thống." : "Chỉnh sửa thông tin danh mục."}
+            {mode === "create"
+              ? "Thêm một danh mục mới vào hệ thống."
+              : "Chỉnh sửa thông tin danh mục."}
           </DialogDescription>
         </DialogHeader>
 
@@ -222,7 +258,9 @@ export function CategoryDialog({ open, onOpenChange, mode, category }: CategoryD
                       <FormControl>
                         <Input placeholder="Nhập tên danh mục" {...field} />
                       </FormControl>
-                      <FormDescription>Tên danh mục phải là duy nhất trong hệ thống.</FormDescription>
+                      <FormDescription>
+                        Tên danh mục phải là duy nhất trong hệ thống.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -242,7 +280,9 @@ export function CategoryDialog({ open, onOpenChange, mode, category }: CategoryD
                           value={field.value || ""}
                         />
                       </FormControl>
-                      <FormDescription>Mô tả ngắn gọn về danh mục.</FormDescription>
+                      <FormDescription>
+                        Mô tả ngắn gọn về danh mục.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -254,14 +294,19 @@ export function CategoryDialog({ open, onOpenChange, mode, category }: CategoryD
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Danh mục cha</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value?.toString() || ""}>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value?.toString() || ""}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Chọn danh mục cha (nếu có)" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="none">Không có danh mục cha</SelectItem>
+                          <SelectItem value="none">
+                            Không có danh mục cha
+                          </SelectItem>
                           {parentOptions.map((cat) => (
                             <SelectItem key={cat.id} value={cat.id.toString()}>
                               {cat.name}
@@ -270,7 +315,8 @@ export function CategoryDialog({ open, onOpenChange, mode, category }: CategoryD
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        Chọn danh mục cha nếu đây là danh mục con. Để trống nếu là danh mục gốc.
+                        Chọn danh mục cha nếu đây là danh mục con. Để trống nếu
+                        là danh mục gốc.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -288,12 +334,15 @@ export function CategoryDialog({ open, onOpenChange, mode, category }: CategoryD
                       <FormControl>
                         <CategoryImageUploader
                           initialImageUrl={field.value || ""}
-                          categoryId={mode === "edit" ? category?.id : undefined}
+                          categoryId={
+                            mode === "edit" ? category?.id : undefined
+                          }
                           onChange={handleImageChange}
                         />
                       </FormControl>
                       <FormDescription>
-                        Tải lên ảnh đại diện cho danh mục. Hỗ trợ định dạng PNG, JPG, GIF, WEBP.
+                        Tải lên ảnh đại diện cho danh mục. Hỗ trợ định dạng PNG,
+                        JPG, GIF, WEBP.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -309,7 +358,9 @@ export function CategoryDialog({ open, onOpenChange, mode, category }: CategoryD
                       <FormControl>
                         <Input type="number" min="0" {...field} />
                       </FormControl>
-                      <FormDescription>Số nhỏ hơn sẽ hiển thị trước. Mặc định là 0.</FormDescription>
+                      <FormDescription>
+                        Số nhỏ hơn sẽ hiển thị trước. Mặc định là 0.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -321,13 +372,19 @@ export function CategoryDialog({ open, onOpenChange, mode, category }: CategoryD
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                       <div className="space-y-0.5">
-                        <FormLabel className="text-base">Danh mục nổi bật</FormLabel>
+                        <FormLabel className="text-base">
+                          Danh mục nổi bật
+                        </FormLabel>
                         <FormDescription>
-                          Danh mục nổi bật sẽ được hiển thị ở vị trí đặc biệt trên trang chủ.
+                          Danh mục nổi bật sẽ được hiển thị ở vị trí đặc biệt
+                          trên trang chủ.
                         </FormDescription>
                       </div>
                       <FormControl>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
                       </FormControl>
                     </FormItem>
                   )}
@@ -336,16 +393,24 @@ export function CategoryDialog({ open, onOpenChange, mode, category }: CategoryD
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
                 Hủy
               </Button>
               <Button type="submit" disabled={isProcessing}>
-                {isProcessing ? "Đang xử lý..." : mode === "create" ? "Tạo danh mục" : "Cập nhật danh mục"}
+                {isProcessing
+                  ? "Đang xử lý..."
+                  : mode === "create"
+                  ? "Tạo danh mục"
+                  : "Cập nhật danh mục"}
               </Button>
             </DialogFooter>
           </form>
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -1,68 +1,87 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useDebounce } from "../hooks/use-debounce"
-import { useOrderStatuses } from "../hooks/use-order-statuses"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Calendar } from "@/components/ui/calendar"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon, Search, X } from "lucide-react"
-import { format } from "date-fns"
-import { vi } from "date-fns/locale"
-import { cn } from "@/shared/lib/utils"
-import type { OrdersFilters } from "../hooks/use-orders"
+import { useState, useEffect } from "react";
+import { useDebounce } from "../hooks/use-debounce";
+import { useOrderStatuses } from "../hooks/use-order-statuses";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { CalendarIcon, Search, X } from "lucide-react";
+import { format } from "date-fns";
+import { vi } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import type { OrdersFilters } from "../hooks/use-orders";
 
 interface OrderFiltersProps {
-  onFilterChange: (filters: OrdersFilters) => void
+  onFilterChange: (filters: OrdersFilters) => void;
 }
 
 export function OrderFilters({ onFilterChange }: OrderFiltersProps) {
-  const [search, setSearch] = useState("")
-  const [status, setStatus] = useState<string | undefined>(undefined)
-  const [paymentStatus, setPaymentStatus] = useState<string | undefined>(undefined)
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined)
-  const [dateTo, setDateTo] = useState<Date | undefined>(undefined)
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<string | undefined>(undefined);
+  const [paymentStatus, setPaymentStatus] = useState<string | undefined>(
+    undefined
+  );
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
-  const debouncedSearch = useDebounce(search, 500)
-  const { data: statusesData } = useOrderStatuses()
-  const statuses = statusesData?.data || []
+  const debouncedSearch = useDebounce(search, 500);
+  const { data: statusesData } = useOrderStatuses();
+  const statuses = statusesData?.data || [];
 
   useEffect(() => {
-    const filters: OrdersFilters = {}
+    const filters: OrdersFilters = {};
 
     if (debouncedSearch) {
-      filters.search = debouncedSearch
+      filters.search = debouncedSearch;
     }
 
     if (status && status !== "all") {
-      filters.status = Number.parseInt(status)
+      filters.status = Number.parseInt(status);
     }
 
     if (paymentStatus && paymentStatus !== "all") {
-      filters.paymentStatus = paymentStatus
+      filters.paymentStatus = paymentStatus;
     }
 
     if (dateFrom) {
-      filters.dateFrom = dateFrom.toISOString()
+      filters.dateFrom = dateFrom.toISOString();
     }
 
     if (dateTo) {
-      filters.dateTo = dateTo.toISOString()
+      filters.dateTo = dateTo.toISOString();
     }
 
-    onFilterChange(filters)
-  }, [debouncedSearch, status, paymentStatus, dateFrom, dateTo, onFilterChange])
+    onFilterChange(filters);
+  }, [
+    debouncedSearch,
+    status,
+    paymentStatus,
+    dateFrom,
+    dateTo,
+    onFilterChange,
+  ]);
 
   const resetFilters = () => {
-    setSearch("")
-    setStatus(undefined)
-    setPaymentStatus(undefined)
-    setDateFrom(undefined)
-    setDateTo(undefined)
-  }
+    setSearch("");
+    setStatus(undefined);
+    setPaymentStatus(undefined);
+    setDateFrom(undefined);
+    setDateTo(undefined);
+  };
 
   return (
     <div className="bg-card rounded-md border p-4 shadow-sm">
@@ -121,14 +140,25 @@ export function OrderFilters({ onFilterChange }: OrderFiltersProps) {
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className={cn("w-full justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !dateFrom && "text-muted-foreground"
+                  )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dateFrom ? format(dateFrom, "dd/MM/yyyy", { locale: vi }) : "Chọn ngày"}
+                  {dateFrom
+                    ? format(dateFrom, "dd/MM/yyyy", { locale: vi })
+                    : "Chọn ngày"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus locale={vi} />
+                <Calendar
+                  mode="single"
+                  selected={dateFrom}
+                  onSelect={setDateFrom}
+                  initialFocus
+                  locale={vi}
+                />
               </PopoverContent>
             </Popover>
           </div>
@@ -139,24 +169,40 @@ export function OrderFilters({ onFilterChange }: OrderFiltersProps) {
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className={cn("w-full justify-start text-left font-normal", !dateTo && "text-muted-foreground")}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !dateTo && "text-muted-foreground"
+                  )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dateTo ? format(dateTo, "dd/MM/yyyy", { locale: vi }) : "Chọn ngày"}
+                  {dateTo
+                    ? format(dateTo, "dd/MM/yyyy", { locale: vi })
+                    : "Chọn ngày"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus locale={vi} />
+                <Calendar
+                  mode="single"
+                  selected={dateTo}
+                  onSelect={setDateTo}
+                  initialFocus
+                  locale={vi}
+                />
               </PopoverContent>
             </Popover>
           </div>
 
-          <Button variant="ghost" size="icon" onClick={resetFilters} className="h-10 w-10">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={resetFilters}
+            className="h-10 w-10"
+          >
             <X className="h-4 w-4" />
             <span className="sr-only">Reset filters</span>
           </Button>
         </div>
       </div>
     </div>
-  )
+  );
 }

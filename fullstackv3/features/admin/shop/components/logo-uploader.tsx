@@ -1,67 +1,67 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useEffect } from "react"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { useUploadLogo } from "../hooks/use-upload-logo"
-import { useDeleteLogo } from "../hooks/use-delete-logo"
-import { useSonnerToast } from "@/shared/hooks/use-sonner-toast"
-import { Trash2, Upload } from "lucide-react"
-import { DeleteLogoDialog } from "./delete-logo-dialog"
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { useUploadLogo } from "../hooks/use-upload-logo";
+import { useDeleteLogo } from "../hooks/use-delete-logo";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { Trash2, Upload } from "lucide-react";
+import { DeleteLogoDialog } from "./delete-logo-dialog";
 
 interface LogoUploaderProps {
-  shopId: number
-  existingLogoUrl: string | null
+  shopId: number;
+  existingLogoUrl: string | null;
 }
 
 export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
-  const { toast } = useSonnerToast()
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const { mutate: uploadLogo, isPending: isUploading } = useUploadLogo()
-  const { mutate: deleteLogo, isPending: isDeleting } = useDeleteLogo()
+  const { toast } = useSonnerToast();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const { mutate: uploadLogo, isPending: isUploading } = useUploadLogo();
+  const { mutate: deleteLogo, isPending: isDeleting } = useDeleteLogo();
 
   // Cleanup preview URL when component unmounts
   useEffect(() => {
     return () => {
       if (previewUrl) {
-        URL.revokeObjectURL(previewUrl)
+        URL.revokeObjectURL(previewUrl);
       }
-    }
-  }, [previewUrl])
+    };
+  }, [previewUrl]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const file = e.target.files?.[0];
+    if (!file) return;
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
-      toast.error("Chỉ chấp nhận file hình ảnh")
-      return
+      toast.error("Chỉ chấp nhận file hình ảnh");
+      return;
     }
 
     // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
-      toast.error("Kích thước file không được vượt quá 2MB")
-      return
+      toast.error("Kích thước file không được vượt quá 2MB");
+      return;
     }
 
     // Create preview URL
     if (previewUrl) {
-      URL.revokeObjectURL(previewUrl)
+      URL.revokeObjectURL(previewUrl);
     }
-    const objectUrl = URL.createObjectURL(file)
-    setPreviewUrl(objectUrl)
-    setSelectedFile(file)
-  }
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+    setSelectedFile(file);
+  };
 
   const handleUpload = () => {
-    if (!selectedFile) return
+    if (!selectedFile) return;
 
-    const isUpdate = !!existingLogoUrl
+    const isUpdate = !!existingLogoUrl;
 
     uploadLogo(
       {
@@ -73,40 +73,49 @@ export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
         onSuccess: () => {
           if (isUpdate) {
             toast.success("Cập nhật logo thành công", {
-              description: "Logo mới đã được cập nhật và hiển thị trên cửa hàng của bạn.",
+              description:
+                "Logo mới đã được cập nhật và hiển thị trên cửa hàng của bạn.",
               duration: 5000,
-            })
+            });
           } else {
             toast.success("Tải lên logo thành công", {
-              description: "Logo đã được tải lên và hiển thị trên cửa hàng của bạn.",
+              description:
+                "Logo đã được tải lên và hiển thị trên cửa hàng của bạn.",
               duration: 5000,
-            })
+            });
           }
-          setSelectedFile(null)
+          setSelectedFile(null);
           if (previewUrl) {
-            URL.revokeObjectURL(previewUrl)
-            setPreviewUrl(null)
+            URL.revokeObjectURL(previewUrl);
+            setPreviewUrl(null);
           }
           // Clear the file input
-          const fileInput = document.getElementById("logo-upload") as HTMLInputElement
-          if (fileInput) fileInput.value = ""
+          const fileInput = document.getElementById(
+            "logo-upload"
+          ) as HTMLInputElement;
+          if (fileInput) fileInput.value = "";
         },
         onError: (error) => {
-          toast.error(isUpdate ? "Lỗi khi cập nhật logo" : "Lỗi khi tải lên logo", {
-            description: error.message || "Vui lòng thử lại sau hoặc liên hệ quản trị viên.",
-            duration: 7000,
-          })
+          toast.error(
+            isUpdate ? "Lỗi khi cập nhật logo" : "Lỗi khi tải lên logo",
+            {
+              description:
+                error.message ||
+                "Vui lòng thử lại sau hoặc liên hệ quản trị viên.",
+              duration: 7000,
+            }
+          );
         },
-      },
-    )
-  }
+      }
+    );
+  };
 
   const handleDeleteClick = () => {
-    setIsDeleteDialogOpen(true)
-  }
+    setIsDeleteDialogOpen(true);
+  };
 
   const handleConfirmDelete = () => {
-    if (!existingLogoUrl) return
+    if (!existingLogoUrl) return;
 
     deleteLogo(
       {
@@ -118,25 +127,27 @@ export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
           toast.success("Đã xóa logo thành công", {
             description: "Logo đã được xóa khỏi cửa hàng của bạn.",
             duration: 5000,
-          })
-          setIsDeleteDialogOpen(false)
+          });
+          setIsDeleteDialogOpen(false);
         },
         onError: (error) => {
           toast.error("Lỗi khi xóa logo", {
-            description: error.message || "Vui lòng thử lại sau hoặc liên hệ quản trị viên.",
+            description:
+              error.message ||
+              "Vui lòng thử lại sau hoặc liên hệ quản trị viên.",
             duration: 7000,
-          })
-          setIsDeleteDialogOpen(false)
+          });
+          setIsDeleteDialogOpen(false);
         },
-      },
-    )
-  }
+      }
+    );
+  };
 
   const getButtonLabel = () => {
-    if (isUploading) return "Đang tải lên..."
-    if (existingLogoUrl) return "Cập nhật logo"
-    return "Tải lên"
-  }
+    if (isUploading) return "Đang tải lên...";
+    if (existingLogoUrl) return "Cập nhật logo";
+    return "Tải lên";
+  };
 
   return (
     <div className="space-y-4">
@@ -160,7 +171,9 @@ export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-muted">
-              <span className="text-xs text-muted-foreground">Chưa có logo</span>
+              <span className="text-xs text-muted-foreground">
+                Chưa có logo
+              </span>
             </div>
           )}
         </div>
@@ -184,7 +197,12 @@ export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
               </label>
             </div>
             {selectedFile && (
-              <Button type="button" size="sm" onClick={handleUpload} disabled={isUploading || isDeleting}>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleUpload}
+                disabled={isUploading || isDeleting}
+              >
                 {getButtonLabel()}
               </Button>
             )}
@@ -202,7 +220,11 @@ export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
               </Button>
             )}
           </div>
-          {selectedFile && <p className="text-xs text-muted-foreground truncate max-w-[200px]">{selectedFile.name}</p>}
+          {selectedFile && (
+            <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+              {selectedFile.name}
+            </p>
+          )}
           <p className="text-xs text-muted-foreground">
             Chấp nhận các định dạng JPG, PNG hoặc GIF. Kích thước tối đa 2MB.
           </p>
@@ -215,5 +237,5 @@ export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
         onConfirm={handleConfirmDelete}
       />
     </div>
-  )
+  );
 }

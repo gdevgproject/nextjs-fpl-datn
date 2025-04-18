@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   AlertDialog,
@@ -9,29 +9,33 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { useDeleteUser } from "../hooks/use-delete-user"
-import { useSonnerToast } from "@/shared/hooks/use-sonner-toast"
+} from "@/components/ui/alert-dialog";
+import { useDeleteUser } from "../hooks/use-delete-user";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 
 interface DeleteUserDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  user: any
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  user: any;
 }
 
-export function DeleteUserDialog({ open, onOpenChange, user }: DeleteUserDialogProps) {
-  const { toast } = useSonnerToast()
-  const deleteUser = useDeleteUser()
+export function DeleteUserDialog({
+  open,
+  onOpenChange,
+  user,
+}: DeleteUserDialogProps) {
+  const { toast } = useSonnerToast();
+  const deleteUser = useDeleteUser();
 
   const handleDelete = async () => {
     try {
-      await deleteUser.mutateAsync(user.id)
-      toast.success("Xóa người dùng thành công")
-      onOpenChange(false)
+      await deleteUser.mutateAsync(user.id);
+      toast.success("Xóa người dùng thành công");
+      onOpenChange(false);
     } catch (error: any) {
-      toast.error(error.message || "Đã xảy ra lỗi khi xóa người dùng")
+      toast.error(error.message || "Đã xảy ra lỗi khi xóa người dùng");
     }
-  }
+  };
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -39,8 +43,10 @@ export function DeleteUserDialog({ open, onOpenChange, user }: DeleteUserDialogP
         <AlertDialogHeader>
           <AlertDialogTitle>Bạn có chắc chắn muốn xóa?</AlertDialogTitle>
           <AlertDialogDescription>
-            Hành động này sẽ xóa người dùng <span className="font-medium">{user?.email}</span> và không thể hoàn tác.
-            Tất cả dữ liệu liên quan đến người dùng này sẽ bị xóa vĩnh viễn.
+            Hành động này sẽ xóa người dùng{" "}
+            <span className="font-medium">{user?.email}</span> và không thể hoàn
+            tác. Tất cả dữ liệu liên quan đến người dùng này sẽ bị xóa vĩnh
+            viễn.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -54,5 +60,5 @@ export function DeleteUserDialog({ open, onOpenChange, user }: DeleteUserDialogP
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  )
+  );
 }

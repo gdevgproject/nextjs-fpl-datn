@@ -1,21 +1,28 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useRef } from "react"
-import Image from "next/image"
+import { useState, useRef } from "react";
+import Image from "next/image";
 import {
   useProductImages,
   useCreateProductImage,
   useUpdateProductImage,
   useDeleteProductImage,
-} from "../hooks/use-product-images"
-import { useUploadProductImage } from "../hooks/use-upload-product-image"
-import { useDeleteProductImages } from "../hooks/use-delete-product-images"
-import { useSonnerToast } from "@/shared/hooks/use-sonner-toast"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+} from "../hooks/use-product-images";
+import { useUploadProductImage } from "../hooks/use-upload-product-image";
+import { useDeleteProductImages } from "../hooks/use-delete-product-images";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,60 +32,73 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Textarea } from "@/components/ui/textarea"
-import { Upload, X, ImageIcon, Star, StarIcon } from "lucide-react"
+} from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Upload, X, ImageIcon, Star, StarIcon } from "lucide-react";
 
 interface ProductImagesTabProps {
-  productId: number | null | undefined
+  productId: number | null | undefined;
 }
 
 export function ProductImagesTab({ productId }: ProductImagesTabProps) {
-  const toast = useSonnerToast()
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [isUploading, setIsUploading] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [imageToDelete, setImageToDelete] = useState<any | null>(null)
-  const [altText, setAltText] = useState("")
+  const toast = useSonnerToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [imageToDelete, setImageToDelete] = useState<any | null>(null);
+  const [altText, setAltText] = useState("");
 
   // Fetch images for the product
-  const { data: imagesData, isLoading, isError } = useProductImages(productId || null)
+  const {
+    data: imagesData,
+    isLoading,
+    isError,
+  } = useProductImages(productId || null);
 
   // Mutations for creating, updating, and deleting images
-  const createImageMutation = useCreateProductImage()
-  const updateImageMutation = useUpdateProductImage()
-  const deleteImageMutation = useDeleteProductImage()
-  const uploadImageMutation = useUploadProductImage()
-  const deleteStorageMutation = useDeleteProductImages()
+  const createImageMutation = useCreateProductImage();
+  const updateImageMutation = useUpdateProductImage();
+  const deleteImageMutation = useDeleteProductImage();
+  const uploadImageMutation = useUploadProductImage();
+  const deleteStorageMutation = useDeleteProductImages();
 
   // Handle file selection
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0 || !productId) return
+    const files = e.target.files;
+    if (!files || files.length === 0 || !productId) return;
 
-    setIsUploading(true)
+    setIsUploading(true);
 
     try {
       // Process each selected file
       for (let i = 0; i < files.length; i++) {
-        const file = files[i]
+        const file = files[i];
 
         // Check file type
-        const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+        const validTypes = [
+          "image/jpeg",
+          "image/png",
+          "image/gif",
+          "image/webp",
+        ];
         if (!validTypes.includes(file.type)) {
-          toast.error(`Định dạng file "${file.name}" không hợp lệ. Chỉ chấp nhận JPG, PNG, GIF, WEBP.`)
-          continue
+          toast.error(
+            `Định dạng file "${file.name}" không hợp lệ. Chỉ chấp nhận JPG, PNG, GIF, WEBP.`
+          );
+          continue;
         }
 
         // Check file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
-          toast.error(`File "${file.name}" quá lớn. Kích thước tối đa là 5MB.`)
-          continue
+          toast.error(`File "${file.name}" quá lớn. Kích thước tối đa là 5MB.`);
+          continue;
         }
 
         // Create file path
-        const fileExt = file.name.split(".").pop()
-        const filePath = `${productId}/${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`
+        const fileExt = file.name.split(".").pop();
+        const filePath = `${productId}/${Date.now()}-${Math.random()
+          .toString(36)
+          .substring(2, 7)}.${fileExt}`;
 
         // Upload file
         const result = await uploadImageMutation.mutateAsync({
@@ -88,7 +108,7 @@ export function ProductImagesTab({ productId }: ProductImagesTabProps) {
             contentType: file.type,
             upsert: true,
           },
-        })
+        });
 
         // Create image record in database
         await createImageMutation.mutateAsync({
@@ -97,81 +117,93 @@ export function ProductImagesTab({ productId }: ProductImagesTabProps) {
           alt_text: altText || null,
           is_main: (imagesData?.data?.length || 0) === 0, // Set as main if it's the first image
           display_order: (imagesData?.data?.length || 0) + i,
-        })
+        });
       }
 
       // Reset file input and alt text
       if (fileInputRef.current) {
-        fileInputRef.current.value = ""
+        fileInputRef.current.value = "";
       }
-      setAltText("")
+      setAltText("");
 
-      toast.success("Hình ảnh đã được tải lên thành công")
+      toast.success("Hình ảnh đã được tải lên thành công");
     } catch (error) {
-      toast.error(`Lỗi khi tải lên hình ảnh: ${error instanceof Error ? error.message : "Unknown error"}`)
+      toast.error(
+        `Lỗi khi tải lên hình ảnh: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     } finally {
-      setIsUploading(false)
+      setIsUploading(false);
     }
-  }
+  };
 
   // Handle delete button click
   const handleDeleteClick = (image: any) => {
-    setImageToDelete(image)
-    setIsDeleting(true)
-  }
+    setImageToDelete(image);
+    setIsDeleting(true);
+  };
 
   // Handle delete confirmation
   const handleDeleteConfirm = async () => {
-    if (!imageToDelete) return
+    if (!imageToDelete) return;
 
     try {
       // Delete image record from database
-      await deleteImageMutation.mutateAsync({ id: imageToDelete.id })
+      await deleteImageMutation.mutateAsync({ id: imageToDelete.id });
 
       // Delete image file from storage
       if (imageToDelete.image_url) {
-        await deleteStorageMutation.deleteFromUrl(imageToDelete.image_url)
+        await deleteStorageMutation.deleteFromUrl(imageToDelete.image_url);
       }
 
-      toast.success("Hình ảnh đã được xóa thành công")
+      toast.success("Hình ảnh đã được xóa thành công");
     } catch (error) {
-      toast.error(`Lỗi khi xóa hình ảnh: ${error instanceof Error ? error.message : "Unknown error"}`)
+      toast.error(
+        `Lỗi khi xóa hình ảnh: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     } finally {
-      setIsDeleting(false)
-      setImageToDelete(null)
+      setIsDeleting(false);
+      setImageToDelete(null);
     }
-  }
+  };
 
   // Handle set as main image
   const handleSetMainImage = async (image: any) => {
-    if (!image || image.is_main) return
+    if (!image || image.is_main) return;
 
     try {
       // Update image to set as main
       await updateImageMutation.mutateAsync({
         id: image.id,
         is_main: true,
-      })
+      });
 
-      toast.success("Đã đặt làm ảnh chính")
+      toast.success("Đã đặt làm ảnh chính");
     } catch (error) {
-      toast.error(`Lỗi khi đặt ảnh chính: ${error instanceof Error ? error.message : "Unknown error"}`)
+      toast.error(
+        `Lỗi khi đặt ảnh chính: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
-  }
+  };
 
   // Handle upload button click
   const handleUploadClick = () => {
     if (fileInputRef.current) {
-      fileInputRef.current.click()
+      fileInputRef.current.click();
     }
-  }
+  };
 
   if (!productId) {
     return (
       <div className="flex justify-center items-center p-8">
         <p>Vui lòng tạo sản phẩm trước khi thêm hình ảnh.</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -180,7 +212,10 @@ export function ProductImagesTab({ productId }: ProductImagesTabProps) {
       <Card>
         <CardHeader>
           <CardTitle>Tải lên hình ảnh</CardTitle>
-          <CardDescription>Tải lên hình ảnh cho sản phẩm. Hình ảnh đầu tiên sẽ được đặt làm ảnh chính.</CardDescription>
+          <CardDescription>
+            Tải lên hình ảnh cho sản phẩm. Hình ảnh đầu tiên sẽ được đặt làm ảnh
+            chính.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -194,7 +229,8 @@ export function ProductImagesTab({ productId }: ProductImagesTabProps) {
                 className="resize-none"
               />
               <p className="text-sm text-muted-foreground mt-1">
-                Mô tả ngắn gọn về hình ảnh, giúp cải thiện SEO và trải nghiệm người dùng khiếm thị.
+                Mô tả ngắn gọn về hình ảnh, giúp cải thiện SEO và trải nghiệm
+                người dùng khiếm thị.
               </p>
             </div>
 
@@ -206,9 +242,12 @@ export function ProductImagesTab({ productId }: ProductImagesTabProps) {
                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                   <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
                   <p className="mb-2 text-sm text-muted-foreground">
-                    <span className="font-semibold">Nhấp để tải lên</span> hoặc kéo thả
+                    <span className="font-semibold">Nhấp để tải lên</span> hoặc
+                    kéo thả
                   </p>
-                  <p className="text-xs text-muted-foreground">PNG, JPG, GIF, WEBP (Tối đa 5MB)</p>
+                  <p className="text-xs text-muted-foreground">
+                    PNG, JPG, GIF, WEBP (Tối đa 5MB)
+                  </p>
                 </div>
                 <input
                   id="image-upload"
@@ -246,7 +285,8 @@ export function ProductImagesTab({ productId }: ProductImagesTabProps) {
         <CardHeader>
           <CardTitle>Thư viện hình ảnh</CardTitle>
           <CardDescription>
-            Quản lý hình ảnh của sản phẩm. Nhấp vào biểu tượng sao để đặt làm ảnh chính.
+            Quản lý hình ảnh của sản phẩm. Nhấp vào biểu tượng sao để đặt làm
+            ảnh chính.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -255,12 +295,16 @@ export function ProductImagesTab({ productId }: ProductImagesTabProps) {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : isError ? (
-            <div className="text-red-500 text-center py-4">Đã xảy ra lỗi khi tải dữ liệu hình ảnh.</div>
+            <div className="text-red-500 text-center py-4">
+              Đã xảy ra lỗi khi tải dữ liệu hình ảnh.
+            </div>
           ) : imagesData?.data?.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <ImageIcon className="mx-auto h-12 w-12 mb-2" />
               <p>Chưa có hình ảnh nào cho sản phẩm này.</p>
-              <p className="text-sm mt-2">Sử dụng form bên trên để tải lên hình ảnh mới.</p>
+              <p className="text-sm mt-2">
+                Sử dụng form bên trên để tải lên hình ảnh mới.
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -283,8 +327,14 @@ export function ProductImagesTab({ productId }: ProductImagesTabProps) {
                       disabled={image.is_main}
                       title={image.is_main ? "Ảnh chính" : "Đặt làm ảnh chính"}
                     >
-                      {image.is_main ? <StarIcon className="h-4 w-4" /> : <Star className="h-4 w-4" />}
-                      <span className="sr-only">{image.is_main ? "Ảnh chính" : "Đặt làm ảnh chính"}</span>
+                      {image.is_main ? (
+                        <StarIcon className="h-4 w-4" />
+                      ) : (
+                        <Star className="h-4 w-4" />
+                      )}
+                      <span className="sr-only">
+                        {image.is_main ? "Ảnh chính" : "Đặt làm ảnh chính"}
+                      </span>
                     </Button>
                     <Button
                       variant="outline"
@@ -315,17 +365,21 @@ export function ProductImagesTab({ productId }: ProductImagesTabProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Xóa hình ảnh</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn xóa hình ảnh này không? Hành động này không thể hoàn tác.
+              Bạn có chắc chắn muốn xóa hình ảnh này không? Hành động này không
+              thể hoàn tác.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-600 hover:bg-red-700">
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700"
+            >
               Xóa
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }

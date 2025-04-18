@@ -1,22 +1,26 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { format } from "date-fns"
-import { vi } from "date-fns/locale"
-import { CalendarIcon } from "lucide-react"
-import type { DateRange } from "react-day-picker"
+import * as React from "react";
+import { format } from "date-fns";
+import { vi } from "date-fns/locale";
+import { CalendarIcon } from "lucide-react";
+import type { DateRange } from "react-day-picker";
 
-import { cn } from "@/shared/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface DateRangePickerProps {
-  startDate?: string
-  endDate?: string
-  onStartDateChange: (date: string | undefined) => void
-  onEndDateChange: (date: string | undefined) => void
-  className?: string
+  startDate?: string;
+  endDate?: string;
+  onStartDateChange: (date: string | undefined) => void;
+  onEndDateChange: (date: string | undefined) => void;
+  className?: string;
 }
 
 export function DateRangePicker({
@@ -32,24 +36,24 @@ export function DateRangePicker({
           from: new Date(startDate),
           to: new Date(endDate),
         }
-      : undefined,
-  )
+      : undefined
+  );
 
   const handleSelect = (range: DateRange | undefined) => {
-    setDate(range)
+    setDate(range);
 
     if (range?.from) {
-      onStartDateChange(format(range.from, "yyyy-MM-dd"))
+      onStartDateChange(format(range.from, "yyyy-MM-dd"));
     } else {
-      onStartDateChange(undefined)
+      onStartDateChange(undefined);
     }
 
     if (range?.to) {
-      onEndDateChange(format(range.to, "yyyy-MM-dd"))
+      onEndDateChange(format(range.to, "yyyy-MM-dd"));
     } else {
-      onEndDateChange(undefined)
+      onEndDateChange(undefined);
     }
-  }
+  };
 
   return (
     <div className={cn("grid gap-2", className)}>
@@ -58,13 +62,17 @@ export function DateRangePicker({
           <Button
             id="date"
             variant="outline"
-            className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
+            className={cn(
+              "w-full justify-start text-left font-normal",
+              !date && "text-muted-foreground"
+            )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
             {date?.from ? (
               date.to ? (
                 <>
-                  {format(date.from, "dd/MM/yyyy", { locale: vi })} - {format(date.to, "dd/MM/yyyy", { locale: vi })}
+                  {format(date.from, "dd/MM/yyyy", { locale: vi })} -{" "}
+                  {format(date.to, "dd/MM/yyyy", { locale: vi })}
                 </>
               ) : (
                 format(date.from, "dd/MM/yyyy", { locale: vi })
@@ -87,5 +95,5 @@ export function DateRangePicker({
         </PopoverContent>
       </Popover>
     </div>
-  )
+  );
 }

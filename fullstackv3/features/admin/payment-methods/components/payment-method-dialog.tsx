@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -12,14 +12,22 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
-import { useCreatePaymentMethod } from "../hooks/use-create-payment-method"
-import { useUpdatePaymentMethod } from "../hooks/use-update-payment-method"
-import { useSonnerToast } from "@/shared/hooks/use-sonner-toast"
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { useCreatePaymentMethod } from "../hooks/use-create-payment-method";
+import { useUpdatePaymentMethod } from "../hooks/use-update-payment-method";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 
 // Define the form schema with Zod
 const paymentMethodFormSchema = z.object({
@@ -27,22 +35,31 @@ const paymentMethodFormSchema = z.object({
     .string()
     .min(1, "Tên phương thức thanh toán không được để trống")
     .max(100, "Tên phương thức thanh toán không được vượt quá 100 ký tự"),
-  description: z.string().max(500, "Mô tả không được vượt quá 500 ký tự").optional().nullable(),
+  description: z
+    .string()
+    .max(500, "Mô tả không được vượt quá 500 ký tự")
+    .optional()
+    .nullable(),
   is_active: z.boolean().default(true),
-})
+});
 
-type PaymentMethodFormValues = z.infer<typeof paymentMethodFormSchema>
+type PaymentMethodFormValues = z.infer<typeof paymentMethodFormSchema>;
 
 interface PaymentMethodDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  mode: "create" | "edit"
-  paymentMethod?: any
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  mode: "create" | "edit";
+  paymentMethod?: any;
 }
 
-export function PaymentMethodDialog({ open, onOpenChange, mode, paymentMethod }: PaymentMethodDialogProps) {
-  const toast = useSonnerToast()
-  const [isProcessing, setIsProcessing] = useState(false)
+export function PaymentMethodDialog({
+  open,
+  onOpenChange,
+  mode,
+  paymentMethod,
+}: PaymentMethodDialogProps) {
+  const toast = useSonnerToast();
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Initialize the form with default values
   const form = useForm<PaymentMethodFormValues>({
@@ -52,7 +69,7 @@ export function PaymentMethodDialog({ open, onOpenChange, mode, paymentMethod }:
       description: "",
       is_active: true,
     },
-  })
+  });
 
   // Set form values when editing an existing payment method
   useEffect(() => {
@@ -61,24 +78,24 @@ export function PaymentMethodDialog({ open, onOpenChange, mode, paymentMethod }:
         name: paymentMethod.name,
         description: paymentMethod.description,
         is_active: paymentMethod.is_active,
-      })
+      });
     } else {
       form.reset({
         name: "",
         description: "",
         is_active: true,
-      })
+      });
     }
-  }, [mode, paymentMethod, form, open])
+  }, [mode, paymentMethod, form, open]);
 
   // Mutations for creating and updating payment methods
-  const createPaymentMethodMutation = useCreatePaymentMethod()
-  const updatePaymentMethodMutation = useUpdatePaymentMethod()
+  const createPaymentMethodMutation = useCreatePaymentMethod();
+  const updatePaymentMethodMutation = useUpdatePaymentMethod();
 
   // Handle form submission
   const onSubmit = async (values: PaymentMethodFormValues) => {
     try {
-      setIsProcessing(true)
+      setIsProcessing(true);
 
       if (mode === "create") {
         // Create new payment method
@@ -86,16 +103,16 @@ export function PaymentMethodDialog({ open, onOpenChange, mode, paymentMethod }:
           name: values.name,
           description: values.description,
           is_active: values.is_active,
-        })
+        });
 
         // Show success message
-        toast.success("Phương thức thanh toán đã được tạo thành công")
+        toast.success("Phương thức thanh toán đã được tạo thành công");
 
         // Close the dialog
-        onOpenChange(false)
+        onOpenChange(false);
 
         // Reset the form
-        form.reset()
+        form.reset();
       } else if (mode === "edit" && paymentMethod) {
         // Update existing payment method
         await updatePaymentMethodMutation.mutateAsync({
@@ -103,32 +120,36 @@ export function PaymentMethodDialog({ open, onOpenChange, mode, paymentMethod }:
           name: values.name,
           description: values.description,
           is_active: values.is_active,
-        })
+        });
 
         // Show success message
-        toast.success("Phương thức thanh toán đã được cập nhật thành công")
+        toast.success("Phương thức thanh toán đã được cập nhật thành công");
 
         // Close the dialog
-        onOpenChange(false)
+        onOpenChange(false);
       }
     } catch (error) {
       // Show error message
       toast.error(
-        `Lỗi khi ${mode === "create" ? "tạo" : "cập nhật"} phương thức thanh toán: ${
+        `Lỗi khi ${
+          mode === "create" ? "tạo" : "cập nhật"
+        } phương thức thanh toán: ${
           error instanceof Error ? error.message : "Unknown error"
-        }`,
-      )
+        }`
+      );
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {mode === "create" ? "Thêm phương thức thanh toán mới" : "Chỉnh sửa phương thức thanh toán"}
+            {mode === "create"
+              ? "Thêm phương thức thanh toán mới"
+              : "Chỉnh sửa phương thức thanh toán"}
           </DialogTitle>
           <DialogDescription>
             {mode === "create"
@@ -146,9 +167,14 @@ export function PaymentMethodDialog({ open, onOpenChange, mode, paymentMethod }:
                 <FormItem>
                   <FormLabel>Tên phương thức thanh toán</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nhập tên phương thức thanh toán" {...field} />
+                    <Input
+                      placeholder="Nhập tên phương thức thanh toán"
+                      {...field}
+                    />
                   </FormControl>
-                  <FormDescription>Tên phương thức thanh toán phải là duy nhất trong hệ thống.</FormDescription>
+                  <FormDescription>
+                    Tên phương thức thanh toán phải là duy nhất trong hệ thống.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -168,7 +194,9 @@ export function PaymentMethodDialog({ open, onOpenChange, mode, paymentMethod }:
                       value={field.value || ""}
                     />
                   </FormControl>
-                  <FormDescription>Mô tả ngắn gọn về phương thức thanh toán.</FormDescription>
+                  <FormDescription>
+                    Mô tả ngắn gọn về phương thức thanh toán.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -181,30 +209,41 @@ export function PaymentMethodDialog({ open, onOpenChange, mode, paymentMethod }:
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
                     <FormLabel>Trạng thái</FormLabel>
-                    <FormDescription>Đặt phương thức thanh toán là hoạt động hoặc không hoạt động.</FormDescription>
+                    <FormDescription>
+                      Đặt phương thức thanh toán là hoạt động hoặc không hoạt
+                      động.
+                    </FormDescription>
                   </div>
                   <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isProcessing} />
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={isProcessing}
+                    />
                   </FormControl>
                 </FormItem>
               )}
             />
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
                 Hủy
               </Button>
               <Button type="submit" disabled={isProcessing}>
                 {isProcessing
                   ? "Đang xử lý..."
                   : mode === "create"
-                    ? "Tạo phương thức thanh toán"
-                    : "Cập nhật phương thức thanh toán"}
+                  ? "Tạo phương thức thanh toán"
+                  : "Cập nhật phương thức thanh toán"}
               </Button>
             </DialogFooter>
           </form>
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

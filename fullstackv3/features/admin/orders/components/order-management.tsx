@@ -1,59 +1,68 @@
-"use client"
+"use client";
 
-import { useState, useCallback } from "react" // Import useCallback
-import { useOrders, type OrdersFilters, type OrdersPagination, type OrdersSort } from "../hooks/use-orders"
-import { OrderTable } from "./order-table"
-import { OrderFilters } from "./order-filters"
-import { OrderDetailsDialog } from "./order-details-dialog"
-import { Skeleton } from "@/components/ui/skeleton"
-import { useSonnerToast } from "@/shared/hooks/use-sonner-toast"
+import { useState, useCallback } from "react"; // Import useCallback
+import {
+  useOrders,
+  type OrdersFilters,
+  type OrdersPagination,
+  type OrdersSort,
+} from "../hooks/use-orders";
+import { OrderTable } from "./order-table";
+import { OrderFilters } from "./order-filters";
+import { OrderDetailsDialog } from "./order-details-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 
 export function OrderManagement() {
-  const toast = useSonnerToast()
-  const [filters, setFilters] = useState<OrdersFilters>({})
+  const toast = useSonnerToast();
+  const [filters, setFilters] = useState<OrdersFilters>({});
   const [pagination, setPagination] = useState<OrdersPagination>({
     page: 1,
     pageSize: 10,
-  })
+  });
   const [sort, setSort] = useState<OrdersSort>({
     column: "order_date",
     direction: "desc",
-  })
-  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null)
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  });
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-  const { data, isLoading, isError, error } = useOrders(filters, pagination, sort)
+  const { data, isLoading, isError, error } = useOrders(
+    filters,
+    pagination,
+    sort
+  );
 
   if (isError) {
-    toast.error(`Error loading orders: ${error?.message || "Unknown error"}`)
+    toast.error(`Error loading orders: ${error?.message || "Unknown error"}`);
   }
 
   const handleOpenDetails = (orderId: number) => {
-    setSelectedOrderId(orderId)
-    setIsDetailsOpen(true)
-  }
+    setSelectedOrderId(orderId);
+    setIsDetailsOpen(true);
+  };
 
   const handleCloseDetails = () => {
-    setIsDetailsOpen(false)
-  }
+    setIsDetailsOpen(false);
+  };
 
   const handlePageChange = (page: number) => {
-    setPagination((prev) => ({ ...prev, page }))
-  }
+    setPagination((prev) => ({ ...prev, page }));
+  };
 
   const handlePageSizeChange = (pageSize: number) => {
-    setPagination({ page: 1, pageSize })
-  }
+    setPagination({ page: 1, pageSize });
+  };
 
   const handleSortChange = (column: string, direction: "asc" | "desc") => {
-    setSort({ column, direction })
-  }
+    setSort({ column, direction });
+  };
 
   // Memoize the onFilterChange function
   const onFilterChange = useCallback((newFilters: OrdersFilters) => {
-    setFilters(newFilters)
-    setPagination((prev) => ({ ...prev, page: 1 })) // Reset to first page when filters change
-  }, [])
+    setFilters(newFilters);
+    setPagination((prev) => ({ ...prev, page: 1 })); // Reset to first page when filters change
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -77,7 +86,11 @@ export function OrderManagement() {
         />
       )}
 
-      <OrderDetailsDialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen} orderId={selectedOrderId} />
+      <OrderDetailsDialog
+        open={isDetailsOpen}
+        onOpenChange={setIsDetailsOpen}
+        orderId={selectedOrderId}
+      />
     </div>
-  )
+  );
 }

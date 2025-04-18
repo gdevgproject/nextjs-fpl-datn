@@ -1,11 +1,23 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useDeleteProduct } from "../hooks/use-delete-product"
-import { useSonnerToast } from "@/shared/hooks/use-sonner-toast"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
+import { useState } from "react";
+import { useDeleteProduct } from "../hooks/use-delete-product";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,23 +27,30 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
-import { ChevronDown, ChevronUp, MoreHorizontal, Pencil, Trash, Undo } from "lucide-react"
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import {
+  ChevronDown,
+  ChevronUp,
+  MoreHorizontal,
+  Pencil,
+  Trash,
+  Undo,
+} from "lucide-react";
 
 interface ProductTableProps {
-  products: any[]
-  isLoading: boolean
-  isError: boolean
-  totalCount: number
-  page: number
-  pageSize: number
-  sortColumn: string
-  sortDirection: "asc" | "desc"
-  onPageChange: (page: number) => void
-  onPageSizeChange: (pageSize: number) => void
-  onSortChange: (column: string) => void
-  onEdit: (product: any) => void
+  products: any[];
+  isLoading: boolean;
+  isError: boolean;
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  sortColumn: string;
+  sortDirection: "asc" | "desc";
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+  onSortChange: (column: string) => void;
+  onEdit: (product: any) => void;
 }
 
 export function ProductTable({
@@ -48,70 +67,81 @@ export function ProductTable({
   onSortChange,
   onEdit,
 }: ProductTableProps) {
-  const toast = useSonnerToast()
-  const deleteProductMutation = useDeleteProduct()
+  const toast = useSonnerToast();
+  const deleteProductMutation = useDeleteProduct();
 
   // State for delete confirmation dialog
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [productToDelete, setProductToDelete] = useState<any | null>(null)
-  const [deleteMode, setDeleteMode] = useState<"soft" | "hard" | "restore">("soft")
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<any | null>(null);
+  const [deleteMode, setDeleteMode] = useState<"soft" | "hard" | "restore">(
+    "soft"
+  );
 
   // Calculate pagination
-  const totalPages = Math.ceil(totalCount / pageSize)
-  const startItem = (page - 1) * pageSize + 1
-  const endItem = Math.min(startItem + pageSize - 1, totalCount)
+  const totalPages = Math.ceil(totalCount / pageSize);
+  const startItem = (page - 1) * pageSize + 1;
+  const endItem = Math.min(startItem + pageSize - 1, totalCount);
 
   // Handle sort header click
   const handleSortHeader = (column: string) => {
-    onSortChange(column)
-  }
+    onSortChange(column);
+  };
 
   // Get sort icon for column
   const getSortIcon = (column: string) => {
-    if (sortColumn !== column) return null
-    return sortDirection === "asc" ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />
-  }
+    if (sortColumn !== column) return null;
+    return sortDirection === "asc" ? (
+      <ChevronUp className="ml-2 h-4 w-4" />
+    ) : (
+      <ChevronDown className="ml-2 h-4 w-4" />
+    );
+  };
 
   // Handle delete button click
-  const handleDeleteClick = (product: any, mode: "soft" | "hard" | "restore") => {
-    setProductToDelete(product)
-    setDeleteMode(mode)
-    setDeleteDialogOpen(true)
-  }
+  const handleDeleteClick = (
+    product: any,
+    mode: "soft" | "hard" | "restore"
+  ) => {
+    setProductToDelete(product);
+    setDeleteMode(mode);
+    setDeleteDialogOpen(true);
+  };
 
   // Handle delete confirmation
   const handleDeleteConfirm = async () => {
-    if (!productToDelete) return
+    if (!productToDelete) return;
 
     try {
       if (deleteMode === "soft") {
-        await deleteProductMutation.softDelete(productToDelete.id)
-        toast.success("Sản phẩm đã được xóa tạm thời")
+        await deleteProductMutation.softDelete(productToDelete.id);
+        toast.success("Sản phẩm đã được xóa tạm thời");
       } else if (deleteMode === "hard") {
-        await deleteProductMutation.hardDelete(productToDelete.id)
-        toast.success("Sản phẩm đã được xóa vĩnh viễn")
+        await deleteProductMutation.hardDelete(productToDelete.id);
+        toast.success("Sản phẩm đã được xóa vĩnh viễn");
       } else if (deleteMode === "restore") {
-        await deleteProductMutation.restore(productToDelete.id)
-        toast.success("Sản phẩm đã được khôi phục")
+        await deleteProductMutation.restore(productToDelete.id);
+        toast.success("Sản phẩm đã được khôi phục");
       }
     } catch (error) {
       toast.error(
-        `Lỗi khi ${deleteMode === "restore" ? "khôi phục" : "xóa"} sản phẩm: ${error instanceof Error ? error.message : "Unknown error"}`,
-      )
+        `Lỗi khi ${deleteMode === "restore" ? "khôi phục" : "xóa"} sản phẩm: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     } finally {
-      setDeleteDialogOpen(false)
-      setProductToDelete(null)
+      setDeleteDialogOpen(false);
+      setProductToDelete(null);
     }
-  }
+  };
 
   // Handle page change
   const handlePrevPage = () => {
-    if (page > 1) onPageChange(page - 1)
-  }
+    if (page > 1) onPageChange(page - 1);
+  };
 
   const handleNextPage = () => {
-    if (page < totalPages) onPageChange(page + 1)
-  }
+    if (page < totalPages) onPageChange(page + 1);
+  };
 
   // Render loading state
   if (isLoading) {
@@ -119,16 +149,18 @@ export function ProductTable({
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
-    )
+    );
   }
 
   // Render error state
   if (isError) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="text-red-500">Đã xảy ra lỗi khi tải dữ liệu sản phẩm.</div>
+        <div className="text-red-500">
+          Đã xảy ra lỗi khi tải dữ liệu sản phẩm.
+        </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -138,7 +170,10 @@ export function ProductTable({
           <TableHeader>
             <TableRow>
               <TableHead className="w-[50px]">ID</TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSortHeader("name")}>
+              <TableHead
+                className="cursor-pointer"
+                onClick={() => handleSortHeader("name")}
+              >
                 <div className="flex items-center">
                   Tên sản phẩm
                   {getSortIcon("name")}
@@ -161,7 +196,10 @@ export function ProductTable({
               </TableRow>
             ) : (
               products.map((product) => (
-                <TableRow key={product.id} className={product.deleted_at ? "bg-muted/50" : ""}>
+                <TableRow
+                  key={product.id}
+                  className={product.deleted_at ? "bg-muted/50" : ""}
+                >
                   <TableCell className="font-medium">{product.id}</TableCell>
                   <TableCell>{product.name}</TableCell>
                   <TableCell>{product.brands?.name || "-"}</TableCell>
@@ -190,7 +228,11 @@ export function ProductTable({
                         </DropdownMenuItem>
                         {product.deleted_at ? (
                           <>
-                            <DropdownMenuItem onClick={() => handleDeleteClick(product, "restore")}>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleDeleteClick(product, "restore")
+                              }
+                            >
                               <Undo className="mr-2 h-4 w-4" />
                               Khôi phục
                             </DropdownMenuItem>
@@ -203,7 +245,10 @@ export function ProductTable({
                             </DropdownMenuItem>
                           </>
                         ) : (
-                          <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteClick(product, "soft")}>
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={() => handleDeleteClick(product, "soft")}
+                          >
                             <Trash className="mr-2 h-4 w-4" />
                             Xóa
                           </DropdownMenuItem>
@@ -221,16 +266,27 @@ export function ProductTable({
       {/* Pagination */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          Hiển thị {products.length > 0 ? startItem : 0}-{endItem} của {totalCount} sản phẩm
+          Hiển thị {products.length > 0 ? startItem : 0}-{endItem} của{" "}
+          {totalCount} sản phẩm
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" onClick={handlePrevPage} disabled={page <= 1}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePrevPage}
+            disabled={page <= 1}
+          >
             Trước
           </Button>
           <div className="text-sm">
             Trang {page} / {totalPages || 1}
           </div>
-          <Button variant="outline" size="sm" onClick={handleNextPage} disabled={page >= totalPages}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleNextPage}
+            disabled={page >= totalPages}
+          >
             Sau
           </Button>
         </div>
@@ -244,22 +300,24 @@ export function ProductTable({
               {deleteMode === "restore"
                 ? "Khôi phục sản phẩm"
                 : deleteMode === "hard"
-                  ? "Xóa vĩnh viễn sản phẩm"
-                  : "Xóa sản phẩm"}
+                ? "Xóa vĩnh viễn sản phẩm"
+                : "Xóa sản phẩm"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {deleteMode === "restore"
                 ? "Bạn có chắc chắn muốn khôi phục sản phẩm này không?"
                 : deleteMode === "hard"
-                  ? "Hành động này không thể hoàn tác. Sản phẩm sẽ bị xóa vĩnh viễn khỏi hệ thống."
-                  : "Sản phẩm sẽ bị xóa tạm thời và có thể khôi phục sau."}
+                ? "Hành động này không thể hoàn tác. Sản phẩm sẽ bị xóa vĩnh viễn khỏi hệ thống."
+                : "Sản phẩm sẽ bị xóa tạm thời và có thể khôi phục sau."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
-              className={deleteMode === "hard" ? "bg-red-600 hover:bg-red-700" : ""}
+              className={
+                deleteMode === "hard" ? "bg-red-600 hover:bg-red-700" : ""
+              }
             >
               {deleteMode === "restore" ? "Khôi phục" : "Xóa"}
             </AlertDialogAction>
@@ -267,5 +325,5 @@ export function ProductTable({
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }

@@ -50,7 +50,7 @@ import {
 } from "lucide-react";
 import { usePaymentMethods } from "@/features/admin/payment-methods/hooks/use-payment-methods";
 import { useDeletePaymentMethod } from "@/features/admin/payment-methods/hooks/use-delete-payment-method";
-import { useSonnerToast } from "@/shared/hooks/use-sonner-toast";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { useDebounce } from "@/features/admin/payment-methods/hooks/use-debounce";
 import { PaymentMethodDialog } from "@/features/admin/payment-methods/components/payment-method-dialog";
 

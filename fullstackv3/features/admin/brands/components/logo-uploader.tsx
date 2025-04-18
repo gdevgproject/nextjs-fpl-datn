@@ -1,83 +1,99 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useRef, useEffect } from "react"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { Upload, X, ImageIcon } from "lucide-react"
-import { useUploadBrandLogo } from "../hooks/use-upload-logo"
-import { useDeleteBrandLogo } from "../hooks/use-delete-logo"
-import { useSonnerToast } from "@/shared/hooks/use-sonner-toast"
+import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Upload, X, ImageIcon } from "lucide-react";
+import { useUploadBrandLogo } from "../hooks/use-upload-logo";
+import { useDeleteBrandLogo } from "../hooks/use-delete-logo";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 
 interface LogoUploaderProps {
-  initialImageUrl?: string
-  brandId?: number
-  onChange: (file: File | null, url: string | null) => void
+  initialImageUrl?: string;
+  brandId?: number;
+  onChange: (file: File | null, url: string | null) => void;
 }
 
-export function LogoUploader({ initialImageUrl, brandId, onChange }: LogoUploaderProps) {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(initialImageUrl || null)
-  const [isUploading, setIsUploading] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [previousLogoUrl, setPreviousLogoUrl] = useState<string | null>(initialImageUrl || null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const toast = useSonnerToast()
+export function LogoUploader({
+  initialImageUrl,
+  brandId,
+  onChange,
+}: LogoUploaderProps) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(
+    initialImageUrl || null
+  );
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previousLogoUrl, setPreviousLogoUrl] = useState<string | null>(
+    initialImageUrl || null
+  );
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const toast = useSonnerToast();
 
   // Upload and delete logo mutations
-  const uploadLogoMutation = useUploadBrandLogo()
-  const deleteLogoMutation = useDeleteBrandLogo()
+  const uploadLogoMutation = useUploadBrandLogo();
+  const deleteLogoMutation = useDeleteBrandLogo();
 
   // Update preview URL and previous logo URL when initialImageUrl changes
   useEffect(() => {
-    setPreviewUrl(initialImageUrl || null)
-    setPreviousLogoUrl(initialImageUrl || null)
-  }, [initialImageUrl])
+    setPreviewUrl(initialImageUrl || null);
+    setPreviousLogoUrl(initialImageUrl || null);
+  }, [initialImageUrl]);
 
   // Handle file selection
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const file = e.target.files?.[0];
+    if (!file) return;
 
     // Check file type
-    const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"]
+    const validTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "image/svg+xml",
+    ];
     if (!validTypes.includes(file.type)) {
-      toast.error("Định dạng file không hợp lệ. Vui lòng chọn file PNG, JPG, GIF, WEBP hoặc SVG.")
-      return
+      toast.error(
+        "Định dạng file không hợp lệ. Vui lòng chọn file PNG, JPG, GIF, WEBP hoặc SVG."
+      );
+      return;
     }
 
     // Check file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
-      toast.error("Kích thước file quá lớn. Vui lòng chọn file nhỏ hơn 2MB.")
-      return
+      toast.error("Kích thước file quá lớn. Vui lòng chọn file nhỏ hơn 2MB.");
+      return;
     }
 
     // Create preview URL
-    const objectUrl = URL.createObjectURL(file)
-    setPreviewUrl(objectUrl)
-    setSelectedFile(file)
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+    setSelectedFile(file);
 
     // For new brands (without brandId), we just store the file and preview URL
     // The actual upload will happen after brand creation in the BrandDialog component
     if (!brandId) {
-      onChange(file, objectUrl)
+      onChange(file, objectUrl);
     } else {
       // For existing brands, upload immediately
-      await uploadLogo(file, brandId)
+      await uploadLogo(file, brandId);
     }
 
     // Clean up the object URL when component unmounts
-    return () => URL.revokeObjectURL(objectUrl)
-  }
+    return () => URL.revokeObjectURL(objectUrl);
+  };
 
   // Upload logo to storage
   const uploadLogo = async (file: File, id: number) => {
     try {
-      setIsUploading(true)
+      setIsUploading(true);
 
       // Create file path
-      const fileExt = file.name.split(".").pop()
-      const filePath = `brands/${id}/logo.${fileExt}`
+      const fileExt = file.name.split(".").pop();
+      const filePath = `brands/${id}/logo.${fileExt}`;
 
       // Upload file
       const result = await uploadLogoMutation.mutateAsync({
@@ -87,71 +103,79 @@ export function LogoUploader({ initialImageUrl, brandId, onChange }: LogoUploade
           contentType: file.type,
           upsert: true,
         },
-      })
+      });
 
       // Update form with the new URL
-      onChange(file, result.publicUrl)
+      onChange(file, result.publicUrl);
 
       // Xóa ảnh cũ nếu có và khác với ảnh mới
       if (previousLogoUrl && previousLogoUrl !== result.publicUrl) {
         try {
-          await deleteLogoMutation.deleteFromUrl(previousLogoUrl)
+          await deleteLogoMutation.deleteFromUrl(previousLogoUrl);
           // Cập nhật previousLogoUrl sau khi xóa thành công
-          setPreviousLogoUrl(result.publicUrl)
+          setPreviousLogoUrl(result.publicUrl);
         } catch (error) {
-          console.error("Error deleting previous logo:", error)
+          console.error("Error deleting previous logo:", error);
           // Không hiển thị lỗi cho người dùng vì ảnh mới đã được tải lên thành công
         }
       } else {
         // Cập nhật previousLogoUrl nếu không có ảnh cũ
-        setPreviousLogoUrl(result.publicUrl)
+        setPreviousLogoUrl(result.publicUrl);
       }
 
-      toast.success("Logo đã được tải lên thành công")
+      toast.success("Logo đã được tải lên thành công");
     } catch (error) {
-      toast.error(`Lỗi khi tải lên logo: ${error instanceof Error ? error.message : "Unknown error"}`)
+      toast.error(
+        `Lỗi khi tải lên logo: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
       // Revert to initial image if upload fails
-      setPreviewUrl(initialImageUrl || null)
-      setSelectedFile(null)
+      setPreviewUrl(initialImageUrl || null);
+      setSelectedFile(null);
     } finally {
-      setIsUploading(false)
+      setIsUploading(false);
     }
-  }
+  };
 
   // Handle remove button click
   const handleRemove = async () => {
-    setIsUploading(true)
+    setIsUploading(true);
 
     try {
       // If we have a previousLogoUrl, delete the file from storage
       if (previousLogoUrl) {
-        await deleteLogoMutation.deleteFromUrl(previousLogoUrl)
+        await deleteLogoMutation.deleteFromUrl(previousLogoUrl);
       }
 
       // Clear preview and file input
-      setPreviewUrl(null)
-      setSelectedFile(null)
-      setPreviousLogoUrl(null)
+      setPreviewUrl(null);
+      setSelectedFile(null);
+      setPreviousLogoUrl(null);
 
       if (fileInputRef.current) {
-        fileInputRef.current.value = ""
+        fileInputRef.current.value = "";
       }
 
-      onChange(null, null)
-      toast.success("Logo đã được xóa thành công")
+      onChange(null, null);
+      toast.success("Logo đã được xóa thành công");
     } catch (error) {
-      toast.error(`Lỗi khi xóa logo: ${error instanceof Error ? error.message : "Unknown error"}`)
+      toast.error(
+        `Lỗi khi xóa logo: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     } finally {
-      setIsUploading(false)
+      setIsUploading(false);
     }
-  }
+  };
 
   // Handle upload button click
   const handleUploadClick = () => {
     if (fileInputRef.current) {
-      fileInputRef.current.click()
+      fileInputRef.current.click();
     }
-  }
+  };
 
   return (
     <div className="flex flex-col items-center">
@@ -214,5 +238,5 @@ export function LogoUploader({ initialImageUrl, brandId, onChange }: LogoUploade
         {previewUrl ? "Thay đổi logo" : "Tải lên logo"}
       </Button>
     </div>
-  )
+  );
 }

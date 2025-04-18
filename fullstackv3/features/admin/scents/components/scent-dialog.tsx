@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -12,13 +12,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { useCreateScent } from "../hooks/use-create-scent"
-import { useUpdateScent } from "../hooks/use-update-scent"
-import { useSonnerToast } from "@/shared/hooks/use-sonner-toast"
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useCreateScent } from "../hooks/use-create-scent";
+import { useUpdateScent } from "../hooks/use-update-scent";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 
 // Define the form schema with Zod
 const scentFormSchema = z.object({
@@ -26,21 +34,30 @@ const scentFormSchema = z.object({
     .string()
     .min(1, "Tên nhóm hương không được để trống")
     .max(100, "Tên nhóm hương không được vượt quá 100 ký tự"),
-  description: z.string().max(500, "Mô tả không được vượt quá 500 ký tự").optional().nullable(),
-})
+  description: z
+    .string()
+    .max(500, "Mô tả không được vượt quá 500 ký tự")
+    .optional()
+    .nullable(),
+});
 
-type ScentFormValues = z.infer<typeof scentFormSchema>
+type ScentFormValues = z.infer<typeof scentFormSchema>;
 
 interface ScentDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  mode: "create" | "edit"
-  scent?: any
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  mode: "create" | "edit";
+  scent?: any;
 }
 
-export function ScentDialog({ open, onOpenChange, mode, scent }: ScentDialogProps) {
-  const toast = useSonnerToast()
-  const [isProcessing, setIsProcessing] = useState(false)
+export function ScentDialog({
+  open,
+  onOpenChange,
+  mode,
+  scent,
+}: ScentDialogProps) {
+  const toast = useSonnerToast();
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Initialize the form with default values
   const form = useForm<ScentFormValues>({
@@ -49,7 +66,7 @@ export function ScentDialog({ open, onOpenChange, mode, scent }: ScentDialogProp
       name: "",
       description: "",
     },
-  })
+  });
 
   // Set form values when editing an existing scent
   useEffect(() => {
@@ -57,72 +74,76 @@ export function ScentDialog({ open, onOpenChange, mode, scent }: ScentDialogProp
       form.reset({
         name: scent.name,
         description: scent.description,
-      })
+      });
     } else {
       form.reset({
         name: "",
         description: "",
-      })
+      });
     }
-  }, [mode, scent, form, open])
+  }, [mode, scent, form, open]);
 
   // Mutations for creating and updating scents
-  const createScentMutation = useCreateScent()
-  const updateScentMutation = useUpdateScent()
+  const createScentMutation = useCreateScent();
+  const updateScentMutation = useUpdateScent();
 
   // Handle form submission
   const onSubmit = async (values: ScentFormValues) => {
     try {
-      setIsProcessing(true)
+      setIsProcessing(true);
 
       if (mode === "create") {
         // Create new scent
         await createScentMutation.mutateAsync({
           name: values.name,
           description: values.description,
-        })
+        });
 
         // Show success message
-        toast.success("Nhóm hương đã được tạo thành công")
+        toast.success("Nhóm hương đã được tạo thành công");
 
         // Close the dialog
-        onOpenChange(false)
+        onOpenChange(false);
 
         // Reset the form
-        form.reset()
+        form.reset();
       } else if (mode === "edit" && scent) {
         // Update existing scent
         await updateScentMutation.mutateAsync({
           id: scent.id,
           name: values.name,
           description: values.description,
-        })
+        });
 
         // Show success message
-        toast.success("Nhóm hương đã được cập nhật thành công")
+        toast.success("Nhóm hương đã được cập nhật thành công");
 
         // Close the dialog
-        onOpenChange(false)
+        onOpenChange(false);
       }
     } catch (error) {
       // Show error message
       toast.error(
         `Lỗi khi ${mode === "create" ? "tạo" : "cập nhật"} nhóm hương: ${
           error instanceof Error ? error.message : "Unknown error"
-        }`,
-      )
+        }`
+      );
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{mode === "create" ? "Thêm nhóm hương mới" : "Chỉnh sửa nhóm hương"}</DialogTitle>
+          <DialogTitle>
+            {mode === "create" ? "Thêm nhóm hương mới" : "Chỉnh sửa nhóm hương"}
+          </DialogTitle>
           <DialogDescription>
-            {mode === "create" ? "Thêm một nhóm hương mới vào hệ thống." : "Chỉnh sửa thông tin nhóm hương."}
+            {mode === "create"
+              ? "Thêm một nhóm hương mới vào hệ thống."
+              : "Chỉnh sửa thông tin nhóm hương."}
           </DialogDescription>
         </DialogHeader>
 
@@ -137,7 +158,9 @@ export function ScentDialog({ open, onOpenChange, mode, scent }: ScentDialogProp
                   <FormControl>
                     <Input placeholder="Nhập tên nhóm hương" {...field} />
                   </FormControl>
-                  <FormDescription>Tên nhóm hương phải là duy nhất trong hệ thống.</FormDescription>
+                  <FormDescription>
+                    Tên nhóm hương phải là duy nhất trong hệ thống.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -157,23 +180,33 @@ export function ScentDialog({ open, onOpenChange, mode, scent }: ScentDialogProp
                       value={field.value || ""}
                     />
                   </FormControl>
-                  <FormDescription>Mô tả ngắn gọn về nhóm hương.</FormDescription>
+                  <FormDescription>
+                    Mô tả ngắn gọn về nhóm hương.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
                 Hủy
               </Button>
               <Button type="submit" disabled={isProcessing}>
-                {isProcessing ? "Đang xử lý..." : mode === "create" ? "Tạo nhóm hương" : "Cập nhật nhóm hương"}
+                {isProcessing
+                  ? "Đang xử lý..."
+                  : mode === "create"
+                  ? "Tạo nhóm hương"
+                  : "Cập nhật nhóm hương"}
               </Button>
             </DialogFooter>
           </form>
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

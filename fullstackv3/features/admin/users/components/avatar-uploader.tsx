@@ -1,93 +1,99 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useEffect } from "react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { useUploadAvatar } from "../hooks/use-upload-avatar"
-import { useDeleteAvatar } from "../hooks/use-delete-avatar"
-import { useSonnerToast } from "@/shared/hooks/use-sonner-toast"
-import { Trash2, Upload } from "lucide-react"
+import { useState, useEffect } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { useUploadAvatar } from "../hooks/use-upload-avatar";
+import { useDeleteAvatar } from "../hooks/use-delete-avatar";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { Trash2, Upload } from "lucide-react";
 
 interface AvatarUploaderProps {
-  userId?: string
-  initialAvatarUrl?: string
-  onAvatarChange?: (url: string | null) => void
+  userId?: string;
+  initialAvatarUrl?: string;
+  onAvatarChange?: (url: string | null) => void;
 }
 
-export function AvatarUploader({ userId, initialAvatarUrl, onAvatarChange }: AvatarUploaderProps) {
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl || null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const { toast } = useSonnerToast()
+export function AvatarUploader({
+  userId,
+  initialAvatarUrl,
+  onAvatarChange,
+}: AvatarUploaderProps) {
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    initialAvatarUrl || null
+  );
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const { toast } = useSonnerToast();
 
-  const uploadAvatar = useUploadAvatar()
-  const deleteAvatar = useDeleteAvatar()
+  const uploadAvatar = useUploadAvatar();
+  const deleteAvatar = useDeleteAvatar();
 
   useEffect(() => {
     if (initialAvatarUrl) {
-      setAvatarUrl(initialAvatarUrl)
+      setAvatarUrl(initialAvatarUrl);
     }
-  }, [initialAvatarUrl])
+  }, [initialAvatarUrl]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const file = e.target.files?.[0];
+    if (!file) return;
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
-      return toast.error("Vui lòng chọn file hình ảnh")
+      return toast.error("Vui lòng chọn file hình ảnh");
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      return toast.error("Kích thước file không được vượt quá 5MB")
+      return toast.error("Kích thước file không được vượt quá 5MB");
     }
 
     // Create preview
-    const reader = new FileReader()
+    const reader = new FileReader();
     reader.onload = (event) => {
-      setPreviewUrl(event.target?.result as string)
-    }
-    reader.readAsDataURL(file)
+      setPreviewUrl(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
 
     try {
       // Upload the file
       const result = await uploadAvatar.mutateAsync({
         userId: userId || "temp", // Use temp for new users
         file,
-      })
+      });
 
-      setAvatarUrl(result.url)
+      setAvatarUrl(result.url);
       if (onAvatarChange) {
-        onAvatarChange(result.url)
+        onAvatarChange(result.url);
       }
-      toast.success("Tải lên ảnh đại diện thành công")
+      toast.success("Tải lên ảnh đại diện thành công");
     } catch (error: any) {
-      toast.error(error.message || "Đã xảy ra lỗi khi tải lên ảnh đại diện")
+      toast.error(error.message || "Đã xảy ra lỗi khi tải lên ảnh đại diện");
     }
-  }
+  };
 
   const handleDeleteAvatar = async () => {
-    if (!avatarUrl) return
+    if (!avatarUrl) return;
 
     try {
       await deleteAvatar.mutateAsync({
         userId: userId || "temp",
         url: avatarUrl,
-      })
+      });
 
-      setAvatarUrl(null)
-      setPreviewUrl(null)
+      setAvatarUrl(null);
+      setPreviewUrl(null);
       if (onAvatarChange) {
-        onAvatarChange(null)
+        onAvatarChange(null);
       }
-      toast.success("Xóa ảnh đại diện thành công")
+      toast.success("Xóa ảnh đại diện thành công");
     } catch (error: any) {
-      toast.error(error.message || "Đã xảy ra lỗi khi xóa ảnh đại diện")
+      toast.error(error.message || "Đã xảy ra lỗi khi xóa ảnh đại diện");
     }
-  }
+  };
 
   return (
     <Card>
@@ -95,7 +101,9 @@ export function AvatarUploader({ userId, initialAvatarUrl, onAvatarChange }: Ava
         <div className="flex flex-col items-center justify-center space-y-4">
           <Avatar className="h-32 w-32">
             <AvatarImage src={previewUrl || avatarUrl || ""} alt="Avatar" />
-            <AvatarFallback className="text-2xl">{userId ? userId.substring(0, 2).toUpperCase() : "U"}</AvatarFallback>
+            <AvatarFallback className="text-2xl">
+              {userId ? userId.substring(0, 2).toUpperCase() : "U"}
+            </AvatarFallback>
           </Avatar>
 
           <div className="flex gap-2">
@@ -131,12 +139,13 @@ export function AvatarUploader({ userId, initialAvatarUrl, onAvatarChange }: Ava
           </div>
 
           <p className="text-sm text-muted-foreground text-center">
-            Tải lên ảnh đại diện cho người dùng. Chấp nhận các định dạng JPG, PNG hoặc GIF.
+            Tải lên ảnh đại diện cho người dùng. Chấp nhận các định dạng JPG,
+            PNG hoặc GIF.
             <br />
             Kích thước tối đa: 5MB.
           </p>
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
