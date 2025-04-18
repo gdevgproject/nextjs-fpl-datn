@@ -89,7 +89,7 @@ export function AccountPage() {
                 cá nhân và trong các đánh giá.
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex justify-center">
+            <CardContent className="flex flex-col items-center justify-center gap-4">
               <AvatarUpload />
             </CardContent>
           </Card>

@@ -103,9 +103,9 @@ export const AvatarUpload = memo(function AvatarUpload() {
     }
   };
 
-  // Use preview URL if available, otherwise use profile image URL
+  // Use preview URL if available, otherwise use profile avatar_url (chuẩn), fallback về default
   const currentImageUrl =
-    previewUrl || profile?.profile_image_url || DEFAULT_AVATAR_URL;
+    previewUrl || profile?.avatar_url || DEFAULT_AVATAR_URL;
 
   // Get first letter of display name for fallback
   const nameInitial = profile?.display_name?.charAt(0)?.toUpperCase() || "U";

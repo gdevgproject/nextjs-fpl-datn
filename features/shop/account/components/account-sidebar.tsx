@@ -74,7 +74,7 @@ export function AccountSidebar() {
         <div className="flex flex-col items-center gap-2 rounded-lg border p-4 text-center">
           <div className="relative h-20 w-20 overflow-hidden rounded-full bg-muted">
             <img
-              src={profile?.profile_image_url || "/images/default-avatar.png"}
+              src={profile?.avatar_url || "/images/default-avatar.png"}
               alt={profile?.display_name || "Avatar"}
               className="h-full w-full object-cover"
               loading="eager"
