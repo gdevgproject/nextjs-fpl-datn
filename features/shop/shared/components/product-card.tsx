@@ -63,7 +63,7 @@ export function ProductCard({
   variant_id,
   stock_quantity,
 }: ProductCardProps) {
-  const { mutate: addToCart, isLoading: isAdding } = useAddCartItem();
+  const { mutate: addToCart, isPending: isAdding } = useAddCartItem();
   const { toast } = useSonnerToast();
 
   // Support both new format (product object) and legacy format (direct props)
