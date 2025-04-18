@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 
 import { useState } from "react";
-import { AdminLayout } from "@/features/admin/shared/admin-layout";
+import { AdminLayout } from "@/features/admin/shared/components/admin-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {

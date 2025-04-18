@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { AdminActivityLogs } from "@/features/admin/logs/components/admin-activity-logs";
-import { AdminLayout } from "@/features/admin/shared/admin-layout";
+import { AdminLayout } from "@/features/admin/shared/components/admin-layout";
 
 export const metadata: Metadata = {
   title: "Nhật ký hoạt động | MyBeauty Admin",

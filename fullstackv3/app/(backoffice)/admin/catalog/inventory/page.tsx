@@ -1,4 +1,4 @@
-import { AdminLayout } from "@/features/admin/shared/admin-layout";
+import { AdminLayout } from "@/features/admin/shared/components/admin-layout";
 import { InventoryManagement } from "@/features/admin/inventory/components/inventory-management";
 
 export const metadata = {

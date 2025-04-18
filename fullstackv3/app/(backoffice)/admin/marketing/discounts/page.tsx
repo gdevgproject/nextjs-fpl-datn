@@ -1,6 +1,6 @@
 import { DiscountManagement } from "@/features/admin/discounts/components/discount-management";
 import type { Metadata } from "next";
-import { AdminLayout } from "@/features/admin/shared/admin-layout";
+import { AdminLayout } from "@/features/admin/shared/components/admin-layout";
 
 export const metadata: Metadata = {
   title: "Quản lý mã giảm giá | MyBeauty",

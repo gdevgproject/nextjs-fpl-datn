@@ -1,5 +1,5 @@
 import { OrderManagement } from "@/features/admin/orders/components/order-management";
-import { AdminLayout } from "@/features/admin/shared/admin-layout";
+import { AdminLayout } from "@/features/admin/shared/components/admin-layout";
 
 export const metadata = {
   title: "Quản lý đơn hàng | MyBeauty Admin",

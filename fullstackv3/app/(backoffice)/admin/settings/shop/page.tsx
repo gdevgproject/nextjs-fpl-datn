@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AdminLayout } from "@/features/admin/shared/admin-layout";
+import { AdminLayout } from "@/features/admin/shared/components/admin-layout";
 import { ShopSettingsForm } from "@/features/admin/shop/components/shop-settings-form";
 
 export const metadata: Metadata = {

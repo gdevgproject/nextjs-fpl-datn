@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { UserManagement } from "@/features/admin/users/components/user-management";
-import { AdminLayout } from "@/features/admin/shared/admin-layout";
+import { AdminLayout } from "@/features/admin/shared/components/admin-layout";
 
 export const metadata: Metadata = {
   title: "Quản lý người dùng | MyBeauty Admin",

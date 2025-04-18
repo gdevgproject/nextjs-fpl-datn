@@ -1,5 +1,5 @@
 import { DiscountManagement } from "@/features/admin/discounts/components/discount-management";
-import { AdminLayout } from "@/features/admin/shared/admin-layout";
+import { AdminLayout } from "@/features/admin/shared/components/admin-layout";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {

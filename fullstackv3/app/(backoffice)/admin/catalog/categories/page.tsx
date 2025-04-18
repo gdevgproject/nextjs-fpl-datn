@@ -1,5 +1,5 @@
 import { CategoryManagement } from "@/features/admin/categories/components/category-management";
-import { AdminLayout } from "@/features/admin/shared/admin-layout";
+import { AdminLayout } from "@/features/admin/shared/components/admin-layout";
 
 export default function CategoriesPage() {
   return (

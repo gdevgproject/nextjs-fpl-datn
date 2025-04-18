@@ -1,5 +1,5 @@
 import { ProductManagement } from "@/features/admin/products/components/product-management";
-import { AdminLayout } from "@/features/admin/shared/admin-layout";
+import { AdminLayout } from "@/features/admin/shared/components/admin-layout";
 
 export const metadata = {
   title: "Quản lý sản phẩm | MyBeauty Admin",
