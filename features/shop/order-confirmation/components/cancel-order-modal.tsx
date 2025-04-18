@@ -61,7 +61,11 @@ export function CancelOrderModal({
       }
 
       if (!response.success) {
-        setError(response.error || "Có lỗi xảy ra khi hủy đơn hàng");
+        setError(
+          "error" in response
+            ? response.error
+            : "Có lỗi xảy ra khi hủy đơn hàng"
+        );
         return;
       }
 
