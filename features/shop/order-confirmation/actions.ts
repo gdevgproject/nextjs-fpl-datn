@@ -111,7 +111,7 @@ export async function cancelOrderByToken(token: string, reason: string) {
     const { data: orderData, error: orderError } = await serviceClient
       .from("orders")
       .select(
-        "id, order_status_id, order_status:order_statuses(name), payment_status, payment_method_id"
+        "id, order_status_id, order_status:order_statuses(name), payment_status, payment_method_id, user_id"
       )
       .eq("access_token", token)
       .single();
@@ -141,13 +141,27 @@ export async function cancelOrderByToken(token: string, reason: string) {
       );
     }
 
-    // Cập nhật trạng thái đơn hàng thành "Đã hủy" (id = 7 theo seed data)
+    // Kiểm tra xem người dùng hiện tại có phải là user_id của đơn hàng không
+    // Nếu là, sử dụng cancelOrderByUser thay vì gọi trực tiếp vào đây
+    const supabase = await getSupabaseServerClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session?.user?.id && orderData.user_id === session.user.id) {
+      // Đây là người dùng đã đăng nhập đang cố gắng hủy đơn hàng của họ thông qua token
+      // Chuyển sang cancelOrderByUser để xử lý đúng
+      return await cancelOrderByUser(orderData.id, reason);
+    }
+
+    // Đây mới thực sự là khách vãng lai (không đăng nhập hoặc đăng nhập nhưng không phải chủ đơn hàng)
     const { error: updateError } = await serviceClient
       .from("orders")
       .update({
         order_status_id: 7, // "Đã hủy"
         cancellation_reason: reason,
         cancelled_by: "user", // Mặc dù là guest nhưng vẫn gán 'user' để phân biệt với 'admin'
+        cancelled_by_user_id: null, // Không có user_id vì là khách vãng lai
       })
       .eq("id", orderData.id);
 
@@ -155,7 +169,8 @@ export async function cancelOrderByToken(token: string, reason: string) {
       return createErrorResponse(updateError.message);
     }
 
-    // Ghi log hoạt động
+    // Ghi log hoạt động - KHÔNG sử dụng trigger tự động của database
+    // Mà ghi log rõ ràng từ server action
     try {
       await serviceClient.from("admin_activity_log").insert({
         admin_user_id: null,
@@ -241,8 +256,12 @@ export async function cancelOrderByUser(orderId: number, reason: string) {
       );
     }
 
+    // Sử dụng service role client để đảm bảo quyền ghi log
+    const serviceClient = await createServiceRoleClient();
+
     // Cập nhật trạng thái đơn hàng thành "Đã hủy" (id = 7 theo seed data)
-    const { error: updateError } = await supabase
+    // Không sử dụng trường không tồn tại trong schema
+    const { error: updateError } = await serviceClient
       .from("orders")
       .update({
         order_status_id: 7,
@@ -250,21 +269,26 @@ export async function cancelOrderByUser(orderId: number, reason: string) {
         cancelled_by: "user",
         cancelled_by_user_id: userId,
       })
-      .eq("id", orderId);
+      .eq("id", orderId)
+      .eq("user_id", userId);
 
     if (updateError) {
       return createErrorResponse(updateError.message);
     }
 
-    // Ghi log hoạt động
+    // Ghi log hoạt động bằng service client để đảm bảo quyền
     try {
-      await supabase.from("admin_activity_log").insert({
+      await serviceClient.from("admin_activity_log").insert({
         admin_user_id: null,
-        activity_type: "ORDER_CANCELLED_BY_USER",
-        description: `Đơn hàng #${orderId} đã bị hủy bởi người dùng`,
+        activity_type: "ORDER_CANCELLED_BY_AUTHENTICATED_USER",
+        description: `Đơn hàng #${orderId} đã bị hủy bởi người dùng đã đăng nhập`,
         entity_type: "order",
         entity_id: orderId.toString(),
-        details: { cancelled_by_user_id: userId, reason },
+        details: {
+          cancelled_by_user_id: userId,
+          reason,
+          is_authenticated: true,
+        },
       });
     } catch (logError) {
       console.error("Error logging activity:", logError);
