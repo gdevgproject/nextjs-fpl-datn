@@ -11,19 +11,19 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Heart } from "lucide-react";
 import Link from "next/link";
 import { WishlistItem } from "./wishlist-item";
 import { EmptyWishlist } from "./empty-wishlist";
 import { WishlistFilter } from "./wishlist-filter";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useWishlist } from "@/features/shop/wishlist/hooks/use-wishlist";
+import { useWishlist } from "../hooks/use-wishlist";
 import { useAuthQuery } from "@/features/auth/hooks";
 
 export function WishlistPage() {
-  const { wishlistItems, isLoading } = useWishlist();
   const { data: session } = useAuthQuery();
   const isAuthenticated = !!session?.user;
+  const { wishlistItems = [], isLoading, filter, setFilter } = useWishlist();
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
@@ -105,7 +105,9 @@ export function WishlistPage() {
         </p>
       </div>
 
-      <WishlistFilter />
+      {filter && setFilter && (
+        <WishlistFilter filter={filter} setFilter={setFilter} />
+      )}
 
       {wishlistItems.length === 0 ? (
         <EmptyWishlist />

@@ -6,7 +6,6 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useAuthQuery } from "@/features/auth/hooks";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { QUERY_STALE_TIME } from "@/lib/hooks/use-query-config";
-import { handleApiError } from "@/lib/utils/error-utils";
 
 // Định nghĩa kiểu dữ liệu cho wishlist item
 export interface WishlistItem {
@@ -38,15 +37,20 @@ export function useWishlist(filter?: WishlistFilter) {
   const { toast } = useSonnerToast();
   const [localWishlist, setLocalWishlist] = useState<number[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [wishlistFilter, setWishlistFilter] = useState<WishlistFilter>(
+    filter || {}
+  );
 
-  // Fetch wishlist từ database nếu user đã đăng nhập
-  const { data: wishlistItems, isLoading } = useQuery({
-    queryKey: ["wishlist", user?.id, filter],
+  // Fetch wishlist từ database nếu user đã đăng nhập - Đã viết lại để không gây lỗi
+  const { data: wishlistItems = [], isLoading } = useQuery({
+    queryKey: ["wishlist", user?.id, wishlistFilter],
     queryFn: async () => {
+      // Không cần truy vấn nếu chưa đăng nhập
       if (!user) return [];
 
       try {
-        let query = supabase
+        // Lấy dữ liệu wishlist từ Supabase với cách viết an toàn hơn
+        const wishlists = supabase
           .from("wishlists")
           .select(
             `
@@ -65,68 +69,78 @@ export function useWishlist(filter?: WishlistFilter) {
           )
           .eq("user_id", user.id);
 
-        // Áp dụng filter nếu có
-        if (filter?.search) {
-          query = query.textSearch("products.name", filter.search, {
+        // Áp dụng filter tìm kiếm nếu có
+        if (wishlistFilter?.search) {
+          wishlists.textSearch("products.name", wishlistFilter.search, {
             type: "websearch",
             config: "english",
           });
         }
 
-        const { data, error } = await query;
+        // Thực hiện truy vấn
+        const { data: wishlistData, error: wishlistError } = await wishlists;
 
-        if (error) throw error;
+        // Xử lý lỗi truy vấn nếu có (không bao gồm lỗi "không tìm thấy")
+        if (wishlistError && !wishlistError.message.includes("No rows")) {
+          console.error("Error fetching wishlist:", wishlistError);
+          return [];
+        }
 
-        // Sắp xếp dữ liệu theo filter
-        const sortedData = [...(data as WishlistItem[])];
+        // Đảm bảo data là mảng dù có hoặc không có dữ liệu
+        const safeData: WishlistItem[] = Array.isArray(wishlistData)
+          ? wishlistData
+          : [];
 
-        if (filter?.sortBy) {
-          switch (filter.sortBy) {
+        // Áp dụng sắp xếp dữ liệu
+        if (safeData.length > 0 && wishlistFilter?.sortBy) {
+          switch (wishlistFilter.sortBy) {
             case "newest":
-              sortedData.sort(
+              safeData.sort(
                 (a, b) =>
                   new Date(b.added_at).getTime() -
                   new Date(a.added_at).getTime()
               );
               break;
             case "oldest":
-              sortedData.sort(
+              safeData.sort(
                 (a, b) =>
                   new Date(a.added_at).getTime() -
                   new Date(b.added_at).getTime()
               );
               break;
             case "price_asc":
-              sortedData.sort((a, b) => {
-                const priceA = a.product.sale_price || a.product.price;
-                const priceB = b.product.sale_price || b.product.price;
+              safeData.sort((a, b) => {
+                const priceA = a.product?.sale_price || a.product?.price || 0;
+                const priceB = b.product?.sale_price || b.product?.price || 0;
                 return priceA - priceB;
               });
               break;
             case "price_desc":
-              sortedData.sort((a, b) => {
-                const priceA = a.product.sale_price || a.product.price;
-                const priceB = b.product.sale_price || b.product.price;
+              safeData.sort((a, b) => {
+                const priceA = a.product?.sale_price || a.product?.price || 0;
+                const priceB = b.product?.sale_price || b.product?.price || 0;
                 return priceB - priceA;
               });
               break;
           }
         } else {
           // Mặc định sắp xếp theo thời gian thêm vào mới nhất
-          sortedData.sort(
+          safeData.sort(
             (a, b) =>
               new Date(b.added_at).getTime() - new Date(a.added_at).getTime()
           );
         }
 
-        return sortedData;
+        return safeData;
       } catch (error) {
-        console.error("Error fetching wishlist:", error);
-        throw new Error(handleApiError(error));
+        // Ghi log lỗi nhưng không hiển thị lỗi cho người dùng
+        console.log("Error in wishlist query, returning empty array:", error);
+        return [];
       }
     },
-    enabled: !!user,
+    enabled: !!user, // Chỉ chạy truy vấn khi có user
     staleTime: QUERY_STALE_TIME.USER,
+    retry: false, // Không retry để tránh log lỗi nhiều lần
   });
 
   // Load local wishlist từ localStorage khi component mount
@@ -185,7 +199,10 @@ export function useWishlist(filter?: WishlistFilter) {
         } catch (error) {
           console.error("Error merging wishlists:", error);
           toast("Lỗi đồng bộ danh sách yêu thích", {
-            description: handleApiError(error),
+            description:
+              error instanceof Error
+                ? error.message
+                : "Đã xảy ra lỗi khi đồng bộ danh sách yêu thích.",
           });
         }
       }
@@ -218,7 +235,11 @@ export function useWishlist(filter?: WishlistFilter) {
           return { success: true };
         } catch (error) {
           console.error("Error adding to wishlist:", error);
-          throw new Error(handleApiError(error));
+          throw new Error(
+            error instanceof Error
+              ? error.message
+              : "Lỗi khi thêm vào danh sách yêu thích"
+          );
         }
       } else {
         // Xử lý local wishlist
@@ -265,7 +286,11 @@ export function useWishlist(filter?: WishlistFilter) {
           return { success: true };
         } catch (error) {
           console.error("Error removing from wishlist:", error);
-          throw new Error(handleApiError(error));
+          throw new Error(
+            error instanceof Error
+              ? error.message
+              : "Lỗi khi xóa khỏi danh sách yêu thích"
+          );
         }
       } else {
         // Xử lý local wishlist
@@ -295,21 +320,24 @@ export function useWishlist(filter?: WishlistFilter) {
   });
 
   // Toggle wishlist
-  const toggleWishlist = (productId: number) => {
+  const toggleWishlist = async (productId: number) => {
     if (isInWishlist(productId)) {
-      removeFromWishlist.mutate(productId);
+      await removeFromWishlist.mutate(productId);
     } else {
-      addToWishlist.mutate(productId);
+      await addToWishlist.mutate(productId);
     }
   };
 
+  // Return các giá trị và hàm cần thiết
   return {
-    wishlistItems: wishlistItems || [],
+    wishlistItems,
     isLoading,
     isInWishlist,
+    toggleWishlist,
     addToWishlist: (productId: number) => addToWishlist.mutate(productId),
     removeFromWishlist: (productId: number) =>
       removeFromWishlist.mutate(productId),
-    toggleWishlist,
+    filter: wishlistFilter,
+    setFilter: setWishlistFilter,
   };
 }

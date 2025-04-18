@@ -46,7 +46,7 @@ export function WishlistItem({ item }: WishlistItemProps) {
   // Xử lý thêm vào giỏ hàng
   const handleAddToCart = async () => {
     try {
-      await addToCart({ variantId: item.product_id, quantity: 1 });
+      await addToCart({ variantId: product.id, quantity: 1 });
 
       toast("Đã thêm vào giỏ hàng", {
         description: `${product.name} đã được thêm vào giỏ hàng của bạn.`,
