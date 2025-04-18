@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { Camera, Loader2, X } from "lucide-react";
-import { uploadAvatar } from "../actions";
 import { DEFAULT_AVATAR_URL } from "@/lib/constants";
 import { useAuthQuery, useProfileQuery } from "@/features/auth/hooks";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAvatarMutation } from "../hooks/useAvatarMutation";
 
 // Using memo to prevent unnecessary re-renders
 export const AvatarUpload = memo(function AvatarUpload() {
@@ -22,6 +22,8 @@ export const AvatarUpload = memo(function AvatarUpload() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useSonnerToast();
+  const { upload: uploadAvatarMutation, remove: deleteAvatarMutation } =
+    useAvatarMutation(userId);
 
   // Handle file selection with validation and preview
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,15 +56,7 @@ export const AvatarUpload = memo(function AvatarUpload() {
     // Upload file - with error handling
     setIsUploading(true);
     try {
-      if (!userId) {
-        throw new Error("Bạn cần đăng nhập để thực hiện hành động này");
-      }
-
-      const result = await uploadAvatar(userId, file);
-
-      if (result.error) {
-        throw new Error(result.error);
-      }
+      await uploadAvatarMutation.mutateAsync(file);
 
       // Refresh profile query
       await queryClient.invalidateQueries({ queryKey: ["profile", userId] });
@@ -103,6 +97,17 @@ export const AvatarUpload = memo(function AvatarUpload() {
     }
   };
 
+  const handleDeleteAvatar = async () => {
+    if (!userId || !profile?.avatar_url) return;
+    setIsUploading(true);
+    try {
+      await deleteAvatarMutation.mutateAsync(profile.avatar_url);
+      setPreviewUrl(null);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   // Use preview URL if available, otherwise use profile avatar_url (chuẩn), fallback về default
   const currentImageUrl =
     previewUrl || profile?.avatar_url || DEFAULT_AVATAR_URL;
@@ -138,6 +143,21 @@ export const AvatarUpload = memo(function AvatarUpload() {
           <Camera className="h-5 w-5" />
           <span className="sr-only">Tải lên ảnh đại diện</span>
         </Button>
+
+        {/* Show delete button if có avatar */}
+        {profile?.avatar_url && !previewUrl && (
+          <Button
+            type="button"
+            size="icon"
+            variant="destructive"
+            onClick={handleDeleteAvatar}
+            className="absolute top-0 right-0 rounded-full p-1 shadow-md"
+            disabled={isUploading}
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Xóa ảnh đại diện</span>
+          </Button>
+        )}
 
         {/* Show cancel button when previewing */}
         {previewUrl && (
