@@ -295,7 +295,7 @@ export function AddressForm({
                 <Switch
                   checked={field.value}
                   onCheckedChange={field.onChange}
-                  disabled={isSubmitting || (address && address.is_default)}
+                  disabled={isSubmitting || field.value}
                 />
               </FormControl>
             </FormItem>
