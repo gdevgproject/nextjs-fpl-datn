@@ -8,6 +8,7 @@ import { ShoppingCart, Heart, AlertCircle, Loader2 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { useAddCartItem } from "@/features/shop/cart/use-cart";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { useWishlist } from "@/features/shop/wishlist/hooks/use-wishlist";
 
 export interface ProductImageType {
   image_url: string;
@@ -49,6 +50,9 @@ export interface ProductCardProps {
   sale_price?: number | null;
   variant_id?: number;
   stock_quantity?: number;
+  isInWishlist?: boolean;
+  onToggleWishlist?: () => void;
+  isWishlistLoading?: boolean;
 }
 
 export function ProductCard({
@@ -62,9 +66,23 @@ export function ProductCard({
   sale_price: directSalePrice,
   variant_id,
   stock_quantity,
+  isInWishlist,
+  onToggleWishlist,
+  isWishlistLoading,
 }: ProductCardProps) {
   const { mutate: addToCart, isPending: isAdding } = useAddCartItem();
   const { toast } = useSonnerToast();
+  const { isInWishlist: hookInList, toggleWishlist, isLoading: hookLoading } = useWishlist();
+
+  const handleToggleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    // use prop or hook
+    if (onToggleWishlist) {
+      onToggleWishlist();
+    } else if (productId) {
+      toggleWishlist(productId);
+    }
+  };
 
   // Support both new format (product object) and legacy format (direct props)
   const productId = product?.id || id;
@@ -137,6 +155,12 @@ export function ProductCard({
     );
   };
 
+  const heartFilled =
+    typeof isInWishlist === "boolean"
+      ? isInWishlist
+      : !!productId && hookInList(productId);
+  const heartLoading = isWishlistLoading || hookLoading;
+
   return (
     <div className="group relative overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md">
       <Link href={`/san-pham/${productSlug}`} className="block">
@@ -199,8 +223,18 @@ export function ProductCard({
               <span className="font-semibold">{formatPrice(productPrice)}</span>
             )}
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Heart className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleToggleWishlist}
+            disabled={heartLoading}
+          >
+            {heartFilled ? (
+              <Heart fill="currentColor" className="h-4 w-4 text-red-500" />
+            ) : (
+              <Heart className="h-4 w-4" />
+            )}
             <span className="sr-only">Add to wishlist</span>
           </Button>
         </div>

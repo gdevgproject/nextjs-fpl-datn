@@ -23,7 +23,7 @@ import { ProductCard } from "@/features/shop/shared/components/product-card";
 export function WishlistPage() {
   const { data: session } = useAuthQuery();
   const isAuthenticated = !!session?.user;
-  const { wishlistItems = [], isLoading, filter, setFilter } = useWishlist();
+  const { wishlistItems = [], isLoading, filter, setFilter, removeFromWishlist } = useWishlist();
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
@@ -114,31 +114,31 @@ export function WishlistPage() {
       ) : (
         <>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {currentItems
-              .filter((item) => item.product)
-              .map((item) => {
-                const prod = item.product!;
-                const defaultVar = prod.variants?.[0];
-                return (
-                  <ProductCard
-                    key={item.id}
-                    product={{
-                      id: prod.id,
-                      slug: prod.slug,
-                      name: prod.name,
-                      brand: prod.brand || undefined,
-                      images: prod.images?.map((img) => ({
-                        image_url: img.image_url,
-                        is_main: img.is_main,
-                      })),
-                      variants: prod.variants,
-                      price: defaultVar?.price,
-                      sale_price: defaultVar?.sale_price,
-                      defaultVariantId: defaultVar?.id,
-                    }}
-                  />
-                );
-              })}
+            {currentItems.filter((item) => item.product).map((item) => {
+              const prod = item.product!;
+              const defaultVar = prod.variants?.[0];
+              return (
+                <ProductCard
+                  key={item.id}
+                  product={{
+                    id: prod.id,
+                    slug: prod.slug,
+                    name: prod.name,
+                    brand: prod.brand || undefined,
+                    images: prod.images?.map((img) => ({
+                      image_url: img.image_url,
+                      is_main: img.is_main,
+                    })),
+                    variants: prod.variants,
+                    price: defaultVar?.price,
+                    sale_price: defaultVar?.sale_price,
+                    defaultVariantId: defaultVar?.id,
+                  }}
+                  isInWishlist={true}
+                  onToggleWishlist={() => removeFromWishlist(item.product_id)}
+                />
+              );
+            })}
           </div>
 
           {totalPages > 1 && (
