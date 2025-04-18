@@ -155,6 +155,7 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
                 const target = e.currentTarget as HTMLImageElement;
                 target.src = DEFAULT_AVATAR_URL;
               }}
+              className="object-cover aspect-square h-full w-full"
             />
             <AvatarFallback>
               {displayName.charAt(0).toUpperCase()}
@@ -169,7 +170,11 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
       >
         <div className="px-4 py-3 bg-muted/60 flex items-center gap-3 border-b border-border">
           <Avatar className="h-10 w-10 rounded-[8px]">
-            <AvatarImage src={avatarUrl} alt={displayName} />
+            <AvatarImage
+              src={avatarUrl}
+              alt={displayName}
+              className="object-cover aspect-square h-full w-full"
+            />
             <AvatarFallback>
               {displayName.charAt(0).toUpperCase()}
             </AvatarFallback>
