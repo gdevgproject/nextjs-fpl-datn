@@ -14,11 +14,11 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Heart } from "lucide-react";
 import Link from "next/link";
-import { WishlistItem } from "./wishlist-item";
 import { EmptyWishlist } from "./empty-wishlist";
 import { WishlistFilter } from "./wishlist-filter";
 import { useWishlist } from "../hooks/use-wishlist";
 import { useAuthQuery } from "@/features/auth/hooks";
+import { ProductCard } from "@/features/shop/shared/components/product-card";
 
 export function WishlistPage() {
   const { data: session } = useAuthQuery();
@@ -114,9 +114,31 @@ export function WishlistPage() {
       ) : (
         <>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {currentItems.map((item) => (
-              <WishlistItem key={item.id} item={item} />
-            ))}
+            {currentItems
+              .filter((item) => item.product)
+              .map((item) => {
+                const prod = item.product!;
+                const defaultVar = prod.variants?.[0];
+                return (
+                  <ProductCard
+                    key={item.id}
+                    product={{
+                      id: prod.id,
+                      slug: prod.slug,
+                      name: prod.name,
+                      brand: prod.brand || undefined,
+                      images: prod.images?.map((img) => ({
+                        image_url: img.image_url,
+                        is_main: img.is_main,
+                      })),
+                      variants: prod.variants,
+                      price: defaultVar?.price,
+                      sale_price: defaultVar?.sale_price,
+                      defaultVariantId: defaultVar?.id,
+                    }}
+                  />
+                );
+              })}
           </div>
 
           {totalPages > 1 && (

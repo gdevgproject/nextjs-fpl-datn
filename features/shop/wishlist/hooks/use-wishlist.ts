@@ -16,8 +16,17 @@ export interface WishlistItem {
     id: number;
     name: string;
     slug: string;
-    price: number;
-    sale_price: number | null;
+    brand: {
+      id: number;
+      name: string;
+    };
+    variants: {
+      id: number;
+      price: number;
+      sale_price: number | null;
+      stock_quantity: number;
+      volume_ml: number;
+    }[];
     images: any[];
   };
 }
@@ -51,15 +60,21 @@ export function useWishlist(filter?: WishlistFilter) {
         .from("wishlists")
         .select(
           `
-          id, 
-          product_id, 
+          id,
+          product_id,
           added_at,
           products:products (
-            id, 
-            name, 
-            slug, 
-            price, 
-            sale_price, 
+            id,
+            name,
+            slug,
+            brand:brands(id, name),
+            variants:product_variants(
+              id,
+              price,
+              sale_price,
+              stock_quantity,
+              volume_ml
+            ),
             images:product_images(*)
           )
         `
@@ -92,9 +107,22 @@ export function useWishlist(filter?: WishlistFilter) {
       }
 
       // Đảm bảo kết quả là mảng
-      const items = Array.isArray(data) ? data : [];
+      const rawItems = Array.isArray(data) ? data : [];
+      // Unwrap joined 'products' array into single 'product' object
+      const mappedItems = rawItems.map((item: any) => {
+        const rawProd = item.products;
+        const prod = Array.isArray(rawProd) ? rawProd[0] : rawProd;
+        return {
+          id: item.id,
+          product_id: item.product_id,
+          added_at: item.added_at,
+          product: prod || null,
+        };
+      });
+      // Lọc bỏ mục không có product
+      const items = mappedItems.filter((item) => item.product);
 
-      // Sắp xếp kết quả
+      // Sắp xếp và xử lý kết quả
       if (items.length > 0) {
         const sortedItems = [...items];
 
