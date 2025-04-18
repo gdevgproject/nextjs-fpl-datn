@@ -30,6 +30,7 @@ import {
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -76,6 +77,8 @@ export function AdminHeader() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0">
+            {/* Thêm DialogTitle để tránh lỗi accessibility */}
+            <DialogTitle className="sr-only">Menu quản trị</DialogTitle>
             <AdminSidebar onNavClick={() => setIsMobileMenuOpen(false)} />
           </SheetContent>
         </Sheet>
