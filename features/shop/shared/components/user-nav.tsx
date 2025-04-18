@@ -9,6 +9,9 @@ import {
   ShoppingBag,
   Heart,
   Settings,
+  MapPin,
+  Users as UserGroup,
+  Boxes,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -215,17 +218,45 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
               <span>Yêu thích</span>
             </Link>
           </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link
+              href="/tai-khoan/dia-chi"
+              className="flex items-center gap-2 rounded-[8px]"
+            >
+              <MapPin className="w-4 h-4" />
+              <span>Địa chỉ</span>
+            </Link>
+          </DropdownMenuItem>
         </DropdownMenuGroup>
-        {(role === "admin" || role === "staff" || role === "shipper") && (
+        {role === "admin" && (
           <>
             <DropdownMenuSeparator />
+            <DropdownMenuLabel>Quản trị</DropdownMenuLabel>
             <DropdownMenuItem asChild>
               <Link
-                href="/admin"
+                href="/admin/orders"
                 className="flex items-center gap-2 rounded-[8px]"
               >
-                <Settings className="w-4 h-4" />
-                <span>Quản trị</span>
+                <ShoppingBag className="w-4 h-4" />
+                <span>Đơn hàng</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link
+                href="/admin/catalog/products"
+                className="flex items-center gap-2 rounded-[8px]"
+              >
+                <Boxes className="w-4 h-4" />
+                <span>Sản phẩm</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link
+                href="/admin/users"
+                className="flex items-center gap-2 rounded-[8px]"
+              >
+                <UserGroup className="w-4 h-4" />
+                <span>Người dùng</span>
               </Link>
             </DropdownMenuItem>
           </>
