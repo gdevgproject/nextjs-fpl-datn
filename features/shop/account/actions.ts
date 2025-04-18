@@ -12,19 +12,105 @@ export async function updateProfileInfo(userId: string, data: any) {
   const supabase = await getSupabaseServerClient();
 
   try {
+    // Kiểm tra session để đảm bảo user chỉ cập nhật profile của chính mình
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      return createErrorResponse(
+        "Bạn cần đăng nhập để thực hiện hành động này",
+        "unauthorized"
+      );
+    }
+
+    // Chỉ cho phép cập nhật profile của chính mình
+    if (session.user.id !== userId) {
+      return createErrorResponse(
+        "Bạn không có quyền cập nhật thông tin này",
+        "forbidden"
+      );
+    }
+
+    // Xử lý dữ liệu trước khi gửi xuống database
+    const profileData = { ...data };
+
+    // Xử lý trường birth_date
+    if (profileData.birth_date === "") {
+      profileData.birth_date = null;
+    } else if (profileData.birth_date) {
+      // Đảm bảo birth_date có định dạng đúng cho database
+      try {
+        // Nếu là string, chuyển sang đối tượng Date và kiểm tra tính hợp lệ
+        const dateObj = new Date(profileData.birth_date);
+        if (isNaN(dateObj.getTime())) {
+          return createErrorResponse("Ngày sinh không hợp lệ", "invalid_data");
+        }
+        // Giữ nguyên định dạng chuỗi YYYY-MM-DD vì Supabase sẽ xử lý
+      } catch (error) {
+        return createErrorResponse("Ngày sinh không hợp lệ", "invalid_data");
+      }
+    }
+
+    // Xử lý phone_number: đảm bảo rỗng khi là chuỗi trống
+    if (profileData.phone_number === "") {
+      profileData.phone_number = null;
+    } else if (profileData.phone_number) {
+      // Validate phone_number theo regex
+      const phoneRegex = /^(0|\+84)[3|5|7|8|9][0-9]{8}$/;
+      if (!phoneRegex.test(profileData.phone_number)) {
+        return createErrorResponse(
+          "Số điện thoại không hợp lệ",
+          "invalid_phone"
+        );
+      }
+    }
+
+    // Validate display_name
+    if (
+      !profileData.display_name ||
+      profileData.display_name.trim().length < 2
+    ) {
+      return createErrorResponse(
+        "Tên hiển thị phải có ít nhất 2 ký tự",
+        "invalid_name"
+      );
+    }
+
+    // Kiểm tra xem profile có tồn tại không
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", userId)
+      .single();
+
+    if (!existingProfile) {
+      return createErrorResponse(
+        "Không tìm thấy thông tin người dùng",
+        "not_found"
+      );
+    }
+
+    // Cập nhật profile
     const { error } = await supabase
       .from("profiles")
-      .update(data)
+      .update(profileData)
       .eq("id", userId);
 
     if (error) {
-      return createErrorResponse(error.message);
+      console.error("Update profile error:", error);
+      return createErrorResponse(error.message, error.code);
     }
 
+    // Làm mới dữ liệu cho client
     revalidatePath("/tai-khoan");
-    return createSuccessResponse();
+    return createSuccessResponse({ message: "Cập nhật thành công" });
   } catch (error) {
-    return createErrorResponse(error);
+    console.error("Update profile exception:", error);
+    return createErrorResponse(
+      error instanceof Error ? error.message : "Lỗi không xác định",
+      "server_error"
+    );
   }
 }
 

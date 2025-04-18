@@ -219,17 +219,43 @@ export function useDeleteAddress(userId: string | undefined) {
   });
 }
 
-export function useUpdateUserProfile(userId: string | undefined) {
+export function useUpdateUserProfile() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (profileData: any) => {
+    mutationFn: async (data: any) => {
+      // Lấy user ID hiện tại từ session
+      const supabase = getSupabaseBrowserClient();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id;
+
       if (!userId) throw new Error("Unauthorized");
-      const result = await updateProfileInfo(userId, profileData);
+
+      // Format dữ liệu nếu cần (đặc biệt là birth_date)
+      const formattedData = { ...data };
+      if (formattedData.birth_date === "") {
+        formattedData.birth_date = null;
+      }
+
+      const result = await updateProfileInfo(userId, formattedData);
       if (result.error) throw new Error(result.error);
       return result;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+    onSuccess: async () => {
+      // Lấy user ID hiện tại từ session
+      const supabase = getSupabaseBrowserClient();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id;
+
+      if (userId) {
+        // Invalidate và refetch toàn bộ queries liên quan
+        queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+
+        // Force refetch để cập nhật UI
+        await queryClient.refetchQueries({
+          queryKey: ["profile", userId],
+          type: "active",
+        });
+      }
     },
   });
 }

@@ -84,54 +84,34 @@ const ProfileForm = memo(function ProfileForm() {
     }
   }, [profile, form]);
 
-  // Enhanced form submission with optimistic updates and synchronization
+  // Enhanced form submission with better error handling
   const onSubmit = useCallback(
     async (data: ProfileFormValues) => {
-      if (!user?.id) return;
-
-      // Apply optimistic update to cache immediately
-      const currentProfile = queryClient.getQueryData(["profile", user.id]);
-      if (currentProfile) {
-        queryClient.setQueryData(["profile", user.id], {
-          ...currentProfile,
-          ...data,
-          _optimistic: true, // Mark as optimistic update
+      if (!user?.id) {
+        toast("Lỗi cập nhật", {
+          description: "Bạn cần đăng nhập để thực hiện thao tác này",
         });
+        return;
       }
 
-      updateProfileMutation.mutate(data, {
-        onSuccess: async () => {
-          // Perform a full refresh of profile data
-          await queryClient.invalidateQueries({
-            queryKey: ["profile", user.id],
-          });
+      try {
+        await updateProfileMutation.mutateAsync(data);
 
-          // Broadcast the update to all components
-          if (user?.id) {
-            queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+        // Chuyển hướng với status để hiển thị thông báo thành công
+        router.push("/tai-khoan?status=profile_updated");
+      } catch (error) {
+        toast("Cập nhật thất bại", {
+          description:
+            error instanceof Error
+              ? error.message
+              : "Đã xảy ra lỗi khi cập nhật thông tin",
+        });
 
-            // Force refetch of active profile queries to ensure header updates
-            queryClient.refetchQueries({
-              queryKey: ["profile", user.id],
-              type: "active",
-            });
-          }
-
-          // Navigate with status for toast notification
-          router.push("/tai-khoan?status=profile_updated");
-        },
-        onError: (error) => {
-          // Revert optimistic update on error
-          queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
-
-          toast("Cập nhật thất bại", {
-            description:
-              error instanceof Error
-                ? error.message
-                : "Đã xảy ra lỗi khi cập nhật thông tin",
-          });
-        },
-      });
+        // Khi có lỗi, vẫn phải refresh cache để đảm bảo dữ liệu mới nhất
+        if (user?.id) {
+          queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+        }
+      }
     },
     [updateProfileMutation, router, toast, user?.id, queryClient]
   );
