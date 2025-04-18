@@ -190,8 +190,8 @@ const ProfileForm = memo(function ProfileForm() {
                 <FormLabel>Giới tính</FormLabel>
                 <Select
                   disabled={updateProfileMutation.isPending}
+                  value={field.value || ""}
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
                 >
                   <FormControl>
                     <SelectTrigger>
