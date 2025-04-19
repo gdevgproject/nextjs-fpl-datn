@@ -49,6 +49,14 @@ export function AddressStep() {
 
   const { data: addresses = [], isPending: addressesLoading } =
     useUserAddresses(userId);
+  // Nếu user có địa chỉ mặc định, tự động chọn khi load xong
+  useEffect(() => {
+    if (isAuthenticated && addresses.length > 0 && selectedAddressId === null) {
+      const defaultAddr = addresses.find((a) => a.is_default);
+      setSelectedAddressId(defaultAddr?.id ?? addresses[0].id);
+    }
+  }, [addresses, isAuthenticated]);
+
   const addAddressMutation = useAddAddress(userId);
 
   useEffect(() => {
