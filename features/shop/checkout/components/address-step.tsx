@@ -23,6 +23,7 @@ import {
 } from "@/features/shop/account/queries";
 import { LoaderCircle } from "lucide-react";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { addressSchema } from "../validators";
 
 export function AddressStep() {
   const { data: session } = useAuthQuery();
@@ -98,18 +99,13 @@ export function AddressStep() {
 
   function validateNewAddress() {
     const errs: Record<string, string> = {};
-    if (!newAddress.recipient_name.trim())
-      errs.recipient_name = "Vui lòng nhập họ tên người nhận";
-    if (!newAddress.recipient_phone.trim())
-      errs.recipient_phone = "Vui lòng nhập số điện thoại";
-    else if (!/(84|0[3|5|7|8|9])+([0-9]{8})\b/.test(newAddress.recipient_phone))
-      errs.recipient_phone = "Số điện thoại không hợp lệ";
-    if (!newAddress.province_city.trim())
-      errs.province_city = "Vui lòng nhập tỉnh/thành phố";
-    if (!newAddress.district.trim()) errs.district = "Vui lòng nhập quận/huyện";
-    if (!newAddress.ward.trim()) errs.ward = "Vui lòng nhập phường/xã";
-    if (!newAddress.street_address.trim())
-      errs.street_address = "Vui lòng nhập địa chỉ chi tiết";
+    const result = addressSchema.safeParse(newAddress);
+    if (!result.success) {
+      result.error.errors.forEach((err) => {
+        const key = err.path[0] as string;
+        errs[key] = err.message;
+      });
+    }
     return errs;
   }
 
@@ -333,6 +329,19 @@ export function AddressStep() {
                     <Label>Số điện thoại</Label>
                     <Input
                       value={newAddress.recipient_phone}
+                      // Restrict input to digits and '+' only to prevent negative sign
+                      onKeyDown={(e) => {
+                        const allowed = /[0-9+]/;
+                        if (!allowed.test(e.key) && e.key.length === 1) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onPaste={(e) => {
+                        const paste = e.clipboardData.getData("text");
+                        if (!/^\+?\d+$/.test(paste)) {
+                          e.preventDefault();
+                        }
+                      }}
                       onChange={(e) =>
                         setNewAddress((a) => ({
                           ...a,

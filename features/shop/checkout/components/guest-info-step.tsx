@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCheckout } from "@/features/shop/checkout/checkout-provider";
+import { guestInfoSchema } from "../validators";
 import {
   Card,
   CardContent,
@@ -17,30 +18,35 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 export function GuestInfoStep() {
   const { formData, updateFormData, errors } = useCheckout();
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({
+    fullName: false,
+    email: false,
+    phoneNumber: false,
+  });
 
   const handleChange = (field: string, value: string) => {
-    // Clear error when user types
-    if (localErrors[field]) {
-      setLocalErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-
     updateFormData({ [field]: value });
+    setTouched((prev) => ({ ...prev, [field]: true }));
   };
 
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const validatePhone = (phone: string) => {
-    // Simple Vietnamese phone number validation
-    const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/;
-    return phoneRegex.test(phone);
-  };
+  // Validate form data with Zod on change
+  useEffect(() => {
+    const result = guestInfoSchema.safeParse({
+      fullName: formData.fullName || "",
+      email: formData.email || "",
+      phoneNumber: formData.phoneNumber || "",
+    });
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        const key = err.path[0] as string;
+        fieldErrors[key] = err.message;
+      });
+      setLocalErrors(fieldErrors);
+    } else {
+      setLocalErrors({});
+    }
+  }, [formData.fullName, formData.email, formData.phoneNumber]);
 
   return (
     <Card className="mb-6">
@@ -63,7 +69,7 @@ export function GuestInfoStep() {
               value={formData.fullName || ""}
               onChange={(e) => handleChange("fullName", e.target.value)}
             />
-            {(errors.fullName || localErrors.fullName) && (
+            {touched.fullName && (errors.fullName || localErrors.fullName) && (
               <Alert variant="destructive" className="py-2">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
@@ -81,26 +87,9 @@ export function GuestInfoStep() {
               type="email"
               placeholder="example@email.com"
               value={formData.email || ""}
-              onChange={(e) => {
-                const value = e.target.value;
-                handleChange("email", value);
-
-                // Validate email format
-                if (value && !validateEmail(value)) {
-                  setLocalErrors((prev) => ({
-                    ...prev,
-                    email: "Email không hợp lệ",
-                  }));
-                } else {
-                  setLocalErrors((prev) => {
-                    const newErrors = { ...prev };
-                    delete newErrors.email;
-                    return newErrors;
-                  });
-                }
-              }}
+              onChange={(e) => handleChange("email", e.target.value)}
             />
-            {localErrors.email && (
+            {touched.email && localErrors.email && (
               <Alert variant="destructive" className="py-2">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{localErrors.email}</AlertDescription>
@@ -117,33 +106,17 @@ export function GuestInfoStep() {
               id="phoneNumber"
               placeholder="0912345678"
               value={formData.phoneNumber || ""}
-              onChange={(e) => {
-                const value = e.target.value;
-                handleChange("phoneNumber", value);
-
-                // Validate phone format
-                if (value && !validatePhone(value)) {
-                  setLocalErrors((prev) => ({
-                    ...prev,
-                    phoneNumber: "Số điện thoại không hợp lệ",
-                  }));
-                } else {
-                  setLocalErrors((prev) => {
-                    const newErrors = { ...prev };
-                    delete newErrors.phoneNumber;
-                    return newErrors;
-                  });
-                }
-              }}
+              onChange={(e) => handleChange("phoneNumber", e.target.value)}
             />
-            {(errors.phoneNumber || localErrors.phoneNumber) && (
-              <Alert variant="destructive" className="py-2">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  {errors.phoneNumber || localErrors.phoneNumber}
-                </AlertDescription>
-              </Alert>
-            )}
+            {touched.phoneNumber &&
+              (errors.phoneNumber || localErrors.phoneNumber) && (
+                <Alert variant="destructive" className="py-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    {errors.phoneNumber || localErrors.phoneNumber}
+                  </AlertDescription>
+                </Alert>
+              )}
           </div>
         </div>
       </CardContent>
