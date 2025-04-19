@@ -175,6 +175,7 @@ export default function HeroBanner({ banners }: HeroBannerProps) {
 
   return (
     <div
+      key={currentBanner.id}
       className="relative w-full h-[350px] sm:h-[400px] md:h-[500px] lg:h-[600px] overflow-hidden"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
