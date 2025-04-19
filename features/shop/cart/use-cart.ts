@@ -17,11 +17,32 @@ import {
 import { useAuthQuery } from "@/features/auth/hooks";
 import { QUERY_STALE_TIME } from "@/lib/hooks/use-query-config";
 import { getProductVariantDetails } from "./cart-actions";
+import { useMemo } from "react";
 
 // Unified Cart Query (Handles both Guest and Authenticated)
 export function useCartQuery() {
-  const { data: session } = useAuthQuery();
+  const { data: session, isLoading: isSessionLoading } = useAuthQuery();
   const isAuthenticated = !!session?.user;
+  const queryClient = useQueryClient();
+
+  // For authenticated users, we need to ensure we don't flash an empty cart
+  const initialData = useMemo(() => {
+    if (typeof window === "undefined") return [];
+
+    // For guest users, always use localStorage data
+    if (!isAuthenticated) {
+      return getGuestCart();
+    }
+
+    // For authenticated users, check if we have existing cart data in the cache
+    const existingData = queryClient.getQueryData(["cart", true]);
+    if (existingData) {
+      return existingData;
+    }
+
+    // If no cached data, don't set a placeholder (will show loading state)
+    return undefined;
+  }, [isAuthenticated, queryClient]);
 
   return useQuery({
     queryKey: ["cart", isAuthenticated],
@@ -34,9 +55,9 @@ export function useCartQuery() {
     },
     staleTime: QUERY_STALE_TIME.CART,
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
-    placeholderData: isAuthenticated ? [] : getGuestCart(),
-    enabled: typeof window !== "undefined",
+    refetchOnMount: true,
+    placeholderData: initialData,
+    enabled: typeof window !== "undefined" && !isSessionLoading,
   });
 }
 

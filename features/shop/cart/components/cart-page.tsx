@@ -299,11 +299,11 @@ function SmartSummaryBar({
 
 export function CartPage() {
   const router = useRouter();
-  const { data: cartItems = [], isLoading } = useCartQuery();
+  const { data: cartItems = [], isLoading, isFetching } = useCartQuery();
   const { mutate: updateCartItem, isLoading: isUpdating } = useUpdateCartItem();
   const { mutate: removeCartItem, isLoading: isRemoving } = useRemoveCartItem();
   const { mutate: clearCart } = useClearCart();
-  const { data: session } = useAuthQuery();
+  const { data: session, isLoading: isSessionLoading } = useAuthQuery();
   const isAuthenticated = !!session?.user;
   const { success, error } = useSonnerToast();
   const { settings } = useShopSettings();
@@ -345,6 +345,11 @@ export function CartPage() {
     setSelectedItems([]);
     success("Đã xóa các sản phẩm đã chọn khỏi giỏ hàng");
   };
+
+  // Reset selected items when cart items change
+  useEffect(() => {
+    setSelectedItems([]);
+  }, [isAuthenticated]);
 
   const subtotal = useMemo(
     () =>
@@ -461,7 +466,32 @@ export function CartPage() {
         )
       : [];
 
-  if (cartItems.length === 0) {
+  // Show loading state when session is loading or cart is loading/fetching
+  const isLoadingData = isSessionLoading || isLoading || isFetching;
+
+  // Only show loading if there are no items or still loading data
+  if (isLoadingData) {
+    return (
+      <div className="container py-8 px-2 sm:px-4">
+        <div className="flex flex-wrap items-center gap-3 mb-8">
+          <span className="inline-flex items-center justify-center rounded-full bg-primary/10 text-primary p-2">
+            <ShoppingCartIcon className="h-7 w-7" />
+          </span>
+          <h1 className="text-3xl font-bold">Giỏ hàng của bạn</h1>
+          <div className="flex-1" />
+        </div>
+        <div className="overflow-x-auto rounded-lg border bg-card shadow-sm p-4">
+          <div className="flex justify-center items-center min-h-[200px]">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-3 text-lg">Đang tải giỏ hàng...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Only show empty cart when we're sure there are no items (after loading)
+  if (!isLoadingData && cartItems.length === 0) {
     return <EmptyCart />;
   }
 
