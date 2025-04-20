@@ -35,7 +35,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Định nghĩa các tab loại hoạt động phổ biến - được cập nhật thông minh hơn
 const DEFAULT_ACTIVITY_TABS = [
@@ -66,7 +71,7 @@ export function AdminActivityLogs() {
 
   // State for selected log details
   const [selectedLog, setSelectedLog] = useState<AdminActivityLog | null>(null);
-  
+
   // State for selected log index in current page
   const [selectedLogIndex, setSelectedLogIndex] = useState<number>(-1);
 
@@ -85,35 +90,41 @@ export function AdminActivityLogs() {
   const { data: entityTypesData } = useEntityTypes();
 
   // Memoize activity types and entity types to avoid recalculations
-  const activityTypes = useMemo(() => activityTypesData || [], [activityTypesData]);
+  const activityTypes = useMemo(
+    () => activityTypesData || [],
+    [activityTypesData]
+  );
   const entityTypes = useMemo(() => entityTypesData || [], [entityTypesData]);
-  
+
   // Tạo danh sách các tab hoạt động dựa trên dữ liệu thực tế
   const activityTypeTabs = useMemo(() => {
     // Luôn giữ tab "Tất cả" đầu tiên
     const tabs = [...DEFAULT_ACTIVITY_TABS];
-    
+
     // Nếu có dữ liệu từ API, thêm các loại hoạt động phổ biến
     if (activityTypes.length > 0) {
       // Lọc ra các loại hoạt động phổ biến (xuất hiện nhiều nhất) và chưa có trong default tabs
-      const defaultTypeSet = new Set(DEFAULT_ACTIVITY_TABS.map(tab => tab.id));
+      const defaultTypeSet = new Set(
+        DEFAULT_ACTIVITY_TABS.map((tab) => tab.id)
+      );
       const popularTypes = activityTypes
-        .filter(type => !defaultTypeSet.has(type))
+        .filter((type) => !defaultTypeSet.has(type))
         .slice(0, 5); // Chỉ lấy 5 loại phổ biến
-      
+
       // Thêm vào danh sách tabs
-      popularTypes.forEach(type => {
+      popularTypes.forEach((type) => {
         let color = "bg-gray-500";
-        if (type.includes("INSERT") || type.includes("CREATE")) color = "bg-green-500";
+        if (type.includes("INSERT") || type.includes("CREATE"))
+          color = "bg-green-500";
         if (type.includes("UPDATE")) color = "bg-blue-500";
         if (type.includes("DELETE")) color = "bg-red-500";
         if (type.includes("CANCEL")) color = "bg-orange-500";
         if (type.includes("APPROVE")) color = "bg-emerald-500";
-        
+
         tabs.push({ id: type, label: formatActivityType(type), color });
       });
     }
-    
+
     return tabs;
   }, [activityTypes]);
 
@@ -153,10 +164,13 @@ export function AdminActivityLogs() {
   }, []);
 
   // Handle view log details
-  const handleViewDetails = useCallback((log: AdminActivityLog, index: number) => {
-    setSelectedLog(log);
-    setSelectedLogIndex(index);
-  }, []);
+  const handleViewDetails = useCallback(
+    (log: AdminActivityLog, index: number) => {
+      setSelectedLog(log);
+      setSelectedLogIndex(index);
+    },
+    []
+  );
 
   // Handle close log details
   const handleCloseDetails = useCallback(() => {
@@ -165,12 +179,15 @@ export function AdminActivityLogs() {
   }, []);
 
   // Handle navigate between logs
-  const handleNavigateLog = useCallback((index: number) => {
-    if (data?.data && index >= 0 && index < data.data.length) {
-      setSelectedLog(data.data[index]);
-      setSelectedLogIndex(index);
-    }
-  }, [data?.data]);
+  const handleNavigateLog = useCallback(
+    (index: number) => {
+      if (data?.data && index >= 0 && index < data.data.length) {
+        setSelectedLog(data.data[index]);
+        setSelectedLogIndex(index);
+      }
+    },
+    [data?.data]
+  );
 
   // Handle tab change
   const handleTabChange = useCallback((value: string) => {
@@ -218,11 +235,17 @@ export function AdminActivityLogs() {
           <div className="overflow-x-auto">
             <TabsList>
               {activityTypeTabs.map((tab) => (
-                <TabsTrigger key={tab.id} value={tab.id} className="flex items-center gap-1">
+                <TabsTrigger
+                  key={tab.id}
+                  value={tab.id}
+                  className="flex items-center gap-1"
+                >
                   {tab.icon ? (
                     tab.icon
                   ) : (
-                    <span className={`inline-block w-2 h-2 rounded-full ${tab.color} mr-1`}></span>
+                    <span
+                      className={`inline-block w-2 h-2 rounded-full ${tab.color} mr-1`}
+                    ></span>
                   )}
                   {tab.label}
                 </TabsTrigger>
@@ -251,99 +274,103 @@ export function AdminActivityLogs() {
                   <span className="sr-only">Bộ lọc</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[250px]">
-                <DropdownMenuLabel>Bộ lọc nâng cao</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuItem asChild>
-                    <div className="w-full cursor-default py-2">
-                      <div className="mb-2 text-xs text-muted-foreground">Loại đối tượng:</div>
+              <DropdownMenuContent
+                align="end"
+                className="w-[280px] md:w-[350px] p-4 transition-all duration-200"
+                sideOffset={8}
+              >
+                <DropdownMenuLabel className="text-base font-medium">
+                  Bộ lọc nâng cao
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="my-2" />
+
+                <div className="grid gap-4">
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-1.5 block">
+                      Loại đối tượng:
+                    </label>
+                    <Select
+                      value={filters.entityType || ""}
+                      onValueChange={(value) =>
+                        handleFilterChange(
+                          "entityType",
+                          value === "all" ? undefined : value
+                        )
+                      }
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Chọn loại đối tượng" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tất cả đối tượng</SelectItem>
+                        {entityTypes.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {type}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {activityTypes.length > DEFAULT_ACTIVITY_TABS.length && (
+                    <div>
+                      <label className="text-sm text-muted-foreground mb-1.5 block">
+                        Loại hoạt động:
+                      </label>
                       <Select
-                        value={filters.entityType || ""}
-                        onValueChange={(value) =>
+                        value={filters.activityType || ""}
+                        onValueChange={(value) => {
                           handleFilterChange(
-                            "entityType",
+                            "activityType",
                             value === "all" ? undefined : value
-                          )
-                        }
+                          );
+                          setActiveTab(value === "all" ? "all" : value);
+                        }}
                       >
                         <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Chọn loại đối tượng" />
+                          <SelectValue placeholder="Chọn loại hoạt động" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Tất cả đối tượng</SelectItem>
-                          {entityTypes.map((type) => (
+                        <SelectContent className="max-h-[200px]">
+                          <SelectItem value="all">Tất cả hoạt động</SelectItem>
+                          {activityTypes.sort().map((type) => (
                             <SelectItem key={type} value={type}>
-                              {type}
+                              {formatActivityType(type)}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                  </DropdownMenuItem>
-                  
-                  <DropdownMenuSeparator />
-                  
-                  {activityTypes.length > DEFAULT_ACTIVITY_TABS.length && (
-                    <DropdownMenuItem asChild>
-                      <div className="w-full cursor-default py-2">
-                        <div className="mb-2 text-xs text-muted-foreground">Loại hoạt động:</div>
-                        <Select
-                          value={filters.activityType || ""}
-                          onValueChange={(value) => {
-                            handleFilterChange(
-                              "activityType",
-                              value === "all" ? undefined : value
-                            );
-                            setActiveTab(value === "all" ? "all" : value);
-                          }}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Chọn loại hoạt động" />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-[200px]">
-                            <SelectItem value="all">Tất cả hoạt động</SelectItem>
-                            {activityTypes.sort().map((type) => (
-                              <SelectItem key={type} value={type}>
-                                {formatActivityType(type)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </DropdownMenuItem>
                   )}
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuItem asChild>
-                    <div className="w-full cursor-default py-2">
-                      <div className="mb-2 text-xs text-muted-foreground">Khoảng thời gian:</div>
-                      <DateRangePicker
-                        startDate={filters.startDate}
-                        endDate={filters.endDate}
-                        onStartDateChange={(date) =>
-                          handleFilterChange("startDate", date)
-                        }
-                        onEndDateChange={(date) =>
-                          handleFilterChange("endDate", date)
-                        }
-                      />
-                    </div>
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start"
-                    onClick={handleClearFilters}
-                    disabled={!hasActiveFilters}
-                  >
-                    <FilterX className="h-4 w-4 mr-2" />
-                    Xóa tất cả bộ lọc
-                  </Button>
-                </DropdownMenuItem>
+
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-1.5 block">
+                      Khoảng thời gian:
+                    </label>
+                    <DateRangePicker
+                      startDate={filters.startDate}
+                      endDate={filters.endDate}
+                      onStartDateChange={(date) =>
+                        handleFilterChange("startDate", date)
+                      }
+                      onEndDateChange={(date) =>
+                        handleFilterChange("endDate", date)
+                      }
+                      align="center"
+                    />
+                  </div>
+
+                  <div className="mt-2 pt-2 border-t">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-center"
+                      onClick={handleClearFilters}
+                      disabled={!hasActiveFilters}
+                    >
+                      <FilterX className="h-4 w-4 mr-2" />
+                      Xóa tất cả bộ lọc
+                    </Button>
+                  </div>
+                </div>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -352,61 +379,70 @@ export function AdminActivityLogs() {
         {/* Hiển thị các bộ lọc đang áp dụng */}
         {hasActiveFilters && (
           <div className="flex flex-wrap items-center gap-2 mb-4">
-            <span className="text-xs text-muted-foreground">Bộ lọc đang áp dụng:</span>
-            
+            <span className="text-xs text-muted-foreground">
+              Bộ lọc đang áp dụng:
+            </span>
+
             {filters.activityType && (
               <Badge variant="secondary" className="flex gap-1 items-center">
-                <span className="text-xs">Hoạt động: {formatActivityType(filters.activityType)}</span>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-4 w-4 p-0 ml-1" 
+                <span className="text-xs">
+                  Hoạt động: {formatActivityType(filters.activityType)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-4 w-4 p-0 ml-1"
                   onClick={() => handleFilterChange("activityType", undefined)}
                 >
                   <X className="h-3 w-3" />
                 </Button>
               </Badge>
             )}
-            
+
             {filters.entityType && (
               <Badge variant="secondary" className="flex gap-1 items-center">
                 <span className="text-xs">Đối tượng: {filters.entityType}</span>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-4 w-4 p-0 ml-1" 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-4 w-4 p-0 ml-1"
                   onClick={() => handleFilterChange("entityType", undefined)}
                 >
                   <X className="h-3 w-3" />
                 </Button>
               </Badge>
             )}
-            
+
             {filters.search && (
               <Badge variant="secondary" className="flex gap-1 items-center">
                 <span className="text-xs">Tìm kiếm: "{filters.search}"</span>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-4 w-4 p-0 ml-1" 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-4 w-4 p-0 ml-1"
                   onClick={() => handleFilterChange("search", undefined)}
                 >
                   <X className="h-3 w-3" />
                 </Button>
               </Badge>
             )}
-            
+
             {(filters.startDate || filters.endDate) && (
               <Badge variant="secondary" className="flex gap-1 items-center">
                 <span className="text-xs">
-                  Thời gian: {filters.startDate ? new Date(filters.startDate).toLocaleDateString('vi-VN') : '...'} 
-                  {' → '} 
-                  {filters.endDate ? new Date(filters.endDate).toLocaleDateString('vi-VN') : '...'}
+                  Thời gian:{" "}
+                  {filters.startDate
+                    ? new Date(filters.startDate).toLocaleDateString("vi-VN")
+                    : "..."}
+                  {" → "}
+                  {filters.endDate
+                    ? new Date(filters.endDate).toLocaleDateString("vi-VN")
+                    : "..."}
                 </span>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-4 w-4 p-0 ml-1" 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-4 w-4 p-0 ml-1"
                   onClick={() => {
                     handleFilterChange("startDate", undefined);
                     handleFilterChange("endDate", undefined);
@@ -416,15 +452,15 @@ export function AdminActivityLogs() {
                 </Button>
               </Badge>
             )}
-            
+
             {hasActiveFilters && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="h-7 px-2" 
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2"
                       onClick={handleClearFilters}
                     >
                       <FilterX className="h-3.5 w-3.5 mr-1" />
@@ -464,7 +500,9 @@ export function AdminActivityLogs() {
                 <>
                   <LogsTable
                     logs={data.data}
-                    onViewDetails={(log, index) => handleViewDetails(log, index)}
+                    onViewDetails={(log, index) =>
+                      handleViewDetails(log, index)
+                    }
                   />
 
                   <div className="p-4 border-t">
@@ -507,30 +545,33 @@ export function AdminActivityLogs() {
 function formatActivityType(type: string): string {
   // Loại bỏ tiền tố entity và chỉ hiển thị hành động
   const actionMap = {
-    'INSERT': 'Tạo mới',
-    'CREATE': 'Tạo mới',
-    'UPDATE': 'Cập nhật',
-    'DELETE': 'Xóa',
-    'CANCEL': 'Hủy',
-    'APPROVE': 'Duyệt',
-    'REJECT': 'Từ chối',
+    INSERT: "Tạo mới",
+    CREATE: "Tạo mới",
+    UPDATE: "Cập nhật",
+    DELETE: "Xóa",
+    CANCEL: "Hủy",
+    APPROVE: "Duyệt",
+    REJECT: "Từ chối",
   };
-  
+
   // Tách các phần của type: ENTITY_ACTION
-  const parts = type.split('_');
-  
+  const parts = type.split("_");
+
   // Nếu chỉ có một phần, trả về nguyên bản
   if (parts.length === 1) return type;
-  
+
   // Tìm hành động trong actionMap
   for (const [action, label] of Object.entries(actionMap)) {
     if (parts.includes(action)) {
       // Lấy entity từ các phần còn lại
-      const entity = parts.filter(p => p !== action).join(' ').toLowerCase();
+      const entity = parts
+        .filter((p) => p !== action)
+        .join(" ")
+        .toLowerCase();
       return `${label} ${entity}`;
     }
   }
-  
+
   // Nếu không tìm thấy hành động, trả về nguyên bản
   return type;
 }
