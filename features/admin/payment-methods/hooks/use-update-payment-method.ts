@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useClientMutation } from "@/shared/hooks/use-client-mutation"
+import { usePaymentMethodMutation } from "./use-payment-methods-hooks";
 
 export function useUpdatePaymentMethod() {
-  return useClientMutation("payment_methods", "update", {
+  return usePaymentMethodMutation("update", {
     invalidateQueries: [["payment-methods", "list"]],
     primaryKey: "id",
-  })
+  });
 }
