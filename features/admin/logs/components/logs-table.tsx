@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useMemo, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -20,75 +21,97 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useUserEmails } from "../hooks/use-user-emails";
+import type { AdminActivityLog } from "../types";
 
 interface LogsTableProps {
-  logs: any[];
-  onViewDetails: (log: any) => void;
+  logs: AdminActivityLog[];
+  onViewDetails: (log: AdminActivityLog) => void;
 }
 
+// Thành phần con cho mỗi dòng trong bảng, được tối ưu với memo
+const LogRow = memo(function LogRow({
+  log,
+  onViewDetails,
+  email,
+  isLoadingEmail,
+}: {
+  log: AdminActivityLog;
+  onViewDetails: (log: AdminActivityLog) => void;
+  email: string | undefined;
+  isLoadingEmail: boolean;
+}) {
+  // Tính toán các giá trị cần thiết bên trong component memoized để tránh render lại
+  const timestamp = useMemo(
+    () => formatTimestamp(log.timestamp),
+    [log.timestamp]
+  );
+  const activityTypeColor = getActivityTypeColor(log.activity_type);
+  const entityTypeColor = getEntityTypeColor(log.entity_type);
+
+  // Xử lý sự kiện click với useCallback để tránh tạo lại hàm
+  const handleViewDetails = useCallback(() => {
+    onViewDetails(log);
+  }, [log, onViewDetails]);
+
+  return (
+    <TableRow key={log.id}>
+      <TableCell className="font-medium whitespace-nowrap">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex flex-col">
+                <span>{timestamp}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{new Date(log.timestamp).toLocaleString("vi-VN")}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </TableCell>
+      <TableCell>
+        <span className="text-muted-foreground">
+          {isLoadingEmail ? "Đang tải..." : email || log.admin_user_id}
+        </span>
+      </TableCell>
+      <TableCell>
+        <Badge className={`${activityTypeColor} hover:${activityTypeColor}`}>
+          {log.activity_type}
+        </Badge>
+      </TableCell>
+      <TableCell>
+        <Badge
+          variant="outline"
+          className={`${entityTypeColor} hover:${entityTypeColor} text-white border-0`}
+        >
+          {log.entity_type}
+        </Badge>
+      </TableCell>
+      <TableCell className="max-w-md truncate">{log.description}</TableCell>
+      <TableCell className="text-right">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleViewDetails}
+          title="Xem chi tiết"
+        >
+          <Eye className="h-4 w-4" />
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
+});
+
 export function LogsTable({ logs, onViewDetails }: LogsTableProps) {
-  // Fetch user emails
-  const { data: userEmails, isLoading: isLoadingEmails } = useUserEmails(
-    logs.map((log) => log.admin_user_id).filter(Boolean)
+  // Lấy danh sách userIds từ logs
+  const userIds = useMemo(
+    () => logs.map((log) => log.admin_user_id).filter(Boolean),
+    [logs]
   );
 
-  // Function to format timestamp
-  const formatTimestamp = (timestamp: string) => {
-    try {
-      return formatDistanceToNow(new Date(timestamp), {
-        addSuffix: true,
-        locale: vi,
-      });
-    } catch (error) {
-      return "Không xác định";
-    }
-  };
-
-  // Function to get activity type badge color
-  const getActivityTypeColor = (type: string) => {
-    if (type.includes("CREATE") || type.includes("INSERT"))
-      return "bg-green-500";
-    if (type.includes("UPDATE")) return "bg-blue-500";
-    if (type.includes("DELETE")) return "bg-red-500";
-    if (type.includes("CANCEL")) return "bg-orange-500";
-    if (type.includes("APPROVE")) return "bg-emerald-500";
-    return "bg-gray-500";
-  };
-
-  // Function to get entity type badge color
-  const getEntityTypeColor = (type: string) => {
-    switch (type) {
-      case "product":
-      case "products":
-        return "bg-indigo-500";
-      case "order":
-      case "orders":
-        return "bg-amber-500";
-      case "review":
-      case "reviews":
-        return "bg-purple-500";
-      case "user":
-      case "users":
-      case "profile":
-      case "profiles":
-        return "bg-cyan-500";
-      case "brand":
-      case "brands":
-        return "bg-pink-500";
-      case "category":
-      case "categories":
-        return "bg-teal-500";
-      default:
-        return "bg-slate-500";
-    }
-  };
-
-  // Function to get email for an admin user ID
-  const getAdminEmail = (adminUserId: string) => {
-    if (!adminUserId) return "Không xác định";
-    if (isLoadingEmails) return "Đang tải...";
-    return userEmails?.[adminUserId] || adminUserId;
-  };
+  // Fetch user emails - hook đã được tối ưu để tái sử dụng cache
+  const { data: userEmails, isLoading: isLoadingEmails } =
+    useUserEmails(userIds);
 
   return (
     <div className="overflow-auto">
@@ -105,64 +128,66 @@ export function LogsTable({ logs, onViewDetails }: LogsTableProps) {
         </TableHeader>
         <TableBody>
           {logs.map((log) => (
-            <TableRow key={log.id}>
-              <TableCell className="font-medium whitespace-nowrap">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex flex-col">
-                        <span>{formatTimestamp(log.timestamp)}</span>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{new Date(log.timestamp).toLocaleString("vi-VN")}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </TableCell>
-              <TableCell>
-                <span className="text-muted-foreground">
-                  {getAdminEmail(log.admin_user_id)}
-                </span>
-              </TableCell>
-              <TableCell>
-                <Badge
-                  className={`${getActivityTypeColor(
-                    log.activity_type
-                  )} hover:${getActivityTypeColor(log.activity_type)}`}
-                >
-                  {log.activity_type}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <Badge
-                  variant="outline"
-                  className={`${getEntityTypeColor(
-                    log.entity_type
-                  )} hover:${getEntityTypeColor(
-                    log.entity_type
-                  )} text-white border-0`}
-                >
-                  {log.entity_type}
-                </Badge>
-              </TableCell>
-              <TableCell className="max-w-md truncate">
-                {log.description}
-              </TableCell>
-              <TableCell className="text-right">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onViewDetails(log)}
-                  title="Xem chi tiết"
-                >
-                  <Eye className="h-4 w-4" />
-                </Button>
-              </TableCell>
-            </TableRow>
+            <LogRow
+              key={log.id}
+              log={log}
+              onViewDetails={onViewDetails}
+              email={userEmails?.[log.admin_user_id]}
+              isLoadingEmail={isLoadingEmails}
+            />
           ))}
         </TableBody>
       </Table>
     </div>
   );
+}
+
+// Function để định dạng timestamp
+function formatTimestamp(timestamp: string) {
+  try {
+    return formatDistanceToNow(new Date(timestamp), {
+      addSuffix: true,
+      locale: vi,
+    });
+  } catch (error) {
+    return "Không xác định";
+  }
+}
+
+// Function để lấy màu badge theo loại hoạt động
+function getActivityTypeColor(type: string) {
+  if (type.includes("CREATE") || type.includes("INSERT")) return "bg-green-500";
+  if (type.includes("UPDATE")) return "bg-blue-500";
+  if (type.includes("DELETE")) return "bg-red-500";
+  if (type.includes("CANCEL")) return "bg-orange-500";
+  if (type.includes("APPROVE")) return "bg-emerald-500";
+  return "bg-gray-500";
+}
+
+// Function để lấy màu badge theo loại đối tượng
+function getEntityTypeColor(type: string) {
+  switch (type) {
+    case "product":
+    case "products":
+      return "bg-indigo-500";
+    case "order":
+    case "orders":
+      return "bg-amber-500";
+    case "review":
+    case "reviews":
+      return "bg-purple-500";
+    case "user":
+    case "users":
+    case "profile":
+    case "profiles":
+      return "bg-cyan-500";
+    case "brand":
+    case "brands":
+      return "bg-pink-500";
+    case "category":
+    case "categories":
+      return "bg-teal-500";
+    default:
+      return "bg-slate-500";
+  }
 }

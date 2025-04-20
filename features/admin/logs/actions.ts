@@ -1,48 +1,60 @@
 "use server";
 
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { cache } from "react";
 
 /**
  * Lấy thông tin email của admin users từ auth.users
- * Sử dụng service role client để có quyền truy cập vào bảng auth.users
+ * Hàm này được cache ở server side để giảm số lần gọi đến Supabase
  */
-export async function getEmails(
+export const getEmails = cache(async function getEmails(
   userIds: string[]
 ): Promise<Record<string, string>> {
   if (!userIds.length) {
     return {};
   }
 
+  // Xóa bỏ ID trùng lặp
+  const uniqueUserIds = [...new Set(userIds)];
+
   try {
     // Sử dụng service role client để có quyền truy cập vào auth.users
     const supabase = await createServiceRoleClient();
     const emailMap: Record<string, string> = {};
 
-    // Sử dụng auth.admin.getUserById thay vì truy vấn trực tiếp
-    // Cần xử lý tuần tự vì Supabase chưa hỗ trợ lấy nhiều user cùng lúc
-    const uniqueUserIds = [...new Set(userIds)];
-    await Promise.all(
-      uniqueUserIds.map(async (userId) => {
-        try {
-          const { data, error } = await supabase.auth.admin.getUserById(userId);
+    // Xử lý theo batch để tránh query quá dài
+    const batchSize = 20;
+    for (let i = 0; i < uniqueUserIds.length; i += batchSize) {
+      const batch = uniqueUserIds.slice(i, i + batchSize);
 
-          if (error) {
-            console.error(`Error fetching user ${userId}:`, error);
-            return;
-          }
+      const { data, error } = await supabase.auth.admin.listUsers({
+        perPage: 100,
+        // Lọc theo danh sách userIds trong batch
+        filter: {
+          id: {
+            in: batch,
+          },
+        },
+      });
 
-          if (data?.user?.email) {
-            emailMap[userId] = data.user.email;
+      if (error) {
+        console.error(`Error fetching users in batch ${i}:`, error);
+        continue;
+      }
+
+      if (data?.users) {
+        // Map user id to email
+        data.users.forEach((user) => {
+          if (user.id && user.email) {
+            emailMap[user.id] = user.email;
           }
-        } catch (err) {
-          console.error(`Failed to fetch user ${userId}:`, err);
-        }
-      })
-    );
+        });
+      }
+    }
 
     return emailMap;
   } catch (error) {
     console.error("Failed to fetch user emails:", error);
     return {};
   }
-}
+});

@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,40 +10,52 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { JsonView } from "./json-view";
 import { useUserEmails } from "../hooks/use-user-emails";
+import type { AdminActivityLog } from "../types";
 
 interface LogDetailsDialogProps {
-  log: any;
+  log: AdminActivityLog;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function LogDetailsDialog({
+// Memoize component để tránh re-render không cần thiết
+export const LogDetailsDialog = memo(function LogDetailsDialog({
   log,
   open,
   onOpenChange,
 }: LogDetailsDialogProps) {
-  // Fetch user email
+  // Fetch user email - dùng hook đã tối ưu với caching
   const { data: userEmails, isLoading: isLoadingEmails } = useUserEmails(
     log?.admin_user_id ? [log.admin_user_id] : []
   );
 
-  // Function to get activity type badge color
-  const getActivityTypeColor = (type: string) => {
-    if (type.includes("CREATE") || type.includes("INSERT"))
-      return "bg-green-500";
-    if (type.includes("UPDATE")) return "bg-blue-500";
-    if (type.includes("DELETE")) return "bg-red-500";
-    if (type.includes("CANCEL")) return "bg-orange-500";
-    if (type.includes("APPROVE")) return "bg-emerald-500";
-    return "bg-gray-500";
-  };
-
-  // Function to get email for an admin user ID
-  const getAdminEmail = (adminUserId: string) => {
-    if (!adminUserId) return "Không xác định";
+  // Memoize các giá trị phái sinh để tránh tính toán lại nếu props không đổi
+  const activityTypeColor = useMemo(
+    () => getActivityTypeColor(log.activity_type),
+    [log.activity_type]
+  );
+  const formattedTimestamp = useMemo(
+    () => new Date(log.timestamp).toLocaleString("vi-VN"),
+    [log.timestamp]
+  );
+  const adminEmail = useMemo(() => {
+    if (!log.admin_user_id) return "Không xác định";
     if (isLoadingEmails) return "Đang tải...";
-    return userEmails?.[adminUserId] || adminUserId;
-  };
+    return userEmails?.[log.admin_user_id] || log.admin_user_id;
+  }, [log.admin_user_id, userEmails, isLoadingEmails]);
+
+  // Parse JSON details một lần duy nhất
+  const parsedDetails = useMemo(() => {
+    if (!log.details) return null;
+    try {
+      return typeof log.details === "string"
+        ? JSON.parse(log.details)
+        : log.details;
+    } catch (error) {
+      console.error("Error parsing log details:", error);
+      return log.details;
+    }
+  }, [log.details]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -51,9 +64,7 @@ export function LogDetailsDialog({
           <DialogTitle className="flex items-center gap-2">
             Chi tiết hoạt động
             <Badge
-              className={`${getActivityTypeColor(
-                log.activity_type
-              )} hover:${getActivityTypeColor(log.activity_type)} ml-2`}
+              className={`${activityTypeColor} hover:${activityTypeColor} ml-2`}
             >
               {log.activity_type}
             </Badge>
@@ -65,13 +76,11 @@ export function LogDetailsDialog({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <h4 className="text-sm font-medium mb-1">Thời gian</h4>
-              <p className="text-sm">
-                {new Date(log.timestamp).toLocaleString("vi-VN")}
-              </p>
+              <p className="text-sm">{formattedTimestamp}</p>
             </div>
             <div>
               <h4 className="text-sm font-medium mb-1">Người thực hiện</h4>
-              <p className="text-sm">{getAdminEmail(log.admin_user_id)}</p>
+              <p className="text-sm">{adminEmail}</p>
             </div>
           </div>
 
@@ -90,14 +99,8 @@ export function LogDetailsDialog({
 
           <div>
             <h4 className="text-sm font-medium mb-2">Chi tiết dữ liệu</h4>
-            {log.details ? (
-              <JsonView
-                data={
-                  typeof log.details === "string"
-                    ? JSON.parse(log.details)
-                    : log.details
-                }
-              />
+            {parsedDetails ? (
+              <JsonView data={parsedDetails} />
             ) : (
               <p className="text-sm text-muted-foreground">
                 Không có dữ liệu chi tiết
@@ -108,4 +111,14 @@ export function LogDetailsDialog({
       </DialogContent>
     </Dialog>
   );
+});
+
+// Function để lấy màu badge theo loại hoạt động
+function getActivityTypeColor(type: string) {
+  if (type.includes("CREATE") || type.includes("INSERT")) return "bg-green-500";
+  if (type.includes("UPDATE")) return "bg-blue-500";
+  if (type.includes("DELETE")) return "bg-red-500";
+  if (type.includes("CANCEL")) return "bg-orange-500";
+  if (type.includes("APPROVE")) return "bg-emerald-500";
+  return "bg-gray-500";
 }

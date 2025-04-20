@@ -1,17 +1,28 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useAdminActivityLogs, type AdminActivityLogsFilters } from "../hooks/use-admin-activity-logs"
-import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Pagination } from "./pagination"
-import { LogsTable } from "./logs-table"
-import { DateRangePicker } from "./date-range-picker"
-import { Search, X, SlidersHorizontal } from "lucide-react"
-import { Skeleton } from "@/components/ui/skeleton"
-import { LogDetailsDialog } from "./log-details-dialog"
+import { useState, useCallback, useMemo } from "react";
+import {
+  useAdminActivityLogs,
+  useActivityTypes,
+  useEntityTypes,
+} from "../hooks/use-admin-activity-logs";
+import type { AdminActivityLogsFilters, AdminActivityLog } from "../types";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Pagination } from "./pagination";
+import { LogsTable } from "./logs-table";
+import { DateRangePicker } from "./date-range-picker";
+import { Search, X, SlidersHorizontal } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { LogDetailsDialog } from "./log-details-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,109 +31,151 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+} from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+
+// Predefined activity type tabs
+const ACTIVITY_TYPE_TABS = [
+  { id: "all", label: "Tất cả" },
+  { id: "PRODUCT_INSERT", label: "Tạo mới" },
+  { id: "PRODUCT_UPDATE", label: "Cập nhật" },
+  { id: "PRODUCT_DELETE", label: "Xóa" },
+];
 
 export function AdminActivityLogs() {
-  // State for filters
-  const [filters, setFilters] = useState<AdminActivityLogsFilters>({})
+  // Toast notifications
+  const toast = useSonnerToast();
 
-  // State for pagination
+  // State for filters
+  const [filters, setFilters] = useState<AdminActivityLogsFilters>({});
+
+  // State for pagination with default values
   const [pagination, setPagination] = useState({
     page: 1,
     pageSize: 10,
-  })
+  });
 
-  // State for sorting
+  // State for sorting with default values
   const [sort, setSort] = useState({
     column: "timestamp",
     direction: "desc" as "asc" | "desc",
-  })
+  });
 
   // State for selected log details
-  const [selectedLog, setSelectedLog] = useState<any | null>(null)
+  const [selectedLog, setSelectedLog] = useState<AdminActivityLog | null>(null);
 
   // State for active tab
-  const [activeTab, setActiveTab] = useState("all")
+  const [activeTab, setActiveTab] = useState("all");
 
-  // Fetch logs data
-  const { data, isLoading, isError } = useAdminActivityLogs(filters, pagination, sort)
+  // Fetch logs data - optimized hook
+  const { data, isLoading, isError } = useAdminActivityLogs(
+    filters,
+    pagination,
+    sort
+  );
+
+  // Fetch activity types and entity types - separate hooks with longer caching
+  const { data: activityTypesData } = useActivityTypes();
+  const { data: entityTypesData } = useEntityTypes();
+
+  // Memoize activity types and entity types to avoid recalculations
+  const activityTypes = useMemo(
+    () => activityTypesData || [],
+    [activityTypesData]
+  );
+  const entityTypes = useMemo(() => entityTypesData || [], [entityTypesData]);
 
   // Handle filter changes
-  const handleFilterChange = (key: keyof AdminActivityLogsFilters, value: string | undefined) => {
-    setFilters((prev) => ({
-      ...prev,
-      [key]: value === "all" ? undefined : value,
-    }))
-    setPagination((prev) => ({
-      ...prev,
-      page: 1, // Reset to first page when filter changes
-    }))
-  }
+  const handleFilterChange = useCallback(
+    (key: keyof AdminActivityLogsFilters, value: string | undefined) => {
+      setFilters((prev) => ({
+        ...prev,
+        [key]: value === "all" ? undefined : value,
+      }));
+
+      // Reset to the first page when filters change
+      setPagination((prev) => ({
+        ...prev,
+        page: 1,
+      }));
+    },
+    []
+  );
 
   // Handle page change
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     setPagination((prev) => ({
       ...prev,
       page,
-    }))
-  }
+    }));
+  }, []);
 
   // Handle clear filters
-  const handleClearFilters = () => {
-    setFilters({})
+  const handleClearFilters = useCallback(() => {
+    setFilters({});
     setPagination((prev) => ({
       ...prev,
       page: 1,
-    }))
-    setActiveTab("all")
-  }
+    }));
+    setActiveTab("all");
+  }, []);
 
   // Handle view log details
-  const handleViewDetails = (log: any) => {
-    setSelectedLog(log)
-  }
+  const handleViewDetails = useCallback((log: AdminActivityLog) => {
+    setSelectedLog(log);
+  }, []);
 
   // Handle close log details
-  const handleCloseDetails = () => {
-    setSelectedLog(null)
-  }
+  const handleCloseDetails = useCallback(() => {
+    setSelectedLog(null);
+  }, []);
 
   // Handle tab change
-  const handleTabChange = (value: string) => {
-    setActiveTab(value)
-    setFilters((prev) => ({ ...prev, activityType: value === "all" ? undefined : value }))
+  const handleTabChange = useCallback((value: string) => {
+    setActiveTab(value);
+
+    // Update filters based on selected tab
+    setFilters((prev) => ({
+      ...prev,
+      activityType: value === "all" ? undefined : value,
+    }));
+
+    // Reset to first page
     setPagination((prev) => ({
       ...prev,
       page: 1,
-    }))
-  }
+    }));
+  }, []);
 
-  // Get unique activity types for filter
-  const activityTypes = Array.from(
-    new Set(data?.data && Array.isArray(data.data) ? data.data.map((log: any) => log.activity_type) : []),
-  ).sort()
+  // Handle search with enter key
+  const handleSearchKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        const value = (e.target as HTMLInputElement).value;
+        handleFilterChange("search", value || undefined);
+      }
+    },
+    [handleFilterChange]
+  );
 
-  // Get unique entity types for filter
-  const entityTypes = Array.from(
-    new Set(data?.data && Array.isArray(data.data) ? data.data.map((log: any) => log.entity_type) : []),
-  ).sort()
-
-  // Predefined activity type tabs
-  const activityTypeTabs = [
-    { id: "all", label: "Tất cả" },
-    { id: "PRODUCT_INSERT", label: "Tạo mới" },
-    { id: "PRODUCT_UPDATE", label: "Cập nhật" },
-    { id: "PRODUCT_DELETE", label: "Xóa" },
-  ]
+  // Check if any filter is active for "Clear filters" button
+  const hasActiveFilters = useMemo(
+    () => Object.values(filters).some(Boolean),
+    [filters]
+  );
 
   return (
     <div className="space-y-4">
       {/* Tabs for common activity types */}
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={handleTabChange}
+        className="w-full"
+      >
         <div className="flex items-center justify-between mb-4">
           <TabsList>
-            {activityTypeTabs.map((tab) => (
+            {ACTIVITY_TYPE_TABS.map((tab) => (
               <TabsTrigger key={tab.id} value={tab.id}>
                 {tab.label}
               </TabsTrigger>
@@ -136,7 +189,10 @@ export function AdminActivityLogs() {
                 placeholder="Tìm kiếm theo mô tả..."
                 className="pl-8"
                 value={filters.search || ""}
-                onChange={(e) => handleFilterChange("search", e.target.value)}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, search: e.target.value }))
+                }
+                onKeyDown={handleSearchKeyDown}
               />
             </div>
 
@@ -155,7 +211,12 @@ export function AdminActivityLogs() {
                     <div className="w-full cursor-default">
                       <Select
                         value={filters.entityType || ""}
-                        onValueChange={(value) => handleFilterChange("entityType", value === "all" ? undefined : value)}
+                        onValueChange={(value) =>
+                          handleFilterChange(
+                            "entityType",
+                            value === "all" ? undefined : value
+                          )
+                        }
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Loại đối tượng" />
@@ -179,8 +240,12 @@ export function AdminActivityLogs() {
                       <DateRangePicker
                         startDate={filters.startDate}
                         endDate={filters.endDate}
-                        onStartDateChange={(date) => handleFilterChange("startDate", date)}
-                        onEndDateChange={(date) => handleFilterChange("endDate", date)}
+                        onStartDateChange={(date) =>
+                          handleFilterChange("startDate", date)
+                        }
+                        onEndDateChange={(date) =>
+                          handleFilterChange("endDate", date)
+                        }
                       />
                     </div>
                   </DropdownMenuItem>
@@ -191,7 +256,7 @@ export function AdminActivityLogs() {
                     variant="ghost"
                     className="w-full justify-start"
                     onClick={handleClearFilters}
-                    disabled={!Object.values(filters).some(Boolean)}
+                    disabled={!hasActiveFilters}
                   >
                     <X className="h-4 w-4 mr-2" />
                     Xóa bộ lọc
@@ -216,11 +281,18 @@ export function AdminActivityLogs() {
                 </div>
               ) : isError ? (
                 <div className="py-8 text-center">
-                  <p className="text-muted-foreground">Đã xảy ra lỗi khi tải dữ liệu. Vui lòng thử lại sau.</p>
+                  <p className="text-muted-foreground">
+                    Đã xảy ra lỗi khi tải dữ liệu. Vui lòng thử lại sau.
+                  </p>
                 </div>
-              ) : data?.data && Array.isArray(data.data) && data.data.length > 0 ? (
+              ) : data?.data &&
+                Array.isArray(data.data) &&
+                data.data.length > 0 ? (
                 <>
-                  <LogsTable logs={data.data} onViewDetails={handleViewDetails} />
+                  <LogsTable
+                    logs={data.data}
+                    onViewDetails={handleViewDetails}
+                  />
 
                   <div className="p-4 border-t">
                     <Pagination
@@ -233,7 +305,9 @@ export function AdminActivityLogs() {
                 </>
               ) : (
                 <div className="py-8 text-center">
-                  <p className="text-muted-foreground">Không tìm thấy nhật ký hoạt động nào.</p>
+                  <p className="text-muted-foreground">
+                    Không tìm thấy nhật ký hoạt động nào.
+                  </p>
                 </div>
               )}
             </CardContent>
@@ -242,7 +316,13 @@ export function AdminActivityLogs() {
       </Tabs>
 
       {/* Log details dialog */}
-      {selectedLog && <LogDetailsDialog log={selectedLog} open={!!selectedLog} onOpenChange={handleCloseDetails} />}
+      {selectedLog && (
+        <LogDetailsDialog
+          log={selectedLog}
+          open={!!selectedLog}
+          onOpenChange={handleCloseDetails}
+        />
+      )}
     </div>
-  )
+  );
 }
