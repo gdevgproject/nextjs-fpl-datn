@@ -21,21 +21,9 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Plus,
-  Search,
-  MoreHorizontal,
-  Pencil,
-  ArrowUpDown,
-} from "lucide-react";
+import { Plus, Search, Pencil, ArrowUpDown } from "lucide-react";
 import { usePaymentMethods } from "@/features/admin/payment-methods/hooks/use-payment-methods";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { useDebounce } from "@/features/admin/payment-methods/hooks/use-debounce";
@@ -299,22 +287,15 @@ export default function PaymentMethodsPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Mở menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => handleEdit(paymentMethod)}
-                            >
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Chỉnh sửa
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(paymentMethod)}
+                          className="h-8 w-8"
+                        >
+                          <Pencil className="h-4 w-4" />
+                          <span className="sr-only">Chỉnh sửa</span>
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))
