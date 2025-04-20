@@ -19,6 +19,7 @@ export function AuthToastHandler({ children }: { children: React.ReactNode }) {
     // Lấy action từ URL
     const authAction = searchParams.get("auth_action");
     const authError = searchParams.get("auth_error");
+    const errorDescription = searchParams.get("error_description");
 
     // Nếu không có action hoặc error, hoặc đã xử lý action này rồi, thì return
     if ((!authAction && !authError) || processedRef.current === authAction)
@@ -28,11 +29,16 @@ export function AuthToastHandler({ children }: { children: React.ReactNode }) {
     processedRef.current = authAction;
 
     if (authError) {
-      toast("Lỗi xác thực", { description: decodeURIComponent(authError) });
+      const errorMessage = errorDescription
+        ? decodeURIComponent(errorDescription)
+        : decodeURIComponent(authError);
+
+      toast("Lỗi xác thực", { description: errorMessage });
 
       // Xóa query param để tránh hiển thị toast lại khi refresh
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete("auth_error");
+      newUrl.searchParams.delete("error_description");
       newUrl.searchParams.delete("error_code");
       router.replace(newUrl.pathname + newUrl.search);
       return;
@@ -60,9 +66,35 @@ export function AuthToastHandler({ children }: { children: React.ReactNode }) {
             } quay trở lại.`,
           });
           break;
+        case "signed_out":
+          toast("Đăng xuất thành công!", {
+            description: "Bạn đã đăng xuất khỏi tài khoản.",
+          });
+          break;
         case "password_changed":
           toast("Đổi mật khẩu thành công!", {
             description: "Mật khẩu của bạn đã được cập nhật thành công.",
+          });
+          break;
+        case "magic_link_sent":
+          toast("Đã gửi Magic Link!", {
+            description: "Vui lòng kiểm tra email của bạn để đăng nhập.",
+          });
+          break;
+        case "profile_updated":
+          toast("Cập nhật thông tin thành công!", {
+            description: "Thông tin tài khoản của bạn đã được cập nhật.",
+          });
+          break;
+        case "verification_email_sent":
+          toast("Đã gửi email xác nhận!", {
+            description: "Vui lòng kiểm tra hộp thư để xác nhận email của bạn.",
+          });
+          break;
+        case "verification_error":
+          toast("Lỗi xác thực email", {
+            description:
+              "Có lỗi xảy ra trong quá trình xác thực email. Vui lòng thử lại.",
           });
           break;
       }
