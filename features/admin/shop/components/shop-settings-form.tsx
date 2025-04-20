@@ -27,7 +27,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { LogoUploader } from "./logo-uploader";
 import { useShopSettings } from "../hooks/use-shop-settings";
 import { useUpdateShopSettings } from "../hooks/use-update-shop-settings";
-import { useDeleteLogo } from "../hooks/use-delete-logo";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 
 const shopSettingsSchema = z.object({
@@ -94,7 +93,6 @@ export function ShopSettingsForm() {
   const { data: shopSettings, isLoading } = useShopSettings();
   const { mutate: updateShopSettings, isPending: isUpdating } =
     useUpdateShopSettings();
-  const { mutate: deleteLogo, isPending: isDeleting } = useDeleteLogo();
 
   const form = useForm<ShopSettingsFormValues>({
     resolver: zodResolver(shopSettingsSchema),
@@ -506,7 +504,7 @@ export function ShopSettingsForm() {
         <div className="mt-6 flex justify-end">
           <Button
             type="submit"
-            disabled={isUpdating || isDeleting || !form.formState.isDirty}
+            disabled={isUpdating || !form.formState.isDirty}
           >
             {isUpdating ? "Đang lưu..." : "Lưu thay đổi"}
           </Button>

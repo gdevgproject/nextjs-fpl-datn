@@ -6,10 +6,8 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useUploadLogo } from "../hooks/use-upload-logo";
-import { useDeleteLogo } from "../hooks/use-delete-logo";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
-import { Trash2, Upload } from "lucide-react";
-import { DeleteLogoDialog } from "./delete-logo-dialog";
+import { Upload } from "lucide-react";
 
 interface LogoUploaderProps {
   shopId: number;
@@ -17,12 +15,10 @@ interface LogoUploaderProps {
 }
 
 export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
-  const { toast } = useSonnerToast();
+  const toast = useSonnerToast();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { mutate: uploadLogo, isPending: isUploading } = useUploadLogo();
-  const { mutate: deleteLogo, isPending: isDeleting } = useDeleteLogo();
 
   // Cleanup preview URL when component unmounts
   useEffect(() => {
@@ -110,39 +106,6 @@ export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
     );
   };
 
-  const handleDeleteClick = () => {
-    setIsDeleteDialogOpen(true);
-  };
-
-  const handleConfirmDelete = () => {
-    if (!existingLogoUrl) return;
-
-    deleteLogo(
-      {
-        id: shopId,
-        logoUrl: existingLogoUrl,
-      },
-      {
-        onSuccess: () => {
-          toast.success("Đã xóa logo thành công", {
-            description: "Logo đã được xóa khỏi cửa hàng của bạn.",
-            duration: 5000,
-          });
-          setIsDeleteDialogOpen(false);
-        },
-        onError: (error) => {
-          toast.error("Lỗi khi xóa logo", {
-            description:
-              error.message ||
-              "Vui lòng thử lại sau hoặc liên hệ quản trị viên.",
-            duration: 7000,
-          });
-          setIsDeleteDialogOpen(false);
-        },
-      }
-    );
-  };
-
   const getButtonLabel = () => {
     if (isUploading) return "Đang tải lên...";
     if (existingLogoUrl) return "Cập nhật logo";
@@ -186,7 +149,7 @@ export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
                 className="hidden"
                 onChange={handleFileChange}
                 accept="image/*"
-                disabled={isUploading || isDeleting}
+                disabled={isUploading}
               />
               <label
                 htmlFor="logo-upload"
@@ -201,22 +164,9 @@ export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
                 type="button"
                 size="sm"
                 onClick={handleUpload}
-                disabled={isUploading || isDeleting}
+                disabled={isUploading}
               >
                 {getButtonLabel()}
-              </Button>
-            )}
-            {existingLogoUrl && !previewUrl && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleDeleteClick}
-                disabled={isDeleting || isUploading}
-                className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {isDeleting ? "Đang xóa..." : "Xóa logo"}
               </Button>
             )}
           </div>
@@ -230,12 +180,6 @@ export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
           </p>
         </div>
       </div>
-
-      <DeleteLogoDialog
-        isOpen={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
-        onConfirm={handleConfirmDelete}
-      />
     </div>
   );
 }
