@@ -1,24 +1,48 @@
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { JsonView } from "./json-view"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { JsonView } from "./json-view";
+import { useUserEmails } from "../hooks/use-user-emails";
 
 interface LogDetailsDialogProps {
-  log: any
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  log: any;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export function LogDetailsDialog({ log, open, onOpenChange }: LogDetailsDialogProps) {
+export function LogDetailsDialog({
+  log,
+  open,
+  onOpenChange,
+}: LogDetailsDialogProps) {
+  // Fetch user email
+  const { data: userEmails, isLoading: isLoadingEmails } = useUserEmails(
+    log?.admin_user_id ? [log.admin_user_id] : []
+  );
+
   // Function to get activity type badge color
   const getActivityTypeColor = (type: string) => {
-    if (type.includes("CREATE") || type.includes("INSERT")) return "bg-green-500"
-    if (type.includes("UPDATE")) return "bg-blue-500"
-    if (type.includes("DELETE")) return "bg-red-500"
-    if (type.includes("CANCEL")) return "bg-orange-500"
-    if (type.includes("APPROVE")) return "bg-emerald-500"
-    return "bg-gray-500"
-  }
+    if (type.includes("CREATE") || type.includes("INSERT"))
+      return "bg-green-500";
+    if (type.includes("UPDATE")) return "bg-blue-500";
+    if (type.includes("DELETE")) return "bg-red-500";
+    if (type.includes("CANCEL")) return "bg-orange-500";
+    if (type.includes("APPROVE")) return "bg-emerald-500";
+    return "bg-gray-500";
+  };
+
+  // Function to get email for an admin user ID
+  const getAdminEmail = (adminUserId: string) => {
+    if (!adminUserId) return "Không xác định";
+    if (isLoadingEmails) return "Đang tải...";
+    return userEmails?.[adminUserId] || adminUserId;
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -27,9 +51,9 @@ export function LogDetailsDialog({ log, open, onOpenChange }: LogDetailsDialogPr
           <DialogTitle className="flex items-center gap-2">
             Chi tiết hoạt động
             <Badge
-              className={`${getActivityTypeColor(log.activity_type)} hover:${getActivityTypeColor(
-                log.activity_type,
-              )} ml-2`}
+              className={`${getActivityTypeColor(
+                log.activity_type
+              )} hover:${getActivityTypeColor(log.activity_type)} ml-2`}
             >
               {log.activity_type}
             </Badge>
@@ -41,11 +65,13 @@ export function LogDetailsDialog({ log, open, onOpenChange }: LogDetailsDialogPr
           <div className="grid grid-cols-2 gap-4">
             <div>
               <h4 className="text-sm font-medium mb-1">Thời gian</h4>
-              <p className="text-sm">{new Date(log.timestamp).toLocaleString("vi-VN")}</p>
+              <p className="text-sm">
+                {new Date(log.timestamp).toLocaleString("vi-VN")}
+              </p>
             </div>
             <div>
               <h4 className="text-sm font-medium mb-1">Người thực hiện</h4>
-              <p className="text-sm">{log.admin_user_id || "Không xác định"}</p>
+              <p className="text-sm">{getAdminEmail(log.admin_user_id)}</p>
             </div>
           </div>
 
@@ -65,13 +91,21 @@ export function LogDetailsDialog({ log, open, onOpenChange }: LogDetailsDialogPr
           <div>
             <h4 className="text-sm font-medium mb-2">Chi tiết dữ liệu</h4>
             {log.details ? (
-              <JsonView data={typeof log.details === "string" ? JSON.parse(log.details) : log.details} />
+              <JsonView
+                data={
+                  typeof log.details === "string"
+                    ? JSON.parse(log.details)
+                    : log.details
+                }
+              />
             ) : (
-              <p className="text-sm text-muted-foreground">Không có dữ liệu chi tiết</p>
+              <p className="text-sm text-muted-foreground">
+                Không có dữ liệu chi tiết
+              </p>
             )}
           </div>
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
