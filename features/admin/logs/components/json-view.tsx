@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, CopyIcon } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useSonnerToast } from "@/lib/hooks/use-sonner-toast"; // Đổi hook toast
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface JsonViewProps {
   data: any;
@@ -18,24 +19,30 @@ export function JsonView({
   isLast = true,
   property,
 }: JsonViewProps) {
-  const [isExpanded, setIsExpanded] = useState(level < 2);
-  const toast = useSonnerToast(); // Sử dụng hook mới
+  const [isExpanded, setIsExpanded] = useState(level < 1);
+  const [copied, setCopied] = useState(false);
+  const toast = useSonnerToast();
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast.success("Đã sao chép vào clipboard", { duration: 2000 });
+    setCopied(true);
+
+    // Reset the copied state after 2 seconds
+    setTimeout(() => {
+      setCopied(false);
+    }, 2000);
+
+    toast.success("Đã sao chép vào clipboard");
   };
 
-  const getIndent = (level: number) => {
-    return { paddingLeft: `${level * 16}px` };
-  };
-
+  // Function to determine the type of a value
   const getType = (value: any) => {
     if (value === null) return "null";
     if (Array.isArray(value)) return "array";
     return typeof value;
   };
 
+  // Function to get text color based on value type
   const getTypeColor = (type: string) => {
     switch (type) {
       case "string":
@@ -51,6 +58,7 @@ export function JsonView({
     }
   };
 
+  // Function to format the display value
   const renderValue = (value: any, type: string) => {
     switch (type) {
       case "string":
@@ -64,78 +72,144 @@ export function JsonView({
 
   const type = getType(data);
   const isExpandable = type === "object" || type === "array";
+  const isEmpty = isExpandable && Object.keys(data).length === 0;
 
-  if (!isExpandable) {
+  // If this is the root level, wrap in a card for better presentation
+  if (level === 0) {
     return (
-      <div className="flex items-center" style={getIndent(level)}>
-        {property && <span className="font-semibold mr-1">"{property}":</span>}
-        <span className={getTypeColor(type)}>{renderValue(data, type)}</span>
-        {!isLast && <span>,</span>}
-      </div>
+      <Card className="relative">
+        <div className="absolute right-2 top-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => handleCopy(JSON.stringify(data, null, 2))}
+            className="h-8 px-2 text-xs"
+          >
+            {copied ? (
+              <Check className="mr-2 h-4 w-4" />
+            ) : (
+              <Copy className="mr-2 h-4 w-4" />
+            )}
+            {copied ? "Đã sao chép" : "Sao chép"}
+          </Button>
+        </div>
+        <CardContent className="p-4 pt-6 overflow-auto font-mono text-sm bg-muted/50 rounded-md">
+          <div className="mt-4">
+            <JsonViewContent
+              data={data}
+              level={0}
+              isExpanded={isExpanded}
+              setIsExpanded={setIsExpanded}
+            />
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
+  // For nested levels, use regular rendering
+  return (
+    <div className="ml-4">
+      {property && (
+        <span className="font-semibold text-foreground">{property}: </span>
+      )}
+      <JsonViewContent
+        data={data}
+        level={level}
+        isExpanded={isExpanded}
+        setIsExpanded={setIsExpanded}
+      />
+    </div>
+  );
+}
+
+// Extracted the content rendering to a separate component for cleaner code
+function JsonViewContent({
+  data,
+  level,
+  isExpanded,
+  setIsExpanded,
+}: {
+  data: any;
+  level: number;
+  isExpanded: boolean;
+  setIsExpanded: (value: boolean) => void;
+}) {
+  const type = typeof data;
+
+  // Handle primitive types directly
+  if (data === null) {
+    return <span className="text-gray-500">null</span>;
+  }
+
+  if (type !== "object" || data === null) {
+    const color =
+      type === "string"
+        ? "text-green-600 dark:text-green-400"
+        : type === "number"
+        ? "text-blue-600 dark:text-blue-400"
+        : type === "boolean"
+        ? "text-purple-600 dark:text-purple-400"
+        : "";
+
+    return (
+      <span className={color}>
+        {type === "string" ? `"${data}"` : String(data)}
+      </span>
+    );
+  }
+
+  const isArray = Array.isArray(data);
   const isEmpty = Object.keys(data).length === 0;
+
+  if (isEmpty) {
+    return <span>{isArray ? "[]" : "{}"}</span>;
+  }
+
+  if (!isExpanded) {
+    return (
+      <>
+        <button
+          onClick={() => setIsExpanded(true)}
+          className="inline-flex items-center text-xs hover:bg-accent p-0.5 rounded"
+        >
+          <ChevronRight className="h-3 w-3 inline mr-1" />
+          {isArray ? "[...]" : "{...}"}
+        </button>
+      </>
+    );
+  }
 
   return (
     <div>
-      <div className="flex items-center" style={getIndent(level)}>
-        {isExpandable && !isEmpty && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5 p-0 mr-1"
-            onClick={() => setIsExpanded(!isExpanded)}
-          >
-            {isExpanded ? (
-              <ChevronDown className="h-3 w-3" />
+      <button
+        onClick={() => setIsExpanded(false)}
+        className="inline-flex items-center text-xs hover:bg-accent p-0.5 rounded"
+      >
+        <ChevronDown className="h-3 w-3 inline mr-1" />
+        {isArray ? "[" : "{"}
+      </button>
+      <div className="ml-5 border-l pl-2 border-gray-200 dark:border-gray-700">
+        {Object.entries(data).map(([key, value], i, arr) => (
+          <div key={key} className="my-1">
+            {isArray ? (
+              <JsonView
+                data={value}
+                level={level + 1}
+                isLast={i === arr.length - 1}
+              />
             ) : (
-              <ChevronRight className="h-3 w-3" />
+              <JsonView
+                data={value}
+                property={key}
+                level={level + 1}
+                isLast={i === arr.length - 1}
+              />
             )}
-          </Button>
-        )}
-
-        {property && <span className="font-semibold mr-1">"{property}":</span>}
-
-        <span>{type === "array" ? "[" : "{"}</span>
-
-        {isEmpty && <span>{type === "array" ? "]" : "}"}</span>}
-
-        {!isEmpty && !isExpanded && <span className="text-gray-500">...</span>}
-
-        {!isEmpty && !isExpanded && <span>{type === "array" ? "]" : "}"}</span>}
-
-        {!isLast && !isEmpty && !isExpanded && <span>,</span>}
-
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-5 w-5 p-0 ml-1"
-          onClick={() => handleCopy(JSON.stringify(data, null, 2))}
-          title="Sao chép"
-        >
-          <CopyIcon className="h-3 w-3" />
-        </Button>
-      </div>
-
-      {isExpanded && !isEmpty && (
-        <div>
-          {Object.entries(data).map(([key, value], index, arr) => (
-            <JsonView
-              key={key}
-              data={value}
-              level={level + 1}
-              isLast={index === arr.length - 1}
-              property={type === "object" ? key : undefined}
-            />
-          ))}
-
-          <div style={getIndent(level)}>
-            <span>{type === "array" ? "]" : "}"}</span>
-            {!isLast && <span>,</span>}
           </div>
-        </div>
-      )}
+        ))}
+      </div>
+      <span>{isArray ? "]" : "}"}</span>
     </div>
   );
 }
