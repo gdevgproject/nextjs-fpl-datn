@@ -1,59 +1,49 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  const type = requestUrl.searchParams.get("type") || "signup";
+  const type = requestUrl.searchParams.get("type");
+  const nextPath = requestUrl.searchParams.get("next");
 
   if (code) {
-    const cookieStore = request.cookies;
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            cookieStore.set({ name, value, ...options });
-          },
-          remove(name: string, options: CookieOptions) {
-            cookieStore.set({ name, value: "", ...options });
-          },
-        },
+    const supabase = await getSupabaseServerClient();
+
+    try {
+      // Exchange the code for a session
+      const { error: sessionError } =
+        await supabase.auth.exchangeCodeForSession(code);
+
+      if (sessionError) {
+        return NextResponse.redirect(
+          new URL(
+            `/dang-nhap?error=${encodeURIComponent(sessionError.message)}`,
+            requestUrl.origin
+          )
+        );
       }
-    );
 
-    // Exchange the code for a session
-    await supabase.auth.exchangeCodeForSession(code);
+      // Determine redirect after successful session exchange
+      let redirectUrl = "/";
+      if (type === "signup") {
+        redirectUrl = "/dang-nhap?auth_action=email_confirmed";
+      } else if (type === "recovery") {
+        redirectUrl = `/dat-lai-mat-khau?code=${encodeURIComponent(code)}`;
+      } else {
+        // Magic link or default
+        redirectUrl = nextPath
+          ? `${nextPath}?auth_action=signed_in`
+          : "/?auth_action=signed_in";
+      }
 
-    // Handle redirects based on the authentication type
-    if (type === "signup") {
-      // Redirect to login with email confirmed param
+      return NextResponse.redirect(new URL(redirectUrl, requestUrl.origin));
+    } catch {
       return NextResponse.redirect(
-        new URL(`/dang-nhap?auth_action=email_confirmed`, requestUrl.origin)
-      );
-    } else if (type === "recovery") {
-      // Redirect to reset password page with code
-      return NextResponse.redirect(
-        new URL(
-          `/dat-lai-mat-khau?code=${encodeURIComponent(code!)}`,
-          requestUrl.origin
-        )
-      );
-    } else if (type === "invite") {
-      // Redirect to account settings
-      return NextResponse.redirect(
-        new URL(`/tai-khoan/cai-dat`, requestUrl.origin)
+        new URL(`/dang-nhap?error=auth_error`, requestUrl.origin)
       );
     }
-
-    // Default redirect to the account page
-    return NextResponse.redirect(new URL(`/tai-khoan`, requestUrl.origin));
   }
 
-  // If no code, redirect to home
   return NextResponse.redirect(new URL("/", requestUrl.origin));
 }

@@ -6,9 +6,8 @@ export async function GET(request: NextRequest) {
   const code = url.searchParams.get("code");
 
   if (!code) {
-    // Không có code, chuyển về trang xác nhận email với lỗi
     return NextResponse.redirect(
-      new URL("/xac-nhan-email?error=missing_code", request.url)
+      new URL("/xac-nhan-email?error=missing_code", url.origin)
     );
   }
 
@@ -16,19 +15,28 @@ export async function GET(request: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
-    // Nếu lỗi, chuyển về trang xác nhận email với thông báo lỗi
     return NextResponse.redirect(
       new URL(
         `/xac-nhan-email?error=invalid_code&error_description=${encodeURIComponent(
           error.message
         )}`,
-        request.url
+        url.origin
       )
     );
   }
 
-  // Thành công: session đã được set vào cookie, chuyển về trang chủ với query để hiển thị toast
-  return NextResponse.redirect(
-    new URL("/?auth_action=email_confirmed", request.url)
-  );
+  // On successful exchange, redirect based on action type
+  const type = url.searchParams.get("type");
+  const nextPath = url.searchParams.get("next");
+  let redirectUrl: string;
+  if (type === "magic") {
+    // Magic link login
+    redirectUrl = nextPath
+      ? `${nextPath}?auth_action=signed_in`
+      : "/?auth_action=signed_in";
+  } else {
+    // Default: sign-up email confirmation
+    redirectUrl = "/?auth_action=email_confirmed";
+  }
+  return NextResponse.redirect(new URL(redirectUrl, url.origin));
 }

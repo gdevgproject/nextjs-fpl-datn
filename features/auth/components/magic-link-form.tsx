@@ -37,7 +37,11 @@ export function MagicLinkForm() {
     const { error } = await supabase.auth.signInWithOtp({
       email: values.email,
       options: {
-        emailRedirectTo: window.location.origin + "/api/auth/callback",
+        emailRedirectTo: `${
+          window.location.origin
+        }/api/auth/comfirm?type=magic&next=${encodeURIComponent(
+          window.location.origin
+        )}`,
       },
     });
     setIsLoading(false);
