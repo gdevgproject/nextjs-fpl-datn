@@ -48,6 +48,33 @@ const LogRow = memo(function LogRow({
   const activityTypeColor = getActivityTypeColor(log.activity_type);
   const entityTypeColor = getEntityTypeColor(log.entity_type);
 
+  // Kiểm tra xem có phải là hành động hủy đơn hàng không
+  const isOrderCancellation = useMemo(() => {
+    return (
+      log.activity_type.includes("ORDER_CANCELLED") ||
+      (log.entity_type === "orders" && log.activity_type.includes("CANCEL"))
+    );
+  }, [log.activity_type, log.entity_type]);
+
+  // Lấy email người thực hiện, ưu tiên lấy từ cancelled_by_user_id nếu có
+  const performerEmail = useMemo(() => {
+    // Nếu là hành động hủy đơn hàng và có details
+    if (
+      isOrderCancellation &&
+      log.details &&
+      log.details.cancelled_by_user_id
+    ) {
+      return email || log.details.cancelled_by_user_id;
+    }
+    return isLoadingEmail ? "Đang tải..." : email || log.admin_user_id;
+  }, [
+    isLoadingEmail,
+    email,
+    log.admin_user_id,
+    isOrderCancellation,
+    log.details,
+  ]);
+
   // Xử lý sự kiện click với useCallback để tránh tạo lại hàm
   const handleViewDetails = useCallback(() => {
     onViewDetails(log);
@@ -70,9 +97,12 @@ const LogRow = memo(function LogRow({
         </TooltipProvider>
       </TableCell>
       <TableCell>
-        <span className="text-muted-foreground">
-          {isLoadingEmail ? "Đang tải..." : email || log.admin_user_id}
-        </span>
+        <div className="flex flex-col space-y-1">
+          <span className="font-medium text-sm">{performerEmail}</span>
+          <span className="text-muted-foreground text-xs">
+            {log.description}
+          </span>
+        </div>
       </TableCell>
       <TableCell>
         <Badge className={`${activityTypeColor} hover:${activityTypeColor}`}>
@@ -87,7 +117,6 @@ const LogRow = memo(function LogRow({
           {log.entity_type}
         </Badge>
       </TableCell>
-      <TableCell className="max-w-md truncate">{log.description}</TableCell>
       <TableCell className="text-right">
         <Button
           variant="ghost"
@@ -119,10 +148,9 @@ export function LogsTable({ logs, onViewDetails }: LogsTableProps) {
         <TableHeader>
           <TableRow>
             <TableHead className="w-[180px]">Thời gian</TableHead>
-            <TableHead className="w-[250px]">Người thực hiện</TableHead>
+            <TableHead className="w-[250px]">Người thực hiện & Mô tả</TableHead>
             <TableHead className="w-[150px]">Loại hoạt động</TableHead>
             <TableHead className="w-[120px]">Đối tượng</TableHead>
-            <TableHead>Mô tả</TableHead>
             <TableHead className="w-[80px] text-right">Chi tiết</TableHead>
           </TableRow>
         </TableHeader>
