@@ -27,16 +27,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -44,12 +34,9 @@ import {
   Search,
   MoreHorizontal,
   Pencil,
-  Trash2,
   ArrowUpDown,
-  Loader2,
 } from "lucide-react";
 import { usePaymentMethods } from "@/features/admin/payment-methods/hooks/use-payment-methods";
-import { useDeletePaymentMethod } from "@/features/admin/payment-methods/hooks/use-delete-payment-method";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { useDebounce } from "@/features/admin/payment-methods/hooks/use-debounce";
 import { PaymentMethodDialog } from "@/features/admin/payment-methods/components/payment-method-dialog";
@@ -65,12 +52,10 @@ export default function PaymentMethodsPage() {
   const [sortColumn, setSortColumn] = useState<string>("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
-  // State for payment method dialog and delete confirmation
+  // State for payment method dialog
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<any>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch payment methods with pagination, search, and sorting
   const {
@@ -83,9 +68,6 @@ export default function PaymentMethodsPage() {
     { page: currentPage, pageSize },
     { column: sortColumn, direction: sortDirection }
   );
-
-  // Delete payment method mutation
-  const deletePaymentMethodMutation = useDeletePaymentMethod();
 
   // Handle sort toggle
   const handleSort = (column: string) => {
@@ -101,41 +83,6 @@ export default function PaymentMethodsPage() {
   const handleEdit = (paymentMethod: any) => {
     setSelectedPaymentMethod(paymentMethod);
     setIsEditDialogOpen(true);
-  };
-
-  // Handle payment method delete
-  const handleDelete = (paymentMethod: any) => {
-    setSelectedPaymentMethod(paymentMethod);
-    setIsDeleteDialogOpen(true);
-  };
-
-  // Confirm payment method deletion
-  const confirmDelete = async () => {
-    if (!selectedPaymentMethod) return;
-
-    try {
-      setIsDeleting(true);
-      await deletePaymentMethodMutation.mutateAsync({
-        id: selectedPaymentMethod.id,
-      });
-
-      // Close dialog before showing toast
-      setIsDeleteDialogOpen(false);
-
-      // Refetch data after successful deletion
-      await refetch();
-
-      toast.success("Phương thức thanh toán đã được xóa thành công");
-    } catch (error) {
-      console.error("Error deleting payment method:", error);
-      toast.error(
-        `Lỗi khi xóa phương thức thanh toán: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
-    } finally {
-      setIsDeleting(false);
-    }
   };
 
   // Calculate total pages
@@ -234,7 +181,9 @@ export default function PaymentMethodsPage() {
             Quản lý phương thức thanh toán
           </h1>
           <p className="text-muted-foreground">
-            Quản lý danh sách các phương thức thanh toán trong hệ thống
+            Quản lý danh sách các phương thức thanh toán trong hệ thống. Phương
+            thức thanh toán chỉ có thể được kích hoạt hoặc vô hiệu hóa, không
+            thể xóa để đảm bảo toàn vẹn dữ liệu.
           </p>
         </div>
 
@@ -364,13 +313,6 @@ export default function PaymentMethodsPage() {
                               <Pencil className="mr-2 h-4 w-4" />
                               Chỉnh sửa
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => handleDelete(paymentMethod)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Xóa
-                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -439,39 +381,6 @@ export default function PaymentMethodsPage() {
           paymentMethod={selectedPaymentMethod}
         />
       )}
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Bạn có chắc chắn muốn xóa?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Thao tác này sẽ xóa phương thức thanh toán "
-              {selectedPaymentMethod?.name}" và không thể hoàn tác.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Hủy</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Đang xóa...
-                </>
-              ) : (
-                "Xóa"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </AdminLayout>
   );
 }

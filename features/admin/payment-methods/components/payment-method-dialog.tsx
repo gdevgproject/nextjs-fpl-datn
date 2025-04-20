@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,31 +24,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { useCreatePaymentMethod } from "../hooks/use-create-payment-method";
-import { useUpdatePaymentMethod } from "../hooks/use-update-payment-method";
+import { useCreatePaymentMethod, useUpdatePaymentMethod } from "../hooks";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { paymentMethodSchema, type PaymentMethod } from "../types";
 
-// Define the form schema with Zod
-const paymentMethodFormSchema = z.object({
-  name: z
-    .string()
-    .min(1, "Tên phương thức thanh toán không được để trống")
-    .max(100, "Tên phương thức thanh toán không được vượt quá 100 ký tự"),
-  description: z
-    .string()
-    .max(500, "Mô tả không được vượt quá 500 ký tự")
-    .optional()
-    .nullable(),
-  is_active: z.boolean().default(true),
-});
-
-type PaymentMethodFormValues = z.infer<typeof paymentMethodFormSchema>;
+type PaymentMethodFormValues = Omit<PaymentMethod, "id"> & { id?: number };
 
 interface PaymentMethodDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "create" | "edit";
-  paymentMethod?: any;
+  paymentMethod?: PaymentMethod;
 }
 
 export function PaymentMethodDialog({
@@ -61,9 +46,9 @@ export function PaymentMethodDialog({
   const toast = useSonnerToast();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Initialize the form with default values
+  // Initialize the form with default values and Zod resolver for validation
   const form = useForm<PaymentMethodFormValues>({
-    resolver: zodResolver(paymentMethodFormSchema),
+    resolver: zodResolver(paymentMethodSchema),
     defaultValues: {
       name: "",
       description: "",
@@ -71,28 +56,30 @@ export function PaymentMethodDialog({
     },
   });
 
-  // Set form values when editing an existing payment method
+  // Reset form when dialog opens or payment method changes
   useEffect(() => {
-    if (mode === "edit" && paymentMethod) {
-      form.reset({
-        name: paymentMethod.name,
-        description: paymentMethod.description,
-        is_active: paymentMethod.is_active,
-      });
-    } else {
-      form.reset({
-        name: "",
-        description: "",
-        is_active: true,
-      });
+    if (open) {
+      if (mode === "edit" && paymentMethod) {
+        form.reset({
+          name: paymentMethod.name,
+          description: paymentMethod.description || "",
+          is_active: paymentMethod.is_active,
+        });
+      } else {
+        form.reset({
+          name: "",
+          description: "",
+          is_active: true,
+        });
+      }
     }
   }, [mode, paymentMethod, form, open]);
 
-  // Mutations for creating and updating payment methods
+  // Use TanStack Query mutations
   const createPaymentMethodMutation = useCreatePaymentMethod();
   const updatePaymentMethodMutation = useUpdatePaymentMethod();
 
-  // Handle form submission
+  // Handle form submission with optimized workflow
   const onSubmit = async (values: PaymentMethodFormValues) => {
     try {
       setIsProcessing(true);
@@ -101,47 +88,40 @@ export function PaymentMethodDialog({
         // Create new payment method
         await createPaymentMethodMutation.mutateAsync({
           name: values.name,
-          description: values.description,
+          description: values.description || null,
           is_active: values.is_active,
         });
 
-        // Show success message
-        toast.success("Phương thức thanh toán đã được tạo thành công");
-
-        // Close the dialog
-        onOpenChange(false);
-
-        // Reset the form
-        form.reset();
+        toast.success("Thêm phương thức thanh toán thành công");
       } else if (mode === "edit" && paymentMethod) {
         // Update existing payment method
         await updatePaymentMethodMutation.mutateAsync({
           id: paymentMethod.id,
           name: values.name,
-          description: values.description,
+          description: values.description || null,
           is_active: values.is_active,
         });
 
-        // Show success message
-        toast.success("Phương thức thanh toán đã được cập nhật thành công");
-
-        // Close the dialog
-        onOpenChange(false);
+        toast.success("Cập nhật phương thức thanh toán thành công");
       }
+
+      // Close dialog and reset form on success
+      onOpenChange(false);
     } catch (error) {
-      // Show error message
       toast.error(
         `Lỗi khi ${
-          mode === "create" ? "tạo" : "cập nhật"
-        } phương thức thanh toán: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
+          mode === "create" ? "thêm" : "cập nhật"
+        } phương thức thanh toán`,
+        {
+          description: error instanceof Error ? error.message : "Đã xảy ra lỗi",
+        }
       );
     } finally {
       setIsProcessing(false);
     }
   };
 
+  // Early render to avoid UI flickering when loading data
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
@@ -170,6 +150,7 @@ export function PaymentMethodDialog({
                     <Input
                       placeholder="Nhập tên phương thức thanh toán"
                       {...field}
+                      autoComplete="off"
                     />
                   </FormControl>
                   <FormDescription>
@@ -219,6 +200,7 @@ export function PaymentMethodDialog({
                       checked={field.value}
                       onCheckedChange={field.onChange}
                       disabled={isProcessing}
+                      aria-readonly={isProcessing}
                     />
                   </FormControl>
                 </FormItem>
@@ -230,11 +212,22 @@ export function PaymentMethodDialog({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
+                disabled={isProcessing}
               >
                 Hủy
               </Button>
-              <Button type="submit" disabled={isProcessing}>
-                {isProcessing
+              <Button
+                type="submit"
+                disabled={
+                  isProcessing ||
+                  !form.formState.isDirty ||
+                  createPaymentMethodMutation.isPending ||
+                  updatePaymentMethodMutation.isPending
+                }
+              >
+                {isProcessing ||
+                createPaymentMethodMutation.isPending ||
+                updatePaymentMethodMutation.isPending
                   ? "Đang xử lý..."
                   : mode === "create"
                   ? "Tạo phương thức thanh toán"
