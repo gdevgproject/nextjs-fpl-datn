@@ -4,9 +4,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { z } from "zod";
 import { resetPasswordSchema } from "../validators";
-import { useResetPasswordMutation } from "../hooks";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { useRouter } from "next/navigation";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useState } from "react";
 import {
   Form,
   FormField,
@@ -24,16 +25,19 @@ type FormValues = z.infer<typeof resetPasswordSchema>;
 export function ResetPasswordForm({ token }: { token: string }) {
   const router = useRouter();
   const { toast } = useSonnerToast();
-  const { mutateAsync, isLoading } = useResetPasswordMutation();
+  const supabase = getSupabaseBrowserClient();
+  const [isLoading, setIsLoading] = useState(false);
   const form = useForm<FormValues>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: { password: "", confirmPassword: "" },
   });
 
   async function onSubmit(values: FormValues) {
-    const result = await mutateAsync({ token, password: values.password });
-    if ("error" in result) {
-      toast("Đặt lại mật khẩu thất bại", { description: result.error });
+    setIsLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: values.password });
+    setIsLoading(false);
+    if (error) {
+      toast("Đặt lại mật khẩu thất bại", { description: error.message });
     } else {
       toast("Đặt lại mật khẩu thành công", {
         description: "Vui lòng đăng nhập với mật khẩu mới.",

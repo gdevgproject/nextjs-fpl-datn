@@ -36,9 +36,9 @@ export async function GET(request: NextRequest) {
         new URL(`/dang-nhap?auth_action=email_confirmed`, requestUrl.origin)
       );
     } else if (type === "recovery") {
-      // Redirect to login with password reset param
+      // Redirect to reset password page with code
       return NextResponse.redirect(
-        new URL(`/dang-nhap?auth_action=password_reset`, requestUrl.origin)
+        new URL(`/dat-lai-mat-khau?code=${encodeURIComponent(code!)}`, requestUrl.origin)
       );
     } else if (type === "invite") {
       // Redirect to account settings

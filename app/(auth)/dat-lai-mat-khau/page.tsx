@@ -10,12 +10,11 @@ export const metadata: Metadata = {
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ code?: string }>;
 }) {
-  const params = await searchParams;
-  const token = params.token;
-  if (!token) {
+  const { code } = await searchParams;
+  if (!code) {
     redirect("/dang-nhap");
   }
-  return <ResetPasswordForm token={token!} />;
+  return <ResetPasswordForm token={code} />;
 }
