@@ -47,14 +47,6 @@ const LogRow = memo(function LogRow({
   );
   const activityTypeColor = getActivityTypeColor(log.activity_type);
   const entityTypeColor = getEntityTypeColor(log.entity_type);
-  
-  // Format email để hiển thị ngắn gọn hơn
-  const formattedEmail = useMemo(() => {
-    if (isLoadingEmail) return "Đang tải...";
-    if (!email) return log.admin_user_id;
-    const parts = email.split('@');
-    return parts[0];
-  }, [email, isLoadingEmail, log.admin_user_id]);
 
   // Xử lý sự kiện click với useCallback để tránh tạo lại hàm
   const handleViewDetails = useCallback(() => {
@@ -63,7 +55,7 @@ const LogRow = memo(function LogRow({
 
   return (
     <TableRow key={log.id}>
-      <TableCell className="font-medium whitespace-nowrap w-[150px]">
+      <TableCell className="font-medium whitespace-nowrap">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -77,38 +69,17 @@ const LogRow = memo(function LogRow({
           </Tooltip>
         </TooltipProvider>
       </TableCell>
-      
-      <TableCell className="w-[220px]">
-        <div className="flex flex-col gap-1">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="text-sm font-medium">
-                  {formattedEmail}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{email || log.admin_user_id}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          <span className="text-xs text-muted-foreground line-clamp-2">
-            {log.description}
-          </span>
-        </div>
+      <TableCell>
+        <span className="text-muted-foreground">
+          {isLoadingEmail ? "Đang tải..." : email || log.admin_user_id}
+        </span>
       </TableCell>
-      
-      <TableCell className="w-[130px]">
-        <Badge 
-          className={`${activityTypeColor} hover:${activityTypeColor}`}
-          variant="outline"
-        >
-          {formatActivityType(log.activity_type)}
+      <TableCell>
+        <Badge className={`${activityTypeColor} hover:${activityTypeColor}`}>
+          {log.activity_type}
         </Badge>
       </TableCell>
-      
-      <TableCell className="w-[120px]">
+      <TableCell>
         <Badge
           variant="outline"
           className={`${entityTypeColor} hover:${entityTypeColor} text-white border-0`}
@@ -116,25 +87,16 @@ const LogRow = memo(function LogRow({
           {log.entity_type}
         </Badge>
       </TableCell>
-      
-      <TableCell className="w-[100px] text-center">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleViewDetails}
-                className="h-8 w-8"
-              >
-                <Eye className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Xem chi tiết</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+      <TableCell className="max-w-md truncate">{log.description}</TableCell>
+      <TableCell className="text-right">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleViewDetails}
+          title="Xem chi tiết"
+        >
+          <Eye className="h-4 w-4" />
+        </Button>
       </TableCell>
     </TableRow>
   );
@@ -156,11 +118,12 @@ export function LogsTable({ logs, onViewDetails }: LogsTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Thời gian</TableHead>
-            <TableHead>Người thực hiện & Mô tả</TableHead>
-            <TableHead>Loại hoạt động</TableHead>
-            <TableHead>Đối tượng</TableHead>
-            <TableHead className="text-center">Chi tiết</TableHead>
+            <TableHead className="w-[180px]">Thời gian</TableHead>
+            <TableHead className="w-[250px]">Người thực hiện</TableHead>
+            <TableHead className="w-[150px]">Loại hoạt động</TableHead>
+            <TableHead className="w-[120px]">Đối tượng</TableHead>
+            <TableHead>Mô tả</TableHead>
+            <TableHead className="w-[80px] text-right">Chi tiết</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -191,26 +154,6 @@ function formatTimestamp(timestamp: string) {
   }
 }
 
-// Function định dạng loại hoạt động để hiển thị thân thiện hơn
-function formatActivityType(type: string) {
-  // Loại bỏ prefix thường gặp để hiển thị ngắn gọn hơn
-  const formattedType = type
-    .replace(/PRODUCT_|CATEGORY_|ORDER_|BRAND_|USER_/, '')
-    .replace(/_/g, ' ');
-    
-  // Chuyển đổi các hành động phổ biến sang tiếng Việt
-  switch (formattedType) {
-    case 'INSERT': return 'Thêm mới';
-    case 'UPDATE': return 'Cập nhật';
-    case 'DELETE': return 'Xóa';
-    case 'CREATE': return 'Tạo mới';
-    case 'APPROVE': return 'Duyệt';
-    case 'REJECT': return 'Từ chối';
-    case 'CANCEL': return 'Hủy';
-    default: return formattedType;
-  }
-}
-
 // Function để lấy màu badge theo loại hoạt động
 function getActivityTypeColor(type: string) {
   if (type.includes("CREATE") || type.includes("INSERT")) return "bg-green-500";
@@ -218,7 +161,6 @@ function getActivityTypeColor(type: string) {
   if (type.includes("DELETE")) return "bg-red-500";
   if (type.includes("CANCEL")) return "bg-orange-500";
   if (type.includes("APPROVE")) return "bg-emerald-500";
-  if (type.includes("REJECT")) return "bg-rose-500";
   return "bg-gray-500";
 }
 
@@ -245,17 +187,6 @@ function getEntityTypeColor(type: string) {
     case "category":
     case "categories":
       return "bg-teal-500";
-    case "banner":
-    case "banners":
-      return "bg-orange-500";
-    case "discount":
-    case "discounts":
-      return "bg-yellow-500";
-    case "payment":
-    case "payments":
-      return "bg-lime-500";
-    case "inventory":
-      return "bg-emerald-500";
     default:
       return "bg-slate-500";
   }
