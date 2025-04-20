@@ -50,6 +50,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useSelectedCartItems } from "../hooks";
+import { useQueryClient } from "@tanstack/react-query";
 
 function SmartSummaryBar({
   selectedCartItems,
@@ -300,8 +302,8 @@ function SmartSummaryBar({
 export function CartPage() {
   const router = useRouter();
   const { data: cartItems = [], isLoading, isFetching } = useCartQuery();
-  const { mutate: updateCartItem, isLoading: isUpdating } = useUpdateCartItem();
-  const { mutate: removeCartItem, isLoading: isRemoving } = useRemoveCartItem();
+  const { mutate: updateCartItem } = useUpdateCartItem();
+  const { mutate: removeCartItem } = useRemoveCartItem();
   const { mutate: clearCart } = useClearCart();
   const { data: session, isLoading: isSessionLoading } = useAuthQuery();
   const isAuthenticated = !!session?.user;
@@ -309,6 +311,28 @@ export function CartPage() {
   const { settings } = useShopSettings();
   const shippingFee = settings?.shipping_fee || 0;
   const freeShippingThreshold = settings?.free_shipping_threshold || null;
+  const queryClient = useQueryClient();
+
+  // Sử dụng hook mới để quản lý các sản phẩm đã chọn
+  const {
+    selectedItems: selectedCartItems,
+    isItemSelected,
+    toggleItemSelection,
+    toggleSelectAll,
+    clearSelectedItems,
+  } = useSelectedCartItems();
+
+  // Theo dõi trạng thái loading cho từng sản phẩm
+  const [updatingItems, setUpdatingItems] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [removingItems, setRemovingItems] = useState<Record<string, boolean>>(
+    {}
+  );
+
+  // Helper functions để kiểm tra trạng thái loading của từng sản phẩm
+  const isItemUpdating = (key: string | number) => !!updatingItems[String(key)];
+  const isItemRemoving = (key: string | number) => !!removingItems[String(key)];
 
   const [discountCode, setDiscountCode] = useState("");
   const [discountInfo, setDiscountInfo] = useState<{
@@ -320,35 +344,37 @@ export function CartPage() {
 
   const [openClearDialog, setOpenClearDialog] = useState(false);
 
-  const [selectedItems, setSelectedItems] = useState<(string | number)[]>([]);
-  const isItemSelected = (item: any) =>
-    selectedItems.includes(isAuthenticated ? String(item.id) : item.variant_id);
+  // Handle checkbox events
   const handleSelectItem = (item: any, checked: boolean) => {
-    const key = isAuthenticated ? String(item.id) : item.variant_id;
-    setSelectedItems((prev) =>
-      checked ? [...prev, key] : prev.filter((k) => k !== key)
-    );
+    toggleItemSelection(item, checked);
   };
+
   const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedItems(
-        cartItems.map((item) =>
-          isAuthenticated ? String(item.id) : item.variant_id
-        )
-      );
-    } else {
-      setSelectedItems([]);
-    }
+    toggleSelectAll(checked);
   };
+
   const handleRemoveSelected = () => {
-    selectedItems.forEach((key) => removeCartItem(key));
-    setSelectedItems([]);
+    // Get IDs of selected items
+    selectedCartItems.forEach((item) => {
+      const key = isAuthenticated ? String(item.id) : item.variant_id;
+      // Set loading state
+      setRemovingItems((prev) => ({ ...prev, [key]: true }));
+      // Remove item
+      removeCartItem(key, {
+        onSettled: () => {
+          // Clear loading state
+          setRemovingItems((prev) => ({ ...prev, [key]: false }));
+        },
+      });
+    });
+    // Clear selected items
+    clearSelectedItems();
     success("Đã xóa các sản phẩm đã chọn khỏi giỏ hàng");
   };
 
   // Reset selected items when cart items change
   useEffect(() => {
-    setSelectedItems([]);
+    clearSelectedItems();
   }, [isAuthenticated]);
 
   const subtotal = useMemo(
@@ -444,6 +470,10 @@ export function CartPage() {
   };
 
   const handleCheckout = (items: any[]) => {
+    // Lưu các sản phẩm được chọn vào TanStack Query cache
+    queryClient.setQueryData(["selectedCheckoutItems"], items);
+
+    // Tiếp tục chuyển hướng với mã giảm giá nếu có
     const query = discountCode
       ? `?code=${encodeURIComponent(discountCode)}`
       : "";
@@ -452,19 +482,10 @@ export function CartPage() {
 
   const smartBarRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (selectedItems.length > 0 && smartBarRef.current) {
+    if (selectedCartItems.length > 0 && smartBarRef.current) {
       smartBarRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
     }
-  }, [selectedItems.length]);
-
-  const selectedCartItems =
-    selectedItems.length > 0
-      ? cartItems.filter((item) =>
-          selectedItems.includes(
-            isAuthenticated ? String(item.id) : item.variant_id
-          )
-        )
-      : [];
+  }, [selectedCartItems.length]);
 
   // Show loading state when session is loading or cart is loading/fetching
   const isLoadingData = isSessionLoading || isLoading || isFetching;
@@ -517,12 +538,12 @@ export function CartPage() {
               <TableHead className="w-10 text-center">
                 <Checkbox
                   checked={
-                    selectedItems.length === cartItems.length &&
+                    selectedCartItems.length === cartItems.length &&
                     cartItems.length > 0
                   }
                   indeterminate={
-                    selectedItems.length > 0 &&
-                    selectedItems.length < cartItems.length
+                    selectedCartItems.length > 0 &&
+                    selectedCartItems.length < cartItems.length
                       ? "true"
                       : undefined
                   }
@@ -616,21 +637,35 @@ export function CartPage() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 rounded-r-none"
-                        onClick={() =>
-                          updateCartItem({
-                            itemIdOrVariantId: isAuthenticated
-                              ? String(item.id)
-                              : item.variant_id,
-                            quantity: Math.max(1, item.quantity - 1),
-                          })
-                        }
-                        disabled={item.quantity <= 1 || isUpdating}
+                        onClick={() => {
+                          setUpdatingItems((prev) => ({
+                            ...prev,
+                            [key]: true,
+                          }));
+                          updateCartItem(
+                            {
+                              itemIdOrVariantId: isAuthenticated
+                                ? String(item.id)
+                                : item.variant_id,
+                              quantity: Math.max(1, item.quantity - 1),
+                            },
+                            {
+                              onSettled: () => {
+                                setUpdatingItems((prev) => ({
+                                  ...prev,
+                                  [key]: false,
+                                }));
+                              },
+                            }
+                          );
+                        }}
+                        disabled={item.quantity <= 1 || isItemUpdating(key)}
                         aria-label="Giảm số lượng"
                       >
                         <Minus className="h-3 w-3" />
                       </Button>
                       <div className="w-8 text-center font-medium text-sm py-1">
-                        {isUpdating ? (
+                        {isItemUpdating(key) ? (
                           <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                         ) : (
                           item.quantity
@@ -640,15 +675,29 @@ export function CartPage() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 rounded-l-none"
-                        onClick={() =>
-                          updateCartItem({
-                            itemIdOrVariantId: isAuthenticated
-                              ? String(item.id)
-                              : item.variant_id,
-                            quantity: item.quantity + 1,
-                          })
-                        }
-                        disabled={isUpdating}
+                        onClick={() => {
+                          setUpdatingItems((prev) => ({
+                            ...prev,
+                            [key]: true,
+                          }));
+                          updateCartItem(
+                            {
+                              itemIdOrVariantId: isAuthenticated
+                                ? String(item.id)
+                                : item.variant_id,
+                              quantity: item.quantity + 1,
+                            },
+                            {
+                              onSettled: () => {
+                                setUpdatingItems((prev) => ({
+                                  ...prev,
+                                  [key]: false,
+                                }));
+                              },
+                            }
+                          );
+                        }}
+                        disabled={isItemUpdating(key)}
                         aria-label="Tăng số lượng"
                       >
                         <Plus className="h-3 w-3" />
@@ -662,13 +711,29 @@ export function CartPage() {
                     <button
                       type="button"
                       className="text-destructive hover:bg-destructive/10 rounded p-1"
-                      onClick={async () => {
-                        await removeCartItem(key);
+                      onClick={() => {
+                        setRemovingItems((prev) => ({
+                          ...prev,
+                          [key]: true,
+                        }));
+                        removeCartItem(key, {
+                          onSettled: () => {
+                            setRemovingItems((prev) => ({
+                              ...prev,
+                              [key]: false,
+                            }));
+                          },
+                        });
                         success("Đã xóa sản phẩm khỏi giỏ hàng");
                       }}
+                      disabled={isItemRemoving(key)}
                       title="Xóa sản phẩm"
                     >
-                      <Trash2 className="w-5 h-5" />
+                      {isItemRemoving(key) ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-5 h-5" />
+                      )}
                     </button>
                   </TableCell>
                 </TableRow>

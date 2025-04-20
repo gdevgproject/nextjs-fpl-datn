@@ -185,21 +185,19 @@ export async function securedPlaceOrder({
         continue;
       }
 
-      // Check price changes (using the effective price - sale price if available, otherwise regular price)
-      // Kiểm tra cả hai cấu trúc có thể có của item.product
-      const clientPrice =
-        item.product?.salePrice ||
-        item.product?.sale_price ||
-        item.product?.price ||
-        0;
-      const currentPrice = currentVariant.sale_price || currentVariant.price;
-
-      if (clientPrice !== currentPrice) {
-        priceChangedVariants.push({
-          id: itemVariantId,
-          oldPrice: clientPrice,
-          newPrice: currentPrice,
-        });
+      // Check price changes only for product salePrice changes, skip if voucher applied
+      if (!discountId) {
+        const clientPrice = item.product?.salePrice ?? item.product?.price ?? 0;
+        const currentPrice = currentVariant.sale_price ?? currentVariant.price;
+        // Compare prices with tolerance for rounding differences
+        const priceDiff = Math.abs(clientPrice - currentPrice);
+        if (priceDiff > 0.01) {
+          priceChangedVariants.push({
+            id: itemVariantId,
+            oldPrice: clientPrice,
+            newPrice: currentPrice,
+          });
+        }
       }
     }
 
@@ -300,8 +298,95 @@ export async function securedPlaceOrder({
     // Start transaction - all operations will be atomic
     // The transaction block guarantees that either ALL operations succeed, or NONE do
     console.log("Starting transaction...");
+    console.log(
+      "Order details - subtotal:",
+      subtotal,
+      "discountAmount:",
+      discountAmount,
+      "total:",
+      total
+    );
 
     let orderId: number | undefined;
+
+    // Calculate precise subtotal from actual product data
+    // This ensures we use the most accurate prices directly from the database
+    const preciseSubtotal = latestVariants.reduce((sum, variant) => {
+      const cartItem = cartItems.find((item) => {
+        const itemVariantId = item.variantId || (item as any).variant_id;
+        return itemVariantId === variant.id;
+      });
+
+      if (!cartItem) return sum;
+
+      // Use the same price calculation as in the cart
+      const price = variant.sale_price ?? variant.price;
+      return sum + price * cartItem.quantity;
+    }, 0);
+
+    console.log(
+      "Calculated precise subtotal from DB product prices:",
+      preciseSubtotal
+    );
+    console.log("Client-provided subtotal:", subtotal);
+    console.log("Difference:", Math.abs(preciseSubtotal - subtotal));
+
+    // Calculate numeric values for order details (using the precise subtotal)
+    const numericSubtotal = Number(
+      parseFloat(preciseSubtotal.toString()).toFixed(2)
+    );
+    // Discount will be calculated by the database trigger, we'll just pass a placeholder
+    const numericDiscountAmount = Number(
+      parseFloat((discountAmount || 0).toString()).toFixed(2)
+    );
+    const numericShippingFee = Number(
+      parseFloat(shippingFee.toString()).toFixed(2)
+    );
+    // Let database calculate the final total based on its discount logic
+    const calculatedTotal = Number(
+      (numericSubtotal + numericShippingFee).toFixed(2)
+    );
+
+    // Log chi tiết các giá trị TRƯỚC KHI INSERT vào DATABASE
+    console.log("=============================================");
+    console.log("PRE-INSERT DATABASE VALUES (securedPlaceOrder):", {
+      subtotal_amount: numericSubtotal,
+      subtotal_type: typeof numericSubtotal,
+      discount_amount: numericDiscountAmount,
+      discount_type: typeof numericDiscountAmount,
+      discount_id: discountId,
+      discount_id_type: typeof discountId,
+      shipping_fee: numericShippingFee,
+      shipping_type: typeof numericShippingFee,
+      calculated_total: calculatedTotal,
+      total_type: typeof calculatedTotal,
+    });
+
+    // Double-check discount validity directly from database before insertion
+    if (discountId) {
+      const { data: discount, error: discountError } = await supabase
+        .from("discounts")
+        .select(
+          `
+          id, code, is_active, 
+          start_date, end_date, 
+          remaining_uses, min_order_value, 
+          discount_percentage, max_discount_amount
+        `
+        )
+        .eq("id", discountId)
+        .single();
+
+      if (!discountError && discount) {
+        console.log("DISCOUNT DETAILS FROM DATABASE:", discount);
+        console.log("CHECKING MIN ORDER VALUE:", {
+          "Min required": discount.min_order_value,
+          "Actual subtotal": numericSubtotal,
+          "Is valid": discount.min_order_value <= numericSubtotal,
+        });
+      }
+    }
+    console.log("=============================================");
 
     // Step 1: Insert order record
     const { data: newOrder, error: orderError } = await supabase
@@ -325,10 +410,14 @@ export async function securedPlaceOrder({
         payment_status: "Pending",
         order_status_id: orderStatusId,
         discount_id: discountId || null,
-        subtotal_amount: subtotal,
-        discount_amount: discountAmount,
-        shipping_fee: shippingFee,
-        total_amount: total,
+        subtotal_amount: numericSubtotal, // Dùng subtotal đã tính lại từ giá sản phẩm trong DB
+        // KHÔNG cố gắng đặt discount_amount - để database trigger tính toán
+        // Đặt giá trị 0 (mặc định) để database trigger có thể ghi đè
+        discount_amount: 0,
+        shipping_fee: numericShippingFee,
+        // Không đặt total_amount - để database trigger tính toán
+        // Đặt giá trị tạm thời để thỏa mãn ràng buộc NOT NULL
+        total_amount: numericSubtotal + numericShippingFee,
       })
       .select("id, access_token")
       .single();
@@ -347,9 +436,13 @@ export async function securedPlaceOrder({
       // Fetch variant details from our already validated data
       const variant = latestVariants.find((v) => v.id === itemVariantId)!;
 
-      // Calculate unit price (use sale_price if available)
+      // Sử dụng giá từ item.product thay vì từ database để đảm bảo nhất quán với giá đã hiển thị
+      // cho người dùng tại frontend
       const unitPrice =
-        variant.sale_price !== null ? variant.sale_price : variant.price;
+        item.product?.salePrice ??
+        item.product?.price ??
+        variant.sale_price ??
+        variant.price;
 
       // Insert order item
       const { error: itemError } = await supabase.from("order_items").insert({
@@ -376,7 +469,7 @@ export async function securedPlaceOrder({
       order_id: orderId,
       payment_date: new Date().toISOString(),
       payment_method_id: paymentMethodId,
-      amount: total,
+      amount: calculatedTotal,
       status: "Pending",
     });
 
@@ -389,7 +482,7 @@ export async function securedPlaceOrder({
 
     console.log("Created payment record");
 
-    // Step 4: Clear user's cart if authenticated
+    // Step 4: Clear only selected items from user's cart if authenticated
     if (userId) {
       const { data: cart, error: cartError } = await supabase
         .from("shopping_carts")
@@ -398,9 +491,23 @@ export async function securedPlaceOrder({
         .single();
 
       if (!cartError && cart) {
-        await supabase.from("cart_items").delete().eq("cart_id", cart.id);
+        // Chỉ xóa những variant_id có trong danh sách sản phẩm đã chọn để thanh toán
+        const variantIds = cartItems
+          .map((item) =>
+            typeof item.variantId === "number"
+              ? item.variantId
+              : (item as any).variant_id
+          )
+          .filter(Boolean);
 
-        console.log("Cleared user's cart");
+        if (variantIds.length > 0) {
+          await supabase
+            .from("cart_items")
+            .delete()
+            .eq("cart_id", cart.id)
+            .in("variant_id", variantIds);
+          console.log("Cleared selected items from user's cart");
+        }
       }
     }
 

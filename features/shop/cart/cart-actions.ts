@@ -472,6 +472,26 @@ export async function placeOrder({
     } = await supabase.auth.getSession();
     const userId = session?.user?.id;
 
+    // Format numeric values correctly for PostgreSQL
+    const numericSubtotal = Number(parseFloat(subtotal.toString()).toFixed(2));
+    // Đảm bảo discountAmount luôn là số, ngay cả khi là 0
+    const numericDiscountAmount = Number(
+      parseFloat((discountAmount || 0).toString()).toFixed(2)
+    );
+    const numericShippingFee = Number(
+      parseFloat(shippingFee.toString()).toFixed(2)
+    );
+    const numericTotal = Number(parseFloat(total.toString()).toFixed(2));
+
+    // Log chi tiết các giá trị để debug
+    console.log("CART ACTIONS - PLACE ORDER VALUES:", {
+      subtotal_amount: numericSubtotal,
+      discount_amount: numericDiscountAmount,
+      shipping_fee: numericShippingFee,
+      total: numericTotal,
+      discount_id: discountId || null,
+    });
+
     // Start transaction
     const { data: newOrder, error: orderError } = await supabase
       .from("orders")
@@ -492,10 +512,10 @@ export async function placeOrder({
         payment_status: "Pending",
         order_status_id: 1, // Pending status
         discount_id: discountId || null,
-        subtotal_amount: subtotal,
-        discount_amount: discountAmount,
-        shipping_fee: shippingFee,
-        total_amount: total,
+        subtotal_amount: numericSubtotal,
+        discount_amount: numericDiscountAmount, // Fix: explicit numeric value
+        shipping_fee: numericShippingFee,
+        total_amount: numericTotal,
       })
       .select("id")
       .single();

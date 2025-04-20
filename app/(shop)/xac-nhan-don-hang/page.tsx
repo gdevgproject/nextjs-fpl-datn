@@ -253,8 +253,13 @@ export default async function OrderConfirmationPage(props: {
                       </div>
                     )}
                     {order.discount > 0 && (
-                      <div className="flex justify-between text-sm text-green-600">
-                        <span>Giảm giá đơn hàng</span>
+                      <div className="flex justify-between text-sm text-green-600 font-semibold">
+                        <span>
+                          Giảm giá đơn hàng{" "}
+                          {order.discount_code
+                            ? `(${order.discount_code})`
+                            : ""}
+                        </span>
                         <span>-{formatCurrency(order.discount)}</span>
                       </div>
                     )}

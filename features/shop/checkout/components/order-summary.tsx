@@ -3,16 +3,18 @@ import { formatCurrency } from "@/lib/utils/format";
 import { useCartQuery } from "@/features/shop/cart/use-cart";
 import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings";
 import { useCheckout } from "@/features/shop/checkout/checkout-provider";
+import { useSelectedCheckoutItems } from "../hooks/use-selected-checkout-items";
 
 export function OrderSummary() {
-  const { data: cartItems = [] } = useCartQuery();
+  // Sử dụng useSelectedCheckoutItems để lấy các sản phẩm đã chọn thay vì tất cả sản phẩm
+  const { data: selectedItems = [] } = useSelectedCheckoutItems();
   const { settings } = useShopSettings();
   const { discountAmount, appliedDiscount } = useCheckout();
   const shippingFee = settings?.shipping_fee || 0;
   const freeThreshold = settings?.free_shipping_threshold ?? null;
 
   // compute subtotal & total
-  const subtotal = cartItems.reduce((sum, item) => {
+  const subtotal = selectedItems.reduce((sum, item) => {
     const price =
       item.product?.sale_price && item.product.sale_price < item.product.price
         ? item.product.sale_price
@@ -21,7 +23,7 @@ export function OrderSummary() {
   }, 0);
 
   // Tính tổng khuyến mãi từ giá sản phẩm (chênh lệch giữa price và sale_price)
-  const saleDiscount = cartItems.reduce((sum, item) => {
+  const saleDiscount = selectedItems.reduce((sum, item) => {
     const originalPrice = item.product?.price || 0;
     const salePrice = item.product?.sale_price || originalPrice;
     return (
@@ -40,7 +42,7 @@ export function OrderSummary() {
     <div className="space-y-4">
       <h3 className="font-medium mb-3">Chi tiết đơn hàng</h3>
       <div className="space-y-3">
-        {cartItems.map((item) => (
+        {selectedItems.map((item) => (
           <div key={item.variant_id} className="flex justify-between text-sm">
             <div className="flex-1">
               <span className="font-medium">{item.product?.name}</span>

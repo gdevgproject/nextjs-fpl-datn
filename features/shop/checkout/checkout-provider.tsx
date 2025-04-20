@@ -10,6 +10,7 @@ import { securedPlaceOrder } from "./secure-place-order";
 import { useCartQuery, useClearCart } from "@/features/shop/cart/use-cart";
 import { validateDiscountCode } from "@/features/shop/cart/cart-actions";
 import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings";
+import { useSelectedCheckoutItems } from "./hooks/use-selected-checkout-items";
 import type { Address } from "@/features/shop/account/types";
 import type { CartItem } from "@/features/shop/cart/types";
 
@@ -81,12 +82,13 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useAuthQuery();
   const isAuthenticated = !!session?.user;
 
-  // Use the new cart query hook
-  const {
-    data: cartItems = [],
-    isLoading: cartLoading,
-    error: cartError,
-  } = useCartQuery();
+  // Lấy các sản phẩm đã chọn cho thanh toán
+  const { data: selectedItems = [] } = useSelectedCheckoutItems();
+
+  // Chỉ sử dụng các sản phẩm đã chọn từ trang giỏ hàng
+  // Không fallback về tất cả sản phẩm nữa
+  const cartItems = selectedItems;
+
   const { mutateAsync: clearCart } = useClearCart();
   const { settings } = useShopSettings();
 

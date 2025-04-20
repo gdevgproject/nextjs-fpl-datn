@@ -440,7 +440,8 @@ export async function getOrderDetails(orderIdOrToken: string, isToken = false) {
           shipping_fee,
           total_amount,
           order_status:order_statuses(name),
-          status_id:order_status_id
+          status_id:order_status_id,
+          discount_id
         `
         )
         .eq("access_token", orderIdOrToken)
@@ -494,6 +495,19 @@ export async function getOrderDetails(orderIdOrToken: string, isToken = false) {
           (item.original_price - item.price) * item.quantity;
       });
 
+      // Lấy thông tin mã giảm giá nếu có
+      let discount_code = null;
+      if (order.discount_id) {
+        const { data: discountData } = await serviceClient
+          .from("discounts")
+          .select("code")
+          .eq("id", order.discount_id)
+          .single();
+        if (discountData) {
+          discount_code = discountData.code;
+        }
+      }
+
       const shippingAddress = `${order.recipient_name}, ${order.recipient_phone}, ${order.street_address}, ${order.ward}, ${order.district}, ${order.province_city}`;
 
       const customerName = order.guest_name || order.recipient_name;
@@ -517,6 +531,7 @@ export async function getOrderDetails(orderIdOrToken: string, isToken = false) {
           subtotal: totalOriginal,
           discount_product: totalDiscountProduct,
           discount: order.discount_amount,
+          discount_code: discount_code,
           shipping_fee: order.shipping_fee,
           total: order.total_amount,
           total_final: order.total_amount,
@@ -565,7 +580,8 @@ export async function getOrderDetails(orderIdOrToken: string, isToken = false) {
           shipping_fee,
           total_amount,
           order_status:order_statuses(name),
-          status_id:order_status_id
+          status_id:order_status_id,
+          discount_id
         `
         )
         .eq("id", orderIdOrToken)
@@ -620,6 +636,19 @@ export async function getOrderDetails(orderIdOrToken: string, isToken = false) {
           (item.original_price - item.price) * item.quantity;
       });
 
+      // Lấy thông tin mã giảm giá nếu có
+      let discount_code = null;
+      if (order.discount_id) {
+        const { data: discountData } = await supabase
+          .from("discounts")
+          .select("code")
+          .eq("id", order.discount_id)
+          .single();
+        if (discountData) {
+          discount_code = discountData.code;
+        }
+      }
+
       const shippingAddress = `${order.recipient_name}, ${order.recipient_phone}, ${order.street_address}, ${order.ward}, ${order.district}, ${order.province_city}`;
 
       const customerName = order.guest_name || order.recipient_name;
@@ -643,6 +672,7 @@ export async function getOrderDetails(orderIdOrToken: string, isToken = false) {
           subtotal: totalOriginal,
           discount_product: totalDiscountProduct,
           discount: order.discount_amount,
+          discount_code: discount_code,
           shipping_fee: order.shipping_fee,
           total: order.total_amount,
           total_final: order.total_amount,
