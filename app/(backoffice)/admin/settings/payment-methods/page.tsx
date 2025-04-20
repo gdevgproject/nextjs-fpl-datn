@@ -44,6 +44,7 @@ export default function PaymentMethodsPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<any>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Fetch payment methods with pagination, search, and sorting
   const {
@@ -71,6 +72,32 @@ export default function PaymentMethodsPage() {
   const handleEdit = (paymentMethod: any) => {
     setSelectedPaymentMethod(paymentMethod);
     setIsEditDialogOpen(true);
+  };
+
+  // Handle form submission with loading state
+  const handleFormSubmit = async (values: any) => {
+    setIsProcessing(true);
+    try {
+      if (isEditDialogOpen) {
+        await updatePaymentMethodMutation.mutateAsync(values);
+      } else {
+        await createPaymentMethodMutation.mutateAsync(values);
+      }
+      toast.success(
+        isEditDialogOpen
+          ? "Cập nhật phương thức thanh toán thành công"
+          : "Thêm phương thức thanh toán thành công"
+      );
+      setIsEditDialogOpen(false);
+      setIsCreateDialogOpen(false);
+      refetch();
+    } catch (error) {
+      toast.error(
+        `Lỗi: ${error instanceof Error ? error.message : "Không xác định"}`
+      );
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Calculate total pages
@@ -175,18 +202,16 @@ export default function PaymentMethodsPage() {
           </p>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="relative w-64">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Tìm kiếm phương thức thanh toán..."
-                className="pl-8 w-full"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Tìm kiếm phương thức thanh toán..."
+              className="pl-8 w-full"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
           <Button onClick={() => setIsCreateDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
@@ -196,7 +221,7 @@ export default function PaymentMethodsPage() {
 
         <Card>
           <CardContent className="p-0">
-            <Table>
+            <Table className="table-auto w-full">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[80px]">ID</TableHead>
@@ -351,6 +376,8 @@ export default function PaymentMethodsPage() {
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
         mode="create"
+        isProcessing={isProcessing}
+        onSubmit={handleFormSubmit}
       />
 
       {/* Edit Payment Method Dialog */}
@@ -360,6 +387,8 @@ export default function PaymentMethodsPage() {
           onOpenChange={setIsEditDialogOpen}
           mode="edit"
           paymentMethod={selectedPaymentMethod}
+          isProcessing={isProcessing}
+          onSubmit={handleFormSubmit}
         />
       )}
     </AdminLayout>
