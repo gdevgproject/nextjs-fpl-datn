@@ -38,7 +38,10 @@ export async function GET(request: NextRequest) {
     } else if (type === "recovery") {
       // Redirect to reset password page with code
       return NextResponse.redirect(
-        new URL(`/dat-lai-mat-khau?code=${encodeURIComponent(code!)}`, requestUrl.origin)
+        new URL(
+          `/dat-lai-mat-khau?code=${encodeURIComponent(code!)}`,
+          requestUrl.origin
+        )
       );
     } else if (type === "invite") {
       // Redirect to account settings

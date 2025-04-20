@@ -32,7 +32,17 @@ export function ForgotPasswordForm() {
   async function onSubmit(values: FormValues) {
     const result = await mutateAsync(values.email);
     if ("error" in result) {
-      toast("Gửi thất bại", { description: result.error });
+      // Dịch các thông báo bảo mật mặc định sang tiếng Việt
+      let msg = result.error;
+      if (msg.startsWith("For security purposes")) {
+        // Lấy số giây nếu có
+        const match = msg.match(/(\d+)/);
+        const seconds = match ? match[1] : "";
+        msg = seconds
+          ? `Vì lý do bảo mật, bạn chỉ có thể gửi lại sau ${seconds} giây.`
+          : "Vì lý do bảo mật, vui lòng thử lại sau.";
+      }
+      toast("Gửi thất bại", { description: msg });
     } else {
       toast("Đã gửi email", {
         description: "Vui lòng kiểm tra hộp thư để nhận link đặt lại mật khẩu.",

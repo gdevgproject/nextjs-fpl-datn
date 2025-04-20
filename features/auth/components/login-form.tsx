@@ -166,24 +166,25 @@ export function LoginForm() {
           control={form.control as Control<LoginFormValues>}
           name="rememberMe"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
+            <FormItem className="flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
                 <FormLabel>Ghi nhớ đăng nhập</FormLabel>
               </div>
+              <Link
+                href="/quen-mat-khau"
+                className="text-primary hover:underline text-sm"
+              >
+                Quên mật khẩu?
+              </Link>
             </FormItem>
           )}
         />
-        <p className="text-right text-sm">
-          <Link href="/quen-mat-khau" className="text-primary hover:underline">
-            Quên mật khẩu?
-          </Link>
-        </p>
 
         {errorCode === "email_not_confirmed" && (
           <FormNotification

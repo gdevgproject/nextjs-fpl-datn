@@ -8,6 +8,7 @@ import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import {
   Form,
   FormField,
@@ -27,6 +28,8 @@ export function ResetPasswordForm({ token }: { token: string }) {
   const { toast } = useSonnerToast();
   const supabase = getSupabaseBrowserClient();
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const form = useForm<FormValues>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: { password: "", confirmPassword: "" },
@@ -34,13 +37,24 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
   async function onSubmit(values: FormValues) {
     setIsLoading(true);
-    const { error } = await supabase.auth.updateUser({ password: values.password });
+    const { error } = await supabase.auth.updateUser({
+      password: values.password,
+    });
     setIsLoading(false);
     if (error) {
-      toast("Đặt lại mật khẩu thất bại", { description: error.message });
+      // Chuyển thông báo mặc định sang tiếng Việt
+      let msg = error.message;
+      if (
+        msg.toLowerCase().includes("same as previous") ||
+        msg.toLowerCase().includes("new password should")
+      ) {
+        msg = "Mật khẩu mới phải khác mật khẩu cũ";
+      }
+      toast("Đổi mật khẩu thất bại", { description: msg });
     } else {
-      toast("Đặt lại mật khẩu thành công", {
-        description: "Vui lòng đăng nhập với mật khẩu mới.",
+      toast("Đổi mật khẩu thành công", {
+        description:
+          "Mật khẩu đã được cập nhật. Bạn đã được tự động đăng nhập.",
       });
       router.push("/dang-nhap?auth_action=password_reset");
     }
@@ -56,7 +70,29 @@ export function ResetPasswordForm({ token }: { token: string }) {
             <FormItem>
               <FormLabel>Mật khẩu mới</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    {...field}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 text-muted-foreground"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                    <span className="sr-only">
+                      {showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                    </span>
+                  </Button>
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -69,14 +105,36 @@ export function ResetPasswordForm({ token }: { token: string }) {
             <FormItem>
               <FormLabel>Xác nhận mật khẩu</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} />
+                <div className="relative">
+                  <Input
+                    type={showConfirm ? "text" : "password"}
+                    placeholder="••••••••"
+                    {...field}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 text-muted-foreground"
+                    onClick={() => setShowConfirm(!showConfirm)}
+                  >
+                    {showConfirm ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                    <span className="sr-only">
+                      {showConfirm ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                    </span>
+                  </Button>
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
         <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Đang cập nhật…" : "Đặt lại mật khẩu"}
+          {isLoading ? "Đang cập nhật…" : "Đổi mật khẩu"}
         </Button>
       </form>
     </Form>
