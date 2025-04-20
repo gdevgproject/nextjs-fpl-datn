@@ -1,25 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { fetchAdminShopSettings } from "../services";
+import type { ShopSettings } from "../types";
 
-const supabase = getSupabaseBrowserClient();
+export const ADMIN_SHOP_QUERY_KEYS = {
+  SHOP_SETTINGS: ["admin-shop-settings"] as const,
+};
 
 export function useShopSettings() {
-  return useQuery({
-    queryKey: ["shop_settings"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("shop_settings")
-        .select("*")
-        .order("id", { ascending: true })
-        .limit(1)
-        .single();
-
-      if (error) {
-        console.error("Error fetching shop settings:", error);
-        throw error;
-      }
-
-      return data;
-    },
+  return useQuery<ShopSettings | null>({
+    queryKey: ADMIN_SHOP_QUERY_KEYS.SHOP_SETTINGS,
+    queryFn: fetchAdminShopSettings,
+    staleTime: 1000 * 60 * 30, // 30 phút
   });
 }
