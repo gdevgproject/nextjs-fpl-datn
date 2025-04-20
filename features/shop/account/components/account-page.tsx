@@ -117,7 +117,7 @@ export function AccountPage() {
             <CardContent>
               <div className="flex items-center gap-4">
                 <div className="rounded-md border px-3 py-2 w-full bg-muted/50">
-                  {profile?.id ? profile.id : "Chưa đăng nhập"}
+                  {session?.user?.email ? session.user.email : "Chưa đăng nhập"}
                 </div>
               </div>
             </CardContent>
