@@ -119,24 +119,28 @@ function SmartSummaryBar({
   if (!selectedCartItems || selectedCartItems.length === 0) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 w-full z-50 bg-background/95 border-t border-border shadow-lg px-2 py-3 sm:px-6 flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-4">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full items-center">
+    <div className="fixed bottom-0 left-0 w-full z-50 bg-background/95 border-t border-border shadow-lg px-2 py-2 sm:py-3 sm:px-4 md:px-6 flex flex-col gap-1 sm:gap-2 animate-in fade-in slide-in-from-bottom-4">
+      {/* Phần trên: Chọn sản phẩm, mã giảm giá và nút thanh toán */}
+      <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-2 w-full items-center">
+        {/* Đã chọn sản phẩm - hiển thị ở mọi kích thước màn hình */}
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-base">
+          <span className="font-semibold text-sm sm:text-base">
             Đã chọn: {selectedCartItems.length} sản phẩm
           </span>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+
+        {/* Mã giảm giá - thu gọn trên mobile, mở rộng trên md+ */}
+        <div className="flex items-center gap-1 sm:gap-2 w-full xs:justify-start md:justify-center">
           <Input
-            placeholder="Nhập mã giảm giá"
+            placeholder="Mã giảm giá"
             value={discountCode}
             onChange={(e) => setDiscountCode(e.target.value)}
             disabled={!!discountInfo || isApplyingDiscount}
-            className="max-w-[160px]"
+            className="max-w-[110px] sm:max-w-[160px] h-8 sm:h-9 text-xs sm:text-sm"
           />
           {discountInfo ? (
             <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-2 focus:ring-primary"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-2 focus:ring-primary h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3"
               onClick={onRemoveDiscount}
             >
               Xóa mã
@@ -146,17 +150,20 @@ function SmartSummaryBar({
               variant="secondary"
               onClick={onApplyDiscount}
               disabled={isApplyingDiscount || !discountCode}
+              className="h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3"
             >
               {isApplyingDiscount ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin mr-1 sm:mr-2" />
               ) : (
-                <Receipt className="h-4 w-4 mr-2" />
+                <Receipt className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
               )}
               Áp dụng
             </Button>
           )}
         </div>
-        <div className="flex items-center gap-2 justify-end w-full sm:w-auto">
+
+        {/* Nút xóa và thanh toán - căn phải ở mọi kích thước màn hình */}
+        <div className="flex items-center gap-1 sm:gap-2 justify-between xs:justify-end col-span-1 xs:col-span-2 md:col-span-1 mt-1 xs:mt-0">
           <AlertDialog
             open={openRemoveDialog}
             onOpenChange={setOpenRemoveDialog}
@@ -164,11 +171,13 @@ function SmartSummaryBar({
             <AlertDialogTrigger asChild>
               <Button
                 variant="outline"
-                className="border-primary text-primary hover:bg-primary/10 hover:border-primary"
+                className="border-primary text-primary hover:bg-primary/10 hover:border-primary h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3"
                 onClick={() => setOpenRemoveDialog(true)}
                 disabled={selectedCartItems.length === 0}
               >
-                Xóa sản phẩm đã chọn
+                <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="sm:hidden">Xóa</span>
+                <span className="hidden sm:inline">Xóa đã chọn</span>
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -197,11 +206,11 @@ function SmartSummaryBar({
             </AlertDialogContent>
           </AlertDialog>
           <Button
-            size="lg"
-            className="w-full sm:w-auto"
+            className="h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-4"
             onClick={() => handleCheckout(selectedCartItems)}
             disabled={selectedCartItems.length === 0}
           >
+            <ShoppingBag className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             Thanh toán{" "}
             {selectedCartItems.length > 0
               ? `(${selectedCartItems.length})`
@@ -209,18 +218,20 @@ function SmartSummaryBar({
           </Button>
         </div>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 w-full text-sm mt-1">
-        <div className="flex flex-col gap-1">
+
+      {/* Phần giữa: Thông tin giá tiền */}
+      <div className="grid grid-cols-2 xs:grid-cols-3 md:grid-cols-5 gap-1 sm:gap-2 w-full text-xs sm:text-sm mt-1">
+        <div className="flex flex-col gap-0 sm:gap-1">
           <span className="text-muted-foreground">Tạm tính</span>
           <span className="font-semibold">{formatCurrency(subtotal)}</span>
         </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-muted-foreground">Khuyến mãi sản phẩm</span>
+        <div className="flex flex-col gap-0 sm:gap-1">
+          <span className="text-muted-foreground">Giảm giá SP</span>
           <span className="text-green-600 font-semibold">
             -{saleDiscount > 0 ? formatCurrency(saleDiscount) : 0}
           </span>
         </div>
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-0 sm:gap-1">
           <span className="text-muted-foreground">Mã giảm giá</span>
           {voucherDiscount > 0 ? (
             <span className="text-green-600 font-semibold">
@@ -230,7 +241,7 @@ function SmartSummaryBar({
             <span className="text-muted-foreground">-</span>
           )}
         </div>
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-0 sm:gap-1">
           <span className="text-muted-foreground">Phí vận chuyển</span>
           {finalShippingFee > 0 ? (
             <span className="font-semibold">
@@ -240,27 +251,32 @@ function SmartSummaryBar({
             <span className="text-green-600 font-semibold">Miễn phí</span>
           )}
         </div>
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-0 sm:gap-1 xs:col-span-3 md:col-span-1 mt-1 xs:mt-2 md:mt-0 border-t xs:border-t-0 pt-1 xs:pt-0">
           <span className="text-muted-foreground">Tổng cộng</span>
-          <span className="font-bold text-primary text-lg">
+          <span className="font-bold text-primary text-base sm:text-lg">
             {formatCurrency(cartTotal)}
           </span>
         </div>
       </div>
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full mt-1">
+
+      {/* Phần dưới: Thông báo lỗi và chi tiết giảm giá */}
+      <div className="flex flex-col xs:flex-row xs:items-center gap-1 sm:gap-2 w-full mt-1">
         {discountError && (
           <Alert
             variant="destructive"
-            className="py-2 flex items-center gap-2 !p-2"
+            className="py-1 sm:py-2 flex items-center gap-1 sm:gap-2 !p-2"
           >
             <span className="flex items-center">
-              <AlertCircle className="h-4 w-4 flex-shrink-0 mr-1" />
+              <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 mr-1" />
             </span>
-            <span className="text-sm leading-5">{discountError}</span>
+            <span className="text-xs sm:text-sm leading-4 sm:leading-5">
+              {discountError}
+            </span>
           </Alert>
         )}
+
         {discountInfo && (
-          <div className="text-sm text-green-600 flex flex-wrap gap-2 items-center">
+          <div className="text-xs sm:text-sm text-green-600 flex flex-wrap gap-1 sm:gap-2 items-center">
             <span>
               Đã áp dụng: <b>{discountCode}</b>
             </span>
@@ -282,7 +298,7 @@ function SmartSummaryBar({
               </span>
             )}
             {discountInfo.discount.min_order_value && (
-              <span>
+              <span className="hidden sm:inline">
                 Đơn tối thiểu:{" "}
                 {formatCurrency(discountInfo.discount.min_order_value)}
               </span>
