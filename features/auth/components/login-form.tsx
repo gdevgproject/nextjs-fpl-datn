@@ -179,6 +179,11 @@ export function LoginForm() {
             </FormItem>
           )}
         />
+        <p className="text-right text-sm">
+          <Link href="/quen-mat-khau" className="text-primary hover:underline">
+            Quên mật khẩu?
+          </Link>
+        </p>
 
         {errorCode === "email_not_confirmed" && (
           <FormNotification
