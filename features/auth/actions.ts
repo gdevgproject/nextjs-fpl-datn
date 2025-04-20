@@ -153,3 +153,33 @@ export async function updateProfile(userId: string, data: Partial<any>) {
     return createErrorResponse(error);
   }
 }
+
+// Quên mật khẩu: gửi email reset password
+export async function forgotPassword(email: string) {
+  const supabase = await getSupabaseServerClient();
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/dat-lai-mat-khau`,
+    });
+    if (error) return createErrorResponse(error.message);
+    return createSuccessResponse();
+  } catch (err: any) {
+    return createErrorResponse(err.message);
+  }
+}
+
+// Đặt lại mật khẩu: xác thực token và cập nhật mật khẩu mới
+export async function resetPassword(token: string, password: string) {
+  const supabase = await getSupabaseServerClient();
+  try {
+    const { error } = await supabase.auth.verifyOtp({
+      token,
+      type: "recovery",
+      newPassword: password,
+    });
+    if (error) return createErrorResponse(error.message);
+    return createSuccessResponse();
+  } catch (err: any) {
+    return createErrorResponse(err.message);
+  }
+}

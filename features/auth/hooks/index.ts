@@ -1,5 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { login, register, logout, updateProfile, verifyOtp } from "../actions";
+import {
+  login,
+  register,
+  logout,
+  updateProfile,
+  verifyOtp,
+  forgotPassword,
+  resetPassword,
+} from "../actions";
 import {
   getSessionClient,
   getProfileById,
@@ -106,5 +114,21 @@ export function useUpdateProfileMutation() {
 export function useVerifyOtpMutation() {
   return useMutation({
     mutationFn: (token: string) => verifyOtp(token),
+  });
+}
+
+// Hook gửi email quên mật khẩu
+export function useForgotPasswordMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (email: string) => forgotPassword(email),
+  });
+}
+
+// Hook đặt lại mật khẩu
+export function useResetPasswordMutation() {
+  return useMutation({
+    mutationFn: ({ token, password }: { token: string; password: string }) =>
+      resetPassword(token, password),
   });
 }
