@@ -2,7 +2,6 @@ import { memo, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -53,10 +52,36 @@ export const LogDetailsDialog = memo(function LogDetailsDialog({
   const [activeTab, setActiveTab] = useState("overview");
   const [copied, setCopied] = useState(false);
   
+  // Parse JSON details một lần duy nhất
+  const parsedDetails = useMemo(() => {
+    if (!log.details) return null;
+    try {
+      return typeof log.details === "string"
+        ? JSON.parse(log.details)
+        : log.details;
+    } catch (error) {
+      console.error("Error parsing log details:", error);
+      return log.details;
+    }
+  }, [log.details]);
+  
+  // Xác định ID người dùng cần lấy email (admin_user_id + cancelled_by_user_id nếu có)
+  const userIdsToFetch = useMemo(() => {
+    const ids = log?.admin_user_id ? [log.admin_user_id] : [];
+    
+    // Thêm cancelled_by_user_id nếu có trong details
+    if (parsedDetails && 
+        typeof parsedDetails === 'object' && 
+        parsedDetails.cancelled_by_user_id && 
+        typeof parsedDetails.cancelled_by_user_id === 'string') {
+      ids.push(parsedDetails.cancelled_by_user_id);
+    }
+    
+    return ids;
+  }, [log.admin_user_id, parsedDetails]);
+
   // Fetch user email - dùng hook đã tối ưu với caching
-  const { data: userEmails, isLoading: isLoadingEmails } = useUserEmails(
-    log?.admin_user_id ? [log.admin_user_id] : []
-  );
+  const { data: userEmails, isLoading: isLoadingEmails } = useUserEmails(userIdsToFetch);
 
   // Memoize các giá trị phái sinh để tránh tính toán lại nếu props không đổi
   const activityTypeColor = useMemo(
@@ -84,23 +109,26 @@ export const LogDetailsDialog = memo(function LogDetailsDialog({
     return userEmails?.[log.admin_user_id] || log.admin_user_id;
   }, [log.admin_user_id, userEmails, isLoadingEmails]);
 
-  // Parse JSON details một lần duy nhất
-  const parsedDetails = useMemo(() => {
-    if (!log.details) return null;
-    try {
-      return typeof log.details === "string"
-        ? JSON.parse(log.details)
-        : log.details;
-    } catch (error) {
-      console.error("Error parsing log details:", error);
-      return log.details;
+  // Xác định người hủy đơn nếu có
+  const cancelledByUser = useMemo(() => {
+    if (!parsedDetails || typeof parsedDetails !== 'object' || !parsedDetails.cancelled_by_user_id) {
+      return null;
     }
-  }, [log.details]);
-  
-  // Xác định có thể điều hướng trước/sau không
-  const canGoNext = useMemo(() => logs.length > 0 && currentIndex < logs.length - 1, [logs, currentIndex]);
-  const canGoPrevious = useMemo(() => logs.length > 0 && currentIndex > 0, [logs, currentIndex]);
-  
+    
+    const userId = parsedDetails.cancelled_by_user_id;
+    const isAuthenticated = parsedDetails.is_authenticated === true;
+    const reason = parsedDetails.reason || "Không có lý do";
+    
+    let userEmail = isLoadingEmails ? "Đang tải..." : (userEmails?.[userId] || userId);
+    
+    return {
+      userId,
+      email: userEmail,
+      isAuthenticated,
+      reason
+    };
+  }, [parsedDetails, userEmails, isLoadingEmails]);
+
   // Phân tích chi tiết dữ liệu thay đổi cho update operations
   const changeDetails = useMemo(() => {
     if (!parsedDetails || log.activity_type.indexOf('UPDATE') === -1) return null;
@@ -151,6 +179,9 @@ export const LogDetailsDialog = memo(function LogDetailsDialog({
       });
   };
 
+  const canGoPrevious = currentIndex > 0;
+  const canGoNext = currentIndex < logs.length - 1;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-hidden flex flex-col">
@@ -163,7 +194,7 @@ export const LogDetailsDialog = memo(function LogDetailsDialog({
             </Badge>
             <span className="truncate">{log.description}</span>
           </DialogTitle>
-          <DialogDescription className="flex flex-wrap gap-3 items-center">
+          <div className="flex flex-wrap gap-3 items-center text-sm text-muted-foreground">
             <Badge variant="outline" className="flex items-center gap-1.5">
               <Clock className="h-3 w-3" />
               {formattedTimestamp.full}
@@ -185,7 +216,7 @@ export const LogDetailsDialog = memo(function LogDetailsDialog({
                 {log.entity_id}
               </Badge>
             )}
-          </DialogDescription>
+          </div>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -251,6 +282,16 @@ export const LogDetailsDialog = memo(function LogDetailsDialog({
                   )}
                 </div>
               </div>
+
+              {cancelledByUser && (
+                <div className="bg-muted/50 rounded-md p-3">
+                  <h4 className="text-sm font-medium mb-1 flex items-center gap-1.5">
+                    <User className="h-4 w-4" /> Người hủy đơn
+                  </h4>
+                  <p className="text-sm">{cancelledByUser.email}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Lý do: {cancelledByUser.reason}</p>
+                </div>
+              )}
 
               {parsedDetails && (
                 <>
