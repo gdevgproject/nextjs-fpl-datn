@@ -33,11 +33,13 @@ const LogRow = memo(function LogRow({
   log,
   onViewDetails,
   email,
+  cancelledByUserEmail,
   isLoadingEmail,
 }: {
   log: AdminActivityLog;
   onViewDetails: (log: AdminActivityLog) => void;
   email: string | undefined;
+  cancelledByUserEmail: string | undefined;
   isLoadingEmail: boolean;
 }) {
   // Tính toán các giá trị cần thiết bên trong component memoized để tránh render lại
@@ -64,12 +66,13 @@ const LogRow = memo(function LogRow({
       log.details &&
       log.details.cancelled_by_user_id
     ) {
-      return email || log.details.cancelled_by_user_id;
+      return cancelledByUserEmail || log.details.cancelled_by_user_id;
     }
     return isLoadingEmail ? "Đang tải..." : email || log.admin_user_id;
   }, [
     isLoadingEmail,
     email,
+    cancelledByUserEmail,
     log.admin_user_id,
     isOrderCancellation,
     log.details,
@@ -132,15 +135,36 @@ const LogRow = memo(function LogRow({
 });
 
 export function LogsTable({ logs, onViewDetails }: LogsTableProps) {
-  // Lấy danh sách userIds từ logs
-  const userIds = useMemo(
+  // Lấy danh sách userIds từ admin_user_id
+  const adminUserIds = useMemo(
     () => logs.map((log) => log.admin_user_id).filter(Boolean),
     [logs]
   );
 
+  // Lấy danh sách userIds từ cả cancelled_by_user_id trong details
+  const cancelledByUserIds = useMemo(() => {
+    const ids: string[] = [];
+    logs.forEach((log) => {
+      if (
+        log.details &&
+        log.details.cancelled_by_user_id &&
+        typeof log.details.cancelled_by_user_id === "string"
+      ) {
+        ids.push(log.details.cancelled_by_user_id);
+      }
+    });
+    return ids;
+  }, [logs]);
+
+  // Kết hợp cả hai danh sách ID để lấy email trong một lần fetch
+  const allUserIds = useMemo(() => {
+    const uniqueIds = new Set([...adminUserIds, ...cancelledByUserIds]);
+    return Array.from(uniqueIds);
+  }, [adminUserIds, cancelledByUserIds]);
+
   // Fetch user emails - hook đã được tối ưu để tái sử dụng cache
   const { data: userEmails, isLoading: isLoadingEmails } =
-    useUserEmails(userIds);
+    useUserEmails(allUserIds);
 
   return (
     <div className="overflow-auto">
@@ -161,6 +185,11 @@ export function LogsTable({ logs, onViewDetails }: LogsTableProps) {
               log={log}
               onViewDetails={onViewDetails}
               email={userEmails?.[log.admin_user_id]}
+              cancelledByUserEmail={
+                log.details?.cancelled_by_user_id
+                  ? userEmails?.[log.details.cancelled_by_user_id]
+                  : undefined
+              }
               isLoadingEmail={isLoadingEmails}
             />
           ))}
