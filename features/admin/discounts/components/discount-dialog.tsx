@@ -282,15 +282,15 @@ export function DiscountDialog({
 
   // Helper function for form components with tooltips
   const FormFieldWithTooltip = ({
-    label, 
-    description, 
-    tooltip, 
-    children
-  }: { 
-    label: string, 
-    description?: string, 
-    tooltip?: string, 
-    children: React.ReactNode 
+    label,
+    description,
+    tooltip,
+    children,
+  }: {
+    label: string;
+    description?: string;
+    tooltip?: string;
+    children: React.ReactNode;
   }) => (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
@@ -308,7 +308,9 @@ export function DiscountDialog({
           </TooltipProvider>
         )}
       </div>
-      {description && <p className="text-xs text-muted-foreground">{description}</p>}
+      {description && (
+        <p className="text-xs text-muted-foreground">{description}</p>
+      )}
       {children}
     </div>
   );
@@ -329,10 +331,10 @@ export function DiscountDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs 
-          defaultValue="general" 
-          className="w-full" 
-          value={activeTab} 
+        <Tabs
+          defaultValue="general"
+          className="w-full"
+          value={activeTab}
           onValueChange={setActiveTab}
         >
           <div className="overflow-x-auto">
@@ -351,7 +353,10 @@ export function DiscountDialog({
 
           <ScrollArea className="max-h-[60vh] pr-4">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-6"
+              >
                 <TabsContent value="general" className="space-y-4 mt-0">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
@@ -368,8 +373,8 @@ export function DiscountDialog({
                                 </TooltipTrigger>
                                 <TooltipContent side="top">
                                   <p className="max-w-[280px]">
-                                    Mã giảm giá phải là duy nhất và chỉ chứa chữ cái in hoa, 
-                                    số, gạch ngang và gạch dưới.
+                                    Mã giảm giá phải là duy nhất và chỉ chứa chữ
+                                    cái in hoa, số, gạch ngang và gạch dưới.
                                   </p>
                                 </TooltipContent>
                               </Tooltip>
@@ -397,7 +402,9 @@ export function DiscountDialog({
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                           <div className="space-y-0.5">
-                            <FormLabel className="text-base">Trạng thái</FormLabel>
+                            <FormLabel className="text-base">
+                              Trạng thái
+                            </FormLabel>
                             <FormDescription>
                               Mã giảm giá có hoạt động không?
                             </FormDescription>
@@ -428,7 +435,8 @@ export function DiscountDialog({
                           />
                         </FormControl>
                         <FormDescription>
-                          Mô tả ngắn gọn về mã giảm giá, điều kiện áp dụng hoặc lưu ý quan trọng.
+                          Mô tả ngắn gọn về mã giảm giá, điều kiện áp dụng hoặc
+                          lưu ý quan trọng.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -556,7 +564,8 @@ export function DiscountDialog({
                               />
                             </FormControl>
                             <FormDescription>
-                              Giới hạn số tiền tối đa có thể được giảm giá (tùy chọn).
+                              Giới hạn số tiền tối đa có thể được giảm giá (tùy
+                              chọn).
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -626,36 +635,41 @@ export function DiscountDialog({
                       )}
                     />
 
-                    {maxUses !== null && maxUses !== undefined && maxUses > 0 && (
-                      <FormField
-                        control={form.control}
-                        name="remaining_uses"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Số lượt sử dụng còn lại</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                placeholder="Nhập số lượt sử dụng còn lại"
-                                {...field}
-                                value={field.value === null ? "" : field.value}
-                                onChange={(e) =>
-                                  field.onChange(
-                                    e.target.value === ""
-                                      ? null
-                                      : Number.parseInt(e.target.value, 10)
-                                  )
-                                }
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              Số lượt sử dụng còn lại của mã giảm giá (không được vượt quá tổng số lượt).
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
+                    {maxUses !== null &&
+                      maxUses !== undefined &&
+                      maxUses > 0 && (
+                        <FormField
+                          control={form.control}
+                          name="remaining_uses"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Số lượt sử dụng còn lại</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="Nhập số lượt sử dụng còn lại"
+                                  {...field}
+                                  value={
+                                    field.value === null ? "" : field.value
+                                  }
+                                  onChange={(e) =>
+                                    field.onChange(
+                                      e.target.value === ""
+                                        ? null
+                                        : Number.parseInt(e.target.value, 10)
+                                    )
+                                  }
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Số lượt sử dụng còn lại của mã giảm giá (không
+                                được vượt quá tổng số lượt).
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -676,7 +690,9 @@ export function DiscountDialog({
                                   )}
                                 >
                                   {field.value ? (
-                                    format(field.value, "dd/MM/yyyy", { locale: vi })
+                                    format(field.value, "dd/MM/yyyy", {
+                                      locale: vi,
+                                    })
                                   ) : (
                                     <span>Chọn ngày</span>
                                   )}
@@ -684,7 +700,10 @@ export function DiscountDialog({
                                 </Button>
                               </FormControl>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
+                            <PopoverContent
+                              className="w-auto p-0"
+                              align="start"
+                            >
                               <Calendar
                                 mode="single"
                                 selected={field.value || undefined}
@@ -694,7 +713,8 @@ export function DiscountDialog({
                             </PopoverContent>
                           </Popover>
                           <FormDescription>
-                            Ngày bắt đầu hiệu lực của mã giảm giá (để trống nếu áp dụng ngay).
+                            Ngày bắt đầu hiệu lực của mã giảm giá (để trống nếu
+                            áp dụng ngay).
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -718,7 +738,9 @@ export function DiscountDialog({
                                   )}
                                 >
                                   {field.value ? (
-                                    format(field.value, "dd/MM/yyyy", { locale: vi })
+                                    format(field.value, "dd/MM/yyyy", {
+                                      locale: vi,
+                                    })
                                   ) : (
                                     <span>Chọn ngày</span>
                                   )}
@@ -726,7 +748,10 @@ export function DiscountDialog({
                                 </Button>
                               </FormControl>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
+                            <PopoverContent
+                              className="w-auto p-0"
+                              align="start"
+                            >
                               <Calendar
                                 mode="single"
                                 selected={field.value || undefined}
@@ -736,7 +761,8 @@ export function DiscountDialog({
                             </PopoverContent>
                           </Popover>
                           <FormDescription>
-                            Ngày kết thúc hiệu lực của mã giảm giá (để trống nếu không giới hạn).
+                            Ngày kết thúc hiệu lực của mã giảm giá (để trống nếu
+                            không giới hạn).
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
