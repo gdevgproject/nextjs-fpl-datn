@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ShopSettingsForm } from "@/features/admin/shop/components/shop-settings-form";
+import { AdminLayout } from "@/features/admin/shared/components/admin-layout";
 
 export const metadata: Metadata = {
   title: "Cài đặt cửa hàng",
@@ -8,15 +9,17 @@ export const metadata: Metadata = {
 
 export default function ShopSettingsPage() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Cài đặt cửa hàng</h1>
-        <p className="text-muted-foreground mt-2">
-          Quản lý thông tin, liên kết mạng xã hội và chính sách của cửa hàng.
-        </p>
+    <AdminLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Cài đặt cửa hàng</h1>
+          <p className="text-muted-foreground mt-2">
+            Quản lý thông tin, liên kết mạng xã hội và chính sách của cửa hàng.
+          </p>
+        </div>
+        
+        <ShopSettingsForm />
       </div>
-
-      <ShopSettingsForm />
-    </div>
+    </AdminLayout>
   );
 }
