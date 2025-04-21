@@ -9,7 +9,6 @@ import { DiscountTable } from "./discount-table";
 import { useDebounce } from "../hooks/use-debounce";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export function DiscountManagement() {
@@ -146,10 +145,10 @@ export function DiscountManagement() {
             </div>
 
             <TabsContent value={activeTab} className="mt-0 pt-4">
-              {/* Responsive scroll area for better handling of large content */}
-              <ScrollArea className="h-[calc(100vh-350px)] lg:h-[calc(100vh-300px)]">
+              {/* Table with native horizontal scrolling */}
+              <div className="overflow-x-auto">
                 <DiscountTable {...tableProps} />
-              </ScrollArea>
+              </div>
             </TabsContent>
           </Tabs>
         </CardContent>
