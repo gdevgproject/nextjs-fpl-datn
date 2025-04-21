@@ -391,7 +391,7 @@ export function DiscountTable({
                 <TableHead>Mô tả</TableHead>
                 <TableHead>Giá trị</TableHead>
                 <TableHead>Thời gian</TableHead>
-                <TableHead>Lượt sử dụng</TableHead>
+                <TableHead>Lượt đã dùng</TableHead>
                 <TableHead className="w-[100px]">Trạng thái</TableHead>
                 <TableHead className="w-[60px]"></TableHead>
               </TableRow>
@@ -498,7 +498,7 @@ export function DiscountTable({
                                 <div className="flex justify-between text-xs mb-1">
                                   <span>
                                     {usageInfo.total !== null
-                                      ? `Đã dùng: ${usageInfo.used}/${usageInfo.total}`
+                                      ? `${usageInfo.used}/${usageInfo.total}`
                                       : "Không giới hạn"}
                                   </span>
                                   <span className="text-muted-foreground">
