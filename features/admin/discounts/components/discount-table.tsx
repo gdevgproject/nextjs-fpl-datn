@@ -381,7 +381,7 @@ export function DiscountTable({
   // For desktop view - display as table with horizontal scrolling
   const renderDesktopTable = () => (
     <div className="hidden md:block border rounded-md overflow-x-auto">
-      <div className="min-w-[800px] whitespace-nowrap">
+      <div className="min-w-[1200px] whitespace-nowrap">
         <Table>
           <TableHeader className="bg-muted/30 sticky top-0">
             <TableRow>
