@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -47,114 +46,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Separator } from "@/components/ui/separator";
-
-// Define the form schema with Zod
-const discountFormSchema = z
-  .object({
-    code: z
-      .string()
-      .min(1, "Mã giảm giá không được để trống")
-      .max(50, "Mã giảm giá không được vượt quá 50 ký tự")
-      .refine((value) => /^[A-Z0-9_-]+$/.test(value), {
-        message:
-          "Mã giảm giá chỉ được chứa chữ cái in hoa, số, gạch ngang và gạch dưới",
-      }),
-    description: z
-      .string()
-      .max(500, "Mô tả không được vượt quá 500 ký tự")
-      .optional()
-      .nullable(),
-    is_active: z.boolean().default(true),
-    discount_type: z.enum(["percentage", "fixed"]),
-    discount_percentage: z
-      .number()
-      .min(0.01, "Phần trăm giảm giá phải lớn hơn 0")
-      .max(100, "Phần trăm giảm giá không được vượt quá 100%")
-      .optional()
-      .nullable(),
-    max_discount_amount: z
-      .number()
-      .min(0, "Số tiền giảm tối đa không được âm")
-      .optional()
-      .nullable(),
-    min_order_value: z
-      .number()
-      .min(0, "Giá trị đơn hàng tối thiểu không được âm")
-      .optional()
-      .nullable(),
-    max_uses: z
-      .number()
-      .int()
-      .min(0, "Số lượt sử dụng tối đa không được âm")
-      .optional()
-      .nullable(),
-    remaining_uses: z
-      .number()
-      .int()
-      .min(0, "Số lượt sử dụng còn lại không được âm")
-      .optional()
-      .nullable(),
-    start_date: z.date().optional().nullable(),
-    end_date: z.date().optional().nullable(),
-  })
-  .refine(
-    (data) => {
-      // If discount_type is percentage, discount_percentage is required
-      if (data.discount_type === "percentage" && !data.discount_percentage) {
-        return false;
-      }
-      // If discount_type is fixed, max_discount_amount is required
-      if (data.discount_type === "fixed" && !data.max_discount_amount) {
-        return false;
-      }
-      return true;
-    },
-    {
-      message: "Vui lòng nhập giá trị giảm giá",
-      path: ["discount_percentage"],
-    }
-  )
-  .refine(
-    (data) => {
-      // If start_date and end_date are both provided, end_date must be after start_date
-      if (data.start_date && data.end_date && data.end_date < data.start_date) {
-        return false;
-      }
-      return true;
-    },
-    {
-      message: "Ngày kết thúc phải sau ngày bắt đầu",
-      path: ["end_date"],
-    }
-  )
-  .refine(
-    (data) => {
-      // If max_uses is provided, remaining_uses must be provided and not greater than max_uses
-      if (data.max_uses !== null && data.max_uses !== undefined) {
-        if (data.remaining_uses === null || data.remaining_uses === undefined) {
-          return false;
-        }
-        if (data.remaining_uses > data.max_uses) {
-          return false;
-        }
-      }
-      return true;
-    },
-    {
-      message:
-        "Số lượt sử dụng còn lại không được lớn hơn tổng số lượt sử dụng",
-      path: ["remaining_uses"],
-    }
-  );
-
-type DiscountFormValues = z.infer<typeof discountFormSchema>;
+import { Discount, DiscountFormValues, discountFormSchema } from "../types";
+import { CreateDiscountInput } from "../actions";
 
 interface DiscountDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "create" | "edit";
-  discount?: any;
+  discount?: Discount | null;
 }
 
 export function DiscountDialog({
@@ -164,10 +63,9 @@ export function DiscountDialog({
   discount,
 }: DiscountDialogProps) {
   const toast = useSonnerToast();
-  const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
 
-  // Initialize the form with default values
+  // Form with zod validation
   const form = useForm<DiscountFormValues>({
     resolver: zodResolver(discountFormSchema),
     defaultValues: {
@@ -185,12 +83,18 @@ export function DiscountDialog({
     },
   });
 
-  // Set form values when editing an existing discount
+  // Mutations
+  const createDiscountMutation = useCreateDiscount();
+  const updateDiscountMutation = useUpdateDiscount();
+
+  // Reset form when dialog is opened/closed or discount changes
   useEffect(() => {
+    if (!open) return;
+
     if (mode === "edit" && discount) {
       form.reset({
         code: discount.code,
-        description: discount.description,
+        description: discount.description || "",
         is_active: discount.is_active,
         discount_type:
           discount.discount_percentage !== null ? "percentage" : "fixed",
@@ -202,7 +106,6 @@ export function DiscountDialog({
         start_date: discount.start_date ? new Date(discount.start_date) : null,
         end_date: discount.end_date ? new Date(discount.end_date) : null,
       });
-      setActiveTab("general");
     } else {
       form.reset({
         code: "",
@@ -218,102 +121,68 @@ export function DiscountDialog({
         end_date: null,
       });
     }
-  }, [mode, discount, form, open]);
 
-  // Watch discount_type to conditionally show fields
+    setActiveTab("general");
+  }, [form, discount, mode, open]);
+
+  // Watch values for conditional fields
   const discountType = form.watch("discount_type");
   const maxUses = form.watch("max_uses");
-
-  // Mutations for creating and updating discounts
-  const createDiscountMutation = useCreateDiscount();
-  const updateDiscountMutation = useUpdateDiscount();
 
   // Handle form submission
   const onSubmit = async (values: DiscountFormValues) => {
     try {
-      setIsProcessing(true);
-
-      // Prepare the data for submission
-      const discountData = {
+      // Prepare common data for API submission
+      const commonData: Omit<CreateDiscountInput, "id"> = {
         code: values.code,
-        description: values.description,
+        description: values.description || null,
         is_active: values.is_active,
         discount_percentage:
           values.discount_type === "percentage"
             ? values.discount_percentage
             : null,
-        max_discount_amount:
-          values.discount_type === "fixed"
-            ? values.max_discount_amount
-            : values.max_discount_amount,
+        max_discount_amount: values.max_discount_amount,
         min_order_value: values.min_order_value,
         max_uses: values.max_uses,
         remaining_uses: values.remaining_uses,
-        start_date: values.start_date,
-        end_date: values.end_date,
+        start_date: values.start_date ? values.start_date.toISOString() : null,
+        end_date: values.end_date ? values.end_date.toISOString() : null,
       };
 
       if (mode === "create") {
-        // Create new discount
-        await createDiscountMutation.mutateAsync(discountData);
-        toast.success("Mã giảm giá đã được tạo thành công");
-      } else if (mode === "edit" && discount) {
-        // Update existing discount
-        await updateDiscountMutation.mutateAsync({
-          id: discount.id,
-          ...discountData,
-        });
-        toast.success("Mã giảm giá đã được cập nhật thành công");
-      }
+        const result = await createDiscountMutation.mutateAsync(commonData);
 
-      // Close the dialog
-      onOpenChange(false);
+        if (result.success) {
+          toast.success("Mã giảm giá đã được tạo thành công");
+          onOpenChange(false);
+        } else {
+          toast.error(`Lỗi khi tạo mã giảm giá: ${result.error}`);
+        }
+      } else if (mode === "edit" && discount) {
+        const result = await updateDiscountMutation.mutateAsync({
+          id: discount.id,
+          ...commonData,
+        });
+
+        if (result.success) {
+          toast.success("Mã giảm giá đã được cập nhật thành công");
+          onOpenChange(false);
+        } else {
+          toast.error(`Lỗi khi cập nhật mã giảm giá: ${result.error}`);
+        }
+      }
     } catch (error) {
-      // Show error message
+      console.error("Error submitting discount form:", error);
       toast.error(
         `Lỗi khi ${mode === "create" ? "tạo" : "cập nhật"} mã giảm giá: ${
-          error instanceof Error ? error.message : "Unknown error"
+          error instanceof Error ? error.message : "Lỗi không xác định"
         }`
       );
-    } finally {
-      setIsProcessing(false);
     }
   };
 
-  // Helper function for form components with tooltips
-  const FormFieldWithTooltip = ({
-    label,
-    description,
-    tooltip,
-    children,
-  }: {
-    label: string;
-    description?: string;
-    tooltip?: string;
-    children: React.ReactNode;
-  }) => (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <div className="text-sm font-medium">{label}</div>
-        {tooltip && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                <p className="max-w-[280px]">{tooltip}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-      </div>
-      {description && (
-        <p className="text-xs text-muted-foreground">{description}</p>
-      )}
-      {children}
-    </div>
-  );
+  const isLoading =
+    createDiscountMutation.isPending || updateDiscountMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -384,7 +253,7 @@ export function DiscountDialog({
                             <Input
                               placeholder="VD: SUMMER2025"
                               {...field}
-                              disabled={mode === "edit"} // Không cho phép sửa mã khi đang edit
+                              disabled={mode === "edit"}
                               className="uppercase"
                               onChange={(e) =>
                                 field.onChange(e.target.value.toUpperCase())
@@ -498,7 +367,7 @@ export function DiscountDialog({
                                   field.onChange(
                                     e.target.value === ""
                                       ? null
-                                      : Number.parseFloat(e.target.value)
+                                      : parseFloat(e.target.value)
                                   )
                                 }
                               />
@@ -527,7 +396,7 @@ export function DiscountDialog({
                                   field.onChange(
                                     e.target.value === ""
                                       ? null
-                                      : Number.parseFloat(e.target.value)
+                                      : parseFloat(e.target.value)
                                   )
                                 }
                               />
@@ -558,7 +427,7 @@ export function DiscountDialog({
                                   field.onChange(
                                     e.target.value === ""
                                       ? null
-                                      : Number.parseFloat(e.target.value)
+                                      : parseFloat(e.target.value)
                                   )
                                 }
                               />
@@ -589,7 +458,7 @@ export function DiscountDialog({
                                 field.onChange(
                                   e.target.value === ""
                                     ? null
-                                    : Number.parseFloat(e.target.value)
+                                    : parseFloat(e.target.value)
                                 )
                               }
                             />
@@ -622,7 +491,7 @@ export function DiscountDialog({
                                 field.onChange(
                                   e.target.value === ""
                                     ? null
-                                    : Number.parseInt(e.target.value, 10)
+                                    : parseInt(e.target.value, 10)
                                 )
                               }
                             />
@@ -656,7 +525,7 @@ export function DiscountDialog({
                                     field.onChange(
                                       e.target.value === ""
                                         ? null
-                                        : Number.parseInt(e.target.value, 10)
+                                        : parseInt(e.target.value, 10)
                                     )
                                   }
                                 />
@@ -776,13 +645,12 @@ export function DiscountDialog({
                     type="button"
                     variant="outline"
                     onClick={() => onOpenChange(false)}
-                    disabled={isProcessing}
-                    className="mr-2"
+                    disabled={isLoading}
                   >
                     Hủy
                   </Button>
-                  <Button type="submit" disabled={isProcessing}>
-                    {isProcessing
+                  <Button type="submit" disabled={isLoading}>
+                    {isLoading
                       ? "Đang xử lý..."
                       : mode === "create"
                       ? "Tạo mã giảm giá"

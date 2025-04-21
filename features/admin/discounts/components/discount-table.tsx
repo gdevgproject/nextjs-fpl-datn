@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -21,7 +21,6 @@ import {
   Calendar,
 } from "lucide-react";
 import { useDiscounts } from "../hooks/use-discounts";
-import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { formatCurrency } from "@/lib/utils/format";
 import {
   Tooltip,
@@ -32,56 +31,21 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { Discount, DiscountFilter } from "../types";
 
 interface DiscountTableProps {
   search: string;
-  onEdit: (discount: any) => void;
-  filter?: string; // "all", "active", "inactive", "expired", "upcoming"
-  onError?: (error: Error) => void;
+  onEdit: (discount: Discount) => void;
+  filter?: DiscountFilter;
 }
 
 export function DiscountTable({
   search,
   onEdit,
   filter = "all",
-  onError,
 }: DiscountTableProps) {
-  const toast = useSonnerToast();
-
-  const isActive = (discount: any): boolean => {
-    const now = new Date();
-    if (!discount.is_active) return false;
-    if (discount.end_date && new Date(discount.end_date) < now) return false;
-    if (discount.start_date && new Date(discount.start_date) > now)
-      return false;
-    if (discount.remaining_uses !== null && discount.remaining_uses <= 0)
-      return false;
-    return true;
-  };
-
-  const isExpired = (discount: any): boolean => {
-    const now = new Date();
-    return discount.end_date && new Date(discount.end_date) < now;
-  };
-
-  const isUpcoming = (discount: any): boolean => {
-    const now = new Date();
-    return discount.start_date && new Date(discount.start_date) > now;
-  };
-
   // Fetch discounts with search and filter
-  const { data, isLoading, isError, error } = useDiscounts({
-    search,
-  });
-
-  // Handle errors
-  useEffect(() => {
-    if (isError && error && onError) {
-      onError(
-        error instanceof Error ? error : new Error("Unknown error occurred")
-      );
-    }
-  }, [isError, error, onError]);
+  const { data, isLoading, error } = useDiscounts(search, filter);
 
   const formatDate = (date: string | null) => {
     if (!date) return "Không giới hạn";
@@ -99,7 +63,7 @@ export function DiscountTable({
     });
   };
 
-  // Tính toán số ngày còn lại hoặc đã qua
+  // Calculate days remaining or passed
   const getDaysRemaining = (date: string | null) => {
     if (!date) return null;
 
@@ -111,7 +75,18 @@ export function DiscountTable({
     return diffDays;
   };
 
-  const getStatusInfo = (discount: any) => {
+  const isActive = (discount: Discount): boolean => {
+    const now = new Date();
+    if (!discount.is_active) return false;
+    if (discount.end_date && new Date(discount.end_date) < now) return false;
+    if (discount.start_date && new Date(discount.start_date) > now)
+      return false;
+    if (discount.remaining_uses !== null && discount.remaining_uses <= 0)
+      return false;
+    return true;
+  };
+
+  const getStatusInfo = (discount: Discount) => {
     const now = new Date();
     const endDaysRemaining = getDaysRemaining(discount.end_date);
     const startDaysRemaining = getDaysRemaining(discount.start_date);
@@ -177,7 +152,7 @@ export function DiscountTable({
     };
   };
 
-  const getDiscountValue = (discount: any) => {
+  const getDiscountValue = (discount: Discount) => {
     if (discount.discount_percentage) {
       return `${discount.discount_percentage}%${
         discount.max_discount_amount
@@ -190,7 +165,7 @@ export function DiscountTable({
     return "Không xác định";
   };
 
-  const getUsageInfo = (discount: any) => {
+  const getUsageInfo = (discount: Discount) => {
     if (discount.max_uses === null) {
       return {
         text: "Không giới hạn",
@@ -216,6 +191,11 @@ export function DiscountTable({
     };
   };
 
+  // Memoize processed discounts to avoid unnecessary recalculations
+  const discounts = useMemo(() => {
+    return data?.data || [];
+  }, [data?.data]);
+
   if (isLoading) {
     return (
       <div className="space-y-3 w-full">
@@ -238,7 +218,7 @@ export function DiscountTable({
     );
   }
 
-  if (isError) {
+  if (error) {
     return (
       <div className="text-center py-8 border rounded-md bg-destructive/10 text-destructive">
         <p>Đã xảy ra lỗi khi tải dữ liệu</p>
@@ -249,8 +229,6 @@ export function DiscountTable({
     );
   }
 
-  const discounts = data?.data || [];
-
   if (discounts.length === 0) {
     return (
       <div className="text-center py-8 border rounded-md bg-muted/10">
@@ -259,36 +237,10 @@ export function DiscountTable({
     );
   }
 
-  // Filter discounts based on active tab
-  const filteredDiscounts = discounts.filter((discount: any) => {
-    switch (filter) {
-      case "active":
-        return isActive(discount);
-      case "inactive":
-        return !discount.is_active;
-      case "expired":
-        return isExpired(discount);
-      case "upcoming":
-        return isUpcoming(discount);
-      default:
-        return true;
-    }
-  });
-
-  if (filteredDiscounts.length === 0) {
-    return (
-      <div className="text-center py-8 border rounded-md bg-muted/10">
-        <p className="text-muted-foreground">
-          Không tìm thấy mã giảm giá nào phù hợp với bộ lọc
-        </p>
-      </div>
-    );
-  }
-
   // For mobile view - display as cards with more information
   const renderMobileCards = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:hidden">
-      {filteredDiscounts.map((discount: any) => {
+      {discounts.map((discount) => {
         const statusInfo = getStatusInfo(discount);
         const usageInfo = getUsageInfo(discount);
 
@@ -310,15 +262,17 @@ export function DiscountTable({
                 {statusInfo.badge}
               </div>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onEdit(discount)}
-                className="h-8 w-8 p-0"
-              >
-                <Pencil className="h-4 w-4" />
-                <span className="sr-only">Chỉnh sửa</span>
-              </Button>
+              <div className="flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onEdit(discount)}
+                  className="h-8 w-8 p-0"
+                >
+                  <Pencil className="h-4 w-4" />
+                  <span className="sr-only">Chỉnh sửa</span>
+                </Button>
+              </div>
             </div>
 
             <div className="text-sm text-muted-foreground line-clamp-2">
@@ -381,7 +335,7 @@ export function DiscountTable({
   // For desktop view - display as table with horizontal scrolling
   const renderDesktopTable = () => (
     <div className="hidden md:block border rounded-md overflow-x-auto">
-      <div className="min-w-[1200px] whitespace-nowrap">
+      <div className="min-w-[1000px]">
         <Table>
           <TableHeader className="bg-muted/30 sticky top-0">
             <TableRow>
@@ -390,11 +344,11 @@ export function DiscountTable({
               <TableHead>Thời gian</TableHead>
               <TableHead>Lượt đã dùng</TableHead>
               <TableHead className="w-[100px]">Trạng thái</TableHead>
-              <TableHead className="w-[60px]"></TableHead>
+              <TableHead className="w-[80px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredDiscounts.map((discount: any) => {
+            {discounts.map((discount) => {
               const statusInfo = getStatusInfo(discount);
               const usageInfo = getUsageInfo(discount);
 
@@ -505,6 +459,7 @@ export function DiscountTable({
                             </p>
                             <p>Tổng cộng: {usageInfo.total} lượt</p>
                             {discount.max_uses !== null &&
+                              discount.remaining_uses !== null &&
                               discount.remaining_uses <= 0 && (
                                 <p className="font-medium text-destructive">
                                   Đã hết lượt sử dụng!
@@ -535,23 +490,25 @@ export function DiscountTable({
                   </TableCell>
 
                   <TableCell>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => onEdit(discount)}
-                            aria-label="Chỉnh sửa mã giảm giá"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left">
-                          <p>Chỉnh sửa mã giảm giá</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onEdit(discount)}
+                              aria-label="Chỉnh sửa mã giảm giá"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            <p>Chỉnh sửa mã giảm giá</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                   </TableCell>
                 </TableRow>
               );

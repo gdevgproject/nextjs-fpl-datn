@@ -1,29 +1,22 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { updateDiscount } from "../services";
+import { UpdateDiscountInput } from "../actions";
 
+/**
+ * Hook for updating an existing discount
+ *
+ * @returns Mutation hook for updating discounts with loading and error states
+ */
 export function useUpdateDiscount() {
   const queryClient = useQueryClient();
-  const supabase = getSupabaseBrowserClient();
 
   return useMutation({
-    mutationFn: async ({
-      id,
-      ...data
-    }: { id: string | number } & Record<string, any>) => {
-      const { data: result, error } = await supabase
-        .from("discounts")
-        .update(data)
-        .eq("id", id)
-        .select("id")
-        .single();
-
-      if (error) throw error;
-      return result;
-    },
+    mutationFn: (data: UpdateDiscountInput) => updateDiscount(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["discounts", "list"] });
+      // Invalidate discounts queries to refresh the data
+      queryClient.invalidateQueries({ queryKey: ["discounts"] });
     },
   });
 }
