@@ -1,57 +1,77 @@
-"use client"
+"use client";
 
-import { useClientFetch } from "@/shared/hooks/use-client-fetch"
+import { useQuery } from "@tanstack/react-query";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface BannersFilters {
-  search?: string
-  isActive?: boolean
+  search?: string;
+  isActive?: boolean;
 }
 
 interface BannersPagination {
-  page: number
-  pageSize: number
+  page: number;
+  pageSize: number;
 }
 
 interface BannersSort {
-  column: string
-  direction: "asc" | "desc"
+  column: string;
+  direction: "asc" | "desc";
 }
 
-export function useBanners(filters?: BannersFilters, pagination?: BannersPagination, sort?: BannersSort) {
-  return useClientFetch(["banners", "list", filters, pagination, sort], "banners", {
-    columns: `id, title, subtitle, image_url, link_url, is_active, display_order, start_date, end_date, created_at, updated_at`,
-    filters: (query) => {
-      let q = query
+export function useBanners(
+  filters?: BannersFilters,
+  pagination?: BannersPagination,
+  sort?: BannersSort
+) {
+  const supabase = getSupabaseBrowserClient();
+
+  return useQuery({
+    queryKey: ["banners", "list", filters, pagination, sort],
+    queryFn: async () => {
+      const columns = `id, title, subtitle, image_url, link_url, is_active, display_order, start_date, end_date, created_at, updated_at`;
+
+      // Start building the query
+      let query = supabase.from("banners").select(columns, { count: "exact" });
 
       // Apply search filter
       if (filters?.search) {
-        q = q.ilike("title", `%${filters.search}%`)
+        query = query.ilike("title", `%${filters.search}%`);
       }
 
       // Apply active filter
       if (filters?.isActive !== undefined) {
-        q = q.eq("is_active", filters.isActive)
+        query = query.eq("is_active", filters.isActive);
       }
 
-      return q
+      // Apply pagination
+      if (pagination) {
+        const { page, pageSize } = pagination;
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+        query = query.range(from, to);
+      }
+
+      // Apply sorting
+      if (sort) {
+        query = query.order(sort.column, {
+          ascending: sort.direction === "asc",
+        });
+      } else {
+        query = query.order("display_order", { ascending: true });
+      }
+
+      // Execute the query
+      const { data, error, count } = await query;
+
+      if (error) {
+        throw error;
+      }
+
+      return {
+        data: data || [],
+        count: count || 0,
+      };
     },
-    // Apply pagination
-    pagination: pagination
-      ? {
-          page: pagination.page,
-          pageSize: pagination.pageSize,
-        }
-      : undefined,
-    // Apply sorting
-    sort: sort
-      ? [
-          {
-            column: sort.column,
-            ascending: sort.direction === "asc",
-          },
-        ]
-      : [{ column: "display_order", ascending: true }],
-    // Enable exact count for pagination
-    count: "exact",
-  })
+    refetchOnWindowFocus: false,
+  });
 }

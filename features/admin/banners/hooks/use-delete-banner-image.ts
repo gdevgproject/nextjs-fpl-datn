@@ -1,16 +1,29 @@
 "use client";
 
-import { useStorageDelete } from "@/shared/hooks/use-client-storage";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-const supabase = getSupabaseBrowserClient();
-
 export function useDeleteBannerImage() {
-  const deleteStorageMutation = useStorageDelete("banners", {
-    invalidateQueryKeys: [["banners", "list"]],
+  const supabase = getSupabaseBrowserClient();
+  const queryClient = useQueryClient();
+
+  const deleteStorageMutation = useMutation({
+    mutationFn: async ({ path }: { path: string }) => {
+      if (!path) throw new Error("No path provided");
+
+      const { data, error } = await supabase.storage
+        .from("banners")
+        .remove([path]);
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["banners", "list"] });
+    },
   });
 
-  // Extend mutation to handle errors better and support deletion from URL
+  // Return the mutation with an additional method to delete from URL
   return {
     ...deleteStorageMutation,
     // Add method to delete file from URL
@@ -33,6 +46,9 @@ export function useDeleteBannerImage() {
           console.error("Error deleting banner image:", error);
           return false;
         }
+
+        // Invalidate queries after successful deletion
+        queryClient.invalidateQueries({ queryKey: ["banners", "list"] });
 
         return true;
       } catch (error) {

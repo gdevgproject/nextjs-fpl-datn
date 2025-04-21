@@ -1,23 +1,35 @@
 "use client";
 
-import { useClientMutation } from "@/shared/hooks/use-client-mutation";
-import { useDeleteBannerImage } from "./use-delete-banner-image";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-
-const supabase = getSupabaseBrowserClient();
+import { useDeleteBannerImage } from "./use-delete-banner-image";
 
 export function useDeleteBanner() {
-  const deleteBannerMutation = useClientMutation("banners", "delete", {
-    invalidateQueries: [["banners", "list"]],
-    primaryKey: "id",
-  });
-
+  const supabase = getSupabaseBrowserClient();
+  const queryClient = useQueryClient();
   const deleteImageMutation = useDeleteBannerImage();
+
+  const deleteBannerMutation = useMutation({
+    mutationFn: async ({ id }: { id: number }) => {
+      const { data, error } = await supabase
+        .from("banners")
+        .delete()
+        .eq("id", id)
+        .select("id")
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["banners", "list"] });
+    },
+  });
 
   // Extend the mutation to also delete the banner image
   return {
     ...deleteBannerMutation,
-    mutateAsync: async (variables: any) => {
+    mutateAsync: async (variables: { id: number }) => {
       try {
         // First, get the banner details to get the image URL
         const { data: banner, error: fetchError } = await supabase
@@ -35,7 +47,8 @@ export function useDeleteBanner() {
         const imageUrl = banner?.image_url || null;
 
         // Delete the banner
-        const result = await deleteBannerMutation.mutateAsync(variables);
+        const { mutateAsync } = deleteBannerMutation;
+        const result = await mutateAsync(variables);
 
         // If the banner had an image, delete it
         if (imageUrl) {
