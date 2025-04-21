@@ -1,19 +1,22 @@
 import type { Metadata } from "next";
-import { AdminLayout } from "@/features/admin/shared/components/admin-layout";
 import { ShopSettingsForm } from "@/features/admin/shop/components/shop-settings-form";
 
 export const metadata: Metadata = {
-  title: "Cài đặt cửa hàng | MyBeauty Admin",
-  description: "Quản lý thông tin cửa hàng MyBeauty",
+  title: "Cài đặt cửa hàng",
+  description: "Quản lý thông tin và cài đặt cửa hàng",
 };
 
 export default function ShopSettingsPage() {
   return (
-    <AdminLayout
-      title="Cài đặt cửa hàng"
-      description="Quản lý thông tin và cấu hình cửa hàng"
-    >
+    <div className="container mx-auto py-6 space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Cài đặt cửa hàng</h1>
+        <p className="text-muted-foreground mt-2">
+          Quản lý thông tin, liên kết mạng xã hội và chính sách của cửa hàng.
+        </p>
+      </div>
+
       <ShopSettingsForm />
-    </AdminLayout>
+    </div>
   );
 }

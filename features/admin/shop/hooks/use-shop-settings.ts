@@ -1,25 +1,19 @@
+"use client";
+
 import { useQuery } from "@tanstack/react-query";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getShopSettingsAction } from "../actions";
+import { ShopSettings } from "../types";
 
-const supabase = getSupabaseBrowserClient();
-
+/**
+ * Hook to fetch shop settings data
+ * @returns Query result with shop settings data
+ */
 export function useShopSettings() {
-  return useQuery({
+  return useQuery<ShopSettings>({
     queryKey: ["shop_settings"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("shop_settings")
-        .select("*")
-        .order("id", { ascending: true })
-        .limit(1)
-        .single();
-
-      if (error) {
-        console.error("Error fetching shop settings:", error);
-        throw error;
-      }
-
-      return data;
+      return getShopSettingsAction();
     },
+    staleTime: 1000 * 60 * 5, // 5 minutes - shop settings don't change often
   });
 }

@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import {
   Card,
   CardContent,
@@ -24,49 +23,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { LogoUploader } from "./logo-uploader";
 import { useShopSettings } from "../hooks/use-shop-settings";
 import { useUpdateShopSettings } from "../hooks/use-update-shop-settings";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
-
-const shopSettingsSchema = z.object({
-  shop_name: z.string().min(1, "Tên cửa hàng không được để trống"),
-  contact_email: z.string().email("Email không hợp lệ").nullable().optional(),
-  contact_phone: z.string().nullable().optional(),
-  address: z.string().nullable().optional(),
-  facebook_url: z
-    .string()
-    .url("URL Facebook không hợp lệ")
-    .nullable()
-    .optional(),
-  messenger_url: z
-    .string()
-    .url("URL Messenger không hợp lệ")
-    .nullable()
-    .optional(),
-  zalo_url: z.string().url("URL Zalo không hợp lệ").nullable().optional(),
-  instagram_url: z
-    .string()
-    .url("URL Instagram không hợp lệ")
-    .nullable()
-    .optional(),
-  tiktok_url: z.string().url("URL TikTok không hợp lệ").nullable().optional(),
-  youtube_url: z.string().url("URL YouTube không hợp lệ").nullable().optional(),
-  refund_policy_text: z.string().nullable().optional(),
-  shipping_policy_text: z.string().nullable().optional(),
-  privacy_policy_text: z.string().nullable().optional(),
-  terms_conditions_text: z.string().nullable().optional(),
-  default_shipping_fee: z.coerce
-    .number()
-    .min(0, "Phí vận chuyển không được âm"),
-  order_confirmation_sender_email: z
-    .string()
-    .email("Email không hợp lệ")
-    .nullable()
-    .optional(),
-});
-
-type ShopSettingsFormValues = z.infer<typeof shopSettingsSchema>;
+import { ShopSettingsFormValues, shopSettingsSchema } from "../types";
+import { LogoUploader } from "./logo-uploader";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const defaultValues: ShopSettingsFormValues = {
   shop_name: "",
@@ -88,8 +50,9 @@ const defaultValues: ShopSettingsFormValues = {
 };
 
 export function ShopSettingsForm() {
-  const { toast } = useSonnerToast();
+  const toast = useSonnerToast();
   const [activeTab, setActiveTab] = useState("general");
+
   const { data: shopSettings, isLoading } = useShopSettings();
   const { mutate: updateShopSettings, isPending: isUpdating } =
     useUpdateShopSettings();
@@ -97,9 +60,11 @@ export function ShopSettingsForm() {
   const form = useForm<ShopSettingsFormValues>({
     resolver: zodResolver(shopSettingsSchema),
     defaultValues,
+    // Mode set to onChange to validate fields as the user types
+    mode: "onChange",
   });
 
-  // Update form values when data is loaded
+  // Update form values when data is loaded from the API
   useEffect(() => {
     if (shopSettings) {
       form.reset(
@@ -127,6 +92,7 @@ export function ShopSettingsForm() {
     }
   }, [shopSettings, form]);
 
+  // Handle form submission
   function onSubmit(values: ShopSettingsFormValues) {
     if (!shopSettings) return;
 
@@ -137,25 +103,36 @@ export function ShopSettingsForm() {
       },
       {
         onSuccess: () => {
-          toast.success("Cập nhật thông tin cửa hàng thành công");
-          form.reset(values);
+          toast.success("Cập nhật thông tin cửa hàng thành công", {
+            description: "Các thay đổi đã được lưu thành công.",
+          });
         },
         onError: (error) => {
           toast.error("Lỗi khi cập nhật thông tin cửa hàng", {
-            description: error.message,
+            description:
+              error.message || "Đã có lỗi xảy ra. Vui lòng thử lại sau.",
           });
         },
       }
     );
   }
 
+  // Loading skeleton
   if (isLoading) {
-    return <div>Đang tải...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+        <Skeleton className="h-[600px] w-full" />
+      </div>
+    );
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-4">
             <TabsTrigger value="general">Thông tin chung</TabsTrigger>
@@ -430,7 +407,7 @@ export function ShopSettingsForm() {
                       <FormControl>
                         <Textarea
                           placeholder="Nhập chính sách hoàn tiền của cửa hàng"
-                          className="min-h-[150px]"
+                          className="min-h-[150px] resize-y"
                           {...field}
                           value={field.value || ""}
                         />
@@ -449,7 +426,7 @@ export function ShopSettingsForm() {
                       <FormControl>
                         <Textarea
                           placeholder="Nhập chính sách vận chuyển của cửa hàng"
-                          className="min-h-[150px]"
+                          className="min-h-[150px] resize-y"
                           {...field}
                           value={field.value || ""}
                         />
@@ -468,7 +445,7 @@ export function ShopSettingsForm() {
                       <FormControl>
                         <Textarea
                           placeholder="Nhập chính sách bảo mật của cửa hàng"
-                          className="min-h-[150px]"
+                          className="min-h-[150px] resize-y"
                           {...field}
                           value={field.value || ""}
                         />
@@ -487,7 +464,7 @@ export function ShopSettingsForm() {
                       <FormControl>
                         <Textarea
                           placeholder="Nhập điều khoản và điều kiện của cửa hàng"
-                          className="min-h-[150px]"
+                          className="min-h-[150px] resize-y"
                           {...field}
                           value={field.value || ""}
                         />
@@ -501,7 +478,7 @@ export function ShopSettingsForm() {
           </TabsContent>
         </Tabs>
 
-        <div className="mt-6 flex justify-end">
+        <div className="flex justify-end">
           <Button
             type="submit"
             disabled={isUpdating || !form.formState.isDirty}

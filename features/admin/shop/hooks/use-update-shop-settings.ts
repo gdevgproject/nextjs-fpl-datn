@@ -1,30 +1,27 @@
+"use client";
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { updateShopSettingsAction } from "../actions";
+import { ShopSettingsFormValues, ShopSettings } from "../types";
 
-const supabase = getSupabaseBrowserClient();
-
+/**
+ * Hook to update shop settings
+ * @returns Mutation object for updating shop settings
+ */
 export function useUpdateShopSettings() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (shopSettings: { id: number; [key: string]: any }) => {
-      const { id, ...updateData } = shopSettings;
-
-      const { data, error } = await supabase
-        .from("shop_settings")
-        .update(updateData)
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Error updating shop settings:", error);
-        throw error;
-      }
-
-      return data;
+    mutationFn: async ({
+      id,
+      ...formData
+    }: ShopSettingsFormValues & { id: number }) => {
+      return await updateShopSettingsAction(id, formData);
     },
-    onSuccess: () => {
+    onSuccess: (data: ShopSettings) => {
+      // Update cached data immediately
+      queryClient.setQueryData(["shop_settings"], data);
+      // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: ["shop_settings"] });
     },
   });

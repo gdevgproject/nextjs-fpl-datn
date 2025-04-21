@@ -1,7 +1,5 @@
 "use client";
 
-import type React from "react";
-
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -18,7 +16,8 @@ export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
   const toast = useSonnerToast();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const { mutate: uploadLogo, isPending: isUploading } = useUploadLogo();
+
+  const { mutate: uploadLogo, isPending } = useUploadLogo();
 
   // Cleanup preview URL when component unmounts
   useEffect(() => {
@@ -33,7 +32,7 @@ export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
+    // Client-side validation for better UX
     if (!file.type.startsWith("image/")) {
       toast.error("Chỉ chấp nhận file hình ảnh");
       return;
@@ -67,25 +66,22 @@ export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
       },
       {
         onSuccess: () => {
-          if (isUpdate) {
-            toast.success("Cập nhật logo thành công", {
-              description:
-                "Logo mới đã được cập nhật và hiển thị trên cửa hàng của bạn.",
-              duration: 5000,
-            });
-          } else {
-            toast.success("Tải lên logo thành công", {
-              description:
-                "Logo đã được tải lên và hiển thị trên cửa hàng của bạn.",
-              duration: 5000,
-            });
-          }
+          const message = isUpdate
+            ? "Logo đã được cập nhật thành công"
+            : "Logo đã được tải lên thành công";
+
+          toast.success(message, {
+            description: "Logo mới đã được cập nhật và hiển thị trên cửa hàng.",
+          });
+
+          // Clean up
           setSelectedFile(null);
           if (previewUrl) {
             URL.revokeObjectURL(previewUrl);
             setPreviewUrl(null);
           }
-          // Clear the file input
+
+          // Reset file input
           const fileInput = document.getElementById(
             "logo-upload"
           ) as HTMLInputElement;
@@ -98,7 +94,6 @@ export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
               description:
                 error.message ||
                 "Vui lòng thử lại sau hoặc liên hệ quản trị viên.",
-              duration: 7000,
             }
           );
         },
@@ -107,7 +102,7 @@ export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
   };
 
   const getButtonLabel = () => {
-    if (isUploading) return "Đang tải lên...";
+    if (isPending) return "Đang tải lên...";
     if (existingLogoUrl) return "Cập nhật logo";
     return "Tải lên";
   };
@@ -118,7 +113,7 @@ export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
         <div className="relative h-24 w-24 overflow-hidden rounded-md border">
           {previewUrl ? (
             <Image
-              src={previewUrl || "/placeholder.svg"}
+              src={previewUrl}
               alt="Preview logo"
               fill
               className="object-contain"
@@ -126,7 +121,7 @@ export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
             />
           ) : existingLogoUrl ? (
             <Image
-              src={existingLogoUrl || "/placeholder.svg"}
+              src={existingLogoUrl}
               alt="Shop logo"
               fill
               className="object-contain"
@@ -149,7 +144,7 @@ export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
                 className="hidden"
                 onChange={handleFileChange}
                 accept="image/*"
-                disabled={isUploading}
+                disabled={isPending}
               />
               <label
                 htmlFor="logo-upload"
@@ -164,7 +159,7 @@ export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
                 type="button"
                 size="sm"
                 onClick={handleUpload}
-                disabled={isUploading}
+                disabled={isPending}
               >
                 {getButtonLabel()}
               </Button>
@@ -176,7 +171,8 @@ export function LogoUploader({ shopId, existingLogoUrl }: LogoUploaderProps) {
             </p>
           )}
           <p className="text-xs text-muted-foreground">
-            Chấp nhận các định dạng JPG, PNG hoặc GIF. Kích thước tối đa 2MB.
+            Chấp nhận các định dạng JPG, PNG, GIF hoặc WEBP. Kích thước tối đa
+            2MB.
           </p>
         </div>
       </div>
