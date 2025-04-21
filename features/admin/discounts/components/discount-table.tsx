@@ -30,7 +30,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
@@ -169,7 +168,7 @@ export function DiscountTable({
 
     return {
       badge: (
-        <Badge variant="success" className="bg-green-500 text-white">
+        <Badge variant="default" className="bg-green-500 text-white">
           Đang hoạt động
         </Badge>
       ),
@@ -381,207 +380,185 @@ export function DiscountTable({
 
   // For desktop view - display as table with horizontal scrolling
   const renderDesktopTable = () => (
-    <div className="hidden md:block border rounded-md">
-      <ScrollArea className="w-full whitespace-nowrap">
-        <div className="min-w-[900px]">
-          <Table>
-            <TableHeader className="bg-muted/30 sticky top-0">
-              <TableRow>
-                <TableHead className="w-[120px]">Mã giảm giá</TableHead>
-                <TableHead>Mô tả</TableHead>
-                <TableHead>Giá trị</TableHead>
-                <TableHead>Thời gian</TableHead>
-                <TableHead>Lượt đã dùng</TableHead>
-                <TableHead className="w-[100px]">Trạng thái</TableHead>
-                <TableHead className="w-[60px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredDiscounts.map((discount: any) => {
-                const statusInfo = getStatusInfo(discount);
-                const usageInfo = getUsageInfo(discount);
+    <div className="hidden md:block border rounded-md overflow-x-auto">
+      <div className="min-w-[800px] whitespace-nowrap">
+        <Table>
+          <TableHeader className="bg-muted/30 sticky top-0">
+            <TableRow>
+              <TableHead className="w-[200px]">Mã & Mô tả</TableHead>
+              <TableHead>Giá trị</TableHead>
+              <TableHead>Thời gian</TableHead>
+              <TableHead>Lượt đã dùng</TableHead>
+              <TableHead className="w-[100px]">Trạng thái</TableHead>
+              <TableHead className="w-[60px]"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredDiscounts.map((discount: any) => {
+              const statusInfo = getStatusInfo(discount);
+              const usageInfo = getUsageInfo(discount);
 
-                return (
-                  <TableRow
-                    key={discount.id}
-                    className="group hover:bg-muted/40"
-                  >
-                    <TableCell className="font-medium">
-                      {discount.code}
-                    </TableCell>
+              return (
+                <TableRow key={discount.id} className="group hover:bg-muted/40">
+                  <TableCell className="max-w-[200px]">
+                    <div className="font-medium">{discount.code}</div>
+                    <div className="text-sm text-muted-foreground truncate">
+                      {discount.description || "—"}
+                    </div>
+                  </TableCell>
 
-                    <TableCell className="max-w-[200px]">
-                      <div className="truncate">
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <span>{getDiscountValue(discount)}</span>
+                      {discount.min_order_value && (
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <div className="truncate">
-                                {discount.description || "—"}
-                              </div>
-                            </TooltipTrigger>
-                            {discount.description && (
-                              <TooltipContent side="top" className="max-w-xs">
-                                <p>{discount.description}</p>
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <span>{getDiscountValue(discount)}</span>
-                        {discount.min_order_value && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Info className="h-4 w-4 text-muted-foreground" />
-                              </TooltipTrigger>
-                              <TooltipContent side="top">
-                                <p>
-                                  Đơn tối thiểu:{" "}
-                                  {formatCurrency(discount.min_order_value)}
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </div>
-                    </TableCell>
-
-                    <TableCell>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4 text-muted-foreground" />
-                              <span>
-                                {discount.start_date || discount.end_date ? (
-                                  <>
-                                    {formatDate(discount.start_date)} -{" "}
-                                    {formatDate(discount.end_date)}
-                                  </>
-                                ) : (
-                                  "Không giới hạn"
-                                )}
-                              </span>
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="top">
-                            {discount.start_date && (
-                              <p>
-                                Ngày bắt đầu:{" "}
-                                {formatDateWithTime(discount.start_date)}
-                              </p>
-                            )}
-                            {discount.end_date && (
-                              <p>
-                                Ngày kết thúc:{" "}
-                                {formatDateWithTime(discount.end_date)}
-                              </p>
-                            )}
-                            {!discount.start_date && !discount.end_date && (
-                              <p>Mã giảm giá không có giới hạn thời gian</p>
-                            )}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </TableCell>
-
-                    <TableCell>
-                      {usageInfo.progress !== null ? (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="w-32">
-                                <div className="flex justify-between text-xs mb-1">
-                                  <span>
-                                    {usageInfo.total !== null
-                                      ? `${usageInfo.used}/${usageInfo.total}`
-                                      : "Không giới hạn"}
-                                  </span>
-                                  <span className="text-muted-foreground">
-                                    {usageInfo.percentage}
-                                  </span>
-                                </div>
-                                <Progress
-                                  value={usageInfo.progress}
-                                  className={cn(
-                                    "h-1.5",
-                                    usageInfo.progress > 75
-                                      ? "bg-red-200"
-                                      : "bg-muted"
-                                  )}
-                                />
-                              </div>
+                              <Info className="h-4 w-4 text-muted-foreground" />
                             </TooltipTrigger>
                             <TooltipContent side="top">
-                              <p>Đã sử dụng: {usageInfo.used} lượt</p>
                               <p>
-                                Còn lại:{" "}
-                                {discount.remaining_uses !== null
-                                  ? discount.remaining_uses
-                                  : 0}{" "}
-                                lượt
+                                Đơn tối thiểu:{" "}
+                                {formatCurrency(discount.min_order_value)}
                               </p>
-                              <p>Tổng cộng: {usageInfo.total} lượt</p>
-                              {discount.max_uses !== null &&
-                                discount.remaining_uses <= 0 && (
-                                  <p className="font-medium text-destructive">
-                                    Đã hết lượt sử dụng!
-                                  </p>
-                                )}
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
-                      ) : (
-                        "Không giới hạn"
                       )}
-                    </TableCell>
+                    </div>
+                  </TableCell>
 
-                    <TableCell>
+                  <TableCell>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <span>
+                              {discount.start_date || discount.end_date ? (
+                                <>
+                                  {formatDate(discount.start_date)} -{" "}
+                                  {formatDate(discount.end_date)}
+                                </>
+                              ) : (
+                                "Không giới hạn"
+                              )}
+                            </span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          {discount.start_date && (
+                            <p>
+                              Ngày bắt đầu:{" "}
+                              {formatDateWithTime(discount.start_date)}
+                            </p>
+                          )}
+                          {discount.end_date && (
+                            <p>
+                              Ngày kết thúc:{" "}
+                              {formatDateWithTime(discount.end_date)}
+                            </p>
+                          )}
+                          {!discount.start_date && !discount.end_date && (
+                            <p>Mã giảm giá không có giới hạn thời gian</p>
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </TableCell>
+
+                  <TableCell>
+                    {usageInfo.progress !== null ? (
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <div className="flex items-center gap-1.5">
-                              {statusInfo.icon}
-                              {statusInfo.badge}
+                            <div className="w-32">
+                              <div className="flex justify-between text-xs mb-1">
+                                <span>
+                                  {usageInfo.total !== null
+                                    ? `${usageInfo.used}/${usageInfo.total}`
+                                    : "Không giới hạn"}
+                                </span>
+                                <span className="text-muted-foreground">
+                                  {usageInfo.percentage}
+                                </span>
+                              </div>
+                              <Progress
+                                value={usageInfo.progress}
+                                className={cn(
+                                  "h-1.5",
+                                  usageInfo.progress > 75
+                                    ? "bg-red-200"
+                                    : "bg-muted"
+                                )}
+                              />
                             </div>
                           </TooltipTrigger>
                           <TooltipContent side="top">
-                            <p>{statusInfo.details}</p>
+                            <p>Đã sử dụng: {usageInfo.used} lượt</p>
+                            <p>
+                              Còn lại:{" "}
+                              {discount.remaining_uses !== null
+                                ? discount.remaining_uses
+                                : 0}{" "}
+                              lượt
+                            </p>
+                            <p>Tổng cộng: {usageInfo.total} lượt</p>
+                            {discount.max_uses !== null &&
+                              discount.remaining_uses <= 0 && (
+                                <p className="font-medium text-destructive">
+                                  Đã hết lượt sử dụng!
+                                </p>
+                              )}
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                    </TableCell>
+                    ) : (
+                      "Không giới hạn"
+                    )}
+                  </TableCell>
 
-                    <TableCell>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => onEdit(discount)}
-                              aria-label="Chỉnh sửa mã giảm giá"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="left">
-                            <p>Chỉnh sửa mã giảm giá</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      </ScrollArea>
+                  <TableCell>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex items-center gap-1.5">
+                            {statusInfo.icon}
+                            {statusInfo.badge}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          <p>{statusInfo.details}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </TableCell>
+
+                  <TableCell>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onEdit(discount)}
+                            aria-label="Chỉnh sửa mã giảm giá"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          <p>Chỉnh sửa mã giảm giá</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 
