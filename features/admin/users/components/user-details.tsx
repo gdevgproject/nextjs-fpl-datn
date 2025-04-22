@@ -62,7 +62,8 @@ interface UserDetailsProps {
 export function UserDetails({ user }: UserDetailsProps) {
   const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false);
   const [isUnblockDialogOpen, setIsUnblockDialogOpen] = useState(false);
-  const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
+  const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] =
+    useState(false);
   const updateUserRole = useUpdateUserRole();
   const updateUserBlockStatus = useUpdateUserBlockStatus();
   const sendPasswordReset = useSendPasswordReset();
@@ -145,16 +146,14 @@ export function UserDetails({ user }: UserDetailsProps) {
                   </AvatarFallback>
                 )}
               </Avatar>
-              
+
               <h3 className="text-xl font-semibold">
                 {user.display_name || user.email.split("@")[0]}
               </h3>
-              
-              <Badge variant={getUserStatusVariant()}>
-                {getUserStatus()}
-              </Badge>
+
+              <Badge variant={getUserStatusVariant()}>{getUserStatus()}</Badge>
             </div>
-            
+
             <div className="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Email</p>
@@ -163,7 +162,7 @@ export function UserDetails({ user }: UserDetailsProps) {
                   {user.email}
                 </p>
               </div>
-              
+
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Số điện thoại</p>
                 <p className="flex items-center gap-2">
@@ -173,25 +172,29 @@ export function UserDetails({ user }: UserDetailsProps) {
                     : "Chưa cung cấp"}
                 </p>
               </div>
-              
+
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Ngày tạo tài khoản</p>
+                <p className="text-sm text-muted-foreground">
+                  Ngày tạo tài khoản
+                </p>
                 <p className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   {formatDate(user.created_at)}
                 </p>
               </div>
-              
+
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Đăng nhập gần nhất</p>
+                <p className="text-sm text-muted-foreground">
+                  Đăng nhập gần nhất
+                </p>
                 <p className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  {user.last_sign_in_at 
+                  {user.last_sign_in_at
                     ? formatDate(user.last_sign_in_at)
                     : "Chưa đăng nhập"}
                 </p>
               </div>
-              
+
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Vai trò</p>
                 <div className="mt-1">
@@ -212,7 +215,7 @@ export function UserDetails({ user }: UserDetailsProps) {
                   </Select>
                 </div>
               </div>
-              
+
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Giới tính</p>
                 <p className="flex items-center gap-2">
@@ -243,7 +246,7 @@ export function UserDetails({ user }: UserDetailsProps) {
                 Chặn người dùng
               </Button>
             )}
-            
+
             <Button
               variant="outline"
               onClick={() => setIsResetPasswordDialogOpen(true)}
@@ -276,7 +279,7 @@ export function UserDetails({ user }: UserDetailsProps) {
             Yêu thích
           </TabsTrigger>
         </TabsList>
-        
+
         {/* Addresses Tab */}
         <TabsContent value="addresses">
           <Card>
@@ -306,7 +309,8 @@ export function UserDetails({ user }: UserDetailsProps) {
                         <div>{formatPhoneNumber(address.recipient_phone)}</div>
                       </div>
                       <div className="mt-2 text-sm text-muted-foreground">
-                        {address.street_address}, {address.ward}, {address.district}, {address.province_city}
+                        {address.street_address}, {address.ward},{" "}
+                        {address.district}, {address.province_city}
                         {address.postal_code && `, ${address.postal_code}`}
                       </div>
                     </div>
@@ -320,15 +324,13 @@ export function UserDetails({ user }: UserDetailsProps) {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         {/* Orders Tab */}
         <TabsContent value="orders">
           <Card>
             <CardHeader>
               <CardTitle>Đơn hàng</CardTitle>
-              <CardDescription>
-                Lịch sử đơn hàng của người dùng
-              </CardDescription>
+              <CardDescription>Lịch sử đơn hàng của người dùng</CardDescription>
             </CardHeader>
             <CardContent>
               {user.orders && user.orders.length > 0 ? (
@@ -345,7 +347,10 @@ export function UserDetails({ user }: UserDetailsProps) {
                     </thead>
                     <tbody>
                       {user.orders.map((order: any) => (
-                        <tr key={order.id} className="border-b hover:bg-muted/50">
+                        <tr
+                          key={order.id}
+                          className="border-b hover:bg-muted/50"
+                        >
                           <td className="py-3 px-2">#{order.order_number}</td>
                           <td className="py-3 px-2">
                             {format(new Date(order.created_at), "dd/MM/yyyy", {
@@ -389,7 +394,7 @@ export function UserDetails({ user }: UserDetailsProps) {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         {/* Reviews Tab */}
         <TabsContent value="reviews">
           <Card>
@@ -451,7 +456,7 @@ export function UserDetails({ user }: UserDetailsProps) {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         {/* Wishlists Tab */}
         <TabsContent value="wishlists">
           <Card>
@@ -474,7 +479,10 @@ export function UserDetails({ user }: UserDetailsProps) {
                     </thead>
                     <tbody>
                       {user.wishlists.map((wishlist: any) => (
-                        <tr key={wishlist.id} className="border-b hover:bg-muted/50">
+                        <tr
+                          key={wishlist.id}
+                          className="border-b hover:bg-muted/50"
+                        >
                           <td className="py-3 px-2">
                             {wishlist.products?.name || "Sản phẩm không rõ"}
                           </td>
@@ -482,7 +490,7 @@ export function UserDetails({ user }: UserDetailsProps) {
                             {wishlist.products?.brands?.name || "N/A"}
                           </td>
                           <td className="py-3 px-2">
-                            {format(new Date(wishlist.created_at), "dd/MM/yyyy", {
+                            {format(new Date(wishlist.added_at), "dd/MM/yyyy", {
                               locale: vi,
                             })}
                           </td>
@@ -502,15 +510,13 @@ export function UserDetails({ user }: UserDetailsProps) {
       </Tabs>
 
       {/* Block User Dialog */}
-      <AlertDialog
-        open={isBlockDialogOpen}
-        onOpenChange={setIsBlockDialogOpen}
-      >
+      <AlertDialog open={isBlockDialogOpen} onOpenChange={setIsBlockDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận chặn người dùng</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn chặn người dùng này? Họ sẽ không thể đăng nhập hoặc truy cập tài khoản cho đến khi được bỏ chặn.
+              Bạn có chắc chắn muốn chặn người dùng này? Họ sẽ không thể đăng
+              nhập hoặc truy cập tài khoản cho đến khi được bỏ chặn.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -519,7 +525,9 @@ export function UserDetails({ user }: UserDetailsProps) {
               onClick={handleBlockUser}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {updateUserBlockStatus.isPending ? "Đang xử lý..." : "Chặn người dùng"}
+              {updateUserBlockStatus.isPending
+                ? "Đang xử lý..."
+                : "Chặn người dùng"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -534,7 +542,8 @@ export function UserDetails({ user }: UserDetailsProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận bỏ chặn người dùng</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn bỏ chặn người dùng này? Họ sẽ có thể đăng nhập và truy cập tài khoản trở lại.
+              Bạn có chắc chắn muốn bỏ chặn người dùng này? Họ sẽ có thể đăng
+              nhập và truy cập tài khoản trở lại.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -543,7 +552,9 @@ export function UserDetails({ user }: UserDetailsProps) {
               onClick={handleUnblockUser}
               className="bg-success text-success-foreground hover:bg-success/90"
             >
-              {updateUserBlockStatus.isPending ? "Đang xử lý..." : "Bỏ chặn người dùng"}
+              {updateUserBlockStatus.isPending
+                ? "Đang xử lý..."
+                : "Bỏ chặn người dùng"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -558,7 +569,8 @@ export function UserDetails({ user }: UserDetailsProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Gửi email đặt lại mật khẩu</AlertDialogTitle>
             <AlertDialogDescription>
-              Một email đặt lại mật khẩu sẽ được gửi đến {user.email}. Người dùng sẽ có thể đặt mật khẩu mới thông qua liên kết trong email.
+              Một email đặt lại mật khẩu sẽ được gửi đến {user.email}. Người
+              dùng sẽ có thể đặt mật khẩu mới thông qua liên kết trong email.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

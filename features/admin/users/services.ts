@@ -136,7 +136,6 @@ export async function fetchUserDetails(userId: string) {
       .select(
         `
         id, 
-        order_number,
         created_at,
         subtotal_amount,
         discount_amount,
@@ -176,7 +175,7 @@ export async function fetchUserDetails(userId: string) {
         `
         id,
         product_id,
-        created_at,
+        added_at,
         products(name, slug, brand_id, brands(name))
       `
       )
