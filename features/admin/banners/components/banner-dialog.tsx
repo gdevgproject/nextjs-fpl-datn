@@ -31,17 +31,17 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { useCreateBanner } from "../hooks/use-create-banner";
-import { useUpdateBanner } from "../hooks/use-update-banner";
+import { useCreateBanner, useUpdateBanner } from "../hooks/use-banner-hooks";
 import { useUploadBannerImage } from "../hooks/use-upload-banner-image";
 import { useDeleteBannerImage } from "../hooks/use-delete-banner-image";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { BannerImageUploader } from "./banner-image-uploader";
 import { extractPathFromImageUrl } from "../services";
+import { useBanners } from "../hooks/use-banners";
 
 // Define the form schema with Zod
 const bannerFormSchema = z
@@ -99,6 +99,29 @@ export function BannerDialog({
   const [isProcessing, setIsProcessing] = useState(false);
   const [oldImageUrl, setOldImageUrl] = useState<string | null>(null);
   const [isImageChanged, setIsImageChanged] = useState(false);
+  const [suggestedOrder, setSuggestedOrder] = useState<number>(0);
+
+  // Fetch all banners to find the next available display_order
+  const { data: bannersData } = useBanners(
+    undefined,
+    { page: 1, pageSize: 1000 },
+    { column: "display_order", direction: "desc" }
+  );
+
+  // Calculate next available display_order when dialog opens
+  useEffect(() => {
+    if (open && mode === "create" && bannersData?.data) {
+      // Tìm số thứ tự lớn nhất hiện có
+      let maxOrder = 0;
+      bannersData.data.forEach((b) => {
+        if (b.display_order > maxOrder) {
+          maxOrder = b.display_order;
+        }
+      });
+      // Đề xuất số thứ tự tiếp theo
+      setSuggestedOrder(maxOrder + 1);
+    }
+  }, [open, mode, bannersData]);
 
   // Initialize the form with default values
   const form = useForm<BannerFormValues>({
@@ -115,7 +138,7 @@ export function BannerDialog({
     },
   });
 
-  // Set form values when editing an existing banner
+  // Set form values when editing an existing banner or when suggestedOrder changes
   useEffect(() => {
     if (mode === "edit" && banner) {
       form.reset({
@@ -130,14 +153,14 @@ export function BannerDialog({
       });
       setOldImageUrl(banner.image_url);
       setIsImageChanged(false);
-    } else {
+    } else if (mode === "create") {
       form.reset({
         title: "",
         subtitle: "",
         image_url: "",
         link_url: "",
         is_active: true,
-        display_order: 0,
+        display_order: suggestedOrder, // Sử dụng số thứ tự đề xuất
         start_date: null,
         end_date: null,
       });
@@ -145,13 +168,18 @@ export function BannerDialog({
       setOldImageUrl(null);
       setIsImageChanged(false);
     }
-  }, [mode, banner, form, open]);
+  }, [mode, banner, form, open, suggestedOrder]);
 
   // Mutations for creating and updating banners
   const createBannerMutation = useCreateBanner();
   const updateBannerMutation = useUpdateBanner();
   const uploadImageMutation = useUploadBannerImage();
   const deleteImageMutation = useDeleteBannerImage();
+
+  // Function to get the next available display order
+  const handleGenerateNextOrder = () => {
+    form.setValue("display_order", suggestedOrder);
+  };
 
   // Handle form submission
   const onSubmit = async (values: BannerFormValues) => {
@@ -189,7 +217,7 @@ export function BannerDialog({
         }
 
         // Step 2: Create banner with image URL
-        await createBannerMutation.mutateAsync({
+        const result = await createBannerMutation.mutateAsync({
           title: values.title,
           subtitle: values.subtitle,
           image_url: imageUrl,
@@ -199,6 +227,13 @@ export function BannerDialog({
           start_date: values.start_date,
           end_date: values.end_date,
         });
+
+        // Kiểm tra kết quả từ mutation
+        if (!result.success) {
+          toast.error(result.error || "Lỗi khi tạo banner");
+          setIsProcessing(false);
+          return;
+        }
 
         toast.success("Banner đã được tạo thành công");
         onOpenChange(false);
@@ -213,7 +248,7 @@ export function BannerDialog({
             const fileExt = imageFile.name.split(".").pop();
             const filePath = `${banner.id}/image.${fileExt}`;
 
-            // Delete old image if exists and is different (moved this before upload to avoid keeping unnecessary files)
+            // Delete old image if exists and is different
             if (oldImageUrl && oldImageUrl !== values.image_url) {
               try {
                 await deleteImageMutation.deleteFromUrl(oldImageUrl);
@@ -245,7 +280,7 @@ export function BannerDialog({
         }
 
         // Step 2: Update banner
-        await updateBannerMutation.mutateAsync({
+        const result = await updateBannerMutation.mutateAsync({
           id: banner.id,
           title: values.title,
           subtitle: values.subtitle,
@@ -256,6 +291,13 @@ export function BannerDialog({
           start_date: values.start_date,
           end_date: values.end_date,
         });
+
+        // Kiểm tra kết quả từ mutation
+        if (!result.success) {
+          toast.error(result.error || "Lỗi khi cập nhật banner");
+          setIsProcessing(false);
+          return;
+        }
 
         toast.success("Banner đã được cập nhật thành công");
         onOpenChange(false);
@@ -358,11 +400,25 @@ export function BannerDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Thứ tự hiển thị</FormLabel>
-                      <FormControl>
-                        <Input type="number" min="0" step="1" {...field} />
-                      </FormControl>
+                      <div className="flex space-x-2">
+                        <FormControl>
+                          <Input type="number" min="0" step="1" {...field} />
+                        </FormControl>
+                        {mode === "create" && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={handleGenerateNextOrder}
+                            title="Tạo thứ tự tiếp theo"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                       <FormDescription>
-                        Số nhỏ hơn sẽ hiển thị trước
+                        Số nhỏ hơn sẽ hiển thị trước. Mỗi banner phải có thứ tự
+                        hiển thị duy nhất.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

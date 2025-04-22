@@ -11,12 +11,46 @@ import {
 } from "./types";
 
 /**
+ * Kiểm tra xem thứ tự hiển thị (display_order) đã tồn tại hay chưa
+ */
+async function isDisplayOrderExists(display_order: number, excludeId?: number) {
+  const supabase = await getSupabaseServerClient();
+  let query = supabase
+    .from("banners")
+    .select("id")
+    .eq("display_order", display_order);
+
+  // Nếu đang cập nhật banner, loại trừ banner hiện tại khỏi việc kiểm tra
+  if (excludeId) {
+    query = query.neq("id", excludeId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) throw error;
+
+  return data && data.length > 0;
+}
+
+/**
  * Create a new banner
  */
 export async function createBannerAction(data: CreateBannerData) {
   try {
     // Server-side validation
     const validatedData = bannerSchema.parse(data);
+
+    // Kiểm tra xem display_order đã tồn tại hay chưa
+    const displayOrderExists = await isDisplayOrderExists(
+      validatedData.display_order
+    );
+    if (displayOrderExists) {
+      // Trả về một đối tượng có thuộc tính error thay vì ném lỗi
+      return {
+        error:
+          "Thứ tự hiển thị này đã được sử dụng. Vui lòng chọn một giá trị khác.",
+      };
+    }
 
     // Format dates for database
     const formattedData = {
@@ -34,7 +68,7 @@ export async function createBannerAction(data: CreateBannerData) {
     // Check if the user has admin privileges (RLS will block if not)
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError) {
-      throw new Error("Authentication error: " + userError.message);
+      return { error: "Authentication error: " + userError.message };
     }
 
     // Create banner in database
@@ -45,7 +79,7 @@ export async function createBannerAction(data: CreateBannerData) {
       .single();
 
     if (error) {
-      throw new Error("Failed to create banner: " + error.message);
+      return { error: "Failed to create banner: " + error.message };
     }
 
     // Revalidate the banners page to reflect changes
@@ -71,6 +105,21 @@ export async function updateBannerAction(data: UpdateBannerData) {
     // Validate the update data using the dedicated update schema
     const validatedData = bannerUpdateSchema.parse(updateData);
 
+    // Kiểm tra xem display_order đã tồn tại hay chưa (loại trừ banner hiện tại)
+    if (validatedData.display_order !== undefined) {
+      const displayOrderExists = await isDisplayOrderExists(
+        validatedData.display_order,
+        id
+      );
+      if (displayOrderExists) {
+        // Trả về một đối tượng có thuộc tính error thay vì ném lỗi
+        return {
+          error:
+            "Thứ tự hiển thị này đã được sử dụng. Vui lòng chọn một giá trị khác.",
+        };
+      }
+    }
+
     // Format dates for database
     const formattedData = {
       ...validatedData,
@@ -87,7 +136,7 @@ export async function updateBannerAction(data: UpdateBannerData) {
     // Check if the user has admin privileges (RLS will block if not)
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError) {
-      throw new Error("Authentication error: " + userError.message);
+      return { error: "Authentication error: " + userError.message };
     }
 
     // Update banner in database
@@ -99,7 +148,7 @@ export async function updateBannerAction(data: UpdateBannerData) {
       .single();
 
     if (error) {
-      throw new Error("Failed to update banner: " + error.message);
+      return { error: "Failed to update banner: " + error.message };
     }
 
     // Revalidate the banners page to reflect changes
