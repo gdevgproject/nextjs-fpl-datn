@@ -23,7 +23,7 @@ type FormValues = z.infer<typeof forgotPasswordSchema>;
 export function ForgotPasswordForm() {
   const router = useRouter();
   const { toast } = useSonnerToast();
-  const { mutateAsync, isLoading } = useForgotPasswordMutation();
+  const { mutateAsync, isPending } = useForgotPasswordMutation();
   const form = useForm<FormValues>({
     resolver: zodResolver(forgotPasswordSchema),
     defaultValues: { email: "" },
@@ -67,8 +67,8 @@ export function ForgotPasswordForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Đang gửi…" : "Gửi link đặt lại mật khẩu"}
+        <Button type="submit" className="w-full" disabled={isPending}>
+          {isPending ? "Đang gửi…" : "Gửi link đặt lại mật khẩu"}
         </Button>
       </form>
     </Form>
