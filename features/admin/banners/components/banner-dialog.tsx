@@ -38,8 +38,10 @@ import { cn } from "@/lib/utils";
 import { useCreateBanner } from "../hooks/use-create-banner";
 import { useUpdateBanner } from "../hooks/use-update-banner";
 import { useUploadBannerImage } from "../hooks/use-upload-banner-image";
+import { useDeleteBannerImage } from "../hooks/use-delete-banner-image";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { BannerImageUploader } from "./banner-image-uploader";
+import { extractPathFromImageUrl } from "../services";
 
 // Define the form schema with Zod
 const bannerFormSchema = z
@@ -96,6 +98,7 @@ export function BannerDialog({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [oldImageUrl, setOldImageUrl] = useState<string | null>(null);
+  const [isImageChanged, setIsImageChanged] = useState(false);
 
   // Initialize the form with default values
   const form = useForm<BannerFormValues>({
@@ -126,6 +129,7 @@ export function BannerDialog({
         end_date: banner.end_date ? new Date(banner.end_date) : null,
       });
       setOldImageUrl(banner.image_url);
+      setIsImageChanged(false);
     } else {
       form.reset({
         title: "",
@@ -139,6 +143,7 @@ export function BannerDialog({
       });
       setImageFile(null);
       setOldImageUrl(null);
+      setIsImageChanged(false);
     }
   }, [mode, banner, form, open]);
 
@@ -146,6 +151,7 @@ export function BannerDialog({
   const createBannerMutation = useCreateBanner();
   const updateBannerMutation = useUpdateBanner();
   const uploadImageMutation = useUploadBannerImage();
+  const deleteImageMutation = useDeleteBannerImage();
 
   // Handle form submission
   const onSubmit = async (values: BannerFormValues) => {
@@ -201,11 +207,21 @@ export function BannerDialog({
       } else if (mode === "edit" && banner) {
         // Step 1: Upload new image if provided
         let imageUrl = values.image_url;
-        if (imageFile) {
+        if (isImageChanged && imageFile) {
           try {
             // Create file path with banner ID
             const fileExt = imageFile.name.split(".").pop();
             const filePath = `${banner.id}/image.${fileExt}`;
+
+            // Delete old image if exists and is different (moved this before upload to avoid keeping unnecessary files)
+            if (oldImageUrl && oldImageUrl !== values.image_url) {
+              try {
+                await deleteImageMutation.deleteFromUrl(oldImageUrl);
+              } catch (error) {
+                console.error("Error deleting old banner image:", error);
+                // Continue with update even if image deletion fails
+              }
+            }
 
             const { publicUrl } = await uploadImageMutation.mutateAsync({
               file: imageFile,
@@ -258,6 +274,7 @@ export function BannerDialog({
   // Handle image upload
   const handleImageChange = (file: File | null, url: string | null) => {
     setImageFile(file);
+    setIsImageChanged(true);
     if (url) {
       form.setValue("image_url", url);
     }

@@ -98,13 +98,35 @@ export function isBannerActive(banner: Banner): boolean {
 
 /**
  * Helper function to extract path from banner image URL
+ * Improved version that handles different URL formats
  */
 export function extractPathFromImageUrl(url: string): string | null {
   if (!url) return null;
 
-  // URL format: https://xxx.supabase.co/storage/v1/object/public/banners/123/image.png
-  const urlParts = url.split("/banners/");
-  if (urlParts.length <= 1) return null;
+  try {
+    // URL format: https://xxx.supabase.co/storage/v1/object/public/banners/123/image.png
+    if (url.includes("/banners/")) {
+      const urlParts = url.split("/banners/");
+      if (urlParts.length > 1) {
+        return urlParts[1];
+      }
+    }
 
-  return urlParts[1];
+    // Alternative approach using URL parsing if the above doesn't work
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+
+    // Extract path after /banners/
+    const match = pathname.match(
+      /\/storage\/v\d+\/object\/public\/banners\/(.+)/
+    );
+    if (match && match[1]) {
+      return match[1];
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Error extracting path from URL:", error);
+    return null;
+  }
 }

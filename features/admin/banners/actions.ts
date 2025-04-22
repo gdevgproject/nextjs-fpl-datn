@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import {
   bannerSchema,
+  bannerUpdateSchema,
   CreateBannerData,
   UpdateBannerData,
   DeleteBannerData,
@@ -67,8 +68,8 @@ export async function updateBannerAction(data: UpdateBannerData) {
   try {
     const { id, ...updateData } = data;
 
-    // Validate the update data
-    const validatedData = bannerSchema.partial().parse(updateData);
+    // Validate the update data using the dedicated update schema
+    const validatedData = bannerUpdateSchema.parse(updateData);
 
     // Format dates for database
     const formattedData = {
@@ -155,10 +156,8 @@ export async function deleteBannerAction({ id }: DeleteBannerData) {
     if (banner?.image_url) {
       try {
         // Extract path from URL
-        // URL format: https://xxx.supabase.co/storage/v1/object/public/banners/123/image.png
-        const urlParts = banner.image_url.split("/banners/");
-        if (urlParts.length > 1) {
-          const path = urlParts[1];
+        const path = extractPathFromImageUrl(banner.image_url);
+        if (path) {
           await supabase.storage.from("banners").remove([path]);
         }
       } catch (storageError) {
@@ -240,6 +239,10 @@ export async function uploadBannerImageAction(
  */
 export async function deleteBannerImageAction(path: string) {
   try {
+    if (!path) {
+      throw new Error("No path provided");
+    }
+
     const supabase = await getSupabaseServerClient();
 
     // Delete the file
@@ -270,18 +273,53 @@ export async function deleteBannerImageByUrlAction(url: string) {
     }
 
     // Extract path from URL
-    // URL format: https://xxx.supabase.co/storage/v1/object/public/banners/123/image.png
-    const urlParts = url.split("/banners/");
-    if (urlParts.length <= 1) {
-      throw new Error("Invalid banner image URL format");
+    const path = extractPathFromImageUrl(url);
+
+    if (!path) {
+      // Log warning but don't throw error to avoid blocking updates when URL format is unrecognized
+      console.warn("Could not extract path from URL:", url);
+      return { success: true }; // Return success to allow the operation to continue
     }
 
-    const path = urlParts[1];
     return await deleteBannerImageAction(path);
   } catch (error) {
     if (error instanceof Error) {
       return { error: error.message };
     }
     return { error: "Unknown error occurred" };
+  }
+}
+
+/**
+ * Helper function to extract path from banner image URL
+ */
+function extractPathFromImageUrl(url: string): string | null {
+  if (!url) return null;
+
+  try {
+    // URL format: https://xxx.supabase.co/storage/v1/object/public/banners/123/image.png
+    if (url.includes("/banners/")) {
+      const urlParts = url.split("/banners/");
+      if (urlParts.length > 1) {
+        return urlParts[1];
+      }
+    }
+
+    // Alternative approach using URL parsing if the above doesn't work
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+
+    // Extract path after /banners/
+    const match = pathname.match(
+      /\/storage\/v\d+\/object\/public\/banners\/(.+)/
+    );
+    if (match && match[1]) {
+      return match[1];
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Error extracting path from URL:", url, error);
+    return null;
   }
 }

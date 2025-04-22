@@ -39,7 +39,7 @@ export interface BannersSort {
   direction: "asc" | "desc";
 }
 
-// Zod schema for banner creation/update validation
+// Zod schema for banner creation validation
 export const bannerSchema = z
   .object({
     title: z
@@ -75,12 +75,49 @@ export const bannerSchema = z
     }
   );
 
+// Schema cho việc cập nhật banner (tất cả trường đều là optional)
+export const bannerUpdateSchema = z
+  .object({
+    title: z
+      .string()
+      .min(1, "Tiêu đề không được để trống")
+      .max(100, "Tiêu đề không được vượt quá 100 ký tự")
+      .optional(),
+    subtitle: z
+      .string()
+      .max(200, "Tiêu đề phụ không được vượt quá 200 ký tự")
+      .nullable()
+      .optional(),
+    image_url: z.string().min(1, "Hình ảnh banner là bắt buộc").optional(),
+    link_url: z.string().url("URL không hợp lệ").nullable().optional(),
+    is_active: z.boolean().optional(),
+    display_order: z
+      .number()
+      .int()
+      .min(0, "Thứ tự hiển thị phải là số nguyên dương")
+      .optional(),
+    start_date: z.date().nullable().optional(),
+    end_date: z.date().nullable().optional(),
+  })
+  .refine(
+    (data) => {
+      // If both dates are provided, ensure end_date is after start_date
+      if (data.start_date && data.end_date) {
+        return data.end_date > data.start_date;
+      }
+      return true;
+    },
+    {
+      message: "Ngày kết thúc phải sau ngày bắt đầu",
+      path: ["end_date"],
+    }
+  );
+
 // Data types for mutations
 export type CreateBannerData = z.infer<typeof bannerSchema>;
-
-export interface UpdateBannerData extends Partial<CreateBannerData> {
+export type UpdateBannerData = Partial<z.infer<typeof bannerSchema>> & {
   id: number;
-}
+};
 
 export interface DeleteBannerData {
   id: number;
