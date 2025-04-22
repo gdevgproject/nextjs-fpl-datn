@@ -25,6 +25,7 @@ import {
   ArrowUpDown,
   CheckCircle,
   XCircle,
+  Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
@@ -46,6 +47,8 @@ interface BannerTableProps {
   banners: any[];
   count: number;
   isLoading: boolean;
+  isFetching: boolean;
+  sortingColumn: string | null;
   isError: boolean;
   page: number;
   pageSize: number;
@@ -61,6 +64,8 @@ export function BannerTable({
   banners,
   count,
   isLoading,
+  isFetching,
+  sortingColumn,
   isError,
   page,
   pageSize,
@@ -104,15 +109,21 @@ export function BannerTable({
     }
   };
 
-  // Render sort indicator
+  // Render sort indicator with loading state
   const renderSortIndicator = (column: string) => {
-    if (sortColumn !== column) {
-      return <ArrowUpDown className="ml-2 h-4 w-4" />;
+    // Show loading spinner when this specific column is being sorted
+    if (sortingColumn === column && isFetching) {
+      return <Loader2 className="ml-2 h-4 w-4 animate-spin text-primary" />;
     }
+
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />;
+    }
+
     return sortDirection === "asc" ? (
-      <ChevronUp className="ml-2 h-4 w-4" />
+      <ChevronUp className="ml-2 h-4 w-4 text-primary" />
     ) : (
-      <ChevronDown className="ml-2 h-4 w-4" />
+      <ChevronDown className="ml-2 h-4 w-4 text-primary" />
     );
   };
 
@@ -128,32 +139,77 @@ export function BannerTable({
     return true;
   };
 
+  // Create sortable column header
+  const SortableHeader = ({
+    column,
+    children,
+  }: {
+    column: string;
+    children: React.ReactNode;
+  }) => (
+    <TableHead
+      className="cursor-pointer hover:bg-muted/30 transition-colors"
+      onClick={() => onSortChange(column)}
+    >
+      <div className="flex items-center">
+        {children}
+        {renderSortIndicator(column)}
+      </div>
+    </TableHead>
+  );
+
+  // Render loading skeleton
+  const renderLoadingSkeleton = () => (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[100px]">Hình ảnh</TableHead>
+            <TableHead>Tiêu đề</TableHead>
+            <TableHead>Trạng thái</TableHead>
+            <TableHead>Thứ tự hiển thị</TableHead>
+            <TableHead>Ngày bắt đầu</TableHead>
+            <TableHead>Ngày kết thúc</TableHead>
+            <TableHead className="w-[80px]">Thao tác</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array(3)
+            .fill(0)
+            .map((_, index) => (
+              <TableRow key={index} className="animate-pulse">
+                <TableCell>
+                  <div className="h-16 w-24 rounded-md bg-muted"></div>
+                </TableCell>
+                <TableCell>
+                  <div className="h-5 w-36 rounded-md bg-muted mb-2"></div>
+                  <div className="h-3 w-24 rounded-md bg-muted"></div>
+                </TableCell>
+                <TableCell>
+                  <div className="h-6 w-24 rounded-md bg-muted"></div>
+                </TableCell>
+                <TableCell>
+                  <div className="h-4 w-8 rounded-md bg-muted"></div>
+                </TableCell>
+                <TableCell>
+                  <div className="h-4 w-24 rounded-md bg-muted"></div>
+                </TableCell>
+                <TableCell>
+                  <div className="h-4 w-24 rounded-md bg-muted"></div>
+                </TableCell>
+                <TableCell>
+                  <div className="h-8 w-8 rounded-md bg-muted"></div>
+                </TableCell>
+              </TableRow>
+            ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+
   // Render loading state
   if (isLoading) {
-    return (
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Hình ảnh</TableHead>
-              <TableHead>Tiêu đề</TableHead>
-              <TableHead>Trạng thái</TableHead>
-              <TableHead>Thứ tự hiển thị</TableHead>
-              <TableHead>Ngày bắt đầu</TableHead>
-              <TableHead>Ngày kết thúc</TableHead>
-              <TableHead>Thao tác</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow>
-              <TableCell colSpan={7} className="h-24 text-center">
-                Đang tải dữ liệu...
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-    );
+    return renderLoadingSkeleton();
   }
 
   // Render error state
@@ -219,55 +275,19 @@ export function BannerTable({
           <TableHeader>
             <TableRow>
               <TableHead className="w-[100px]">Hình ảnh</TableHead>
-              <TableHead
-                className="cursor-pointer"
-                onClick={() => onSortChange("title")}
-              >
-                <div className="flex items-center">
-                  Tiêu đề
-                  {renderSortIndicator("title")}
-                </div>
-              </TableHead>
-              <TableHead
-                className="cursor-pointer"
-                onClick={() => onSortChange("is_active")}
-              >
-                <div className="flex items-center">
-                  Trạng thái
-                  {renderSortIndicator("is_active")}
-                </div>
-              </TableHead>
-              <TableHead
-                className="cursor-pointer"
-                onClick={() => onSortChange("display_order")}
-              >
-                <div className="flex items-center">
-                  Thứ tự hiển thị
-                  {renderSortIndicator("display_order")}
-                </div>
-              </TableHead>
-              <TableHead
-                className="cursor-pointer"
-                onClick={() => onSortChange("start_date")}
-              >
-                <div className="flex items-center">
-                  Ngày bắt đầu
-                  {renderSortIndicator("start_date")}
-                </div>
-              </TableHead>
-              <TableHead
-                className="cursor-pointer"
-                onClick={() => onSortChange("end_date")}
-              >
-                <div className="flex items-center">
-                  Ngày kết thúc
-                  {renderSortIndicator("end_date")}
-                </div>
-              </TableHead>
+              <SortableHeader column="title">Tiêu đề</SortableHeader>
+              <SortableHeader column="is_active">Trạng thái</SortableHeader>
+              <SortableHeader column="display_order">
+                Thứ tự hiển thị
+              </SortableHeader>
+              <SortableHeader column="start_date">Ngày bắt đầu</SortableHeader>
+              <SortableHeader column="end_date">Ngày kết thúc</SortableHeader>
               <TableHead className="w-[80px]">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
+          <TableBody
+            className={isFetching && !sortingColumn ? "opacity-60" : ""}
+          >
             {banners.map((banner) => (
               <TableRow key={banner.id}>
                 <TableCell>
@@ -364,7 +384,7 @@ export function BannerTable({
             variant="outline"
             size="sm"
             onClick={() => onPageChange(page - 1)}
-            disabled={page === 1}
+            disabled={page === 1 || isFetching}
           >
             Trước
           </Button>
@@ -372,7 +392,7 @@ export function BannerTable({
             variant="outline"
             size="sm"
             onClick={() => onPageChange(page + 1)}
-            disabled={page === totalPages}
+            disabled={page === totalPages || isFetching}
           >
             Sau
           </Button>

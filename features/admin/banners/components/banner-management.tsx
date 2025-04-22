@@ -1,33 +1,34 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { PlusCircle, Search } from "lucide-react"
-import { BannerTable } from "./banner-table"
-import { BannerDialog } from "./banner-dialog"
-import { useDebounce } from "../hooks/use-debounce"
-import { useBanners } from "../hooks/use-banners"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { PlusCircle, Search } from "lucide-react";
+import { BannerTable } from "./banner-table";
+import { BannerDialog } from "./banner-dialog";
+import { useDebounce } from "../hooks/use-debounce";
+import { useBanners } from "../hooks/use-banners";
 
 export function BannerManagement() {
   // State for search, pagination, and sorting
-  const [search, setSearch] = useState("")
-  const [debouncedSearch, setDebouncedSearch] = useState("")
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
-  const [sortColumn, setSortColumn] = useState<string>("display_order")
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [sortColumn, setSortColumn] = useState<string>("display_order");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [sortingColumn, setSortingColumn] = useState<string | null>(null);
 
   // State for dialog
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create")
-  const [selectedBanner, setSelectedBanner] = useState<any>(null)
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [selectedBanner, setSelectedBanner] = useState<any>(null);
 
   // Debounce search input
-  const debouncedSearchTerm = useDebounce(search, 300)
+  const debouncedSearchTerm = useDebounce(search, 300);
   if (debouncedSearchTerm !== debouncedSearch) {
-    setDebouncedSearch(debouncedSearchTerm)
-    if (page !== 1) setPage(1) // Reset to first page on new search
+    setDebouncedSearch(debouncedSearchTerm);
+    if (page !== 1) setPage(1); // Reset to first page on new search
   }
 
   // Fetch banners with filters, pagination, and sorting
@@ -35,36 +36,49 @@ export function BannerManagement() {
     data: bannersData,
     isLoading,
     isError,
-  } = useBanners({ search: debouncedSearch }, { page, pageSize }, { column: sortColumn, direction: sortDirection })
+    isFetching,
+  } = useBanners(
+    { search: debouncedSearch },
+    { page, pageSize },
+    { column: sortColumn, direction: sortDirection }
+  );
 
   // Handle sort change
   const handleSortChange = (column: string) => {
+    // Set the column that's currently being sorted
+    setSortingColumn(column);
+
     if (sortColumn === column) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
-      setSortColumn(column)
-      setSortDirection("asc")
+      setSortColumn(column);
+      setSortDirection("asc");
     }
-  }
+
+    // Clear the sorting indicator after data is loaded
+    if (!isFetching) {
+      setTimeout(() => setSortingColumn(null), 300);
+    }
+  };
 
   // Handle edit banner
   const handleEditBanner = (banner: any) => {
-    setSelectedBanner(banner)
-    setDialogMode("edit")
-    setDialogOpen(true)
-  }
+    setSelectedBanner(banner);
+    setDialogMode("edit");
+    setDialogOpen(true);
+  };
 
   // Handle create new banner
   const handleCreateBanner = () => {
-    setSelectedBanner(null)
-    setDialogMode("create")
-    setDialogOpen(true)
-  }
+    setSelectedBanner(null);
+    setDialogMode("create");
+    setDialogOpen(true);
+  };
 
   // Handle dialog close
   const handleDialogClose = () => {
-    setDialogOpen(false)
-  }
+    setDialogOpen(false);
+  };
 
   return (
     <div className="space-y-4">
@@ -89,6 +103,8 @@ export function BannerManagement() {
         banners={bannersData?.data || []}
         count={bannersData?.count || 0}
         isLoading={isLoading}
+        isFetching={isFetching}
+        sortingColumn={sortingColumn}
         isError={isError}
         page={page}
         pageSize={pageSize}
@@ -100,7 +116,12 @@ export function BannerManagement() {
         onEdit={handleEditBanner}
       />
 
-      <BannerDialog open={dialogOpen} onOpenChange={handleDialogClose} mode={dialogMode} banner={selectedBanner} />
+      <BannerDialog
+        open={dialogOpen}
+        onOpenChange={handleDialogClose}
+        mode={dialogMode}
+        banner={selectedBanner}
+      />
     </div>
-  )
+  );
 }
