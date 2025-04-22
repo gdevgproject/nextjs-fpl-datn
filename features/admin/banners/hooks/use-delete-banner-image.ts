@@ -1,60 +1,71 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { DeleteBannerImageOptions } from "../types";
+import {
+  deleteBannerImageAction,
+  deleteBannerImageByUrlAction,
+} from "../actions";
 
+/**
+ * Custom hook for deleting banner images
+ * Uses TanStack Query mutation with server actions
+ */
 export function useDeleteBannerImage() {
-  const supabase = getSupabaseBrowserClient();
   const queryClient = useQueryClient();
 
-  const deleteStorageMutation = useMutation({
-    mutationFn: async ({ path }: { path: string }) => {
-      if (!path) throw new Error("No path provided");
+  const deleteImageMutation = useMutation<
+    string[],
+    Error,
+    DeleteBannerImageOptions
+  >({
+    mutationFn: async ({ path }: DeleteBannerImageOptions) => {
+      if (!path) {
+        throw new Error("No path provided for banner image deletion");
+      }
 
-      const { data, error } = await supabase.storage
-        .from("banners")
-        .remove([path]);
+      const result = await deleteBannerImageAction(path);
 
-      if (error) throw error;
-      return data;
+      // Check if there was an error in the server action
+      if ("error" in result) {
+        throw new Error(result.error);
+      }
+
+      return Array.isArray(result) ? result : [path];
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["banners", "list"] });
     },
+    onError: (error) => {
+      console.error("Error deleting banner image:", error);
+    },
   });
 
-  // Return the mutation with an additional method to delete from URL
-  return {
-    ...deleteStorageMutation,
-    // Add method to delete file from URL
-    deleteFromUrl: async (url: string): Promise<boolean> => {
-      try {
-        if (!url) return false;
+  // Add a helper method to delete by URL
+  const deleteFromUrl = async (url: string): Promise<boolean> => {
+    if (!url) return false;
 
-        // Extract path from URL
-        // URL format: https://xxx.supabase.co/storage/v1/object/public/banners/123/image.png
-        const urlParts = url.split("/banners/");
-        if (urlParts.length <= 1) return false;
+    try {
+      const result = await deleteBannerImageByUrlAction(url);
 
-        const path = urlParts[1];
-        if (!path) return false;
-
-        // Delete file
-        const { error } = await supabase.storage.from("banners").remove([path]);
-
-        if (error) {
-          console.error("Error deleting banner image:", error);
-          return false;
-        }
-
-        // Invalidate queries after successful deletion
-        queryClient.invalidateQueries({ queryKey: ["banners", "list"] });
-
-        return true;
-      } catch (error) {
-        console.error("Error in deleteFromUrl:", error);
+      if ("error" in result) {
+        console.error("Error deleting banner image:", result.error);
         return false;
       }
-    },
+
+      // Invalidate queries after successful deletion
+      queryClient.invalidateQueries({ queryKey: ["banners", "list"] });
+
+      return true;
+    } catch (error) {
+      console.error("Error in deleteFromUrl:", error);
+      return false;
+    }
+  };
+
+  // Return the mutation with the extended deleteFromUrl method
+  return {
+    ...deleteImageMutation,
+    deleteFromUrl,
   };
 }

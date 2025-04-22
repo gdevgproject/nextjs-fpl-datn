@@ -1,69 +1,55 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { v4 as uuidv4 } from "uuid";
+import { UploadBannerImageOptions, UploadBannerImageResult } from "../types";
+import { uploadBannerImageAction } from "../actions";
 
+/**
+ * Custom hook for uploading banner images
+ * Uses TanStack Query mutation with server action
+ */
 export function useUploadBannerImage() {
-  const supabase = getSupabaseBrowserClient();
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<UploadBannerImageResult, Error, UploadBannerImageOptions>({
     mutationFn: async ({
       file,
       path,
       fileOptions = {},
       createPathOptions = {},
-    }: {
-      file: File;
-      path?: string;
-      fileOptions?: {
-        contentType?: string;
-        upsert?: boolean;
-      };
-      createPathOptions?: {
-        fileExtension?: string;
-        prefix?: string;
-      };
-    }) => {
+    }: UploadBannerImageOptions) => {
       if (!file) {
         throw new Error("No file provided");
       }
 
-      // If no explicit path is provided, create one using UUID
-      if (!path) {
-        const fileExt =
-          createPathOptions.fileExtension || file.name.split(".").pop();
-        const prefix = createPathOptions.prefix || "";
-        path = `${prefix ? prefix + "/" : ""}${uuidv4()}.${fileExt}`;
+      // Extract bannerId from path if it exists
+      let bannerId: number | undefined;
+      if (path) {
+        const match = path.match(/^(\d+)\//);
+        if (match && match[1]) {
+          bannerId = parseInt(match[1], 10);
+        }
       }
 
-      // Upload the file
-      const { data, error } = await supabase.storage
-        .from("banners")
-        .upload(path, file, {
-          contentType: fileOptions.contentType || file.type,
-          upsert: fileOptions.upsert || false,
-        });
+      const result = await uploadBannerImageAction(file, path, {
+        contentType: fileOptions?.contentType,
+        upsert: fileOptions?.upsert,
+        bannerId,
+      });
 
-      if (error) {
-        throw error;
+      // Check if there was an error in the server action
+      if ("error" in result) {
+        throw new Error(result.error);
       }
 
-      // Get the public URL
-      const publicUrl = supabase.storage
-        .from("banners")
-        .getPublicUrl(data?.path || path).data.publicUrl;
-
-      return {
-        ...data,
-        publicUrl,
-        path: data?.path || path,
-      };
+      return result;
     },
     onSuccess: () => {
-      // Invalidate and refetch banners list query
+      // Invalidate and refetch banner queries
       queryClient.invalidateQueries({ queryKey: ["banners", "list"] });
+    },
+    onError: (error) => {
+      console.error("Error uploading banner image:", error);
     },
   });
 }

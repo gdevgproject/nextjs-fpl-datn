@@ -1,77 +1,28 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import {
+  BannersFilters,
+  BannersPagination,
+  BannersResponse,
+  BannersSort,
+} from "../types";
+import { fetchBanners } from "../services";
 
-interface BannersFilters {
-  search?: string;
-  isActive?: boolean;
-}
-
-interface BannersPagination {
-  page: number;
-  pageSize: number;
-}
-
-interface BannersSort {
-  column: string;
-  direction: "asc" | "desc";
-}
-
+/**
+ * Custom hook to fetch banners with filtering, pagination, and sorting
+ * Using TanStack Query for data fetching and caching
+ */
 export function useBanners(
   filters?: BannersFilters,
   pagination?: BannersPagination,
   sort?: BannersSort
 ) {
-  const supabase = getSupabaseBrowserClient();
-
-  return useQuery({
+  return useQuery<BannersResponse, Error>({
     queryKey: ["banners", "list", filters, pagination, sort],
-    queryFn: async () => {
-      const columns = `id, title, subtitle, image_url, link_url, is_active, display_order, start_date, end_date, created_at, updated_at`;
-
-      // Start building the query
-      let query = supabase.from("banners").select(columns, { count: "exact" });
-
-      // Apply search filter
-      if (filters?.search) {
-        query = query.ilike("title", `%${filters.search}%`);
-      }
-
-      // Apply active filter
-      if (filters?.isActive !== undefined) {
-        query = query.eq("is_active", filters.isActive);
-      }
-
-      // Apply pagination
-      if (pagination) {
-        const { page, pageSize } = pagination;
-        const from = (page - 1) * pageSize;
-        const to = from + pageSize - 1;
-        query = query.range(from, to);
-      }
-
-      // Apply sorting
-      if (sort) {
-        query = query.order(sort.column, {
-          ascending: sort.direction === "asc",
-        });
-      } else {
-        query = query.order("display_order", { ascending: true });
-      }
-
-      // Execute the query
-      const { data, error, count } = await query;
-
-      if (error) {
-        throw error;
-      }
-
-      return {
-        data: data || [],
-        count: count || 0,
-      };
-    },
+    queryFn: () => fetchBanners(filters, pagination, sort),
     refetchOnWindowFocus: false,
+    staleTime: 1000 * 60 * 5, // 5 minutes - data is considered fresh for 5 minutes
+    gcTime: 1000 * 60 * 10, // 10 minutes - keep unused data in cache for 10 minutes
   });
 }

@@ -1,26 +1,33 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { Banner, CreateBannerData } from "../types";
+import { createBannerAction } from "../actions";
 
+/**
+ * Custom hook for creating banners
+ * Uses TanStack Query mutation with server action
+ */
 export function useCreateBanner() {
-  const supabase = getSupabaseBrowserClient();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (variables: any) => {
-      const { data, error } = await supabase
-        .from("banners")
-        .insert(variables)
-        .select("id")
-        .single();
+  return useMutation<Banner, Error, CreateBannerData>({
+    mutationFn: async (bannerData: CreateBannerData) => {
+      const result = await createBannerAction(bannerData);
 
-      if (error) throw error;
-      return data;
+      // Check if there was an error in the server action
+      if ("error" in result) {
+        throw new Error(result.error);
+      }
+
+      return result;
     },
     onSuccess: () => {
-      // Invalidate and refetch banners list query
+      // Invalidate and refetch banners list query for automatic UI updates
       queryClient.invalidateQueries({ queryKey: ["banners", "list"] });
+    },
+    onError: (error) => {
+      console.error("Error creating banner:", error);
     },
   });
 }
