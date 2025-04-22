@@ -86,6 +86,28 @@ export async function login(values: LoginParams) {
           "email_not_confirmed"
         );
       }
+      if (
+        error.message.includes("user is banned") ||
+        error.code === "user_banned"
+      ) {
+        // Xác định thời gian khóa nếu có
+        const bannedUntilMatch = error.message.match(/banned until (.+)\./);
+        const banEndTime = bannedUntilMatch ? bannedUntilMatch[1] : null;
+
+        if (banEndTime) {
+          // Nếu có thời hạn khóa
+          return createErrorResponse(
+            `Tài khoản của bạn đã bị tạm khóa đến ${banEndTime}. Vui lòng liên hệ quản trị viên nếu cần hỗ trợ.`,
+            "user_banned"
+          );
+        } else {
+          // Nếu khóa vĩnh viễn
+          return createErrorResponse(
+            "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ.",
+            "user_banned"
+          );
+        }
+      }
       return createErrorResponse(error.message);
     }
     // Prefetch profile data để cải thiện hiệu suất
