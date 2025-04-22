@@ -1,67 +1,168 @@
-import { useClientFetch } from "@/shared/hooks/use-client-fetch"
+"use client";
 
-interface UseUsersParams {
-  search?: string
-  roleFilter?: string
-  page?: number
-  pageSize?: number
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchUsers, fetchUserDetails } from "../services";
+import {
+  updateUserRoleAction,
+  updateUserBlockStatusAction,
+  sendPasswordResetAction,
+} from "../actions";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import type {
+  UserFilter,
+  UpdateUserRole,
+  UpdateUserBlockStatus,
+} from "../types";
+
+/**
+ * Hook for fetching users with filtering and pagination
+ */
+export function useUsers(initialFilter: Partial<UserFilter> = {}) {
+  const [filter, setFilter] = useState<UserFilter>({
+    search: "",
+    role: "all",
+    status: "all",
+    page: 1,
+    perPage: 10,
+    ...initialFilter,
+  });
+
+  // Query for fetching users
+  const usersQuery = useQuery({
+    queryKey: ["admin", "users", filter],
+    queryFn: () => fetchUsers(filter),
+    staleTime: 1000 * 60, // 1 minute
+  });
+
+  // Update filter function
+  const updateFilter = (newFilter: Partial<UserFilter>) => {
+    setFilter((prev) => ({
+      ...prev,
+      ...newFilter,
+      // Reset to page 1 if search, role, or status changes
+      ...(newFilter.search !== undefined ||
+      newFilter.role !== undefined ||
+      newFilter.status !== undefined
+        ? { page: 1 }
+        : {}),
+    }));
+  };
+
+  return {
+    users: usersQuery.data?.users || [],
+    total: usersQuery.data?.total || 0,
+    filteredTotal: usersQuery.data?.filteredTotal || 0,
+    isLoading: usersQuery.isLoading,
+    isError: usersQuery.isError,
+    error: usersQuery.error,
+    filter,
+    updateFilter,
+    refetch: usersQuery.refetch,
+  };
 }
 
-export function useUsers({ search, roleFilter, page = 1, pageSize = 10 }: UseUsersParams = {}) {
-  return useClientFetch(
-    ["users", search, roleFilter, page, pageSize],
-    "profiles",
-    {
-      columns: "*, auth.users!profiles.id(email, raw_app_meta_data, created_at, updated_at)",
-      filters: (query) => {
-        let filteredQuery = query
+/**
+ * Hook for fetching a single user's details
+ */
+export function useUserDetails(userId: string) {
+  return useQuery({
+    queryKey: ["admin", "user", userId],
+    queryFn: () => fetchUserDetails(userId),
+    staleTime: 1000 * 60, // 1 minute
+    enabled: !!userId,
+  });
+}
 
-        // Apply search filter if provided
-        if (search) {
-          filteredQuery = filteredQuery.or(
-            `display_name.ilike.%${search}%,phone_number.ilike.%${search}%,auth.users.email.ilike.%${search}%`,
-          )
-        }
+/**
+ * Hook for updating user role
+ */
+export function useUpdateUserRole() {
+  const queryClient = useQueryClient();
+  const { toast } = useSonnerToast();
 
-        // Apply role filter if provided
-        if (roleFilter) {
-          filteredQuery = filteredQuery.filter("auth.users.raw_app_meta_data->role", "eq", roleFilter)
-        }
-
-        return filteredQuery
-      },
-      pagination: {
-        page,
-        pageSize,
-      },
-      sort: [{ column: "created_at", ascending: false }],
-      count: "exact",
+  return useMutation({
+    mutationFn: async (params: UpdateUserRole) => {
+      const result = await updateUserRoleAction(params);
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      return result;
     },
-    {
-      select: (data) => {
-        // Transform the data to include role from raw_app_meta_data
-        const transformedData = {
-          ...data,
-          data: data.data
-            ? Array.isArray(data.data)
-              ? data.data.map((user) => ({
-                  ...user,
-                  email: user["auth.users"]?.email,
-                  role: user["auth.users"]?.raw_app_meta_data?.role || "authenticated",
-                  created_at: user["auth.users"]?.created_at || user.created_at,
-                  updated_at: user["auth.users"]?.updated_at || user.updated_at,
-                }))
-              : {
-                  ...data.data,
-                  email: data.data["auth.users"]?.email,
-                  role: data.data["auth.users"]?.raw_app_meta_data?.role || "authenticated",
-                  created_at: data.data["auth.users"]?.created_at || data.data.created_at,
-                  updated_at: data.data["auth.users"]?.updated_at || data.data.updated_at,
-                }
-            : null,
-        }
-        return transformedData
-      },
+    onSuccess: (_, variables) => {
+      // Invalidate related queries
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "user", variables.userId],
+      });
+
+      toast.success(
+        `Vai trò người dùng đã được cập nhật thành ${variables.role}`
+      );
     },
-  )
+    onError: (error) => {
+      toast.error("Không thể cập nhật vai trò người dùng", {
+        description: error.message,
+      });
+    },
+  });
+}
+
+/**
+ * Hook for updating user block status
+ */
+export function useUpdateUserBlockStatus() {
+  const queryClient = useQueryClient();
+  const { toast } = useSonnerToast();
+
+  return useMutation({
+    mutationFn: async (params: UpdateUserBlockStatus) => {
+      const result = await updateUserBlockStatusAction(params);
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      return result;
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate related queries
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "user", variables.userId],
+      });
+
+      toast.success(
+        variables.isBlocked ? "Người dùng đã bị chặn" : "Đã bỏ chặn người dùng"
+      );
+    },
+    onError: (error) => {
+      toast.error("Không thể thay đổi trạng thái của người dùng", {
+        description: error.message,
+      });
+    },
+  });
+}
+
+/**
+ * Hook for sending password reset email
+ */
+export function useSendPasswordReset() {
+  const { toast } = useSonnerToast();
+
+  return useMutation({
+    mutationFn: async (email: string) => {
+      const result = await sendPasswordResetAction(email);
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      return result;
+    },
+    onSuccess: () => {
+      toast.success("Đã gửi email đặt lại mật khẩu");
+    },
+    onError: (error) => {
+      toast.error("Không thể gửi email đặt lại mật khẩu", {
+        description: error.message,
+      });
+    },
+  });
 }

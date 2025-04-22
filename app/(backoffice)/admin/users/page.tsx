@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { UserManagement } from "@/features/admin/users/components/user-management";
+import { UsersPage } from "@/features/admin/users/components/users-page";
 import { AdminLayout } from "@/features/admin/shared/components/admin-layout";
 
 export const metadata: Metadata = {
@@ -7,10 +7,10 @@ export const metadata: Metadata = {
   description: "Quản lý người dùng trong hệ thống MyBeauty",
 };
 
-export default function UsersPage() {
+export default function AdminUsersPage() {
   return (
     <AdminLayout>
-      <UserManagement />
+      <UsersPage />
     </AdminLayout>
   );
 }
