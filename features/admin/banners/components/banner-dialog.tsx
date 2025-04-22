@@ -31,7 +31,17 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, RefreshCw } from "lucide-react";
+import {
+  CalendarIcon,
+  RefreshCw,
+  Link2Icon,
+  ImageIcon,
+  ListOrderedIcon,
+  TextIcon,
+  CalendarDaysIcon,
+  ToggleLeftIcon,
+  BookmarkIcon,
+} from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -42,6 +52,9 @@ import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { BannerImageUploader } from "./banner-image-uploader";
 import { extractPathFromImageUrl } from "../services";
 import { useBanners } from "../hooks/use-banners";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 
 // Define the form schema with Zod
 const bannerFormSchema = z
@@ -324,267 +337,354 @@ export function BannerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {mode === "create" ? "Thêm banner mới" : "Chỉnh sửa banner"}
-          </DialogTitle>
-          <DialogDescription>
-            {mode === "create"
-              ? "Thêm một banner mới vào hệ thống."
-              : "Chỉnh sửa thông tin banner."}
-          </DialogDescription>
+      <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto p-0">
+        <DialogHeader className="px-4 pt-5 pb-2">
+          <div className="flex items-center">
+            <div className="mr-2">
+              {mode === "create" ? (
+                <BookmarkIcon className="h-5 w-5 text-primary" />
+              ) : (
+                <TextIcon className="h-5 w-5 text-amber-500" />
+              )}
+            </div>
+            <div>
+              <DialogTitle className="text-xl">
+                {mode === "create" ? "Thêm banner mới" : "Chỉnh sửa banner"}
+              </DialogTitle>
+              <DialogDescription className="text-sm mt-1">
+                {mode === "create"
+                  ? "Thêm một banner mới vào hệ thống"
+                  : "Chỉnh sửa thông tin banner"}
+              </DialogDescription>
+            </div>
+          </div>
+          {mode === "edit" && banner && (
+            <Badge
+              variant={banner.is_active ? "default" : "outline"}
+              className="ml-auto"
+            >
+              {banner.is_active ? "Đang hiển thị" : "Không hiển thị"}
+            </Badge>
+          )}
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tiêu đề</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Nhập tiêu đề banner" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+        <Separator />
 
-                <FormField
-                  control={form.control}
-                  name="subtitle"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tiêu đề phụ</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Nhập tiêu đề phụ (tùy chọn)"
-                          className="resize-none h-20"
-                          {...field}
-                          value={field.value || ""}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+        <div className="px-4 py-3">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                {/* Column 1: Form fields */}
+                <div className="lg:col-span-7 space-y-3">
+                  <Card className="border-muted/40">
+                    <CardContent className="p-3 space-y-3">
+                      <div className="flex items-center gap-1 mb-1 text-sm font-medium">
+                        <TextIcon className="h-4 w-4 text-muted-foreground" />
+                        <span>Thông tin cơ bản</span>
+                      </div>
 
-                <FormField
-                  control={form.control}
-                  name="link_url"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Liên kết</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="https://example.com/page"
-                          {...field}
-                          value={field.value || ""}
-                        />
-                      </FormControl>
-                      <FormDescription className="text-xs">
-                        Liên kết khi người dùng nhấp vào banner (tùy chọn)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                      <FormField
+                        control={form.control}
+                        name="title"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-medium">
+                              Tiêu đề
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Nhập tiêu đề banner"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="display_order"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Thứ tự hiển thị</FormLabel>
-                        <div className="flex space-x-1">
-                          <FormControl>
-                            <Input type="number" min="0" step="1" {...field} />
-                          </FormControl>
-                          {mode === "create" && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              onClick={handleGenerateNextOrder}
-                              title="Tạo thứ tự tiếp theo"
-                              className="flex-shrink-0"
-                            >
-                              <RefreshCw className="h-4 w-4" />
-                            </Button>
+                      <FormField
+                        control={form.control}
+                        name="subtitle"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-medium">
+                              Tiêu đề phụ
+                            </FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Nhập tiêu đề phụ (tùy chọn)"
+                                className="resize-none h-16"
+                                {...field}
+                                value={field.value || ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="link_url"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-medium">
+                              <div className="flex items-center gap-1.5">
+                                <Link2Icon className="h-3.5 w-3.5" />
+                                <span>Liên kết</span>
+                              </div>
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="https://example.com/page"
+                                {...field}
+                                value={field.value || ""}
+                              />
+                            </FormControl>
+                            <FormDescription className="text-xs">
+                              Liên kết khi người dùng nhấp vào banner
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-muted/40">
+                    <CardContent className="p-3 space-y-3">
+                      <div className="flex items-center gap-1 mb-1 text-sm font-medium">
+                        <CalendarDaysIcon className="h-4 w-4 text-muted-foreground" />
+                        <span>Thời gian & Thứ tự</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField
+                          control={form.control}
+                          name="start_date"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                              <FormLabel className="font-medium">
+                                Bắt đầu
+                              </FormLabel>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant={"outline"}
+                                      className={cn(
+                                        "w-full pl-2 text-left font-normal text-xs md:text-sm",
+                                        !field.value && "text-muted-foreground"
+                                      )}
+                                    >
+                                      {field.value
+                                        ? format(field.value, "dd/MM/yyyy", {
+                                            locale: vi,
+                                          })
+                                        : "Không giới hạn"}
+                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  className="w-auto p-0"
+                                  align="start"
+                                >
+                                  <Calendar
+                                    mode="single"
+                                    selected={field.value || undefined}
+                                    onSelect={(date) => field.onChange(date)}
+                                    disabled={(date) =>
+                                      date < new Date("1900-01-01")
+                                    }
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                              <FormMessage />
+                            </FormItem>
                           )}
-                        </div>
-                        <FormDescription className="text-xs">
-                          Số nhỏ hơn hiển thị trước
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="is_active"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col justify-between">
-                        <FormLabel>Trạng thái</FormLabel>
-                        <div className="flex items-center justify-between rounded-lg border p-2 shadow-sm">
-                          <FormDescription className="text-xs m-0">
-                            Hiển thị banner
-                          </FormDescription>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <FormField
-                    control={form.control}
-                    name="start_date"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Ngày bắt đầu</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={cn(
-                                  "w-full pl-2 text-left font-normal text-xs md:text-sm",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value
-                                  ? format(field.value, "dd/MM/yyyy", {
-                                      locale: vi,
-                                    })
-                                  : "Không giới hạn"}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value || undefined}
-                              onSelect={(date) => field.onChange(date)}
-                              disabled={(date) => date < new Date("1900-01-01")}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormDescription className="text-xs">
-                          Ngày bắt đầu hiển thị
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="end_date"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Ngày kết thúc</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={cn(
-                                  "w-full pl-2 text-left font-normal text-xs md:text-sm",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value
-                                  ? format(field.value, "dd/MM/yyyy", {
-                                      locale: vi,
-                                    })
-                                  : "Không giới hạn"}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value || undefined}
-                              onSelect={(date) => field.onChange(date)}
-                              disabled={(date) => date < new Date("1900-01-01")}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormDescription className="text-xs">
-                          Ngày kết thúc hiển thị
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <FormField
-                  control={form.control}
-                  name="image_url"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Hình ảnh</FormLabel>
-                      <FormControl>
-                        <BannerImageUploader
-                          initialImageUrl={field.value}
-                          bannerId={mode === "edit" ? banner?.id : undefined}
-                          onChange={handleImageChange}
                         />
-                      </FormControl>
-                      <FormDescription className="text-xs text-center mt-2">
-                        Hỗ trợ JPG, PNG, GIF, WEBP (tối đa 5MB)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
 
-            <DialogFooter className="pt-2 sm:justify-between gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                className="sm:w-auto w-full"
-              >
-                Hủy
-              </Button>
-              <Button
-                type="submit"
-                disabled={isProcessing}
-                className="sm:w-auto w-full"
-              >
-                {isProcessing
-                  ? "Đang xử lý..."
-                  : mode === "create"
-                  ? "Tạo banner"
-                  : "Cập nhật banner"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+                        <FormField
+                          control={form.control}
+                          name="end_date"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                              <FormLabel className="font-medium">
+                                Kết thúc
+                              </FormLabel>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant={"outline"}
+                                      className={cn(
+                                        "w-full pl-2 text-left font-normal text-xs md:text-sm",
+                                        !field.value && "text-muted-foreground"
+                                      )}
+                                    >
+                                      {field.value
+                                        ? format(field.value, "dd/MM/yyyy", {
+                                            locale: vi,
+                                          })
+                                        : "Không giới hạn"}
+                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  className="w-auto p-0"
+                                  align="start"
+                                >
+                                  <Calendar
+                                    mode="single"
+                                    selected={field.value || undefined}
+                                    onSelect={(date) => field.onChange(date)}
+                                    disabled={(date) =>
+                                      date < new Date("1900-01-01")
+                                    }
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField
+                          control={form.control}
+                          name="display_order"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="font-medium">
+                                <div className="flex items-center gap-1.5">
+                                  <ListOrderedIcon className="h-3.5 w-3.5" />
+                                  <span>Thứ tự</span>
+                                </div>
+                              </FormLabel>
+                              <div className="flex space-x-1">
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                {mode === "create" && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={handleGenerateNextOrder}
+                                    title="Tạo thứ tự tiếp theo"
+                                    className="flex-shrink-0"
+                                  >
+                                    <RefreshCw className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                              <FormDescription className="text-xs">
+                                Số nhỏ hiển thị trước
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="is_active"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                              <FormLabel className="font-medium">
+                                <div className="flex items-center gap-1.5">
+                                  <ToggleLeftIcon className="h-3.5 w-3.5" />
+                                  <span>Trạng thái</span>
+                                </div>
+                              </FormLabel>
+                              <div className="flex items-center space-x-2 rounded-lg border p-2 shadow-sm h-[38px]">
+                                <FormDescription className="text-xs m-0 flex-1">
+                                  Hiển thị banner
+                                </FormDescription>
+                                <FormControl>
+                                  <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Column 2: Image upload */}
+                <div className="lg:col-span-5">
+                  <Card className="border-muted/40 h-full">
+                    <CardContent className="p-3 flex flex-col justify-between h-full">
+                      <div>
+                        <div className="flex items-center gap-1 mb-3 text-sm font-medium">
+                          <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                          <span>Hình ảnh banner</span>
+                        </div>
+
+                        <FormField
+                          control={form.control}
+                          name="image_url"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <BannerImageUploader
+                                  initialImageUrl={field.value}
+                                  bannerId={
+                                    mode === "edit" ? banner?.id : undefined
+                                  }
+                                  onChange={handleImageChange}
+                                />
+                              </FormControl>
+                              <FormDescription className="text-xs text-center mt-2">
+                                Hỗ trợ JPG, PNG, GIF, WEBP (tối đa 5MB)
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              <DialogFooter className="mt-4 sm:justify-between gap-3 px-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isProcessing}
+                >
+                  Hủy
+                </Button>
+                <Button type="submit" disabled={isProcessing}>
+                  {isProcessing && (
+                    <div className="mr-2">
+                      <div className="h-4 w-4 border-t-2 border-r-2 border-white rounded-full animate-spin" />
+                    </div>
+                  )}
+                  {mode === "create" ? "Tạo banner" : "Cập nhật banner"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </div>
       </DialogContent>
     </Dialog>
   );
