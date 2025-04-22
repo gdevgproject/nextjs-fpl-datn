@@ -324,7 +324,7 @@ export function BannerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {mode === "create" ? "Thêm banner mới" : "Chỉnh sửa banner"}
@@ -337,9 +337,9 @@ export function BannerDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+              <div className="space-y-4">
                 <FormField
                   control={form.control}
                   name="title"
@@ -363,7 +363,7 @@ export function BannerDialog({
                       <FormControl>
                         <Textarea
                           placeholder="Nhập tiêu đề phụ (tùy chọn)"
-                          className="resize-none"
+                          className="resize-none h-20"
                           {...field}
                           value={field.value || ""}
                         />
@@ -386,7 +386,7 @@ export function BannerDialog({
                           value={field.value || ""}
                         />
                       </FormControl>
-                      <FormDescription>
+                      <FormDescription className="text-xs">
                         Liên kết khi người dùng nhấp vào banner (tùy chọn)
                       </FormDescription>
                       <FormMessage />
@@ -394,84 +394,62 @@ export function BannerDialog({
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="display_order"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Thứ tự hiển thị</FormLabel>
-                      <div className="flex space-x-2">
-                        <FormControl>
-                          <Input type="number" min="0" step="1" {...field} />
-                        </FormControl>
-                        {mode === "create" && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={handleGenerateNextOrder}
-                            title="Tạo thứ tự tiếp theo"
-                          >
-                            <RefreshCw className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                      <FormDescription>
-                        Số nhỏ hơn sẽ hiển thị trước. Mỗi banner phải có thứ tự
-                        hiển thị duy nhất.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="is_active"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                      <div className="space-y-0.5">
-                        <FormLabel>Trạng thái</FormLabel>
-                        <FormDescription>
-                          Banner có được hiển thị hay không
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="display_order"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Thứ tự hiển thị</FormLabel>
+                        <div className="flex space-x-1">
+                          <FormControl>
+                            <Input type="number" min="0" step="1" {...field} />
+                          </FormControl>
+                          {mode === "create" && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              onClick={handleGenerateNextOrder}
+                              title="Tạo thứ tự tiếp theo"
+                              className="flex-shrink-0"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <FormDescription className="text-xs">
+                          Số nhỏ hơn hiển thị trước
                         </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <div className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="image_url"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Hình ảnh</FormLabel>
-                      <FormControl>
-                        <BannerImageUploader
-                          initialImageUrl={field.value}
-                          bannerId={mode === "edit" ? banner?.id : undefined}
-                          onChange={handleImageChange}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Tải lên hình ảnh banner. Hỗ trợ định dạng JPG, PNG, GIF,
-                        WEBP.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="is_active"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col justify-between">
+                        <FormLabel>Trạng thái</FormLabel>
+                        <div className="flex items-center justify-between rounded-lg border p-2 shadow-sm">
+                          <FormDescription className="text-xs m-0">
+                            Hiển thị banner
+                          </FormDescription>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3 pt-1">
                   <FormField
                     control={form.control}
                     name="start_date"
@@ -484,7 +462,7 @@ export function BannerDialog({
                               <Button
                                 variant={"outline"}
                                 className={cn(
-                                  "w-full pl-3 text-left font-normal",
+                                  "w-full pl-2 text-left font-normal text-xs md:text-sm",
                                   !field.value && "text-muted-foreground"
                                 )}
                               >
@@ -507,8 +485,8 @@ export function BannerDialog({
                             />
                           </PopoverContent>
                         </Popover>
-                        <FormDescription>
-                          Ngày bắt đầu hiển thị banner
+                        <FormDescription className="text-xs">
+                          Ngày bắt đầu hiển thị
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -527,7 +505,7 @@ export function BannerDialog({
                               <Button
                                 variant={"outline"}
                                 className={cn(
-                                  "w-full pl-3 text-left font-normal",
+                                  "w-full pl-2 text-left font-normal text-xs md:text-sm",
                                   !field.value && "text-muted-foreground"
                                 )}
                               >
@@ -550,8 +528,8 @@ export function BannerDialog({
                             />
                           </PopoverContent>
                         </Popover>
-                        <FormDescription>
-                          Ngày kết thúc hiển thị banner
+                        <FormDescription className="text-xs">
+                          Ngày kết thúc hiển thị
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -559,17 +537,45 @@ export function BannerDialog({
                   />
                 </div>
               </div>
+
+              <div>
+                <FormField
+                  control={form.control}
+                  name="image_url"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Hình ảnh</FormLabel>
+                      <FormControl>
+                        <BannerImageUploader
+                          initialImageUrl={field.value}
+                          bannerId={mode === "edit" ? banner?.id : undefined}
+                          onChange={handleImageChange}
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs text-center mt-2">
+                        Hỗ trợ JPG, PNG, GIF, WEBP (tối đa 5MB)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="pt-2 sm:justify-between gap-3">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
+                className="sm:w-auto w-full"
               >
                 Hủy
               </Button>
-              <Button type="submit" disabled={isProcessing}>
+              <Button
+                type="submit"
+                disabled={isProcessing}
+                className="sm:w-auto w-full"
+              >
                 {isProcessing
                   ? "Đang xử lý..."
                   : mode === "create"
