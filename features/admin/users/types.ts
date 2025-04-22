@@ -52,6 +52,10 @@ export type UpdateUserRole = z.infer<typeof UpdateUserRoleSchema>;
 export const UpdateUserBlockStatusSchema = z.object({
   userId: z.string().uuid(),
   isBlocked: z.boolean(),
+  banDuration: z
+    .enum(["permanent", "1day", "7days", "30days", "custom"])
+    .optional(),
+  customDuration: z.number().int().positive().optional(),
 });
 
 export type UpdateUserBlockStatus = z.infer<typeof UpdateUserBlockStatusSchema>;

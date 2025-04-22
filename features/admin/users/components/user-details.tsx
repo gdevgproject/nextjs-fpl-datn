@@ -64,6 +64,11 @@ export function UserDetails({ user }: UserDetailsProps) {
   const [isUnblockDialogOpen, setIsUnblockDialogOpen] = useState(false);
   const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] =
     useState(false);
+  const [banDuration, setBanDuration] = useState<
+    "permanent" | "1day" | "7days" | "30days" | "custom"
+  >("permanent");
+  const [customDuration, setCustomDuration] = useState<number>(1);
+
   const updateUserRole = useUpdateUserRole();
   const updateUserBlockStatus = useUpdateUserBlockStatus();
   const sendPasswordReset = useSendPasswordReset();
@@ -82,8 +87,13 @@ export function UserDetails({ user }: UserDetailsProps) {
     updateUserBlockStatus.mutate({
       userId: user.id,
       isBlocked: true,
+      banDuration: banDuration,
+      customDuration: banDuration === "custom" ? customDuration : undefined,
     });
     setIsBlockDialogOpen(false);
+    // Reset the ban duration after blocking
+    setBanDuration("permanent");
+    setCustomDuration(1);
   };
 
   const handleUnblockUser = () => {
@@ -519,6 +529,40 @@ export function UserDetails({ user }: UserDetailsProps) {
               nhập hoặc truy cập tài khoản cho đến khi được bỏ chặn.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Thời gian chặn</p>
+            <Select
+              value={banDuration}
+              onValueChange={(value) =>
+                setBanDuration(
+                  value as "permanent" | "1day" | "7days" | "30days" | "custom"
+                )
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Chọn thời gian chặn" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="permanent">Vĩnh viễn</SelectItem>
+                <SelectItem value="1day">1 ngày</SelectItem>
+                <SelectItem value="7days">7 ngày</SelectItem>
+                <SelectItem value="30days">30 ngày</SelectItem>
+                <SelectItem value="custom">Tùy chỉnh</SelectItem>
+              </SelectContent>
+            </Select>
+            {banDuration === "custom" && (
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Số ngày</p>
+                <input
+                  type="number"
+                  value={customDuration}
+                  onChange={(e) => setCustomDuration(Number(e.target.value))}
+                  className="w-full border rounded-md p-2"
+                  min={1}
+                />
+              </div>
+            )}
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction

@@ -52,10 +52,37 @@ export async function updateUserBlockStatusAction(
   try {
     const supabase = await createServiceRoleClient();
 
-    // Update user ban status
-    const { error } = await supabase.auth.admin.updateUserById(params.userId, {
-      banned: params.isBlocked,
-    });
+    // Determine ban_duration string per Supabase Admin API
+    let banDurationStr: string;
+    if (params.isBlocked) {
+      switch (params.banDuration) {
+        case "1day":
+          banDurationStr = "24h";
+          break;
+        case "7days":
+          banDurationStr = "168h";
+          break;
+        case "30days":
+          banDurationStr = "720h";
+          break;
+        case "custom":
+          banDurationStr = `${params.customDuration! * 24}h`;
+          break;
+        case "permanent":
+        default:
+          // Use a long duration (e.g. 10 years)
+          banDurationStr = "87600h";
+      }
+    } else {
+      // 'none' to clear ban
+      banDurationStr = "none";
+    }
+
+    // Call Supabase Admin API with ban_duration
+    const { data: user, error } = await supabase.auth.admin.updateUserById(
+      params.userId,
+      { ban_duration: banDurationStr }
+    );
 
     if (error) {
       return createErrorResponse(error.message);
@@ -63,9 +90,11 @@ export async function updateUserBlockStatusAction(
 
     // Log the action
     await supabase.from("admin_activity_log").insert({
-      admin_id: params.userId, // This should be the current admin's ID in production
+      admin_id: params.userId, // replace with actual admin id in production
       action_type: params.isBlocked ? "block_user" : "unblock_user",
-      action_details: params.isBlocked ? "User blocked" : "User unblocked",
+      action_details: params.isBlocked
+        ? `Blocked for ${banDurationStr}`
+        : "User unblocked",
       entity_type: "user",
       entity_id: params.userId,
     });
@@ -74,7 +103,12 @@ export async function updateUserBlockStatusAction(
     revalidatePath("/admin/users");
     revalidatePath(`/admin/users/${params.userId}`);
 
-    return createSuccessResponse();
+    return createSuccessResponse({
+      message: params.isBlocked
+        ? `User blocked until ${user!.banned_until}`
+        : "User unblocked",
+      bannedUntil: user!.banned_until,
+    });
   } catch (error) {
     return createErrorResponse(error);
   }

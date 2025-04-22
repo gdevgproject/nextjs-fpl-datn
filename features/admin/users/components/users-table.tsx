@@ -67,6 +67,8 @@ export function UsersTable({
     userId: string;
     action: "block" | "unblock" | null;
   }>({ userId: "", action: null });
+  const [banDuration, setBanDuration] = useState<"permanent" | "1day" | "7days" | "30days" | "custom">("permanent");
+  const [customDuration, setCustomDuration] = useState<number>(1);
 
   const updateUserRole = useUpdateUserRole();
   const updateUserBlockStatus = useUpdateUserBlockStatus();
@@ -104,9 +106,14 @@ export function UsersTable({
       updateUserBlockStatus.mutate({
         userId: userToUpdate.userId,
         isBlocked: true,
+        banDuration: banDuration,
+        customDuration: banDuration === "custom" ? customDuration : undefined,
       });
     }
     setUserToUpdate({ userId: "", action: null });
+    // Reset the ban duration after blocking
+    setBanDuration("permanent");
+    setCustomDuration(1);
   };
 
   const handleUnblockUser = () => {
@@ -359,6 +366,38 @@ export function UsersTable({
               Bạn có chắc chắn muốn chặn người dùng này? Họ sẽ không thể đăng nhập hoặc truy cập tài khoản cho đến khi được bỏ chặn.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Thời gian chặn</p>
+            <Select
+              value={banDuration}
+              onValueChange={(value) =>
+                setBanDuration(value as "permanent" | "1day" | "7days" | "30days" | "custom")
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Chọn thời gian chặn" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="permanent">Vĩnh viễn</SelectItem>
+                <SelectItem value="1day">1 ngày</SelectItem>
+                <SelectItem value="7days">7 ngày</SelectItem>
+                <SelectItem value="30days">30 ngày</SelectItem>
+                <SelectItem value="custom">Tùy chỉnh</SelectItem>
+              </SelectContent>
+            </Select>
+            {banDuration === "custom" && (
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Số ngày</p>
+                <input
+                  type="number"
+                  value={customDuration}
+                  onChange={(e) => setCustomDuration(Number(e.target.value))}
+                  className="w-full border rounded-md p-2"
+                  min={1}
+                />
+              </div>
+            )}
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction

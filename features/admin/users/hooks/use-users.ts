@@ -123,16 +123,57 @@ export function useUpdateUserBlockStatus() {
       }
       return result;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       // Invalidate related queries
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
       queryClient.invalidateQueries({
         queryKey: ["admin", "user", variables.userId],
       });
 
-      toast.success(
-        variables.isBlocked ? "Người dùng đã bị chặn" : "Đã bỏ chặn người dùng"
-      );
+      // Show appropriate success message based on the action
+      if (variables.isBlocked) {
+        let message = "Người dùng đã bị chặn";
+
+        if (variables.banDuration) {
+          switch (variables.banDuration) {
+            case "1day":
+              message = "Người dùng đã bị chặn trong 1 ngày";
+              break;
+            case "7days":
+              message = "Người dùng đã bị chặn trong 7 ngày";
+              break;
+            case "30days":
+              message = "Người dùng đã bị chặn trong 30 ngày";
+              break;
+            case "custom":
+              if (variables.customDuration) {
+                message = `Người dùng đã bị chặn trong ${variables.customDuration} ngày`;
+              }
+              break;
+            default:
+              message = "Người dùng đã bị chặn vĩnh viễn";
+          }
+        }
+
+        toast.success(message, {
+          description: data?.data?.bannedUntil
+            ? `Chặn đến: ${new Date(data.data.bannedUntil).toLocaleDateString(
+                "vi-VN",
+                {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }
+              )}`
+            : "Chặn vĩnh viễn",
+        });
+      } else {
+        toast.success("Đã bỏ chặn người dùng", {
+          description: "Người dùng có thể đăng nhập lại bình thường",
+        });
+      }
     },
     onError: (error) => {
       toast.error("Không thể thay đổi trạng thái của người dùng", {
