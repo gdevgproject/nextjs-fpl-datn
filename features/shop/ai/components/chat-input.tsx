@@ -1,51 +1,51 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useRef, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Send, Plus } from "lucide-react"
-import { useChatContext } from "./chat-provider"
-import { cn } from "@/shared/lib/utils"
+import type React from "react";
+import { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Send, Plus } from "lucide-react";
+import { useChatContext } from "./chat-provider";
+import { cn } from "@/lib/utils";
 
 export function ChatInput() {
-  const [input, setInput] = useState("")
-  const { sendMessage, isLoading, resetChat, messages } = useChatContext()
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const CHARACTER_LIMIT = 500
+  const [input, setInput] = useState("");
+  const { sendMessage, isLoading, resetChat, messages } = useChatContext();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const CHARACTER_LIMIT = 500;
 
   // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = "auto"
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
-  }, [input])
+  }, [input]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim() || isLoading) return
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
 
-    await sendMessage(input)
-    setInput("")
-  }
+    await sendMessage(input);
+    setInput("");
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      handleSubmit(e)
+      e.preventDefault();
+      handleSubmit(e);
     }
-  }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value
+    const value = e.target.value;
     if (value.length <= CHARACTER_LIMIT) {
-      setInput(value)
+      setInput(value);
     } else {
       // Truncate the input if it exceeds the limit
-      setInput(value.substring(0, CHARACTER_LIMIT))
+      setInput(value.substring(0, CHARACTER_LIMIT));
     }
-  }
+  };
 
   return (
     <div className="border-t bg-background p-4">
@@ -57,7 +57,7 @@ export function ChatInput() {
           placeholder="Hỏi về nước hoa..."
           className={cn(
             "min-h-[60px] max-h-[200px] resize-none",
-            input.length > CHARACTER_LIMIT ? "border-red-500" : "",
+            input.length > CHARACTER_LIMIT ? "border-red-500" : ""
           )}
           disabled={isLoading}
           maxLength={CHARACTER_LIMIT}
@@ -75,7 +75,12 @@ export function ChatInput() {
             <Plus className="h-4 w-4" />
             <span className="sr-only">Bắt đầu cuộc trò chuyện mới</span>
           </Button>
-          <Button type="submit" size="icon" disabled={isLoading || !input.trim()} className="h-9 w-9">
+          <Button
+            type="submit"
+            size="icon"
+            disabled={isLoading || !input.trim()}
+            className="h-9 w-9"
+          >
             <Send className="h-4 w-4" />
             <span className="sr-only">Gửi</span>
           </Button>
@@ -85,5 +90,5 @@ export function ChatInput() {
         {input.length}/{CHARACTER_LIMIT}
       </p>
     </div>
-  )
+  );
 }

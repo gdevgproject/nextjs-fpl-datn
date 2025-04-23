@@ -1,16 +1,16 @@
-import type { Message } from "../types"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { cn } from "@/shared/lib/utils"
-import { Bot, User } from "lucide-react"
-import ReactMarkdown from "react-markdown"
-import remarkGfm from "remark-gfm"
+import type { Message } from "../types";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
+import { Bot, User } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface MessageBubbleProps {
-  message: Message
+  message: Message;
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
-  const isUser = message.role === "user"
+  const isUser = message.role === "user";
 
   return (
     <div
@@ -30,7 +30,9 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       <div
         className={cn(
           "flex max-w-[80%] flex-col gap-2 rounded-lg px-4 py-3",
-          isUser ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground dark:bg-muted/70",
+          isUser
+            ? "bg-primary text-primary-foreground"
+            : "bg-muted text-muted-foreground dark:bg-muted/70"
         )}
       >
         <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -51,7 +53,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           </ReactMarkdown>
         </div>
         <div className="text-xs opacity-50">
-          {message.createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          {message.createdAt.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
         </div>
       </div>
 
@@ -64,5 +69,5 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         </Avatar>
       )}
     </div>
-  )
+  );
 }

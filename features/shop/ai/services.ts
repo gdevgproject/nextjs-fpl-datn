@@ -1,10 +1,10 @@
-import type { AIProduct, Message } from "./types"
+import type { AIProduct, Message } from "./types";
 
 /**
  * Generate a system prompt with product information
  */
 export function generateSystemPrompt(products: AIProduct[]): string {
-  const baseUrl = "http://localhost:3000" // Define the base URL
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"; // Define the base URL
   const productInfo = products
     .map(
       (p) => `
@@ -13,14 +13,16 @@ Name: ${p.name}
 Brand: ${p.brand_name || "Unknown"}
 Gender: ${p.gender_name || "Unisex"}
 Concentration: ${p.concentration_name || "N/A"}
-Price: ${p.price.toLocaleString("vi-VN")}đ${p.sale_price ? ` (Sale: ${p.sale_price.toLocaleString("vi-VN")}đ)` : ""}
+Price: ${p.price.toLocaleString("vi-VN")}đ${
+        p.sale_price ? ` (Sale: ${p.sale_price.toLocaleString("vi-VN")}đ)` : ""
+      }
 Volume: ${p.volume_ml}ml
 Description: ${p.short_description || "No description available"}
 Scents: ${p.scents.join(", ") || "Not specified"}
 URL: ${baseUrl}/san-pham/${p.slug}
-`,
+`
     )
-    .join("\n---\n")
+    .join("\n---\n");
 
   return `You are an AI beauty advisor for MyBeauty, a Vietnamese perfume e-commerce store.
 Your primary role is to assist customers in finding the perfect perfume based on their preferences, questions, and needs.
@@ -48,7 +50,7 @@ Here's information about our current product catalog:
 ${productInfo}
 
 Remember to always prioritize the customer's needs and provide accurate, helpful, and engaging recommendations.
-`
+`;
 }
 
 /**
@@ -58,7 +60,7 @@ export function formatMessagesForGroq(messages: Message[]): any[] {
   return messages.map((message) => ({
     role: message.role,
     content: message.content,
-  }))
+  }));
 }
 
 /**
@@ -66,36 +68,39 @@ export function formatMessagesForGroq(messages: Message[]): any[] {
  */
 export async function generateAIResponse(messages: any[]): Promise<string> {
   try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "llama3-8b-8192", // Using Llama 3 8B model which is free and powerful
-        messages,
-        temperature: 0.7,
-        max_tokens: 1024,
-      }),
-    })
+    const response = await fetch(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "llama3-8b-8192", // Using Llama 3 8B model which is free and powerful
+          messages,
+          temperature: 0.7,
+          max_tokens: 1024,
+        }),
+      }
+    );
 
     if (!response.ok) {
-      const errorData = await response.json()
-      const errorMessage = errorData.error?.message || response.statusText
+      const errorData = await response.json();
+      const errorMessage = errorData.error?.message || response.statusText;
       if (errorMessage.includes("Rate limit reached")) {
-        throw new Error("Rate limit exceeded. Please try again later.")
+        throw new Error("Rate limit exceeded. Please try again later.");
       }
-      throw new Error(`Groq API error: ${errorMessage}`)
+      throw new Error(`Groq API error: ${errorMessage}`);
     }
 
-    const data = await response.json()
-    return data.choices[0].message.content
+    const data = await response.json();
+    return data.choices[0].message.content;
   } catch (error: any) {
-    console.error("Error calling Groq API:", error)
+    console.error("Error calling Groq API:", error);
     if (error.message.includes("Rate limit exceeded")) {
-      throw new Error("Groq API đang quá tải. Vui lòng thử lại sau.")
+      throw new Error("Groq API đang quá tải. Vui lòng thử lại sau.");
     }
-    throw new Error("Failed to generate AI response")
+    throw new Error("Failed to generate AI response");
   }
 }
