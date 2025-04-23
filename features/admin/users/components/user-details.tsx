@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo, Suspense, lazy } from "react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import {
@@ -18,6 +18,7 @@ import {
   Heart,
   RefreshCcw,
   AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -55,12 +56,27 @@ import {
 } from "../hooks/use-users";
 import { formatPhoneNumber } from "@/lib/utils/format";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// Lazy load tab contents for better performance
+const UserAddressesTab = lazy(() => import("./user-tabs/user-addresses-tab"));
+const UserOrdersTab = lazy(() => import("./user-tabs/user-orders-tab"));
+const UserReviewsTab = lazy(() => import("./user-tabs/user-reviews-tab"));
+const UserWishlistsTab = lazy(() => import("./user-tabs/user-wishlists-tab"));
+
+// Render loading fallback for suspense
+const TabLoadingFallback = () => (
+  <div className="flex items-center justify-center py-12">
+    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+  </div>
+);
 
 interface UserDetailsProps {
   user: any; // Detailed user object with all related data
+  isFetching?: boolean;
 }
 
-export function UserDetails({ user }: UserDetailsProps) {
+function UserDetailsComponent({ user, isFetching = false }: UserDetailsProps) {
   const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false);
   const [isUnblockDialogOpen, setIsUnblockDialogOpen] = useState(false);
   const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] =
@@ -69,6 +85,7 @@ export function UserDetails({ user }: UserDetailsProps) {
     "permanent" | "1day" | "7days" | "30days" | "custom"
   >("permanent");
   const [customDuration, setCustomDuration] = useState<number>(1);
+  const [activeTab, setActiveTab] = useState("addresses");
 
   const updateUserRole = useUpdateUserRole();
   const updateUserBlockStatus = useUpdateUserBlockStatus();
@@ -131,6 +148,11 @@ export function UserDetails({ user }: UserDetailsProps) {
     return "success";
   };
 
+  // Handle tab change with dynamic loading
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+  };
+
   return (
     <div className="space-y-6">
       {/* Basic User Info Card */}
@@ -145,7 +167,9 @@ export function UserDetails({ user }: UserDetailsProps) {
           <div className="flex flex-col md:flex-row gap-6">
             <div className="flex flex-col items-center md:items-start gap-3 md:w-1/3">
               <Avatar className="h-24 w-24">
-                {user.avatar_url ? (
+                {isFetching ? (
+                  <Skeleton className="h-full w-full rounded-full" />
+                ) : user.avatar_url ? (
                   <AvatarImage
                     src={user.avatar_url}
                     alt={user.display_name || ""}
@@ -160,10 +184,20 @@ export function UserDetails({ user }: UserDetailsProps) {
               </Avatar>
 
               <h3 className="text-xl font-semibold">
-                {user.display_name || user.email.split("@")[0]}
+                {isFetching ? (
+                  <Skeleton className="h-6 w-32" />
+                ) : (
+                  user.display_name || user.email.split("@")[0]
+                )}
               </h3>
 
-              <Badge variant={getUserStatusVariant()}>{getUserStatus()}</Badge>
+              {isFetching ? (
+                <Skeleton className="h-6 w-20" />
+              ) : (
+                <Badge variant={getUserStatusVariant()}>
+                  {getUserStatus()}
+                </Badge>
+              )}
             </div>
 
             <div className="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -171,7 +205,7 @@ export function UserDetails({ user }: UserDetailsProps) {
                 <p className="text-sm text-muted-foreground">Email</p>
                 <p className="flex items-center gap-2">
                   <Mail className="h-4 w-4 text-muted-foreground" />
-                  {user.email}
+                  {isFetching ? <Skeleton className="h-4 w-32" /> : user.email}
                 </p>
               </div>
 
@@ -179,9 +213,13 @@ export function UserDetails({ user }: UserDetailsProps) {
                 <p className="text-sm text-muted-foreground">Số điện thoại</p>
                 <p className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
-                  {user.phone_number
-                    ? formatPhoneNumber(user.phone_number)
-                    : "Chưa cung cấp"}
+                  {isFetching ? (
+                    <Skeleton className="h-4 w-24" />
+                  ) : user.phone_number ? (
+                    formatPhoneNumber(user.phone_number)
+                  ) : (
+                    "Chưa cung cấp"
+                  )}
                 </p>
               </div>
 
@@ -191,7 +229,11 @@ export function UserDetails({ user }: UserDetailsProps) {
                 </p>
                 <p className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
-                  {formatDate(user.created_at)}
+                  {isFetching ? (
+                    <Skeleton className="h-4 w-32" />
+                  ) : (
+                    formatDate(user.created_at)
+                  )}
                 </p>
               </div>
 
@@ -201,37 +243,49 @@ export function UserDetails({ user }: UserDetailsProps) {
                 </p>
                 <p className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  {user.last_sign_in_at
-                    ? formatDate(user.last_sign_in_at)
-                    : "Chưa đăng nhập"}
+                  {isFetching ? (
+                    <Skeleton className="h-4 w-32" />
+                  ) : user.last_sign_in_at ? (
+                    formatDate(user.last_sign_in_at)
+                  ) : (
+                    "Chưa đăng nhập"
+                  )}
                 </p>
               </div>
 
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Vai trò</p>
                 <div className="mt-1">
-                  <Select
-                    value={user.role || "user"}
-                    onValueChange={handleRoleChange}
-                    disabled={updateUserRole.isPending}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Chọn vai trò" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="user">User</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="staff">Staff</SelectItem>
-                      <SelectItem value="shipper">Shipper</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {isFetching ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : (
+                    <Select
+                      value={user.role || "user"}
+                      onValueChange={handleRoleChange}
+                      disabled={updateUserRole.isPending}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Chọn vai trò" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="user">User</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="staff">Staff</SelectItem>
+                        <SelectItem value="shipper">Shipper</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Giới tính</p>
                 <p className="flex items-center gap-2">
-                  {user.gender || "Chưa cung cấp"}
+                  {isFetching ? (
+                    <Skeleton className="h-4 w-16" />
+                  ) : (
+                    user.gender || "Chưa cung cấp"
+                  )}
                 </p>
               </div>
             </div>
@@ -239,7 +293,12 @@ export function UserDetails({ user }: UserDetailsProps) {
         </CardContent>
         <CardFooter>
           <div className="flex flex-wrap gap-2">
-            {user.is_blocked ? (
+            {isFetching ? (
+              <>
+                <Skeleton className="h-10 w-40" />
+                <Skeleton className="h-10 w-56" />
+              </>
+            ) : user.is_blocked ? (
               <Button
                 variant="success"
                 onClick={() => setIsUnblockDialogOpen(true)}
@@ -259,20 +318,26 @@ export function UserDetails({ user }: UserDetailsProps) {
               </Button>
             )}
 
-            <Button
-              variant="outline"
-              onClick={() => setIsResetPasswordDialogOpen(true)}
-              disabled={sendPasswordReset.isPending}
-            >
-              <RefreshCcw className="mr-2 h-4 w-4" />
-              Gửi email đặt lại mật khẩu
-            </Button>
+            {!isFetching && (
+              <Button
+                variant="outline"
+                onClick={() => setIsResetPasswordDialogOpen(true)}
+                disabled={sendPasswordReset.isPending}
+              >
+                <RefreshCcw className="mr-2 h-4 w-4" />
+                Gửi email đặt lại mật khẩu
+              </Button>
+            )}
           </div>
         </CardFooter>
       </Card>
 
       {/* Tabs for Addresses, Orders, Reviews, Wishlists */}
-      <Tabs defaultValue="addresses">
+      <Tabs
+        defaultValue="addresses"
+        value={activeTab}
+        onValueChange={handleTabChange}
+      >
         <TabsList className="grid grid-cols-4 mb-4">
           <TabsTrigger value="addresses">
             <MapPin className="mr-2 h-4 w-4" />
@@ -294,230 +359,39 @@ export function UserDetails({ user }: UserDetailsProps) {
 
         {/* Addresses Tab */}
         <TabsContent value="addresses">
-          <Card>
-            <CardHeader>
-              <CardTitle>Địa chỉ</CardTitle>
-              <CardDescription>
-                Danh sách các địa chỉ giao hàng của người dùng
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {user.addresses && user.addresses.length > 0 ? (
-                <div className="space-y-4">
-                  {user.addresses.map((address: any) => (
-                    <div
-                      key={address.id}
-                      className={`border p-4 rounded-md ${
-                        address.is_default ? "border-primary" : ""
-                      }`}
-                    >
-                      <div className="flex justify-between">
-                        <div className="font-medium flex items-center gap-2">
-                          {address.recipient_name}
-                          {address.is_default && (
-                            <Badge variant="outline">Mặc định</Badge>
-                          )}
-                        </div>
-                        <div>{formatPhoneNumber(address.recipient_phone)}</div>
-                      </div>
-                      <div className="mt-2 text-sm text-muted-foreground">
-                        {address.street_address}, {address.ward},{" "}
-                        {address.district}, {address.province_city}
-                        {address.postal_code && `, ${address.postal_code}`}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Người dùng chưa có địa chỉ nào
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <Suspense fallback={<TabLoadingFallback />}>
+            <UserAddressesTab
+              addresses={user.addresses || []}
+              isLoading={isFetching}
+            />
+          </Suspense>
         </TabsContent>
 
         {/* Orders Tab */}
         <TabsContent value="orders">
-          <Card>
-            <CardHeader>
-              <CardTitle>Đơn hàng</CardTitle>
-              <CardDescription>Lịch sử đơn hàng của người dùng</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {user.orders && user.orders.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="py-3 px-2 text-left">Mã đơn</th>
-                        <th className="py-3 px-2 text-left">Ngày tạo</th>
-                        <th className="py-3 px-2 text-left">Trạng thái</th>
-                        <th className="py-3 px-2 text-left">TT thanh toán</th>
-                        <th className="py-3 px-2 text-right">Tổng tiền</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {user.orders.map((order: any) => (
-                        <tr
-                          key={order.id}
-                          className="border-b hover:bg-muted/50"
-                        >
-                          <td className="py-3 px-2">#{order.order_number}</td>
-                          <td className="py-3 px-2">
-                            {format(new Date(order.created_at), "dd/MM/yyyy", {
-                              locale: vi,
-                            })}
-                          </td>
-                          <td className="py-3 px-2">
-                            <Badge variant="outline">
-                              {order.order_statuses?.name || "Không rõ"}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-2">
-                            <Badge
-                              variant={
-                                order.payment_status === "Paid"
-                                  ? "success"
-                                  : "warning"
-                              }
-                            >
-                              {order.payment_status === "Paid"
-                                ? "Đã thanh toán"
-                                : "Chưa thanh toán"}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-2 text-right">
-                            {new Intl.NumberFormat("vi-VN", {
-                              style: "currency",
-                              currency: "VND",
-                            }).format(order.total_amount)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Người dùng chưa có đơn hàng nào
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <Suspense fallback={<TabLoadingFallback />}>
+            <UserOrdersTab orders={user.orders || []} isLoading={isFetching} />
+          </Suspense>
         </TabsContent>
 
         {/* Reviews Tab */}
         <TabsContent value="reviews">
-          <Card>
-            <CardHeader>
-              <CardTitle>Đánh giá</CardTitle>
-              <CardDescription>
-                Đánh giá sản phẩm của người dùng
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {user.reviews && user.reviews.length > 0 ? (
-                <div className="space-y-4">
-                  {user.reviews.map((review: any) => (
-                    <div key={review.id} className="border p-4 rounded-md">
-                      <div className="flex justify-between items-center">
-                        <div className="font-medium">
-                          {review.products?.name || "Sản phẩm không rõ"}
-                        </div>
-                        <div className="flex items-center">
-                          <Badge
-                            variant={review.is_approved ? "success" : "warning"}
-                          >
-                            {review.is_approved
-                              ? "Đã phê duyệt"
-                              : "Chưa phê duyệt"}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="mt-2 flex items-center">
-                        <div className="flex">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`h-4 w-4 ${
-                                i < review.rating
-                                  ? "fill-primary text-primary"
-                                  : "text-muted-foreground"
-                              }`}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-xs text-muted-foreground ml-2">
-                          {format(new Date(review.created_at), "dd/MM/yyyy", {
-                            locale: vi,
-                          })}
-                        </span>
-                      </div>
-                      {review.comment && (
-                        <p className="mt-2 text-sm">{review.comment}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Người dùng chưa có đánh giá nào
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <Suspense fallback={<TabLoadingFallback />}>
+            <UserReviewsTab
+              reviews={user.reviews || []}
+              isLoading={isFetching}
+            />
+          </Suspense>
         </TabsContent>
 
         {/* Wishlists Tab */}
         <TabsContent value="wishlists">
-          <Card>
-            <CardHeader>
-              <CardTitle>Yêu thích</CardTitle>
-              <CardDescription>
-                Danh sách sản phẩm yêu thích của người dùng
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {user.wishlists && user.wishlists.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="py-3 px-2 text-left">Sản phẩm</th>
-                        <th className="py-3 px-2 text-left">Thương hiệu</th>
-                        <th className="py-3 px-2 text-left">Ngày thêm</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {user.wishlists.map((wishlist: any) => (
-                        <tr
-                          key={wishlist.id}
-                          className="border-b hover:bg-muted/50"
-                        >
-                          <td className="py-3 px-2">
-                            {wishlist.products?.name || "Sản phẩm không rõ"}
-                          </td>
-                          <td className="py-3 px-2">
-                            {wishlist.products?.brands?.name || "N/A"}
-                          </td>
-                          <td className="py-3 px-2">
-                            {format(new Date(wishlist.added_at), "dd/MM/yyyy", {
-                              locale: vi,
-                            })}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Người dùng chưa có sản phẩm yêu thích nào
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <Suspense fallback={<TabLoadingFallback />}>
+            <UserWishlistsTab
+              wishlists={user.wishlists || []}
+              isLoading={isFetching}
+            />
+          </Suspense>
         </TabsContent>
       </Tabs>
 
@@ -676,3 +550,6 @@ export function UserDetails({ user }: UserDetailsProps) {
     </div>
   );
 }
+
+// Memoize component to prevent unnecessary re-renders
+export const UserDetails = memo(UserDetailsComponent);

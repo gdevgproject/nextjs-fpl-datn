@@ -1,23 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-import {
-  ChevronLeft,
-  ChevronRight,
-  UserCog,
-  Eye,
-  Shield,
-  ShieldCheck,
-  UserX,
-  Ban,
-  Check,
-  AlertTriangle,
-} from "lucide-react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { ChevronLeft, ChevronRight, Eye, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -25,18 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,17 +31,25 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   useUpdateUserRole,
   useUpdateUserBlockStatus,
 } from "../hooks/use-users";
-import type { UserExtended, UserFilter } from "../types";
 import { formatPhoneNumber } from "@/lib/utils/format";
+import Link from "next/link";
+import { Skeleton } from "@/components/ui/skeleton";
+import { UserExtended, UserFilter } from "../types";
 
 interface UsersTableProps {
   users: UserExtended[];
   filter: UserFilter;
   onFilterChange: (filter: Partial<UserFilter>) => void;
   totalCount: number;
+  isFetching?: boolean;
 }
 
 export function UsersTable({
@@ -66,6 +57,7 @@ export function UsersTable({
   filter,
   onFilterChange,
   totalCount,
+  isFetching = false,
 }: UsersTableProps) {
   const [userToUpdate, setUserToUpdate] = useState<{
     userId: string;
@@ -163,12 +155,15 @@ export function UsersTable({
     return isBlocked ? "destructive" : "success";
   };
 
+  // UI feedback for loading state
+  const isLoading = users.length === 0 && isFetching;
+
   return (
     <div className="space-y-4">
       <div className="rounded-md border">
-        <div className="overflow-x-auto">
+        <div className="overflow-auto" style={{ maxHeight: "600px" }}>
           <table className="min-w-full divide-y divide-border">
-            <thead>
+            <thead className="sticky top-0 bg-background z-10">
               <tr className="bg-muted/50">
                 <th className="px-4 py-3.5 text-left text-sm font-semibold text-muted-foreground">
                   User
@@ -193,8 +188,43 @@ export function UsersTable({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
-              {users.length === 0 ? (
+            <tbody className="divide-y divide-border bg-background">
+              {isLoading ? (
+                // Loading skeletons
+                Array(5)
+                  .fill(0)
+                  .map((_, index) => (
+                    <tr key={`skeleton-${index}`} className="hover:bg-muted/50">
+                      <td className="whitespace-nowrap px-4 py-4 text-sm">
+                        <div className="flex items-center gap-4">
+                          <Skeleton className="h-8 w-8 rounded-full" />
+                          <Skeleton className="h-4 w-24" />
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm">
+                        <Skeleton className="h-4 w-32" />
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm">
+                        <Skeleton className="h-4 w-20" />
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm">
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm">
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm">
+                        <Skeleton className="h-4 w-20" />
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Skeleton className="h-8 w-8 rounded-full" />
+                          <Skeleton className="h-8 w-8 rounded-full" />
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+              ) : users.length === 0 ? (
                 <tr>
                   <td
                     colSpan={7}
@@ -213,17 +243,21 @@ export function UsersTable({
                             <AvatarImage
                               src={user.avatar_url}
                               alt={user.display_name || ""}
-                              className="object-cover"
                             />
                           ) : (
                             <AvatarFallback>
-                              {user.display_name?.substring(0, 2) ||
-                                user.email.substring(0, 2).toUpperCase()}
+                              {(
+                                user.display_name ||
+                                user.email?.split("@")[0] ||
+                                ""
+                              )
+                                .substring(0, 2)
+                                .toUpperCase()}
                             </AvatarFallback>
                           )}
                         </Avatar>
                         <span className="font-medium">
-                          {user.display_name || user.email.split("@")[0]}
+                          {user.display_name || user.email?.split("@")[0]}
                         </span>
                       </div>
                     </td>
@@ -254,34 +288,82 @@ export function UsersTable({
                       <div className="flex items-center justify-end gap-2">
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button asChild size="icon" variant="ghost">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              asChild
+                              className="h-8 w-8"
+                            >
                               <Link href={`/admin/users/${user.id}`}>
                                 <Eye className="h-4 w-4" />
-                                <span className="sr-only">View</span>
+                                <span className="sr-only">Xem chi tiết</span>
                               </Link>
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>View Details</TooltipContent>
+                          <TooltipContent>Xem chi tiết</TooltipContent>
                         </Tooltip>
 
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button size="icon" variant="ghost">
-                              <UserCog className="h-4 w-4" />
-                              <span className="sr-only">Actions</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                            >
+                              <span className="sr-only">Mở menu</span>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="h-4 w-4"
+                              >
+                                <circle cx="12" cy="12" r="1" />
+                                <circle cx="12" cy="5" r="1" />
+                                <circle cx="12" cy="19" r="1" />
+                              </svg>
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            {/* Role dropdown */}
-                            <div className="p-2">
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              asChild
+                              className="cursor-pointer"
+                            >
+                              <Link href={`/admin/users/${user.id}`}>
+                                Xem chi tiết
+                              </Link>
+                            </DropdownMenuItem>
+                            {user.is_blocked ? (
+                              <DropdownMenuItem
+                                className="cursor-pointer text-success"
+                                onClick={() => openUnblockDialog(user.id)}
+                              >
+                                Bỏ chặn người dùng
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                className="cursor-pointer text-destructive"
+                                onClick={() => openBlockDialog(user.id)}
+                              >
+                                Chặn người dùng
+                              </DropdownMenuItem>
+                            )}
+
+                            <DropdownMenuItem className="cursor-pointer">
                               <Select
                                 value={user.role}
                                 onValueChange={(value) =>
                                   handleRoleChange(user.id, value)
                                 }
                               >
-                                <SelectTrigger className="w-full">
-                                  <SelectValue placeholder="Change Role" />
+                                <SelectTrigger className="h-8 border-0 bg-transparent p-0 shadow-none focus:ring-0 focus-visible:ring-0 z-20">
+                                  <SelectValue
+                                    placeholder={`Đổi vai trò (${user.role})`}
+                                    className="text-xs"
+                                  />
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="user">User</SelectItem>
@@ -292,26 +374,7 @@ export function UsersTable({
                                   </SelectItem>
                                 </SelectContent>
                               </Select>
-                            </div>
-
-                            {/* Block/Unblock action */}
-                            {user.is_blocked ? (
-                              <DropdownMenuItem
-                                className="text-success-foreground"
-                                onClick={() => openUnblockDialog(user.id)}
-                              >
-                                <Check className="mr-2 h-4 w-4" />
-                                Unblock User
-                              </DropdownMenuItem>
-                            ) : (
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => openBlockDialog(user.id)}
-                              >
-                                <Ban className="mr-2 h-4 w-4" />
-                                Block User
-                              </DropdownMenuItem>
-                            )}
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -327,8 +390,13 @@ export function UsersTable({
       {/* Pagination */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          Hiển thị <strong>{users.length}</strong> trong tổng số{" "}
-          <strong>{totalCount}</strong> người dùng
+          Hiển thị{" "}
+          <span className="font-medium">
+            {isFetching ? "..." : users.length}
+          </span>{" "}
+          trong tổng số{" "}
+          <span className="font-medium">{isFetching ? "..." : totalCount}</span>{" "}
+          người dùng
         </div>
 
         <div className="flex items-center space-x-6 lg:space-x-8">
@@ -337,6 +405,7 @@ export function UsersTable({
             <Select
               value={filter.perPage.toString()}
               onValueChange={handlePerPageChange}
+              disabled={isFetching}
             >
               <SelectTrigger className="h-8 w-[70px]">
                 <SelectValue placeholder={filter.perPage.toString()} />
@@ -359,7 +428,7 @@ export function UsersTable({
               variant="outline"
               size="icon"
               onClick={handlePrevPage}
-              disabled={filter.page === 1}
+              disabled={filter.page === 1 || isFetching}
             >
               <ChevronLeft className="h-4 w-4" />
               <span className="sr-only">Trang trước</span>
@@ -368,7 +437,7 @@ export function UsersTable({
               variant="outline"
               size="icon"
               onClick={handleNextPage}
-              disabled={filter.page >= totalPages}
+              disabled={filter.page >= totalPages || isFetching}
             >
               <ChevronRight className="h-4 w-4" />
               <span className="sr-only">Trang sau</span>
