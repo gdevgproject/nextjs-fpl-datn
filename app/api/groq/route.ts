@@ -15,14 +15,14 @@ export async function POST(req: NextRequest) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "llama3-8b-8192",
+        model: "llama-3.3-70b-versatile",
         messages,
         temperature: 0.7,
         max_tokens: 1024,
       }),
     }
   );
-
+  // llama3-8b-8192
   const data = await response.json();
   if (!response.ok) {
     return NextResponse.json(
