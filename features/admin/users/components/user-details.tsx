@@ -88,16 +88,22 @@ function UserDetailsComponent({ user, isFetching = false }: UserDetailsProps) {
   const [customDuration, setCustomDuration] = useState<number>(1);
   const [activeTab, setActiveTab] = useState("addresses");
   const [isSelfAccount, setIsSelfAccount] = useState(false);
+  const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
 
   const { data: session } = useAuthQuery();
   const currentUserId = session?.user?.id;
+  const currentUserRole = session?.user?.app_metadata?.role;
 
-  // Kiểm tra xem đây có phải là tài khoản đang đăng nhập hay không
+  // Kiểm tra xem đây có phải là tài khoản đang đăng nhập hay không và có phải admin không
   useEffect(() => {
     if (currentUserId && user?.id) {
       setIsSelfAccount(currentUserId === user.id);
     }
-  }, [currentUserId, user?.id]);
+
+    if (currentUserRole === "admin") {
+      setIsCurrentUserAdmin(true);
+    }
+  }, [currentUserId, user?.id, currentUserRole]);
 
   const updateUserRole = useUpdateUserRole();
   const updateUserBlockStatus = useUpdateUserBlockStatus();
@@ -106,6 +112,15 @@ function UserDetailsComponent({ user, isFetching = false }: UserDetailsProps) {
 
   // Role update handler
   const handleRoleChange = (role: string) => {
+    // Ngăn chặn admin hạ quyền chính mình
+    if (isSelfAccount && isCurrentUserAdmin && role !== "admin") {
+      toast.error("Không thể thay đổi quyền", {
+        description:
+          "Bạn không thể hạ quyền admin của chính mình. Hãy nhờ một admin khác thực hiện thao tác này.",
+      });
+      return;
+    }
+
     updateUserRole.mutate({
       userId: user.id,
       role: role as "user" | "admin" | "staff" | "shipper",
@@ -283,7 +298,10 @@ function UserDetailsComponent({ user, isFetching = false }: UserDetailsProps) {
                     <Select
                       value={user.role || "user"}
                       onValueChange={handleRoleChange}
-                      disabled={updateUserRole.isPending}
+                      disabled={
+                        updateUserRole.isPending ||
+                        (isSelfAccount && isCurrentUserAdmin)
+                      }
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Chọn vai trò" />
@@ -295,6 +313,12 @@ function UserDetailsComponent({ user, isFetching = false }: UserDetailsProps) {
                         <SelectItem value="shipper">Shipper</SelectItem>
                       </SelectContent>
                     </Select>
+                  )}
+                  {isSelfAccount && isCurrentUserAdmin && (
+                    <p className="text-xs text-amber-600 mt-1.5">
+                      Không thể tự hạ quyền Admin. Hãy nhờ Admin khác thực hiện
+                      thay đổi này.
+                    </p>
                   )}
                 </div>
               </div>

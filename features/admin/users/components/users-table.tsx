@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -68,6 +68,7 @@ import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import type { UserExtended, UserFilter } from "../types";
 import { formatDistanceToNow, format } from "date-fns";
 import { vi } from "date-fns/locale";
+import { useAuthQuery } from "@/features/auth/hooks";
 
 interface UsersTableProps {
   users: UserExtended[];
@@ -118,6 +119,9 @@ export function UsersTable({
   const { toast } = useSonnerToast();
   const updateUserRole = useUpdateUserRole();
   const updateUserBlockStatus = useUpdateUserBlockStatus();
+  const { data: session } = useAuthQuery();
+  const currentUserId = session?.user?.id;
+  const currentUserRole = session?.user?.app_metadata?.role;
 
   // Block dialog state
   const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false);
@@ -127,6 +131,18 @@ export function UsersTable({
     "permanent" | "1day" | "7days" | "30days" | "custom"
   >("7days");
   const [customDuration, setCustomDuration] = useState<number>(1);
+
+  // State để kiểm tra xem tài khoản hiện tại có phải là admin không
+  const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
+
+  // Kiểm tra quyền admin khi session thay đổi
+  useEffect(() => {
+    if (currentUserRole === "admin") {
+      setIsCurrentUserAdmin(true);
+    } else {
+      setIsCurrentUserAdmin(false);
+    }
+  }, [currentUserRole]);
 
   // Pagination
   const totalPages = Math.ceil(totalCount / filter.perPage);
@@ -144,6 +160,19 @@ export function UsersTable({
   // Handle update role
   const handleUpdateRole = async (userId: string, role: string) => {
     try {
+      // Kiểm tra xem có đang cố gắng hạ quyền chính mình từ admin xuống không
+      if (
+        userId === currentUserId &&
+        currentUserRole === "admin" &&
+        role !== "admin"
+      ) {
+        toast.error("Không thể thay đổi quyền", {
+          description:
+            "Bạn không thể hạ quyền admin của chính mình. Hãy nhờ một admin khác thực hiện thao tác này.",
+        });
+        return;
+      }
+
       await updateUserRole.mutateAsync({
         userId,
         role: role as any,
@@ -157,6 +186,14 @@ export function UsersTable({
 
   // Open block dialog
   const openBlockDialog = (user: UserExtended, block: boolean) => {
+    // Kiểm tra xem có đang cố gắng chặn chính mình không
+    if (block && user.id === currentUserId) {
+      toast.error("Không thể chặn", {
+        description: "Bạn không thể chặn tài khoản của chính mình.",
+      });
+      return;
+    }
+
     setUserToBlock(user);
     setBlockAction(block);
     setIsBlockDialogOpen(true);
@@ -473,7 +510,10 @@ export function UsersTable({
                         <DropdownMenuItem
                           onClick={() => handleUpdateRole(user.id, "staff")}
                           className="flex items-center gap-2"
-                          disabled={user.role === "staff"}
+                          disabled={
+                            user.role === "staff" ||
+                            (user.id === currentUserId && isCurrentUserAdmin)
+                          }
                         >
                           <ShieldCheck className="h-4 w-4 text-blue-600" />
                           <span>Đặt làm Staff</span>
@@ -481,7 +521,10 @@ export function UsersTable({
                         <DropdownMenuItem
                           onClick={() => handleUpdateRole(user.id, "shipper")}
                           className="flex items-center gap-2"
-                          disabled={user.role === "shipper"}
+                          disabled={
+                            user.role === "shipper" ||
+                            (user.id === currentUserId && isCurrentUserAdmin)
+                          }
                         >
                           <UserCog2 className="h-4 w-4 text-amber-600" />
                           <span>Đặt làm Shipper</span>
@@ -489,10 +532,19 @@ export function UsersTable({
                         <DropdownMenuItem
                           onClick={() => handleUpdateRole(user.id, "user")}
                           className="flex items-center gap-2"
-                          disabled={user.role === "user"}
+                          disabled={
+                            user.role === "user" ||
+                            (user.id === currentUserId && isCurrentUserAdmin)
+                          }
                         >
                           <span>Đặt làm User</span>
                         </DropdownMenuItem>
+
+                        {user.id === currentUserId && isCurrentUserAdmin && (
+                          <div className="px-2 py-1.5 text-xs text-amber-600">
+                            Không thể tự hạ quyền Admin
+                          </div>
+                        )}
 
                         <DropdownMenuSeparator />
 
@@ -508,10 +560,16 @@ export function UsersTable({
                           <DropdownMenuItem
                             onClick={() => openBlockDialog(user, true)}
                             className="flex items-center gap-2 text-red-600"
-                            disabled={user.role === "admin"}
+                            disabled={
+                              user.role === "admin" || user.id === currentUserId
+                            }
                           >
                             <Ban className="h-4 w-4" />
-                            <span>Chặn người dùng</span>
+                            <span>
+                              {user.id === currentUserId
+                                ? "Không thể tự chặn"
+                                : "Chặn người dùng"}
+                            </span>
                           </DropdownMenuItem>
                         )}
                       </DropdownMenuContent>
@@ -637,6 +695,21 @@ export function UsersTable({
           {/* Role-based warnings */}
           {blockAction && userToBlock && (
             <div className="mb-4">
+              {/* Warning for current user account */}
+              {userToBlock.id === currentUserId && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-800 flex items-start">
+                  <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold">Không thể tự chặn tài khoản</p>
+                    <p className="text-sm">
+                      Bạn không thể chặn tài khoản đang đăng nhập của chính
+                      mình. Hành động này sẽ khiến bạn bị khóa khỏi hệ thống và
+                      không thể quản trị.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Warning for admin roles */}
               {userToBlock.role === "admin" && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-800 flex items-start">
@@ -745,9 +818,15 @@ export function UsersTable({
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleBlockUser}
-              disabled={blockAction && userToBlock?.role === "admin"}
+              disabled={
+                blockAction &&
+                (userToBlock?.role === "admin" ||
+                  userToBlock?.id === currentUserId)
+              }
               className={
-                blockAction && userToBlock?.role === "admin"
+                blockAction &&
+                (userToBlock?.role === "admin" ||
+                  userToBlock?.id === currentUserId)
                   ? "bg-gray-400 hover:bg-gray-400 cursor-not-allowed"
                   : blockAction
                   ? ""
