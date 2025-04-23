@@ -1,10 +1,38 @@
-"use client"
+"use client";
 
-import { useClientMutation } from "@/shared/hooks/use-client-mutation"
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+
+interface UpdateGenderParams {
+  id: number;
+  name: string;
+  description?: string | null;
+}
 
 export function useUpdateGender() {
-  return useClientMutation("genders", "update", {
-    invalidateQueries: [["genders", "list"]],
-    primaryKey: "id",
-  })
+  const queryClient = useQueryClient();
+  const supabase = getSupabaseBrowserClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...data }: UpdateGenderParams) => {
+      const { data: result, error } = await supabase
+        .from("genders")
+        .update(data)
+        .eq("id", id)
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      return result;
+    },
+    onSuccess: () => {
+      // Invalidate and refetch genders list query
+      queryClient.invalidateQueries({ queryKey: ["genders", "list"] });
+    },
+    onError: (error) => {
+      console.error("Error updating gender:", error);
+    },
+  });
 }
