@@ -17,6 +17,7 @@ import {
   Star,
   Heart,
   RefreshCcw,
+  AlertTriangle,
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -529,6 +530,51 @@ export function UserDetails({ user }: UserDetailsProps) {
               nhập hoặc truy cập tài khoản cho đến khi được bỏ chặn.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {/* User identity confirmation */}
+          <div className="mb-4 p-3 border rounded-md bg-muted">
+            <h4 className="font-semibold mb-2">Thông tin người dùng:</h4>
+            <div className="space-y-1 text-sm">
+              <p>
+                <span className="font-medium">Email:</span> {user.email}
+              </p>
+              <p>
+                <span className="font-medium">Tên hiển thị:</span>{" "}
+                {user.display_name || user.email.split("@")[0]}
+              </p>
+              <p>
+                <span className="font-medium">Vai trò:</span> {user.role}
+              </p>
+
+              {/* Warning for admin roles */}
+              {user.role === "admin" && (
+                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-800">
+                  <p className="flex items-center gap-1 font-medium">
+                    <AlertTriangle className="h-4 w-4" /> Cảnh báo nghiêm trọng:
+                  </p>
+                  <p>
+                    Bạn đang cố gắng chặn một Quản trị viên. Hành động này có
+                    thể ảnh hưởng nghiêm trọng đến quyền quản trị hệ thống.
+                  </p>
+                </div>
+              )}
+
+              {/* Warning for important roles */}
+              {(user.role === "staff" || user.role === "shipper") && (
+                <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-amber-800">
+                  <p className="flex items-center gap-1 font-medium">
+                    <AlertTriangle className="h-4 w-4" /> Cảnh báo:
+                  </p>
+                  <p>
+                    Bạn đang chặn một{" "}
+                    {user.role === "staff" ? "Nhân viên" : "Người giao hàng"}.
+                    Các tác vụ đang thực hiện của họ có thể bị gián đoạn.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">Thời gian chặn</p>
             <Select
@@ -568,6 +614,7 @@ export function UserDetails({ user }: UserDetailsProps) {
             <AlertDialogAction
               onClick={handleBlockUser}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={user.role === "admin"}
             >
               {updateUserBlockStatus.isPending
                 ? "Đang xử lý..."

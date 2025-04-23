@@ -4,16 +4,17 @@ import { useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  UserCog, 
-  Eye, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  UserCog,
+  Eye,
   Shield,
   ShieldCheck,
   UserX,
   Ban,
-  Check
+  Check,
+  AlertTriangle,
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -46,7 +47,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useUpdateUserRole, useUpdateUserBlockStatus } from "../hooks/use-users";
+import {
+  useUpdateUserRole,
+  useUpdateUserBlockStatus,
+} from "../hooks/use-users";
 import type { UserExtended, UserFilter } from "../types";
 import { formatPhoneNumber } from "@/lib/utils/format";
 
@@ -67,7 +71,9 @@ export function UsersTable({
     userId: string;
     action: "block" | "unblock" | null;
   }>({ userId: "", action: null });
-  const [banDuration, setBanDuration] = useState<"permanent" | "1day" | "7days" | "30days" | "custom">("permanent");
+  const [banDuration, setBanDuration] = useState<
+    "permanent" | "1day" | "7days" | "30days" | "custom"
+  >("permanent");
   const [customDuration, setCustomDuration] = useState<number>(1);
 
   const updateUserRole = useUpdateUserRole();
@@ -75,7 +81,7 @@ export function UsersTable({
 
   // Pagination handlers
   const totalPages = Math.ceil(totalCount / filter.perPage);
-  
+
   const handleNextPage = () => {
     if (filter.page < totalPages) {
       onFilterChange({ page: filter.page + 1 });
@@ -190,7 +196,10 @@ export function UsersTable({
             <tbody className="divide-y divide-border">
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">
+                  <td
+                    colSpan={7}
+                    className="px-4 py-6 text-center text-muted-foreground"
+                  >
                     Không tìm thấy người dùng nào.
                   </td>
                 </tr>
@@ -201,7 +210,10 @@ export function UsersTable({
                       <div className="flex items-center gap-4">
                         <Avatar className="h-8 w-8">
                           {user.avatar_url ? (
-                            <AvatarImage src={user.avatar_url} alt={user.display_name || ""} />
+                            <AvatarImage
+                              src={user.avatar_url}
+                              alt={user.display_name || ""}
+                            />
                           ) : (
                             <AvatarFallback>
                               {user.display_name?.substring(0, 2) ||
@@ -209,14 +221,18 @@ export function UsersTable({
                             </AvatarFallback>
                           )}
                         </Avatar>
-                        <span className="font-medium">{user.display_name || user.email.split("@")[0]}</span>
+                        <span className="font-medium">
+                          {user.display_name || user.email.split("@")[0]}
+                        </span>
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-4 py-4 text-sm">
                       {user.email}
                     </td>
                     <td className="whitespace-nowrap px-4 py-4 text-sm">
-                      {user.phone_number ? formatPhoneNumber(user.phone_number) : "-"}
+                      {user.phone_number
+                        ? formatPhoneNumber(user.phone_number)
+                        : "-"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-4 text-sm">
                       <Badge variant={getRoleBadgeVariant(user.role)}>
@@ -229,7 +245,9 @@ export function UsersTable({
                       </Badge>
                     </td>
                     <td className="whitespace-nowrap px-4 py-4 text-sm">
-                      {format(new Date(user.created_at), "dd/MM/yyyy", { locale: vi })}
+                      {format(new Date(user.created_at), "dd/MM/yyyy", {
+                        locale: vi,
+                      })}
                     </td>
                     <td className="whitespace-nowrap px-4 py-4 text-sm text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -257,7 +275,9 @@ export function UsersTable({
                             <div className="p-2">
                               <Select
                                 value={user.role}
-                                onValueChange={(value) => handleRoleChange(user.id, value)}
+                                onValueChange={(value) =>
+                                  handleRoleChange(user.id, value)
+                                }
                               >
                                 <SelectTrigger className="w-full">
                                   <SelectValue placeholder="Change Role" />
@@ -266,7 +286,9 @@ export function UsersTable({
                                   <SelectItem value="user">User</SelectItem>
                                   <SelectItem value="admin">Admin</SelectItem>
                                   <SelectItem value="staff">Staff</SelectItem>
-                                  <SelectItem value="shipper">Shipper</SelectItem>
+                                  <SelectItem value="shipper">
+                                    Shipper
+                                  </SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -363,15 +385,59 @@ export function UsersTable({
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận chặn người dùng</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn chặn người dùng này? Họ sẽ không thể đăng nhập hoặc truy cập tài khoản cho đến khi được bỏ chặn.
+              Bạn có chắc chắn muốn chặn người dùng này? Họ sẽ không thể đăng
+              nhập hoặc truy cập tài khoản cho đến khi được bỏ chặn.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {/* User identity confirmation */}
+          {userToUpdate.userId && (
+            <div className="mb-4 p-3 border rounded-md bg-muted">
+              <h4 className="font-semibold mb-2">Thông tin người dùng:</h4>
+              {users
+                .filter((user) => user.id === userToUpdate.userId)
+                .map((user) => (
+                  <div key={user.id} className="space-y-1 text-sm">
+                    <p>
+                      <span className="font-medium">Email:</span> {user.email}
+                    </p>
+                    <p>
+                      <span className="font-medium">Tên hiển thị:</span>{" "}
+                      {user.display_name || user.email.split("@")[0]}
+                    </p>
+                    <p>
+                      <span className="font-medium">Vai trò:</span> {user.role}
+                    </p>
+
+                    {/* Warning for important roles */}
+                    {(user.role === "staff" || user.role === "shipper") && (
+                      <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-amber-800">
+                        <p className="flex items-center gap-1 font-medium">
+                          <AlertTriangle className="h-4 w-4" /> Cảnh báo:
+                        </p>
+                        <p>
+                          Bạn đang chặn một{" "}
+                          {user.role === "staff"
+                            ? "Nhân viên"
+                            : "Người giao hàng"}
+                          . Các tác vụ đang thực hiện của họ có thể bị gián
+                          đoạn.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+            </div>
+          )}
+
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">Thời gian chặn</p>
             <Select
               value={banDuration}
               onValueChange={(value) =>
-                setBanDuration(value as "permanent" | "1day" | "7days" | "30days" | "custom")
+                setBanDuration(
+                  value as "permanent" | "1day" | "7days" | "30days" | "custom"
+                )
               }
             >
               <SelectTrigger className="w-full">
@@ -404,7 +470,9 @@ export function UsersTable({
               onClick={handleBlockUser}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {updateUserBlockStatus.isPending ? "Đang xử lý..." : "Chặn người dùng"}
+              {updateUserBlockStatus.isPending
+                ? "Đang xử lý..."
+                : "Chặn người dùng"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -419,7 +487,8 @@ export function UsersTable({
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận bỏ chặn người dùng</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn bỏ chặn người dùng này? Họ sẽ có thể đăng nhập và truy cập tài khoản trở lại.
+              Bạn có chắc chắn muốn bỏ chặn người dùng này? Họ sẽ có thể đăng
+              nhập và truy cập tài khoản trở lại.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -428,7 +497,9 @@ export function UsersTable({
               onClick={handleUnblockUser}
               className="bg-success text-success-foreground hover:bg-success/90"
             >
-              {updateUserBlockStatus.isPending ? "Đang xử lý..." : "Bỏ chặn người dùng"}
+              {updateUserBlockStatus.isPending
+                ? "Đang xử lý..."
+                : "Bỏ chặn người dùng"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

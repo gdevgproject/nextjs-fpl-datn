@@ -52,6 +52,33 @@ export async function updateUserBlockStatusAction(
   try {
     const supabase = await createServiceRoleClient();
 
+    // Get the current user's session
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const currentUserId = session?.user?.id;
+
+    // Security check: Prevent blocking yourself
+    if (params.isBlocked && params.userId === currentUserId) {
+      return createErrorResponse("Không thể chặn tài khoản của chính bạn");
+    }
+
+    // Security check: Get user role to prevent blocking admins
+    const { data: userData, error: userError } =
+      await supabase.auth.admin.getUserById(params.userId);
+    if (userError) {
+      return createErrorResponse(userError.message);
+    }
+
+    const userRole = userData?.user?.app_metadata?.role || "user";
+
+    // Security check: Prevent blocking admin accounts
+    if (params.isBlocked && userRole === "admin") {
+      return createErrorResponse(
+        "Không thể chặn tài khoản admin. Đây là hành động nhạy cảm và có thể ảnh hưởng đến toàn bộ hệ thống"
+      );
+    }
+
     // Determine ban_duration string per Supabase Admin API
     let banDurationStr: string;
     if (params.isBlocked) {
@@ -90,7 +117,7 @@ export async function updateUserBlockStatusAction(
 
     // Log the action
     await supabase.from("admin_activity_log").insert({
-      admin_id: params.userId, // replace with actual admin id in production
+      admin_id: currentUserId || params.userId, // use current admin ID instead of target user
       action_type: params.isBlocked ? "block_user" : "unblock_user",
       action_details: params.isBlocked
         ? `Blocked for ${banDurationStr}`
