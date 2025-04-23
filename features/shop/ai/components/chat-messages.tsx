@@ -14,11 +14,19 @@ export function ChatMessages() {
   const { settings } = useShopSettings();
   const logoUrl = settings?.shop_logo_url || "/placeholder-logo.png";
 
-  // Hiệu ứng typing: Hiện ngay khi gửi, ẩn khi có tin nhắn bot mới
+  // Tắt typing ngay khi có message assistant mới
   useEffect(() => {
-    if (isLoading) setShowTyping(true);
-    else setShowTyping(false);
-  }, [isLoading]);
+    if (messages.length === 0) {
+      setShowTyping(false);
+      return;
+    }
+    const lastMsg = messages[messages.length - 1];
+    if (isLoading && lastMsg.role !== "assistant") {
+      setShowTyping(true);
+    } else {
+      setShowTyping(false);
+    }
+  }, [isLoading, messages]);
 
   // Auto scroll khi có tin nhắn mới hoặc loading
   useEffect(() => {
