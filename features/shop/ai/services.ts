@@ -3,8 +3,64 @@ import type { AIProduct, Message } from "./types";
 /**
  * Generate a system prompt with product information
  */
-export function generateSystemPrompt(products: AIProduct[]): string {
+export function generateSystemPrompt(
+  products: AIProduct[],
+  profile?: any,
+  cart?: any,
+  wishlist?: any,
+  shopSettings?: any
+): string {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"; // Define the base URL
+
+  // Thông tin profile
+  let profileInfo = "Chưa đăng nhập";
+  let userName = "bạn";
+  if (profile) {
+    profileInfo = [
+      profile.display_name ? `Tên: ${profile.display_name}` : null,
+      profile.gender ? `Giới tính: ${profile.gender}` : null,
+      profile.birthday ? `Ngày sinh: ${profile.birthday}` : null,
+      profile.email ? `Email: ${profile.email}` : null,
+      profile.phone_number ? `SĐT: ${profile.phone_number}` : null,
+    ]
+      .filter(Boolean)
+      .join(", ");
+    if (profile.display_name) {
+      userName = profile.display_name.split(" ").slice(-1)[0]; // Lấy tên cuối cùng
+    }
+  }
+
+  // Thông tin giỏ hàng
+  let cartInfo = "Chưa có sản phẩm nào trong giỏ hàng.";
+  if (cart && Array.isArray(cart) && cart.length > 0) {
+    cartInfo = cart
+      .map((item: any) => {
+        const prod = item.product || item;
+        return `- ${prod.name} (${prod.volume_ml || prod.volumeMl || "?"}ml) x${
+          item.quantity
+        }`;
+      })
+      .join("\n");
+  }
+
+  // Thông tin wishlist
+  let wishlistInfo = "Chưa có sản phẩm yêu thích.";
+  if (wishlist && Array.isArray(wishlist) && wishlist.length > 0) {
+    wishlistInfo = wishlist
+      .map((item: any) => {
+        const prod = item.product || item;
+        return `- ${prod.name} (${prod.brand?.name || prod.brand_name || "?"})`;
+      })
+      .join("\n");
+  }
+
+  // Thông tin shop
+  let shopInfo = shopSettings
+    ? `Tên shop: ${shopSettings.shop_name || "MyBeauty"}, Hotline: ${
+        shopSettings.contact_phone || "N/A"
+      }`
+    : "";
+
   const productInfo = products
     .map(
       (p) => `
@@ -25,7 +81,13 @@ URL: ${baseUrl}/san-pham/${p.slug}
     .join("\n---\n");
 
   return `You are an AI beauty advisor for MyBeauty, a Vietnamese perfume e-commerce store.
-Your primary role is to assist customers in finding the perfect perfume based on their preferences, questions, and needs.
+
+${shopInfo ? `Shop info: ${shopInfo}` : ""}
+User info: ${profileInfo}
+Cart: \n${cartInfo}
+Wishlist: \n${wishlistInfo}
+
+You should address the user by their name "${userName}" (if available) in your responses for a more personalized experience.
 
 Here are the key guidelines for your responses:
 
