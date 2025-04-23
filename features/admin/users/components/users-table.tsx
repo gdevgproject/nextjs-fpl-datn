@@ -158,6 +158,14 @@ export function UsersTable({
   // UI feedback for loading state
   const isLoading = users.length === 0 && isFetching;
 
+  // Function to get user initials for avatar
+  const getUserInitials = (user: UserExtended): string => {
+    if (user.display_name) {
+      return user.display_name.substring(0, 2).toUpperCase();
+    }
+    return user.email.substring(0, 2).toUpperCase();
+  };
+
   return (
     <div className="space-y-4">
       <div className="rounded-md border">
@@ -238,21 +246,16 @@ export function UsersTable({
                   <tr key={user.id} className="hover:bg-muted/50">
                     <td className="whitespace-nowrap px-4 py-4 text-sm">
                       <div className="flex items-center gap-4">
-                        <Avatar className="h-8 w-8">
+                        <Avatar className="h-8 w-8 border border-border">
                           {user.avatar_url ? (
                             <AvatarImage
                               src={user.avatar_url}
                               alt={user.display_name || ""}
+                              className="object-cover"
                             />
                           ) : (
                             <AvatarFallback>
-                              {(
-                                user.display_name ||
-                                user.email?.split("@")[0] ||
-                                ""
-                              )
-                                .substring(0, 2)
-                                .toUpperCase()}
+                              {getUserInitials(user)}
                             </AvatarFallback>
                           )}
                         </Avatar>
