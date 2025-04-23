@@ -1,10 +1,25 @@
-"use client"
+"use client";
 
-import { useClientFetch } from "@/shared/hooks/use-client-fetch"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 export function useOrderStatuses() {
-  return useClientFetch(["order_statuses", "list"], "order_statuses", {
-    columns: "id, name, description",
-    sort: [{ column: "id", ascending: true }],
-  })
+  const supabase = getSupabaseBrowserClient();
+
+  return useQuery({
+    queryKey: ["order_statuses", "list"],
+    queryFn: async () => {
+      const { data, error, count } = await supabase
+        .from("order_statuses")
+        .select("id, name, description")
+        .order("id", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching order statuses:", error);
+        throw error;
+      }
+
+      return { data: data || [], count };
+    },
+  });
 }
