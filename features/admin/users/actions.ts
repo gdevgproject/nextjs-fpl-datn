@@ -58,6 +58,13 @@ export async function updateUserBlockStatusAction(
     } = await supabase.auth.getSession();
     const currentUserId = session?.user?.id;
 
+    // Security check: Prevent action without proper authentication
+    if (!currentUserId) {
+      return createErrorResponse(
+        "Bạn phải đăng nhập để thực hiện hành động này"
+      );
+    }
+
     // Security check: Prevent blocking yourself
     if (params.isBlocked && params.userId === currentUserId) {
       return createErrorResponse("Không thể chặn tài khoản của chính bạn");
@@ -70,12 +77,38 @@ export async function updateUserBlockStatusAction(
       return createErrorResponse(userError.message);
     }
 
-    const userRole = userData?.user?.app_metadata?.role || "user";
+    if (!userData?.user) {
+      return createErrorResponse("Không tìm thấy thông tin người dùng");
+    }
+
+    const userRole = userData.user.app_metadata?.role || "user";
 
     // Security check: Prevent blocking admin accounts
     if (params.isBlocked && userRole === "admin") {
       return createErrorResponse(
         "Không thể chặn tài khoản admin. Đây là hành động nhạy cảm và có thể ảnh hưởng đến toàn bộ hệ thống"
+      );
+    }
+
+    // Check if the current user is also an admin
+    const { data: currentUserData, error: currentUserError } =
+      await supabase.auth.admin.getUserById(currentUserId);
+    if (currentUserError) {
+      return createErrorResponse(currentUserError.message);
+    }
+
+    const currentUserRole = currentUserData?.user?.app_metadata?.role || "user";
+
+    // Additional security check: Only admin can block staff/shipper
+    if (
+      params.isBlocked &&
+      (userRole === "staff" || userRole === "shipper") &&
+      currentUserRole !== "admin"
+    ) {
+      return createErrorResponse(
+        `Chỉ admin mới có quyền chặn tài khoản ${
+          userRole === "staff" ? "nhân viên" : "người giao hàng"
+        }`
       );
     }
 
@@ -115,13 +148,19 @@ export async function updateUserBlockStatusAction(
       return createErrorResponse(error.message);
     }
 
-    // Log the action
+    // Log the action with more details
     await supabase.from("admin_activity_log").insert({
-      admin_id: currentUserId || params.userId, // use current admin ID instead of target user
+      admin_id: currentUserId,
       action_type: params.isBlocked ? "block_user" : "unblock_user",
       action_details: params.isBlocked
-        ? `Blocked for ${banDurationStr}`
-        : "User unblocked",
+        ? `Người dùng bị chặn với vai trò ${userRole}. Thời hạn: ${
+            params.banDuration
+          }${
+            params.banDuration === "custom"
+              ? ` (${params.customDuration} ngày)`
+              : ""
+          }`
+        : "Đã bỏ chặn người dùng",
       entity_type: "user",
       entity_id: params.userId,
     });
@@ -132,8 +171,12 @@ export async function updateUserBlockStatusAction(
 
     return createSuccessResponse({
       message: params.isBlocked
-        ? `User blocked until ${user!.banned_until}`
-        : "User unblocked",
+        ? `Đã chặn người dùng ${
+            params.banDuration === "permanent"
+              ? "vĩnh viễn"
+              : `đến ${new Date(user!.banned_until!).toLocaleString("vi-VN")}`
+          }`
+        : "Đã bỏ chặn người dùng",
       bannedUntil: user!.banned_until,
     });
   } catch (error) {

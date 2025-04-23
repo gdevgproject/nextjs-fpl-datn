@@ -406,10 +406,13 @@ function UserDetailsComponent({ user, isFetching = false }: UserDetailsProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
 
-          {/* User identity confirmation */}
+          {/* User identity confirmation - Enhanced with more details */}
           <div className="mb-4 p-3 border rounded-md bg-muted">
-            <h4 className="font-semibold mb-2">Thông tin người dùng:</h4>
-            <div className="space-y-1 text-sm">
+            <h4 className="font-semibold mb-2 flex items-center gap-1.5">
+              <UserCog className="h-4 w-4" />
+              Xác nhận danh tính người dùng:
+            </h4>
+            <div className="space-y-1.5 text-sm">
               <p>
                 <span className="font-medium">Email:</span> {user.email}
               </p>
@@ -418,82 +421,137 @@ function UserDetailsComponent({ user, isFetching = false }: UserDetailsProps) {
                 {user.display_name || user.email.split("@")[0]}
               </p>
               <p>
-                <span className="font-medium">Vai trò:</span> {user.role}
+                <span className="font-medium">Vai trò hiện tại:</span>{" "}
+                <Badge variant="outline" className="font-normal ml-1">
+                  {user.role || "user"}
+                </Badge>
               </p>
-
-              {/* Warning for admin roles */}
-              {user.role === "admin" && (
-                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-800">
-                  <p className="flex items-center gap-1 font-medium">
-                    <AlertTriangle className="h-4 w-4" /> Cảnh báo nghiêm trọng:
-                  </p>
-                  <p>
-                    Bạn đang cố gắng chặn một Quản trị viên. Hành động này có
-                    thể ảnh hưởng nghiêm trọng đến quyền quản trị hệ thống.
-                  </p>
-                </div>
+              {user.phone_number && (
+                <p>
+                  <span className="font-medium">Số điện thoại:</span>{" "}
+                  {formatPhoneNumber(user.phone_number)}
+                </p>
               )}
-
-              {/* Warning for important roles */}
-              {(user.role === "staff" || user.role === "shipper") && (
-                <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-amber-800">
-                  <p className="flex items-center gap-1 font-medium">
-                    <AlertTriangle className="h-4 w-4" /> Cảnh báo:
-                  </p>
-                  <p>
-                    Bạn đang chặn một{" "}
-                    {user.role === "staff" ? "Nhân viên" : "Người giao hàng"}.
-                    Các tác vụ đang thực hiện của họ có thể bị gián đoạn.
-                  </p>
-                </div>
-              )}
+              <p>
+                <span className="font-medium">Ngày tạo tài khoản:</span>{" "}
+                {formatDate(user.created_at)}
+              </p>
             </div>
           </div>
 
+          {/* Role-based warnings with enhanced messages */}
+          <div className="mb-4">
+            {/* Warning for admin roles - High severity */}
+            {user.role === "admin" && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-800 flex items-start">
+                <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">Không thể chặn tài khoản Admin</p>
+                  <p className="text-sm">
+                    Việc chặn tài khoản Admin là cực kỳ nhạy cảm và có thể khóa
+                    toàn bộ hệ thống quản trị. Nếu thực sự cần, vui lòng thực
+                    hiện trực tiếp qua Supabase Dashboard với sự cẩn trọng cao
+                    độ.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Warning for staff roles - Medium severity */}
+            {user.role === "staff" && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-800 flex items-start">
+                <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">
+                    Cảnh báo: Chặn tài khoản Nhân viên
+                  </p>
+                  <p className="text-sm">
+                    Bạn đang chặn một Nhân viên. Các tác vụ đang thực hiện của
+                    họ có thể bị gián đoạn và có thể ảnh hưởng đến hoạt động của
+                    hệ thống. Vui lòng đảm bảo rằng bạn có lý do chính đáng và
+                    đã sắp xếp người thay thế.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Warning for shipper roles - Medium severity */}
+            {user.role === "shipper" && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-800 flex items-start">
+                <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">
+                    Cảnh báo: Chặn tài khoản Người giao hàng
+                  </p>
+                  <p className="text-sm">
+                    Bạn đang chặn một Người giao hàng. Các đơn hàng đang được
+                    giao của họ sẽ bị ảnh hưởng. Vui lòng đảm bảo rằng bạn đã
+                    phân công lại các đơn hàng đang được xử lý trước khi tiến
+                    hành.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Ban Duration Selection */}
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Thời gian chặn</p>
-            <Select
-              value={banDuration}
-              onValueChange={(value) =>
-                setBanDuration(
-                  value as "permanent" | "1day" | "7days" | "30days" | "custom"
-                )
-              }
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Chọn thời gian chặn" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="permanent">Vĩnh viễn</SelectItem>
-                <SelectItem value="1day">1 ngày</SelectItem>
-                <SelectItem value="7days">7 ngày</SelectItem>
-                <SelectItem value="30days">30 ngày</SelectItem>
-                <SelectItem value="custom">Tùy chỉnh</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <label
+                htmlFor="banDuration"
+                className="text-sm font-medium leading-none"
+              >
+                Thời hạn chặn
+              </label>
+              <Select
+                value={banDuration}
+                onValueChange={(value: any) => setBanDuration(value)}
+              >
+                <SelectTrigger id="banDuration" className="w-full">
+                  <SelectValue placeholder="Chọn thời hạn" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1day">1 ngày</SelectItem>
+                  <SelectItem value="7days">7 ngày</SelectItem>
+                  <SelectItem value="30days">30 ngày</SelectItem>
+                  <SelectItem value="custom">Tùy chọn</SelectItem>
+                  <SelectItem value="permanent">Vĩnh viễn</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {banDuration === "custom" && (
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Số ngày</p>
+              <div className="space-y-2">
+                <label
+                  htmlFor="customDuration"
+                  className="text-sm font-medium leading-none"
+                >
+                  Số ngày chặn
+                </label>
                 <input
+                  id="customDuration"
                   type="number"
+                  min="1"
                   value={customDuration}
-                  onChange={(e) => setCustomDuration(Number(e.target.value))}
-                  className="w-full border rounded-md p-2"
-                  min={1}
+                  onChange={(e) => setCustomDuration(parseInt(e.target.value))}
+                  className="w-full p-2 border border-input rounded-md"
                 />
               </div>
             )}
           </div>
+
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleBlockUser}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={user.role === "admin"}
+              className={
+                user.role === "admin"
+                  ? "bg-gray-400 hover:bg-gray-400 cursor-not-allowed"
+                  : ""
+              }
             >
-              {updateUserBlockStatus.isPending
-                ? "Đang xử lý..."
-                : "Chặn người dùng"}
+              Xác nhận chặn
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
