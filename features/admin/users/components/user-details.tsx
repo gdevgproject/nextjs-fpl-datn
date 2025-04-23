@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, memo, Suspense, lazy } from "react";
+import { useState, memo, Suspense, lazy, useEffect } from "react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import {
@@ -57,6 +57,7 @@ import {
 import { formatPhoneNumber } from "@/lib/utils/format";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuthQuery } from "@/features/auth/hooks";
 
 // Lazy load tab contents for better performance
 const UserAddressesTab = lazy(() => import("./user-tabs/user-addresses-tab"));
@@ -86,6 +87,17 @@ function UserDetailsComponent({ user, isFetching = false }: UserDetailsProps) {
   >("permanent");
   const [customDuration, setCustomDuration] = useState<number>(1);
   const [activeTab, setActiveTab] = useState("addresses");
+  const [isSelfAccount, setIsSelfAccount] = useState(false);
+
+  const { data: session } = useAuthQuery();
+  const currentUserId = session?.user?.id;
+
+  // Kiểm tra xem đây có phải là tài khoản đang đăng nhập hay không
+  useEffect(() => {
+    if (currentUserId && user?.id) {
+      setIsSelfAccount(currentUserId === user.id);
+    }
+  }, [currentUserId, user?.id]);
 
   const updateUserRole = useUpdateUserRole();
   const updateUserBlockStatus = useUpdateUserBlockStatus();
@@ -102,6 +114,15 @@ function UserDetailsComponent({ user, isFetching = false }: UserDetailsProps) {
 
   // Block/Unblock handlers
   const handleBlockUser = () => {
+    // Kiểm tra nếu đang tự chặn tài khoản của chính mình
+    if (isSelfAccount) {
+      toast.error("Không thể chặn", {
+        description: "Bạn không thể chặn tài khoản của chính mình.",
+      });
+      setIsBlockDialogOpen(false);
+      return;
+    }
+
     updateUserBlockStatus.mutate({
       userId: user.id,
       isBlocked: true,
@@ -311,10 +332,10 @@ function UserDetailsComponent({ user, isFetching = false }: UserDetailsProps) {
               <Button
                 variant="destructive"
                 onClick={() => setIsBlockDialogOpen(true)}
-                disabled={updateUserBlockStatus.isPending}
+                disabled={updateUserBlockStatus.isPending || isSelfAccount}
               >
                 <Ban className="mr-2 h-4 w-4" />
-                Chặn người dùng
+                {isSelfAccount ? "Không thể tự chặn" : "Chặn người dùng"}
               </Button>
             )}
 
@@ -441,6 +462,21 @@ function UserDetailsComponent({ user, isFetching = false }: UserDetailsProps) {
 
           {/* Role-based warnings with enhanced messages */}
           <div className="mb-4">
+            {/* Warning for self-account */}
+            {isSelfAccount && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-800 flex items-start">
+                <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">Không thể tự chặn tài khoản</p>
+                  <p className="text-sm">
+                    Bạn không thể chặn tài khoản đang đăng nhập của chính mình.
+                    Hành động này sẽ khiến bạn bị khóa khỏi hệ thống và không
+                    thể quản trị.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Warning for admin roles - High severity */}
             {user.role === "admin" && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-800 flex items-start">
@@ -544,9 +580,9 @@ function UserDetailsComponent({ user, isFetching = false }: UserDetailsProps) {
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleBlockUser}
-              disabled={user.role === "admin"}
+              disabled={user.role === "admin" || isSelfAccount}
               className={
-                user.role === "admin"
+                user.role === "admin" || isSelfAccount
                   ? "bg-gray-400 hover:bg-gray-400 cursor-not-allowed"
                   : ""
               }
