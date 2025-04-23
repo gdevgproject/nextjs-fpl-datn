@@ -21,6 +21,13 @@ import {
 } from "lucide-react";
 import { OrderStatusBadge } from "./order-status-badge";
 import { PaymentStatusBadge } from "./payment-status-badge";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import { OrderStatusUpdate } from "./order-status-update";
+import { OrderShipperAssignment } from "./order-shipper-assignment";
 import type {
   OrderWithRelations,
   OrdersPagination,
@@ -103,7 +110,7 @@ export function OrderTable({
                 </Button>
               </TableHead>
               <TableHead>Trạng thái</TableHead>
-              <TableHead>Thanh toán</TableHead>
+              <TableHead>Shipper</TableHead>
               <TableHead className="text-right">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
@@ -136,10 +143,31 @@ export function OrderTable({
                     }).format(order.total_amount)}
                   </TableCell>
                   <TableCell>
-                    <OrderStatusBadge status={order.order_statuses} />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <div className="cursor-pointer">
+                          <OrderStatusBadge status={order.order_statuses} />
+                        </div>
+                      </PopoverTrigger>
+                      <PopoverContent>
+                        <OrderStatusUpdate order={order} onSuccess={() => {}} />
+                      </PopoverContent>
+                    </Popover>
                   </TableCell>
                   <TableCell>
-                    <PaymentStatusBadge status={order.payment_status} />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          {order.assigned_shipper_id || "Chưa gán"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent>
+                        <OrderShipperAssignment
+                          order={order}
+                          onSuccess={() => {}}
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button

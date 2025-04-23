@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -71,6 +71,11 @@ export function OrderStatusUpdate({
       order_status_id: currentStatusId?.toString() || "",
     },
   });
+
+  // Reset status form when order changes
+  useEffect(() => {
+    statusForm.reset({ order_status_id: currentStatusId?.toString() || "" });
+  }, [currentStatusId, statusForm]);
 
   // Cancel order form
   const cancelForm = useForm<z.infer<typeof cancelOrderFormSchema>>({
@@ -265,8 +270,8 @@ export function OrderStatusUpdate({
                   <FormItem>
                     <FormLabel>Trạng thái đơn hàng</FormLabel>
                     <Select
+                      value={field.value}
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
                       disabled={isStatusesLoading}
                     >
                       <FormControl>
