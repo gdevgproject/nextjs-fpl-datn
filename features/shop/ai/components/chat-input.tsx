@@ -59,7 +59,7 @@ export function ChatInput() {
             "min-h-[44px] max-h-[120px] resize-none flex-1",
             input.length > CHARACTER_LIMIT ? "border-red-500" : ""
           )}
-          disabled={isLoading}
+          disabled={false} // Cho phép nhập khi loading, chỉ disable nút gửi
           maxLength={CHARACTER_LIMIT}
           onKeyDown={handleKeyDown}
         />

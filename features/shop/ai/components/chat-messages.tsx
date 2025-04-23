@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MessageBubble } from "./message-bubble";
 import { useChatContext } from "./chat-provider";
 import { Loader2 } from "lucide-react";
@@ -10,13 +10,20 @@ import Image from "next/image";
 export function ChatMessages() {
   const { messages, isLoading } = useChatContext();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showTyping, setShowTyping] = useState(false);
   const { settings } = useShopSettings();
   const logoUrl = settings?.shop_logo_url || "/placeholder-logo.png";
 
-  // Scroll to bottom when messages change
+  // Hiệu ứng typing: Hiện ngay khi gửi, ẩn khi có tin nhắn bot mới
+  useEffect(() => {
+    if (isLoading) setShowTyping(true);
+    else setShowTyping(false);
+  }, [isLoading]);
+
+  // Auto scroll khi có tin nhắn mới hoặc loading
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isLoading]);
 
   // If no messages, show welcome message
   if (messages.length === 0) {
@@ -56,14 +63,34 @@ export function ChatMessages() {
       {messages.map((message) => (
         <MessageBubble key={message.id} message={message} />
       ))}
-
-      {isLoading && (
-        <div className="flex items-center justify-center py-4">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
-      )}
-
+      {showTyping && <BotTypingBubble logoUrl={logoUrl} />}
       <div ref={messagesEndRef} />
+    </div>
+  );
+}
+
+function BotTypingBubble({ logoUrl }: { logoUrl: string }) {
+  return (
+    <div className="flex w-full gap-3 p-2 md:p-4 items-end">
+      <div className="h-10 w-10 rounded-full border border-primary/30 shadow overflow-hidden flex items-center justify-center bg-white dark:bg-muted">
+        <Image
+          src={logoUrl}
+          alt="AI Assistant"
+          width={40}
+          height={40}
+          className="h-10 w-10 object-cover"
+        />
+      </div>
+      <div className="flex flex-col max-w-[70%] bg-white/90 dark:bg-muted/80 text-muted-foreground border border-primary/10 rounded-2xl px-4 py-3 shadow-md">
+        <span className="flex gap-1">
+          <span className="block h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:-.2s]"></span>
+          <span className="block h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:.0s]"></span>
+          <span className="block h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:.2s]"></span>
+        </span>
+        <span className="text-xs text-muted-foreground mt-1">
+          AI đang trả lời...
+        </span>
+      </div>
     </div>
   );
 }
