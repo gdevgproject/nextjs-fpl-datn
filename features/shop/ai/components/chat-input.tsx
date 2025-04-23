@@ -25,9 +25,9 @@ export function ChatInput() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
-
-    await sendMessage(input);
-    setInput("");
+    const message = input;
+    setInput(""); // Clear input ngay khi gửi
+    await sendMessage(message);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

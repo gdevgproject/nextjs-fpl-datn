@@ -11,6 +11,10 @@ import {
 import { getProductsForAIContext, logChatInteraction } from "../actions";
 import { v4 as uuidv4 } from "uuid";
 import { useAuthQuery } from "@/features/auth/hooks";
+import { useProfileQuery } from "@/features/auth/hooks";
+import { useCartQuery } from "@/features/shop/cart/use-cart";
+import { useWishlist } from "@/features/shop/wishlist/hooks/use-wishlist";
+import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings";
 
 const SYSTEM_PROMPT_KEY = "mybeauty-ai-system-prompt";
 const CHAT_HISTORY_KEY = "mybeauty-ai-chat-history";
@@ -20,9 +24,16 @@ export function useChat(): ChatContextValue {
   const [systemPrompt, setSystemPrompt] = useState<string>("");
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Lấy user từ TanStack Query
+  // Lấy context cá nhân hóa
   const { data: sessionData } = useAuthQuery();
   const user = sessionData?.user;
+  const { isLoading: isProfileLoading, data: profile } = useProfileQuery(
+    user?.id
+  );
+  const { isLoading: isCartLoading, data: cartItems = [] } = useCartQuery();
+  const { isLoading: isWishlistLoading, wishlistItems = [] } = useWishlist();
+  const { isLoading: isShopSettingsLoading, settings: shopSettings } =
+    useShopSettings();
 
   // Fetch products for AI context
   const { data: products, isPending: isPendingProducts } = useQuery({
@@ -33,9 +44,23 @@ export function useChat(): ChatContextValue {
 
   // Initialize system prompt and chat history
   useEffect(() => {
-    if (products && !isInitialized) {
+    // Chỉ khởi tạo khi tất cả context đã load xong
+    if (
+      products &&
+      !isInitialized &&
+      !isProfileLoading &&
+      !isCartLoading &&
+      !isWishlistLoading &&
+      !isShopSettingsLoading
+    ) {
       const storedSystemPrompt = localStorage.getItem(SYSTEM_PROMPT_KEY);
-      const newSystemPrompt = generateSystemPrompt(products);
+      const newSystemPrompt = generateSystemPrompt(
+        products,
+        profile,
+        cartItems,
+        wishlistItems,
+        shopSettings
+      );
 
       // Only update if the system prompt has changed
       if (storedSystemPrompt !== newSystemPrompt) {
@@ -65,7 +90,51 @@ export function useChat(): ChatContextValue {
 
       setIsInitialized(true);
     }
-  }, [products, isInitialized]);
+  }, [
+    products,
+    isInitialized,
+    profile,
+    cartItems,
+    wishlistItems,
+    shopSettings,
+    isProfileLoading,
+    isCartLoading,
+    isWishlistLoading,
+    isShopSettingsLoading,
+  ]);
+
+  // Luôn cập nhật lại systemPrompt khi context thay đổi (kể cả sau khi đã init)
+  useEffect(() => {
+    if (
+      products &&
+      isInitialized &&
+      !isProfileLoading &&
+      !isCartLoading &&
+      !isWishlistLoading &&
+      !isShopSettingsLoading
+    ) {
+      const newSystemPrompt = generateSystemPrompt(
+        products,
+        profile,
+        cartItems,
+        wishlistItems,
+        shopSettings
+      );
+      setSystemPrompt(newSystemPrompt);
+      localStorage.setItem(SYSTEM_PROMPT_KEY, newSystemPrompt);
+    }
+  }, [
+    products,
+    profile,
+    cartItems,
+    wishlistItems,
+    shopSettings,
+    isInitialized,
+    isProfileLoading,
+    isCartLoading,
+    isWishlistLoading,
+    isShopSettingsLoading,
+  ]);
 
   // Save messages to localStorage whenever they change
   useEffect(() => {
@@ -140,7 +209,35 @@ export function useChat(): ChatContextValue {
   const resetChat = useCallback(() => {
     setMessages([]);
     localStorage.removeItem(CHAT_HISTORY_KEY);
-  }, []);
+    // Cập nhật lại systemPrompt khi dọn chat
+    if (
+      products &&
+      !isProfileLoading &&
+      !isCartLoading &&
+      !isWishlistLoading &&
+      !isShopSettingsLoading
+    ) {
+      const newSystemPrompt = generateSystemPrompt(
+        products,
+        profile,
+        cartItems,
+        wishlistItems,
+        shopSettings
+      );
+      setSystemPrompt(newSystemPrompt);
+      localStorage.setItem(SYSTEM_PROMPT_KEY, newSystemPrompt);
+    }
+  }, [
+    products,
+    profile,
+    cartItems,
+    wishlistItems,
+    shopSettings,
+    isProfileLoading,
+    isCartLoading,
+    isWishlistLoading,
+    isShopSettingsLoading,
+  ]);
 
   return {
     messages,
