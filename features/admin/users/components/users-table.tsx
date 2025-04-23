@@ -213,6 +213,7 @@ export function UsersTable({
                             <AvatarImage
                               src={user.avatar_url}
                               alt={user.display_name || ""}
+                              className="object-cover"
                             />
                           ) : (
                             <AvatarFallback>

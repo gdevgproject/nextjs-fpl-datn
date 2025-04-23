@@ -149,6 +149,7 @@ export function UserDetails({ user }: UserDetailsProps) {
                   <AvatarImage
                     src={user.avatar_url}
                     alt={user.display_name || ""}
+                    className="object-cover"
                   />
                 ) : (
                   <AvatarFallback className="text-xl">

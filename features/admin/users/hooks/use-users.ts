@@ -133,52 +133,71 @@ export function useUpdateUserBlockStatus() {
       // Show appropriate success message based on the action
       if (variables.isBlocked) {
         let message = "Người dùng đã bị chặn";
+        let description = "";
 
         if (variables.banDuration) {
           switch (variables.banDuration) {
             case "1day":
-              message = "Người dùng đã bị chặn trong 1 ngày";
+              message = "Chặn người dùng thành công";
+              description = "Người dùng đã bị chặn trong 1 ngày";
               break;
             case "7days":
-              message = "Người dùng đã bị chặn trong 7 ngày";
+              message = "Chặn người dùng thành công";
+              description = "Người dùng đã bị chặn trong 7 ngày";
               break;
             case "30days":
-              message = "Người dùng đã bị chặn trong 30 ngày";
+              message = "Chặn người dùng thành công";
+              description = "Người dùng đã bị chặn trong 30 ngày";
               break;
             case "custom":
               if (variables.customDuration) {
-                message = `Người dùng đã bị chặn trong ${variables.customDuration} ngày`;
+                message = "Chặn người dùng thành công";
+                description = `Người dùng đã bị chặn trong ${variables.customDuration} ngày`;
               }
               break;
             default:
-              message = "Người dùng đã bị chặn vĩnh viễn";
+              message = "Chặn người dùng thành công";
+              description = "Người dùng đã bị chặn vĩnh viễn";
           }
         }
 
-        toast.success(message, {
-          description: data?.data?.bannedUntil
-            ? `Chặn đến: ${new Date(data.data.bannedUntil).toLocaleDateString(
-                "vi-VN",
-                {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }
-              )}`
-            : "Chặn vĩnh viễn",
-        });
+        if (data?.data?.bannedUntil) {
+          description += ` (đến: ${new Date(
+            data.data.bannedUntil
+          ).toLocaleDateString("vi-VN", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })})`;
+        }
+
+        toast.success(message, { description });
       } else {
-        toast.success("Đã bỏ chặn người dùng", {
-          description: "Người dùng có thể đăng nhập lại bình thường",
+        toast.success("Bỏ chặn người dùng thành công", {
+          description:
+            "Người dùng có thể đăng nhập và sử dụng tài khoản bình thường",
         });
       }
     },
     onError: (error) => {
-      toast.error("Không thể thay đổi trạng thái của người dùng", {
-        description: error.message,
-      });
+      // Handle specific error messages
+      if (error.message.includes("Không thể chặn tài khoản của chính bạn")) {
+        toast.error("Không thể tự chặn tài khoản", {
+          description: "Bạn không thể chặn tài khoản đang đăng nhập hiện tại",
+        });
+      } else if (error.message.includes("Không thể chặn tài khoản admin")) {
+        toast.error("Không thể chặn tài khoản Admin", {
+          description:
+            "Việc chặn tài khoản Admin có thể ảnh hưởng nghiêm trọng đến hệ thống",
+        });
+      } else {
+        toast.error("Thao tác không thành công", {
+          description:
+            error.message || "Đã xảy ra lỗi khi thay đổi trạng thái người dùng",
+        });
+      }
     },
   });
 }
