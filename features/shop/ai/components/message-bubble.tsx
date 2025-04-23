@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Bot, User } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings";
 
 interface MessageBubbleProps {
   message: Message;
@@ -11,6 +12,9 @@ interface MessageBubbleProps {
 
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === "user";
+  const { settings } = useShopSettings();
+  const botAvatar = settings?.shop_logo_url || "/placeholder-logo.png";
+  const userAvatar = "/placeholder-user.jpg";
 
   return (
     <div
@@ -20,9 +24,9 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     >
       {!isUser && (
         <Avatar className="h-8 w-8">
-          <AvatarImage src="/images/bot-avatar.png" alt="AI Assistant" />
+          <AvatarImage src={botAvatar} alt="AI Assistant" />
           <AvatarFallback className="bg-primary text-primary-foreground">
-            <Bot className="h-4 w-4" />
+            {settings?.shop_name?.[0] || <Bot className="h-4 w-4" />}
           </AvatarFallback>
         </Avatar>
       )}
@@ -62,7 +66,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
       {isUser && (
         <Avatar className="h-8 w-8">
-          <AvatarImage src="/images/user-avatar.png" alt="User" />
+          <AvatarImage src={userAvatar} alt="User" />
           <AvatarFallback className="bg-secondary">
             <User className="h-4 w-4" />
           </AvatarFallback>
