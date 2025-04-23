@@ -28,18 +28,23 @@ import { useOrderStatuses } from "../hooks/use-order-statuses";
 import { useUpdateOrderStatus } from "../hooks/use-update-order-status";
 import { useCancelOrder } from "../hooks/use-cancel-order";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import {
+  OrderWithRelations,
+  orderStatusUpdateSchema,
+  cancelOrderSchema,
+} from "../types";
 
-// Define the form schema with Zod
-const statusUpdateSchema = z.object({
+// Define form schemas with Zod for client-side validation
+const statusUpdateFormSchema = z.object({
   order_status_id: z.string().min(1, "Vui lòng chọn trạng thái"),
 });
 
-const cancelOrderSchema = z.object({
+const cancelOrderFormSchema = z.object({
   reason: z.string().min(5, "Vui lòng nhập lý do hủy đơn (ít nhất 5 ký tự)"),
 });
 
 interface OrderStatusUpdateProps {
-  order: any;
+  order: OrderWithRelations;
   onSuccess: () => void;
 }
 
@@ -60,27 +65,29 @@ export function OrderStatusUpdate({
   const currentStatus = statuses.find((s) => s.id === currentStatusId);
 
   // Status update form
-  const statusForm = useForm<z.infer<typeof statusUpdateSchema>>({
-    resolver: zodResolver(statusUpdateSchema),
+  const statusForm = useForm<z.infer<typeof statusUpdateFormSchema>>({
+    resolver: zodResolver(statusUpdateFormSchema),
     defaultValues: {
       order_status_id: currentStatusId?.toString() || "",
     },
   });
 
   // Cancel order form
-  const cancelForm = useForm<z.infer<typeof cancelOrderSchema>>({
-    resolver: zodResolver(cancelOrderSchema),
+  const cancelForm = useForm<z.infer<typeof cancelOrderFormSchema>>({
+    resolver: zodResolver(cancelOrderFormSchema),
     defaultValues: {
       reason: "",
     },
   });
 
   // Handle status update
-  const onStatusUpdate = async (values: z.infer<typeof statusUpdateSchema>) => {
+  const onStatusUpdate = async (
+    values: z.infer<typeof statusUpdateFormSchema>
+  ) => {
     try {
       await updateOrderStatusMutation.mutateAsync({
         id: order.id,
-        order_status_id: Number.parseInt(values.order_status_id),
+        data: { order_status_id: Number.parseInt(values.order_status_id) },
       });
 
       toast.success("Cập nhật trạng thái đơn hàng thành công");
@@ -95,11 +102,13 @@ export function OrderStatusUpdate({
   };
 
   // Handle order cancellation
-  const onCancelOrder = async (values: z.infer<typeof cancelOrderSchema>) => {
+  const onCancelOrder = async (
+    values: z.infer<typeof cancelOrderFormSchema>
+  ) => {
     try {
       await cancelOrderMutation.mutateAsync({
-        p_order_id: order.id,
-        p_reason: values.reason,
+        id: order.id,
+        reason: values.reason,
       });
 
       toast.success("Hủy đơn hàng thành công");

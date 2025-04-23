@@ -1,38 +1,36 @@
-"use client"
+"use client";
 
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/ui/badge";
+import { OrderStatus } from "../types";
 
 interface OrderStatusBadgeProps {
-  status: {
-    id: number
-    name: string
-  }
+  status: Pick<OrderStatus, "id" | "name">;
 }
 
 export function OrderStatusBadge({ status }: OrderStatusBadgeProps) {
-  if (!status) return null
+  if (!status) return null;
 
   // Define badge variants based on status
   const getVariant = () => {
     switch (status.name) {
       case "Chờ xác nhận":
-        return "outline"
+        return "outline";
       case "Đã xác nhận":
-        return "secondary"
+        return "secondary";
       case "Đang xử lý":
-        return "default"
+        return "default";
       case "Đang giao":
-        return "default"
+        return "default";
       case "Đã giao":
-        return "success"
+        return "success";
       case "Đã hoàn thành":
-        return "success"
+        return "success";
       case "Đã hủy":
-        return "destructive"
+        return "destructive";
       default:
-        return "outline"
+        return "outline";
     }
-  }
+  };
 
-  return <Badge variant={getVariant() as any}>{status.name}</Badge>
+  return <Badge variant={getVariant() as any}>{status.name}</Badge>;
 }

@@ -1,41 +1,42 @@
-"use client"
+"use client";
 
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/ui/badge";
+import { PaymentStatus } from "../types";
 
 interface PaymentStatusBadgeProps {
-  status: string
+  status: PaymentStatus | string;
 }
 
 export function PaymentStatusBadge({ status }: PaymentStatusBadgeProps) {
-  if (!status) return null
+  if (!status) return null;
 
   // Define badge variants based on status
   const getVariant = () => {
     switch (status) {
       case "Pending":
-        return "outline"
+        return "outline";
       case "Paid":
-        return "success"
+        return "success";
       case "Failed":
-        return "destructive"
+        return "destructive";
       default:
-        return "outline"
+        return "outline";
     }
-  }
+  };
 
   // Translate status to Vietnamese
   const getLabel = () => {
     switch (status) {
       case "Pending":
-        return "Chờ thanh toán"
+        return "Chờ thanh toán";
       case "Paid":
-        return "Đã thanh toán"
+        return "Đã thanh toán";
       case "Failed":
-        return "Thất bại"
+        return "Thất bại";
       default:
-        return status
+        return status;
     }
-  }
+  };
 
-  return <Badge variant={getVariant() as any}>{getLabel()}</Badge>
+  return <Badge variant={getVariant() as any}>{getLabel()}</Badge>;
 }

@@ -1,23 +1,22 @@
+import { Metadata } from "next";
 import { OrderManagement } from "@/features/admin/orders/components/order-management";
-import { AdminLayout } from "@/features/admin/shared/components/admin-layout";
 
-export const metadata = {
-  title: "Quản lý đơn hàng | MyBeauty Admin",
-  description: "Quản lý đơn hàng của cửa hàng MyBeauty",
+export const metadata: Metadata = {
+  title: "Quản lý đơn hàng",
+  description: "Quản lý đơn hàng trong hệ thống",
 };
 
-export default function OrdersPage() {
+export default function AdminOrdersPage() {
   return (
-    <AdminLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">
-            Quản lý đơn hàng
-          </h1>
-        </div>
-
-        <OrderManagement />
+    <div className="container mx-auto py-6 space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Quản lý đơn hàng</h1>
+        <p className="text-muted-foreground">
+          Xem và quản lý tất cả các đơn hàng trong hệ thống
+        </p>
       </div>
-    </AdminLayout>
+
+      <OrderManagement />
+    </div>
   );
 }

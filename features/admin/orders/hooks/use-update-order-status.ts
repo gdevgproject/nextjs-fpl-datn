@@ -1,11 +1,13 @@
 "use client";
 
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { updateOrderStatusAction } from "../actions";
 
+/**
+ * Hook for updating an order's status
+ */
 export function useUpdateOrderStatus() {
   const queryClient = useQueryClient();
-  const supabase = getSupabaseBrowserClient();
 
   return useMutation({
     mutationFn: async ({
@@ -15,18 +17,16 @@ export function useUpdateOrderStatus() {
       id: number;
       data: { order_status_id: number };
     }) => {
-      const { data: result, error } = await supabase
-        .from("orders")
-        .update(data)
-        .eq("id", id)
-        .select();
+      const result = await updateOrderStatusAction({
+        id,
+        order_status_id: data.order_status_id,
+      });
 
-      if (error) {
-        console.error("Error updating order status:", error);
-        throw error;
+      if (!result.success) {
+        throw new Error(result.error || "Failed to update order status");
       }
 
-      return result;
+      return result.data;
     },
     onSuccess: () => {
       // Invalidate related queries to trigger refetches

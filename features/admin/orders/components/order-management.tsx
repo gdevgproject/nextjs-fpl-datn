@@ -1,17 +1,13 @@
 "use client";
 
-import { useState, useCallback } from "react"; // Import useCallback
-import {
-  useOrders,
-  type OrdersFilters,
-  type OrdersPagination,
-  type OrdersSort,
-} from "../hooks/use-orders";
+import { useState, useCallback } from "react";
+import { useOrders } from "../hooks/use-orders";
 import { OrderTable } from "./order-table";
 import { OrderFilters } from "./order-filters";
 import { OrderDetailsDialog } from "./order-details-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import type { OrdersFilters, OrdersPagination, OrdersSort } from "../types";
 
 export function OrderManagement() {
   const toast = useSonnerToast();

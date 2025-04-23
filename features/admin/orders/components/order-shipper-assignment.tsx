@@ -25,14 +25,15 @@ import { AlertCircle, Truck } from "lucide-react";
 import { useShippers } from "../hooks/use-shippers";
 import { useAssignShipper } from "../hooks/use-assign-shipper";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { OrderWithRelations, assignShipperSchema } from "../types";
 
-// Define the form schema with Zod
-const shipperAssignmentSchema = z.object({
+// Define the form schema with Zod for client-side validation
+const shipperAssignmentFormSchema = z.object({
   assigned_shipper_id: z.string().optional(),
 });
 
 interface OrderShipperAssignmentProps {
-  order: any;
+  order: OrderWithRelations;
   onSuccess: () => void;
 }
 
@@ -49,8 +50,8 @@ export function OrderShipperAssignment({
   const currentShipperId = order?.assigned_shipper_id;
 
   // Shipper assignment form
-  const form = useForm<z.infer<typeof shipperAssignmentSchema>>({
-    resolver: zodResolver(shipperAssignmentSchema),
+  const form = useForm<z.infer<typeof shipperAssignmentFormSchema>>({
+    resolver: zodResolver(shipperAssignmentFormSchema),
     defaultValues: {
       assigned_shipper_id: currentShipperId || "",
     },
@@ -58,16 +59,19 @@ export function OrderShipperAssignment({
 
   // Handle shipper assignment
   const onAssignShipper = async (
-    values: z.infer<typeof shipperAssignmentSchema>
+    values: z.infer<typeof shipperAssignmentFormSchema>
   ) => {
     try {
       await assignShipperMutation.mutateAsync({
         id: order.id,
-        assigned_shipper_id: values.assigned_shipper_id || null,
+        assigned_shipper_id:
+          values.assigned_shipper_id === "none"
+            ? null
+            : values.assigned_shipper_id || null,
       });
 
       toast.success(
-        values.assigned_shipper_id
+        values.assigned_shipper_id && values.assigned_shipper_id !== "none"
           ? "Gán người giao hàng thành công"
           : "Đã bỏ gán người giao hàng"
       );
@@ -171,7 +175,7 @@ export function OrderShipperAssignment({
                   </SelectContent>
                 </Select>
                 <FormDescription>
-                  {field.value
+                  {field.value && field.value !== "none"
                     ? "Bỏ chọn để hủy gán người giao hàng."
                     : "Chọn người giao hàng từ danh sách."}
                 </FormDescription>

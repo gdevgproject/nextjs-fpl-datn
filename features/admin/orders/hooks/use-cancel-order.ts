@@ -1,28 +1,26 @@
 "use client";
 
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { cancelOrderAction } from "../actions";
 
+/**
+ * Hook for cancelling an order (by admin)
+ */
 export function useCancelOrder() {
   const queryClient = useQueryClient();
-  const supabase = getSupabaseBrowserClient();
 
   return useMutation({
-    mutationFn: async (params: any) => {
-      const { data, error } = await supabase.rpc(
-        "cancel_order_by_admin",
-        params
-      );
+    mutationFn: async ({ id, reason }: { id: number; reason: string }) => {
+      const result = await cancelOrderAction({ id, reason });
 
-      if (error) {
-        console.error("Error cancelling order:", error);
-        throw error;
+      if (!result.success) {
+        throw new Error(result.error || "Failed to cancel order");
       }
 
-      return data;
+      return result;
     },
     onSuccess: () => {
-      // Invalidate queries to refetch the data
+      // Invalidate related queries to trigger refetches
       queryClient.invalidateQueries({ queryKey: ["orders", "list"] });
       queryClient.invalidateQueries({ queryKey: ["orders", "details"] });
     },
