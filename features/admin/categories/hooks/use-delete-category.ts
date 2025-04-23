@@ -1,29 +1,26 @@
 "use client";
 
-import { useClientMutation } from "@/shared/hooks/use-client-mutation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDeleteCategoryImage } from "./use-delete-category-image";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-const supabase = getSupabaseBrowserClient();
+interface DeleteCategoryParams {
+  id: number;
+}
 
 export function useDeleteCategory() {
-  const deleteCategoryMutation = useClientMutation("categories", "delete", {
-    invalidateQueries: [["categories", "list"]],
-    primaryKey: "id",
-  });
-
+  const queryClient = useQueryClient();
+  const supabase = getSupabaseBrowserClient();
   const deleteImageMutation = useDeleteCategoryImage();
 
-  // Extend the mutation to also delete the image
-  return {
-    ...deleteCategoryMutation,
-    mutateAsync: async (variables: any) => {
+  return useMutation({
+    mutationFn: async ({ id }: DeleteCategoryParams) => {
       try {
         // First, get the category details to get the image URL
         const { data: category, error: fetchError } = await supabase
           .from("categories")
           .select("image_url")
-          .eq("id", variables.id)
+          .eq("id", id)
           .single();
 
         if (fetchError) {
@@ -35,12 +32,19 @@ export function useDeleteCategory() {
         const imageUrl = category?.image_url || null;
 
         // Delete the category
-        const result = await deleteCategoryMutation.mutateAsync(variables);
+        const { error } = await supabase
+          .from("categories")
+          .delete()
+          .eq("id", id);
+
+        if (error) {
+          throw error;
+        }
 
         // If the category had an image, delete it
         if (imageUrl) {
           try {
-            // Use the improved deleteFromUrl method
+            // Use the deleteFromUrl method from useDeleteCategoryImage
             await deleteImageMutation.deleteFromUrl(imageUrl);
           } catch (error) {
             console.error("Error deleting category image:", error);
@@ -49,11 +53,18 @@ export function useDeleteCategory() {
           }
         }
 
-        return result;
+        return { success: true, id };
       } catch (error) {
-        // Rethrow the error to be handled by the component
+        console.error("Error deleting category:", error);
         throw error;
       }
     },
-  };
+    onSuccess: () => {
+      // Invalidate and refetch categories list query
+      queryClient.invalidateQueries({ queryKey: ["categories", "list"] });
+    },
+    onError: (error) => {
+      console.error("Error in category deletion process:", error);
+    },
+  });
 }
