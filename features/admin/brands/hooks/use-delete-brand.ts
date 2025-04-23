@@ -1,29 +1,26 @@
 "use client";
 
-import { useClientMutation } from "@/shared/hooks/use-client-mutation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDeleteBrandLogo } from "./use-delete-logo";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-const supabase = getSupabaseBrowserClient();
+interface DeleteBrandParams {
+  id: number;
+}
 
 export function useDeleteBrand() {
-  const deleteBrandMutation = useClientMutation("brands", "delete", {
-    invalidateQueries: [["brands", "list"]],
-    primaryKey: "id",
-  });
-
+  const queryClient = useQueryClient();
+  const supabase = getSupabaseBrowserClient();
   const deleteLogoMutation = useDeleteBrandLogo();
 
-  // Extend the mutation to also delete the logo
-  return {
-    ...deleteBrandMutation,
-    mutateAsync: async (variables: any) => {
+  return useMutation({
+    mutationFn: async ({ id }: DeleteBrandParams) => {
       try {
         // First, get the brand details to get the logo URL
         const { data: brand, error: fetchError } = await supabase
           .from("brands")
           .select("logo_url")
-          .eq("id", variables.id)
+          .eq("id", id)
           .single();
 
         if (fetchError) {
@@ -35,12 +32,16 @@ export function useDeleteBrand() {
         const logoUrl = brand?.logo_url || null;
 
         // Delete the brand
-        const result = await deleteBrandMutation.mutateAsync(variables);
+        const { error } = await supabase.from("brands").delete().eq("id", id);
+
+        if (error) {
+          throw error;
+        }
 
         // If the brand had a logo, delete it
         if (logoUrl) {
           try {
-            // Use the improved deleteFromUrl method
+            // Use the deleteFromUrl method from useDeleteBrandLogo
             await deleteLogoMutation.deleteFromUrl(logoUrl);
           } catch (error) {
             console.error("Error deleting brand logo:", error);
@@ -49,11 +50,18 @@ export function useDeleteBrand() {
           }
         }
 
-        return result;
+        return { success: true, id };
       } catch (error) {
-        // Rethrow the error to be handled by the component
+        console.error("Error deleting brand:", error);
         throw error;
       }
     },
-  };
+    onSuccess: () => {
+      // Invalidate and refetch brands list query
+      queryClient.invalidateQueries({ queryKey: ["brands", "list"] });
+    },
+    onError: (error) => {
+      console.error("Error in brand deletion process:", error);
+    },
+  });
 }
