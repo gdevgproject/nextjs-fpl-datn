@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -24,7 +24,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/pagination";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -99,32 +98,12 @@ export function UsersTable({
   const updateUserRole = useUpdateUserRole();
   const updateUserBlockStatus = useUpdateUserBlockStatus();
   
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  
   // Pagination
   const totalPages = Math.ceil(totalCount / filter.perPage);
   
   // Handle page change
   const handlePageChange = (page: number) => {
     onFilterChange({ page });
-  };
-  
-  // Handle select all
-  const handleSelectAll = () => {
-    if (selectedUsers.length === users.length) {
-      setSelectedUsers([]);
-    } else {
-      setSelectedUsers(users.map((user) => user.id));
-    }
-  };
-  
-  // Handle select one
-  const handleSelectOne = (id: string) => {
-    if (selectedUsers.includes(id)) {
-      setSelectedUsers(selectedUsers.filter((userId) => userId !== id));
-    } else {
-      setSelectedUsers([...selectedUsers, id]);
-    }
   };
   
   // Handle view user
@@ -236,32 +215,24 @@ export function UsersTable({
   
   return (
     <div className="space-y-4">
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12">
-                <Checkbox
-                  checked={selectedUsers.length === users.length && users.length > 0}
-                  onCheckedChange={handleSelectAll}
-                  aria-label="Chọn tất cả"
-                  className="translate-y-[2px]"
-                />
-              </TableHead>
               <TableHead className="w-[250px] 2xl:w-[300px]">Người dùng</TableHead>
               <TableHead className="hidden sm:table-cell">Vai trò</TableHead>
               <TableHead className="hidden lg:table-cell">Thời gian đăng ký</TableHead>
               <TableHead className="hidden md:table-cell">Đăng nhập gần nhất</TableHead>
               <TableHead className="hidden lg:table-cell">Email xác thực</TableHead>
               <TableHead className="text-center">Trạng thái</TableHead>
-              <TableHead className="w-[100px]">Hành động</TableHead>
+              <TableHead className="w-[80px]">Hành động</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {users.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={7}
                   className="h-32 text-center"
                 >
                   Không tìm thấy người dùng nào phù hợp với bộ lọc
@@ -271,20 +242,8 @@ export function UsersTable({
               users.map((user) => (
                 <TableRow
                   key={user.id}
-                  className={`${isFetching ? "opacity-60" : ""} ${
-                    selectedUsers.includes(user.id) ? "bg-muted/50" : ""
-                  }`}
+                  className={`${isFetching ? "opacity-60" : ""}`}
                 >
-                  {/* Checkbox column */}
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedUsers.includes(user.id)}
-                      onCheckedChange={() => handleSelectOne(user.id)}
-                      aria-label={`Chọn ${user.email}`}
-                      className="translate-y-[2px]"
-                    />
-                  </TableCell>
-                  
                   {/* User info column */}
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -470,7 +429,7 @@ export function UsersTable({
 
       {/* Pagination controls */}
       {totalPages > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-sm text-muted-foreground">
             Hiển thị {users.length} / {totalCount} người dùng
           </div>
@@ -519,27 +478,6 @@ export function UsersTable({
             >
               <ChevronRight className="h-4 w-4" />
               <span className="sr-only">Trang sau</span>
-            </Button>
-          </div>
-        </div>
-      )}
-      
-      {/* Bulk actions when users are selected */}
-      {selectedUsers.length > 0 && (
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-background border shadow-lg rounded-lg p-3 flex items-center gap-3 z-10">
-          <span className="text-sm font-medium">
-            Đã chọn {selectedUsers.length} người dùng
-          </span>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => setSelectedUsers([])}>
-              Bỏ chọn
-            </Button>
-            <Button size="sm" variant="default">
-              Gửi email
-            </Button>
-            <Button size="sm" variant="destructive">
-              <Ban className="h-4 w-4 mr-1" />
-              Chặn người dùng
             </Button>
           </div>
         </div>

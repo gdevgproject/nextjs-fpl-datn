@@ -94,17 +94,17 @@ export function UsersFilter({ filter, onFilterChange }: UsersFilterProps) {
   };
 
   return (
-    <div className="flex flex-col md:flex-row gap-2 w-full">
+    <div className="flex flex-col gap-3 w-full">
       {/* Search form - takes most space */}
       <form
         onSubmit={handleSearchSubmit}
-        className="flex-1 flex items-center relative"
+        className="w-full flex items-center relative"
       >
         <Input
           placeholder="Tìm kiếm theo email, tên, số điện thoại..."
           value={searchValue}
           onChange={handleSearchChange}
-          className="pr-10 text-sm"
+          className="pr-10 text-xs sm:text-sm w-full"
         />
         {searchValue && (
           <Button
@@ -130,8 +130,8 @@ export function UsersFilter({ filter, onFilterChange }: UsersFilterProps) {
       </form>
 
       {/* Responsive layout for filters */}
-      <div className="flex flex-row gap-2">
-        {/* Advanced filters button (for smaller screens) */}
+      <div className="flex flex-row gap-2 flex-wrap">
+        {/* Filters dropdown for mobile & tablet */}
         <div className="flex md:hidden w-full">
           <Popover>
             <PopoverTrigger asChild>
@@ -155,7 +155,7 @@ export function UsersFilter({ filter, onFilterChange }: UsersFilterProps) {
                 <ChevronDown className="h-4 w-4 opacity-50" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-72 p-4" align="end">
+            <PopoverContent className="w-72 p-4" align="start">
               <div className="grid gap-4">
                 <div className="space-y-2">
                   <h4 className="font-medium leading-none">Vai trò</h4>
@@ -213,72 +213,152 @@ export function UsersFilter({ filter, onFilterChange }: UsersFilterProps) {
           </Popover>
         </div>
 
-        {/* Desktop filters */}
-        <div className="hidden md:flex gap-2">
-          <Select value={filter.role} onValueChange={handleRoleChange}>
-            <SelectTrigger className="w-[160px] h-10">
-              <SelectValue placeholder="Vai trò" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả vai trò</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="staff">Staff</SelectItem>
-              <SelectItem value="shipper">Shipper</SelectItem>
-              <SelectItem value="user">User</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Desktop filters with improved responsiveness */}
+        <div className="hidden md:flex md:flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Select value={filter.role} onValueChange={handleRoleChange}>
+              <SelectTrigger className="w-[130px] lg:w-[160px] h-9 text-sm">
+                <SelectValue placeholder="Vai trò" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả vai trò</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="staff">Staff</SelectItem>
+                <SelectItem value="shipper">Shipper</SelectItem>
+                <SelectItem value="user">User</SelectItem>
+              </SelectContent>
+            </Select>
 
-          <Select value={filter.status} onValueChange={handleStatusChange}>
-            <SelectTrigger className="w-[160px] h-10">
-              <SelectValue placeholder="Trạng thái" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả trạng thái</SelectItem>
-              <SelectItem value="active">Hoạt động</SelectItem>
-              <SelectItem value="blocked">Bị chặn</SelectItem>
-            </SelectContent>
-          </Select>
+            <Select value={filter.status} onValueChange={handleStatusChange}>
+              <SelectTrigger className="w-[130px] lg:w-[160px] h-9 text-sm">
+                <SelectValue placeholder="Trạng thái" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                <SelectItem value="active">Hoạt động</SelectItem>
+                <SelectItem value="blocked">Bị chặn</SelectItem>
+              </SelectContent>
+            </Select>
 
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="icon">
-                <Filter className="h-4 w-4" />
-                <span className="sr-only">Bộ lọc nâng cao</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-4" align="end">
-              <div className="grid gap-4">
-                <div className="space-y-2">
-                  <h4 className="font-medium leading-none">Bộ lọc nâng cao</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Tùy chỉnh bộ lọc để tìm người dùng chính xác hơn
-                  </p>
-                </div>
-                <div className="grid gap-2">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={showVerifiedOnly}
-                      onCheckedChange={handleVerifiedChange}
-                      id="verified"
-                    />
-                    <Label htmlFor="verified">
-                      Chỉ hiện người dùng đã xác thực email
-                    </Label>
-                  </div>
-                  {/* Additional filters can be added here */}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleResetFilters}
-                >
-                  Đặt lại tất cả bộ lọc
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9">
+                  <Filter className="h-4 w-4" />
+                  <span className="sr-only">Bộ lọc nâng cao</span>
                 </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-4" align="end">
+                <div className="grid gap-4">
+                  <div className="space-y-2">
+                    <h4 className="font-medium leading-none">
+                      Bộ lọc nâng cao
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      Tùy chỉnh bộ lọc để tìm người dùng chính xác hơn
+                    </p>
+                  </div>
+                  <div className="grid gap-2">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={showVerifiedOnly}
+                        onCheckedChange={handleVerifiedChange}
+                        id="verified"
+                      />
+                      <Label htmlFor="verified">
+                        Chỉ hiện người dùng đã xác thực email
+                      </Label>
+                    </div>
+                    {/* Additional filters can be added here */}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResetFilters}
+                  >
+                    Đặt lại tất cả bộ lọc
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {activeFiltersCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetFilters}
+                className="h-9 text-sm"
+              >
+                Đặt lại
+              </Button>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Active filters badges */}
+      {activeFiltersCount > 0 && (
+        <div className="flex flex-wrap gap-2 mt-1">
+          {filter.search && (
+            <Badge variant="secondary" className="px-2 py-1 text-xs">
+              Từ khóa: {filter.search}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4 ml-1 p-0"
+                onClick={() => onFilterChange({ search: "", page: 1 })}
+              >
+                <X className="h-3 w-3" />
+                <span className="sr-only">Xóa bộ lọc từ khóa</span>
+              </Button>
+            </Badge>
+          )}
+
+          {filter.role !== "all" && (
+            <Badge variant="secondary" className="px-2 py-1 text-xs">
+              Vai trò: {filter.role}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4 ml-1 p-0"
+                onClick={() => onFilterChange({ role: "all", page: 1 })}
+              >
+                <X className="h-3 w-3" />
+                <span className="sr-only">Xóa bộ lọc vai trò</span>
+              </Button>
+            </Badge>
+          )}
+
+          {filter.status !== "all" && (
+            <Badge variant="secondary" className="px-2 py-1 text-xs">
+              Trạng thái: {filter.status === "active" ? "Hoạt động" : "Bị chặn"}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4 ml-1 p-0"
+                onClick={() => onFilterChange({ status: "all", page: 1 })}
+              >
+                <X className="h-3 w-3" />
+                <span className="sr-only">Xóa bộ lọc trạng thái</span>
+              </Button>
+            </Badge>
+          )}
+
+          {showVerifiedOnly && (
+            <Badge variant="secondary" className="px-2 py-1 text-xs">
+              Đã xác thực email
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4 ml-1 p-0"
+                onClick={() => setShowVerifiedOnly(false)}
+              >
+                <X className="h-3 w-3" />
+                <span className="sr-only">Xóa bộ lọc xác thực</span>
+              </Button>
+            </Badge>
+          )}
+        </div>
+      )}
     </div>
   );
 }
