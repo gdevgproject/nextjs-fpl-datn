@@ -48,7 +48,8 @@ export async function fetchUsers(filter: UserFilter) {
             "",
           phone_number: profile?.phone_number || metadata.phone_number || null,
           role: appMetadata.role || "user",
-          is_blocked: user.banned || false,
+          is_blocked:
+            !!user.banned_until && new Date(user.banned_until) > new Date(), // Fix: Correctly check if user is blocked based on banned_until
           created_at: user.created_at,
           last_sign_in_at: user.last_sign_in_at,
           email_confirmed_at: user.email_confirmed_at,
@@ -196,7 +197,9 @@ export async function fetchUserDetails(userId: string) {
         "",
       phone_number: profile?.phone_number || metadata.phone_number || null,
       role: appMetadata.role || "user",
-      is_blocked: user.banned || false,
+      is_blocked:
+        !!user.banned_until && new Date(user.banned_until) > new Date(), // Fix: Correctly check if user is blocked based on banned_until
+      banned_until: user.banned_until, // Add the banned_until field for displaying ban information
       created_at: user.created_at,
       last_sign_in_at: user.last_sign_in_at,
       email_confirmed_at: user.email_confirmed_at,
