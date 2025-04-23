@@ -379,15 +379,23 @@ export function UsersTable({
                   {/* User info column */}
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9">
+                      <Avatar className="h-10 w-10 rounded-full overflow-hidden">
                         <AvatarImage
                           src={user.avatar_url || ""}
                           alt={user.display_name || ""}
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            // Fallback nếu ảnh không tải được
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = "none";
+                            target.nextElementSibling!.style.display = "flex";
+                          }}
                         />
-                        <AvatarFallback className="bg-primary/10 text-primary">
-                          {(
-                            user.display_name?.[0] || user.email[0]
-                          ).toUpperCase()}
+                        <AvatarFallback 
+                          className="bg-primary/10 text-primary flex items-center justify-center h-full w-full text-base"
+                          style={{ display: user.avatar_url ? "none" : "flex" }}
+                        >
+                          {(user.display_name?.[0] || user.email[0]).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="grid gap-0.5">
