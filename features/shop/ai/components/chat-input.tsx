@@ -56,35 +56,34 @@ export function ChatInput() {
           onChange={handleInputChange}
           placeholder="Hỏi về nước hoa..."
           className={cn(
-            "min-h-[60px] max-h-[200px] resize-none",
+            "min-h-[44px] max-h-[120px] resize-none flex-1",
             input.length > CHARACTER_LIMIT ? "border-red-500" : ""
           )}
           disabled={isLoading}
           maxLength={CHARACTER_LIMIT}
+          onKeyDown={handleKeyDown}
         />
-        <div className="flex flex-col gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            type="button"
-            onClick={resetChat}
-            disabled={isLoading || messages.length === 0}
-            className="h-9 w-9"
-            aria-label="Bắt đầu cuộc trò chuyện mới"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="sr-only">Bắt đầu cuộc trò chuyện mới</span>
-          </Button>
-          <Button
-            type="submit"
-            size="icon"
-            disabled={isLoading || !input.trim()}
-            className="h-9 w-9"
-          >
-            <Send className="h-4 w-4" />
-            <span className="sr-only">Gửi</span>
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          size="icon"
+          type="button"
+          onClick={resetChat}
+          disabled={isLoading || messages.length === 0}
+          className="h-9 w-9 ml-1"
+          aria-label="Bắt đầu cuộc trò chuyện mới"
+        >
+          <Plus className="h-4 w-4" />
+          <span className="sr-only">Bắt đầu cuộc trò chuyện mới</span>
+        </Button>
+        <Button
+          type="submit"
+          size="icon"
+          disabled={isLoading || !input.trim()}
+          className="h-9 w-9 ml-1"
+        >
+          <Send className="h-4 w-4" />
+          <span className="sr-only">Gửi</span>
+        </Button>
       </form>
       <p className="text-xs text-muted-foreground mt-1 text-right">
         {input.length}/{CHARACTER_LIMIT}

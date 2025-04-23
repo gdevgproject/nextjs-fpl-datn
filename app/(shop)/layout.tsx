@@ -2,6 +2,7 @@ import { createServerComponentClient } from "@/lib/supabase/server";
 import { MainLayout } from "@/features/shop/shared/components/main-layout";
 import { CartMergeOnLogin } from "@/features/shop/cart/components/cart-merge-on-login";
 import { getShopSettings } from "@/features/shop/shared/services";
+import { FloatingChatBot } from "@/features/shop/ai/components/floating-chat-bot";
 import type { Category } from "@/features/shop/shared/hooks/use-categories";
 import type { Gender } from "@/features/shop/shared/hooks/use-genders";
 import type { ShopSettings } from "@/lib/types/shared.types";
@@ -36,6 +37,7 @@ export default async function ShopLayout({
     >
       <CartMergeOnLogin />
       {children}
+      <FloatingChatBot />
     </MainLayout>
   );
 }
