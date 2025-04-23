@@ -5,16 +5,7 @@ import { useUsers } from "../hooks/use-users";
 import { UsersFilter } from "./users-filter";
 import { UsersTable } from "./users-table";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import {
-  CirclePlus,
-  Loader2,
-  Download,
-  Upload,
-  RefreshCw,
-  UsersRound,
-  UserCheck,
-  UserX,
-} from "lucide-react";
+import { Loader2, RefreshCw, UsersRound, UserCheck, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -24,14 +15,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 
 export function UsersPage() {
@@ -96,31 +79,6 @@ export function UsersPage() {
             >
               <RefreshCw className="mr-2 h-3 w-3 md:h-4 md:w-4" />
               Làm mới
-            </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs md:text-sm"
-                >
-                  <Download className="mr-2 h-3 w-3 md:h-4 md:w-4" />
-                  Xuất dữ liệu
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[200px]">
-                <DropdownMenuLabel>Định dạng xuất</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Xuất Excel (.xlsx)</DropdownMenuItem>
-                <DropdownMenuItem>Xuất CSV (.csv)</DropdownMenuItem>
-                <DropdownMenuItem>Xuất PDF (.pdf)</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <Button variant="default" size="sm" className="text-xs md:text-sm">
-              <CirclePlus className="mr-2 h-3 w-3 md:h-4 md:w-4" />
-              Thêm người dùng
             </Button>
           </div>
         </div>
