@@ -79,6 +79,8 @@ export function useChat(): ChatContextValue {
     mutateAsync: sendMessageMutation,
     isPending,
     error,
+    reset: resetMutation,
+    isSuccess,
   } = useMutation({
     mutationFn: async (content: string) => {
       // Create a new user message
@@ -116,6 +118,9 @@ export function useChat(): ChatContextValue {
       await logChatInteraction(user?.id || null, content, aiResponse);
 
       return assistantMessage;
+    },
+    onSettled: () => {
+      resetMutation(); // Reset trạng thái mutation sau khi xong (dù thành công hay lỗi)
     },
   });
 

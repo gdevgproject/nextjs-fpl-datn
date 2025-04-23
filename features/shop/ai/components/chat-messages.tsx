@@ -21,20 +21,21 @@ export function ChatMessages() {
   // If no messages, show welcome message
   if (messages.length === 0) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
-        <div className="rounded-full bg-primary/10 p-4">
+      <div className="flex-1 flex flex-col justify-center items-center p-8 text-center select-none min-h-0">
+        <div className="rounded-full bg-primary/10 p-4 mb-4 shadow-lg animate-fade-in">
           <Image
             src={logoUrl}
             alt="AI Beauty Advisor"
             width={80}
             height={80}
-            className="h-20 w-20 rounded-full object-cover"
+            className="h-20 w-20 rounded-full object-cover border border-primary shadow"
+            priority
           />
         </div>
-        <h2 className="mt-4 text-2xl font-bold">
+        <h2 className="mt-2 text-2xl font-bold tracking-tight">
           Chào mừng đến với MyBeauty AI
         </h2>
-        <p className="mt-2 text-muted-foreground">
+        <p className="mt-2 text-muted-foreground max-w-md mx-auto">
           Tôi là trợ lý ảo của MyBeauty, sẵn sàng giúp bạn tìm kiếm nước hoa phù
           hợp với sở thích của bạn.
         </p>
