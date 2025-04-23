@@ -61,7 +61,7 @@ export function ProductLabelDialog({
     resolver: zodResolver(productLabelFormSchema),
     defaultValues: {
       name: "",
-      color_code: null,
+      color_code: "",
     },
   });
 
@@ -70,13 +70,13 @@ export function ProductLabelDialog({
     if (mode === "edit" && productLabel) {
       form.reset({
         name: productLabel.name,
-        color_code: productLabel.color_code,
+        color_code: productLabel.color_code || "",
       });
       setSelectedColor(productLabel.color_code || null);
     } else {
       form.reset({
         name: "",
-        color_code: null,
+        color_code: "",
       });
       setSelectedColor(null);
     }
@@ -91,12 +91,15 @@ export function ProductLabelDialog({
     try {
       setIsProcessing(true);
 
+      // Make sure the color_code from the form is used (which is connected to selectedColor)
+      const dataToSubmit = {
+        name: values.name,
+        color_code: selectedColor, // Use the selectedColor state which tracks the color picker
+      };
+
       if (mode === "create") {
         // Create new product label
-        await createProductLabelMutation.mutateAsync({
-          name: values.name,
-          color_code: selectedColor,
-        });
+        await createProductLabelMutation.mutateAsync(dataToSubmit);
 
         // Show success message
         toast.success("Nhãn sản phẩm đã được tạo thành công");
@@ -111,8 +114,7 @@ export function ProductLabelDialog({
         // Update existing product label
         await updateProductLabelMutation.mutateAsync({
           id: productLabel.id,
-          name: values.name,
-          color_code: selectedColor,
+          ...dataToSubmit,
         });
 
         // Show success message
@@ -128,6 +130,7 @@ export function ProductLabelDialog({
           error instanceof Error ? error.message : "Unknown error"
         }`
       );
+      console.error("Submission error:", error);
     } finally {
       setIsProcessing(false);
     }
@@ -135,8 +138,15 @@ export function ProductLabelDialog({
 
   // Handle color change
   const handleColorChange = (color: any) => {
-    setSelectedColor(color.hex);
-    form.setValue("color_code", color.hex);
+    const hexColor = color.hex;
+    setSelectedColor(hexColor);
+
+    // Update the form value properly with setValue - need to trigger form validation
+    form.setValue("color_code", hexColor, {
+      shouldValidate: true,
+      shouldDirty: true,
+      shouldTouch: true,
+    });
   };
 
   return (
@@ -181,10 +191,27 @@ export function ProductLabelDialog({
                 <FormItem>
                   <FormLabel>Mã màu</FormLabel>
                   <FormControl>
-                    <SketchPicker
-                      color={selectedColor || ""}
-                      onChange={handleColorChange}
-                    />
+                    <div>
+                      <SketchPicker
+                        color={selectedColor || ""}
+                        onChange={handleColorChange}
+                      />
+                      {selectedColor && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <div
+                            className="h-6 w-6 rounded border border-gray-200"
+                            style={{ backgroundColor: selectedColor }}
+                          />
+                          <span>Đã chọn: {selectedColor}</span>
+                        </div>
+                      )}
+                      {/* Hidden input to ensure form value is captured */}
+                      <input
+                        type="hidden"
+                        {...field}
+                        value={selectedColor || ""}
+                      />
+                    </div>
                   </FormControl>
                   <FormDescription>Chọn màu cho nhãn sản phẩm.</FormDescription>
                   <FormMessage />

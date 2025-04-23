@@ -1,98 +1,124 @@
-"use client"
+"use client";
 
-import { useClientFetch } from "@/shared/hooks/use-client-fetch"
+import { useQuery } from "@tanstack/react-query";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface InventoryFilters {
-  search?: string
-  variantId?: number
-  reason?: string
-  startDate?: string
-  endDate?: string
-  minChange?: number
-  maxChange?: number
+  search?: string;
+  variantId?: number;
+  reason?: string;
+  startDate?: string;
+  endDate?: string;
+  minChange?: number;
+  maxChange?: number;
 }
 
 interface InventoryPagination {
-  page: number
-  pageSize: number
+  page: number;
+  pageSize: number;
 }
 
 interface InventorySort {
-  column: string
-  direction: "asc" | "desc"
+  column: string;
+  direction: "asc" | "desc";
 }
 
-export function useInventory(filters?: InventoryFilters, pagination?: InventoryPagination, sort?: InventorySort) {
-  return useClientFetch(["inventory", "list", filters, pagination, sort], "inventory", {
-    columns: `
-      id, 
-      variant_id, 
-      change_amount, 
-      reason, 
-      order_id, 
-      stock_after_change, 
-      updated_by, 
-      timestamp,
-      product_variants(id, volume_ml, sku, product_id, products(id, name, slug))
-    `,
-    filters: (query) => {
-      let q = query
+export function useInventory(
+  filters?: InventoryFilters,
+  pagination?: InventoryPagination,
+  sort?: InventorySort
+) {
+  const supabase = getSupabaseBrowserClient();
+
+  return useQuery({
+    queryKey: ["inventory", "list", filters, pagination, sort],
+    queryFn: async () => {
+      // Start with base query
+      let query = supabase.from("inventory").select(
+        `
+          id, 
+          variant_id, 
+          change_amount, 
+          reason, 
+          order_id, 
+          stock_after_change, 
+          updated_by, 
+          timestamp,
+          product_variants(id, volume_ml, sku, product_id, products(id, name, slug))
+        `,
+        {
+          count: "exact",
+        }
+      );
 
       // Apply search filter to product name via join
       if (filters?.search) {
-        q = q.or(
-          `product_variants.products.name.ilike.%${filters.search}%,product_variants.sku.ilike.%${filters.search}%`,
-        )
+        query = query.or(
+          `product_variants.products.name.ilike.%${filters.search}%,product_variants.sku.ilike.%${filters.search}%`
+        );
       }
 
       // Filter by variant ID
       if (filters?.variantId) {
-        q = q.eq("variant_id", filters.variantId)
+        query = query.eq("variant_id", filters.variantId);
       }
 
       // Filter by reason (partial match)
       if (filters?.reason) {
-        q = q.ilike("reason", `%${filters.reason}%`)
+        query = query.ilike("reason", `%${filters.reason}%`);
       }
 
       // Filter by date range
       if (filters?.startDate) {
-        q = q.gte("timestamp", filters.startDate)
+        query = query.gte("timestamp", filters.startDate);
       }
       if (filters?.endDate) {
         // Add one day to include the end date fully
-        const endDate = new Date(filters.endDate)
-        endDate.setDate(endDate.getDate() + 1)
-        q = q.lt("timestamp", endDate.toISOString())
+        const endDate = new Date(filters.endDate);
+        endDate.setDate(endDate.getDate() + 1);
+        query = query.lt("timestamp", endDate.toISOString());
       }
 
       // Filter by change amount range
       if (filters?.minChange !== undefined) {
-        q = q.gte("change_amount", filters.minChange)
+        query = query.gte("change_amount", filters.minChange);
       }
       if (filters?.maxChange !== undefined) {
-        q = q.lte("change_amount", filters.maxChange)
+        query = query.lte("change_amount", filters.maxChange);
       }
 
-      return q
+      // Apply sorting
+      if (sort) {
+        const sortColumn =
+          sort.column === "product_variants.products.name"
+            ? "product_variants(products(name))"
+            : sort.column;
+        query = query.order(sortColumn, {
+          ascending: sort.direction === "asc",
+        });
+      } else {
+        // Default sort by timestamp descending
+        query = query.order("timestamp", { ascending: false });
+      }
+
+      // Apply pagination
+      if (pagination) {
+        const { page, pageSize } = pagination;
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+        query = query.range(from, to);
+      }
+
+      const { data, error, count } = await query;
+
+      if (error) {
+        throw error;
+      }
+
+      return {
+        data,
+        count,
+      };
     },
-    // Apply pagination
-    pagination: pagination
-      ? {
-          page: pagination.page,
-          pageSize: pagination.pageSize,
-        }
-      : undefined,
-    // Apply sorting
-    sort: sort
-      ? [
-          {
-            column: sort.column === "product_variants.products.name" ? "product_variants(products(name))" : sort.column,
-            ascending: sort.direction === "asc",
-          },
-        ]
-      : [{ column: "timestamp", ascending: false }], // Default sort by timestamp descending
-    // Enable exact count for pagination
-    count: "exact",
-  })
+  });
 }
