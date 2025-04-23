@@ -83,44 +83,47 @@ export function useChat(): ChatContextValue {
     isSuccess,
   } = useMutation({
     mutationFn: async (content: string) => {
-      // Create a new user message
       const userMessage: Message = {
         id: uuidv4(),
         role: "user",
         content,
         createdAt: new Date(),
       };
-
-      // Add user message to state
       setMessages((prev) => [...prev, userMessage]);
-
-      // Prepare messages for the API, including system prompt
       const messagesForAPI = [
         { role: "system", content: systemPrompt },
         ...formatMessagesForGroq([...messages, userMessage]),
       ];
-
-      // Get AI response
-      const aiResponse = await generateAIResponse(messagesForAPI);
-
-      // Create assistant message
-      const assistantMessage: Message = {
-        id: uuidv4(),
-        role: "assistant",
-        content: aiResponse,
-        createdAt: new Date(),
-      };
-
-      // Add assistant message to state
-      setMessages((prev) => [...prev, assistantMessage]);
-
-      // Log the interaction for analytics
-      await logChatInteraction(user?.id || null, content, aiResponse);
-
-      return assistantMessage;
+      let assistantId = uuidv4();
+      let lastContent = "";
+      await generateAIResponse(messagesForAPI, (partial) => {
+        lastContent = partial;
+        setMessages((prev) => {
+          // Nếu đã có assistant message tạm thời, update nó
+          if (prev[prev.length - 1]?.role === "assistant") {
+            return [
+              ...prev.slice(0, -1),
+              { ...prev[prev.length - 1], content: partial },
+            ];
+          }
+          // Nếu chưa có, thêm mới
+          return [
+            ...prev,
+            {
+              id: assistantId,
+              role: "assistant",
+              content: partial,
+              createdAt: new Date(),
+            },
+          ];
+        });
+      });
+      // Log interaction khi đã có full content
+      await logChatInteraction(user?.id || null, content, lastContent);
+      return { content: lastContent };
     },
     onSettled: () => {
-      resetMutation(); // Reset trạng thái mutation sau khi xong (dù thành công hay lỗi)
+      resetMutation();
     },
   });
 

@@ -66,21 +66,43 @@ export function formatMessagesForGroq(messages: Message[]): any[] {
 /**
  * Call the Groq API to generate a response
  */
-export async function generateAIResponse(messages: any[]): Promise<string> {
-  try {
-    const response = await fetch("/api/groq", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages }),
-    });
-    const data = await response.json();
-    if (data.error) throw new Error(data.error);
-    return data.choices?.[0]?.message?.content || "";
-  } catch (error: any) {
-    console.error("Error calling Groq API:", error);
-    if (error.message.includes("Rate limit exceeded")) {
-      throw new Error("Groq API đang quá tải. Vui lòng thử lại sau.");
+export async function generateAIResponse(
+  messages: any[],
+  onStream?: (text: string) => void
+): Promise<string> {
+  const response = await fetch("/api/groq", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages }),
+  });
+
+  if (!response.body) throw new Error("No response body");
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let result = "";
+  let done = false;
+
+  while (!done) {
+    const { value, done: doneReading } = await reader.read();
+    done = doneReading;
+    if (value) {
+      const chunk = decoder.decode(value, { stream: true });
+      for (const line of chunk.split("\n")) {
+        if (line.trim().startsWith("data:")) {
+          const json = line.replace(/^data:/, "").trim();
+          if (json === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(json);
+            const delta = parsed.choices?.[0]?.delta?.content || "";
+            if (delta) {
+              result += delta;
+              if (onStream) onStream(result);
+            }
+          } catch {}
+        }
+      }
     }
-    throw new Error("Failed to generate AI response");
   }
+  return result;
 }
