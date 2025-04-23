@@ -391,11 +391,13 @@ export function UsersTable({
                             target.nextElementSibling!.style.display = "flex";
                           }}
                         />
-                        <AvatarFallback 
+                        <AvatarFallback
                           className="bg-primary/10 text-primary flex items-center justify-center h-full w-full text-base"
                           style={{ display: user.avatar_url ? "none" : "flex" }}
                         >
-                          {(user.display_name?.[0] || user.email[0]).toUpperCase()}
+                          {(
+                            user.display_name?.[0] || user.email[0]
+                          ).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="grid gap-0.5">
