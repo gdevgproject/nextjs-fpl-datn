@@ -13,6 +13,8 @@ import { CheckCircle, ShoppingBag } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { OrderConfirmationClient } from "@/features/shop/order-confirmation/components/order-confirmation-client";
 import { CopyAccessToken } from "@/features/shop/order-confirmation/components/copy-access-token";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 // Server-side fetch for order details
 async function getOrderServerSide(
@@ -48,15 +50,21 @@ async function getOrderServerSide(
   }
 }
 
-export default async function OrderConfirmationPage(props: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
-  // Next.js App Router 15+: searchParams là Promise
-  const searchParams = await props.searchParams;
+export default function OrderConfirmationPage() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const resultCode = params.get("resultCode");
+  // Nếu có resultCode và khác 0 thì chuyển sang trang thất bại
+  useEffect(() => {
+    if (resultCode && resultCode !== "0") {
+      router.replace("/thanh-toan/that-bai");
+    }
+  }, [resultCode, router]);
+
   const orderId =
-    typeof searchParams.orderId === "string" ? searchParams.orderId : null;
+    typeof params.get("orderId") === "string" ? params.get("orderId") : null;
   const token =
-    typeof searchParams.token === "string" ? searchParams.token : null;
+    typeof params.get("token") === "string" ? params.get("token") : null;
 
   const { data: order, error } = await getOrderServerSide(orderId, token);
 
