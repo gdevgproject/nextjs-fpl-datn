@@ -1,15 +1,42 @@
 "use client";
 
-import { useClientMutation } from "@/shared/hooks/use-client-mutation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useDeleteProductImages } from "./use-delete-product-images";
+import { PostgrestError } from "@supabase/supabase-js";
 
 const supabase = getSupabaseBrowserClient();
 
 export function useDeleteProduct() {
-  const deleteProductMutation = useClientMutation("products", "update", {
-    invalidateQueries: [["products", "list"]],
-    primaryKey: "id",
+  const queryClient = useQueryClient();
+
+  const deleteProductMutation = useMutation({
+    mutationFn: async (payload: { id: number; deleted_at: string | null }) => {
+      try {
+        const { data, error } = await supabase
+          .from("products")
+          .update(payload)
+          .eq("id", payload.id)
+          .select();
+
+        if (error) {
+          throw error;
+        }
+
+        return data;
+      } catch (error) {
+        console.error("Supabase mutation error (update on products):", error);
+        throw error instanceof PostgrestError
+          ? error
+          : new Error(String(error));
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products", "list"] });
+    },
+    onError: (error) => {
+      console.error("Error updating product:", error);
+    },
   });
 
   const deleteImagesMutation = useDeleteProductImages();
@@ -79,6 +106,9 @@ export function useDeleteProduct() {
             // We don't throw here because the product was already deleted
           }
         }
+
+        // Invalidate queries manually since we're not using the mutation directly
+        queryClient.invalidateQueries({ queryKey: ["products", "list"] });
 
         return { success: true, id: productId };
       } catch (error) {
