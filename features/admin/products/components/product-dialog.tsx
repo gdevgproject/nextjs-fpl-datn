@@ -43,6 +43,7 @@ import { ProductVariantsTab } from "./product-variants-tab";
 import { ProductImagesTab } from "./product-images-tab";
 import { ProductCategoriesTab } from "./product-categories-tab";
 import { ProductIngredientsTab } from "./product-ingredients-tab";
+import { ProductScentsTab } from "./product-scents-tab";
 
 // Define the form schema with Zod
 const productFormSchema = z.object({
@@ -266,7 +267,7 @@ export function ProductDialog({
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-5 mb-4">
+          <TabsList className="grid grid-cols-6 mb-4">
             <TabsTrigger value="basic">Thông tin cơ bản</TabsTrigger>
             <TabsTrigger
               value="variants"
@@ -285,6 +286,12 @@ export function ProductDialog({
               disabled={mode === "create" && !createdProductId}
             >
               Danh mục
+            </TabsTrigger>
+            <TabsTrigger
+              value="scents"
+              disabled={mode === "create" && !createdProductId}
+            >
+              Nhóm hương
             </TabsTrigger>
             <TabsTrigger
               value="ingredients"
@@ -662,6 +669,10 @@ export function ProductDialog({
 
           <TabsContent value="categories" className="space-y-4 mt-4">
             <ProductCategoriesTab productId={createdProductId || product?.id} />
+          </TabsContent>
+
+          <TabsContent value="scents" className="space-y-4 mt-4">
+            <ProductScentsTab productId={createdProductId || product?.id} />
           </TabsContent>
 
           <TabsContent value="ingredients" className="space-y-4 mt-4">
