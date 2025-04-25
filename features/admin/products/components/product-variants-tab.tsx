@@ -10,6 +10,7 @@ import {
   useUpdateProductVariant,
   useDeleteProductVariant,
 } from "../hooks/use-product-variants";
+import { useVariantHardDelete } from "../hooks/use-variant-hard-delete";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -102,6 +103,10 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
   const [variantToDelete, setVariantToDelete] = useState<any | null>(null);
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [deleteMode, setDeleteMode] = useState<"soft" | "restore">("soft");
+
+  // Hard delete state & hook
+  const [showHardDeleteDialog, setShowHardDeleteDialog] = useState(false);
+  const variantHardDelete = useVariantHardDelete();
 
   // Fetch variants for the product
   const {
@@ -395,18 +400,22 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>
               <CardTitle>Danh sách biến thể</CardTitle>
-              <CardDescription>Các biến thể hiện có của sản phẩm</CardDescription>
+              <CardDescription>
+                Các biến thể hiện có của sản phẩm
+              </CardDescription>
             </div>
             <div className="flex items-center space-x-2">
-              <input 
-                type="checkbox" 
-                id="showDeleted" 
-                checked={includeDeleted} 
-                onChange={(e) => setIncludeDeleted(e.target.checked)} 
+              <input
+                type="checkbox"
+                id="showDeleted"
+                checked={includeDeleted}
+                onChange={(e) => setIncludeDeleted(e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300"
               />
               <label htmlFor="showDeleted" className="text-sm cursor-pointer">
-                {includeDeleted ? "Chỉ hiển thị biến thể đã xóa" : "Hiển thị biến thể đã xóa"}
+                {includeDeleted
+                  ? "Chỉ hiển thị biến thể đã xóa"
+                  : "Hiển thị biến thể đã xóa"}
               </label>
             </div>
           </CardHeader>
@@ -439,7 +448,10 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
                   </TableHeader>
                   <TableBody>
                     {variantsData?.data?.map((variant: any) => (
-                      <TableRow key={variant.id} className={variant.deleted_at ? "bg-gray-50" : ""}>
+                      <TableRow
+                        key={variant.id}
+                        className={variant.deleted_at ? "bg-gray-50" : ""}
+                      >
                         <TableCell className="font-medium">
                           {variant.volume_ml} ml
                           {variant.deleted_at && (
@@ -478,9 +490,15 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className={variant.deleted_at ? "text-green-500" : "text-red-500"}
+                              className={
+                                variant.deleted_at
+                                  ? "text-green-500"
+                                  : "text-red-500"
+                              }
                               onClick={() => {
-                                setDeleteMode(variant.deleted_at ? "restore" : "soft");
+                                setDeleteMode(
+                                  variant.deleted_at ? "restore" : "soft"
+                                );
                                 setVariantToDelete(variant);
                                 setIsDeleting(true);
                               }}
@@ -514,6 +532,42 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
                                 </>
                               )}
                             </Button>
+                            {variant.deleted_at && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-red-700"
+                                title="Xóa vĩnh viễn"
+                                onClick={async () => {
+                                  if (!productId) return;
+                                  await variantHardDelete.prepareDelete(
+                                    variant.id,
+                                    productId
+                                  );
+                                  setShowHardDeleteDialog(true);
+                                }}
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="16"
+                                  height="16"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className="h-4 w-4"
+                                >
+                                  <path d="M3 6h18"></path>
+                                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                                </svg>
+                                <span className="sr-only">Xóa vĩnh viễn</span>
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -551,6 +605,115 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
             >
               {deleteMode === "restore" ? "Khôi phục" : "Xóa"}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Hard Delete Validation Dialog */}
+      <AlertDialog
+        open={showHardDeleteDialog}
+        onOpenChange={setShowHardDeleteDialog}
+      >
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {variantHardDelete.validationResult?.canDelete
+                ? "Xóa vĩnh viễn biến thể"
+                : "Không thể xóa vĩnh viễn biến thể"}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              {variantHardDelete.isChecking ? (
+                <div className="flex flex-col items-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
+                  <p>Đang kiểm tra điều kiện xóa...</p>
+                </div>
+              ) : variantHardDelete.validationResult ? (
+                variantHardDelete.validationResult.canDelete ? (
+                  <>
+                    <p>
+                      Biến thể này đã thỏa mãn tất cả điều kiện để xóa vĩnh
+                      viễn. Sau khi xóa, biến thể sẽ không thể khôi phục lại
+                      được.
+                    </p>
+                    <p className="font-semibold">
+                      Bạn có chắc chắn muốn xóa vĩnh viễn biến thể này?
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="rounded-md bg-red-50 p-4 border border-red-100">
+                      <div className="flex">
+                        <svg
+                          className="h-5 w-5 text-red-500"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          aria-hidden="true"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <div className="ml-3">
+                          <h3 className="text-sm font-medium text-red-800">
+                            Không thể xóa vĩnh viễn
+                          </h3>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="text-sm font-semibold">
+                      Không thể xóa vĩnh viễn biến thể này vì các lý do sau:
+                    </p>
+
+                    <ul className="list-disc pl-5 space-y-1 text-sm">
+                      {variantHardDelete.validationResult.blockingReasons.map(
+                        (reason, index) => (
+                          <li key={index} className="text-red-700">
+                            {reason}
+                          </li>
+                        )
+                      )}
+                    </ul>
+
+                    <p className="text-xs text-gray-500 pt-2">
+                      Gỡ bỏ các liên kết đến biến thể này trước khi thử xóa vĩnh
+                      viễn lại.
+                    </p>
+                  </>
+                )
+              ) : (
+                <p>Đã xảy ra lỗi khi kiểm tra điều kiện xóa vĩnh viễn.</p>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={
+                variantHardDelete.isDeleting || variantHardDelete.isChecking
+              }
+            >
+              Đóng
+            </AlertDialogCancel>
+            {variantHardDelete.validationResult?.canDelete && (
+              <AlertDialogAction
+                onClick={variantHardDelete.confirmDelete}
+                className="bg-red-700 hover:bg-red-800"
+                disabled={
+                  variantHardDelete.isDeleting || variantHardDelete.isChecking
+                }
+              >
+                {variantHardDelete.isDeleting ? (
+                  <span className="flex items-center">
+                    <span className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
+                    Đang xóa...
+                  </span>
+                ) : (
+                  "Xóa vĩnh viễn"
+                )}
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
