@@ -199,10 +199,17 @@ export function ProductDialog({
   const onSubmit = async (values: ProductFormValues) => {
     try {
       setIsProcessing(true);
+      console.log("Form submission values:", values); // Debug log
 
       // Convert string IDs to numbers or null
       const formattedValues = {
         ...values,
+        // Ensure these fields are properly passed along
+        style: values.style || null,
+        sillage: values.sillage || null,
+        longevity: values.longevity || null,
+        long_description: values.long_description || null,
+        // Convert numeric fields
         brand_id: values.brand_id ? Number.parseInt(values.brand_id) : null,
         gender_id: values.gender_id ? Number.parseInt(values.gender_id) : null,
         perfume_type_id: values.perfume_type_id

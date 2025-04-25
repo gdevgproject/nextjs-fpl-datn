@@ -28,7 +28,10 @@ export function useProductIngredients(productId: number | null) {
           .eq("product_id", productId);
 
         if (error) {
-          throw error;
+          console.error("Supabase error fetching product ingredients:", error);
+          throw new Error(
+            error.message || "Failed to fetch product ingredients"
+          );
         }
 
         // Sort by scent type manually using a custom order
@@ -46,7 +49,7 @@ export function useProductIngredients(productId: number | null) {
         throw new Error(
           error instanceof Error
             ? error.message
-            : "Unknown error fetching product ingredients"
+            : "Failed to fetch product ingredients"
         );
       }
     },
