@@ -529,7 +529,7 @@ export function ProductManagement() {
                           htmlFor="includeDeleted"
                           className="cursor-pointer"
                         >
-                          Hiển thị sản phẩm đã xóa
+                          Chỉ hiển thị sản phẩm đã xóa
                         </Label>
                       </div>
                     </div>
@@ -614,7 +614,7 @@ export function ProductManagement() {
           )}
           {includeDeleted && (
             <FilterTag
-              label="Bao gồm đã xóa"
+              label="Chỉ hiển thị đã xóa"
               onRemove={() => setIncludeDeleted(false)}
             />
           )}

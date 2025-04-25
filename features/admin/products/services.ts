@@ -58,7 +58,7 @@ export function buildProductsQuery(
     perfume_types:perfume_type_id (id, name),
     concentrations:concentration_id (id, name),
     images:product_images(id, image_url, alt_text, is_main, display_order),
-    variants:product_variants(id, price, sale_price, stock_quantity, volume_ml, sku)
+    variants:product_variants(id, price, sale_price, stock_quantity, volume_ml, sku, deleted_at)
   `,
     { count: "exact" }
   );
@@ -89,8 +89,12 @@ export function buildProductsQuery(
       query = query.eq("product_categories.category_id", filters.categoryId);
     }
 
-    // By default, exclude deleted products
-    if (!filters.includeDeleted) {
+    // Lọc theo trạng thái xóa
+    if (filters.includeDeleted) {
+      // Nếu chọn hiển thị sản phẩm đã xóa, CHỈ hiển thị các sản phẩm đã xóa
+      query = query.not("deleted_at", "is", null);
+    } else {
+      // Ngược lại, chỉ hiển thị các sản phẩm chưa xóa
       query = query.is("deleted_at", null);
     }
   } else {

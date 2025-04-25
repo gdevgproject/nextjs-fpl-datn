@@ -100,13 +100,15 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
   const [editingVariant, setEditingVariant] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [variantToDelete, setVariantToDelete] = useState<any | null>(null);
+  const [includeDeleted, setIncludeDeleted] = useState(false);
+  const [deleteMode, setDeleteMode] = useState<"soft" | "restore">("soft");
 
   // Fetch variants for the product
   const {
     data: variantsData,
     isLoading,
     isError,
-  } = useProductVariants(productId || null);
+  } = useProductVariants(productId || null, includeDeleted);
 
   // Mutations for creating, updating, and deleting variants
   const createVariantMutation = useCreateProductVariant();
@@ -213,11 +215,16 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
     if (!variantToDelete) return;
 
     try {
-      await deleteVariantMutation.softDelete(variantToDelete.id);
-      toast.success("Biến thể đã được xóa thành công");
+      if (deleteMode === "soft") {
+        await deleteVariantMutation.softDelete(variantToDelete.id);
+        toast.success("Biến thể đã được xóa thành công");
+      } else {
+        await deleteVariantMutation.restore(variantToDelete.id);
+        toast.success("Biến thể đã được khôi phục thành công");
+      }
     } catch (error) {
       toast.error(
-        `Lỗi khi xóa biến thể: ${
+        `Lỗi khi ${deleteMode === "soft" ? "xóa" : "khôi phục"} biến thể: ${
           error instanceof Error ? error.message : "Unknown error"
         }`
       );
@@ -385,9 +392,23 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
 
         {/* Variants List */}
         <Card className="border-none shadow-none">
-          <CardHeader>
-            <CardTitle>Danh sách biến thể</CardTitle>
-            <CardDescription>Các biến thể hiện có của sản phẩm</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle>Danh sách biến thể</CardTitle>
+              <CardDescription>Các biến thể hiện có của sản phẩm</CardDescription>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input 
+                type="checkbox" 
+                id="showDeleted" 
+                checked={includeDeleted} 
+                onChange={(e) => setIncludeDeleted(e.target.checked)} 
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <label htmlFor="showDeleted" className="text-sm cursor-pointer">
+                {includeDeleted ? "Chỉ hiển thị biến thể đã xóa" : "Hiển thị biến thể đã xóa"}
+              </label>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -418,9 +439,14 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
                   </TableHeader>
                   <TableBody>
                     {variantsData?.data?.map((variant: any) => (
-                      <TableRow key={variant.id}>
+                      <TableRow key={variant.id} className={variant.deleted_at ? "bg-gray-50" : ""}>
                         <TableCell className="font-medium">
                           {variant.volume_ml} ml
+                          {variant.deleted_at && (
+                            <span className="ml-2 text-xs text-red-500 font-normal">
+                              (Đã xóa)
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell>
                           {variant.sale_price ? (
@@ -439,22 +465,54 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
                         <TableCell>{variant.stock_quantity}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end space-x-2">
+                            {!variant.deleted_at && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setEditMode(variant)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                                <span className="sr-only">Edit</span>
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => setEditMode(variant)}
+                              className={variant.deleted_at ? "text-green-500" : "text-red-500"}
+                              onClick={() => {
+                                setDeleteMode(variant.deleted_at ? "restore" : "soft");
+                                setVariantToDelete(variant);
+                                setIsDeleting(true);
+                              }}
                             >
-                              <Pencil className="h-4 w-4" />
-                              <span className="sr-only">Edit</span>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-red-500"
-                              onClick={() => handleDeleteClick(variant)}
-                            >
-                              <Trash className="h-4 w-4" />
-                              <span className="sr-only">Delete</span>
+                              {variant.deleted_at ? (
+                                <>
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="h-4 w-4"
+                                  >
+                                    <path d="M3 7v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7"></path>
+                                    <path d="M3 7H1"></path>
+                                    <path d="M23 7h-2"></path>
+                                    <path d="M12 6V2"></path>
+                                    <path d="m10 4 2 2 2-2"></path>
+                                  </svg>
+                                  <span className="sr-only">Khôi phục</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Trash className="h-4 w-4" />
+                                  <span className="sr-only">Xóa</span>
+                                </>
+                              )}
                             </Button>
                           </div>
                         </TableCell>
@@ -468,23 +526,30 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
         </Card>
       </div>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete/Restore Confirmation Dialog */}
       <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Xóa biến thể</AlertDialogTitle>
+            <AlertDialogTitle>
+              {deleteMode === "restore" ? "Khôi phục biến thể" : "Xóa biến thể"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn xóa biến thể này không? Hành động này không
-              thể hoàn tác.
+              {deleteMode === "restore"
+                ? "Bạn có chắc chắn muốn khôi phục biến thể này không?"
+                : "Bạn có chắc chắn muốn xóa biến thể này không? Biến thể sẽ bị đánh dấu là đã xóa nhưng vẫn có thể khôi phục lại sau."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
-              className="bg-red-600 hover:bg-red-700"
+              className={
+                deleteMode === "restore"
+                  ? "bg-green-600 hover:bg-green-700"
+                  : "bg-red-600 hover:bg-red-700"
+              }
             >
-              Xóa
+              {deleteMode === "restore" ? "Khôi phục" : "Xóa"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
