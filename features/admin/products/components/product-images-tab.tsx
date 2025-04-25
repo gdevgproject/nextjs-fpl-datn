@@ -112,11 +112,11 @@ export function ProductImagesTab({ productId }: ProductImagesTabProps) {
 
         // Create image record in database
         await createImageMutation.mutateAsync({
-          product_id: productId,
-          image_url: result.publicUrl,
-          alt_text: altText || null,
-          is_main: (imagesData?.data?.length || 0) === 0, // Set as main if it's the first image
-          display_order: (imagesData?.data?.length || 0) + i,
+          productId: productId, // Fixed: Changed from product_id to productId to match expected parameter name
+          imageUrl: result.publicUrl, // Use imageUrl instead of image_url
+          altText: altText || null, // Use altText instead of alt_text
+          isMain: (imagesData?.data?.length || 0) === 0, // Use isMain instead of is_main
+          displayOrder: (imagesData?.data?.length || 0) + i, // Use displayOrder instead of display_order
         });
       }
 
@@ -146,13 +146,18 @@ export function ProductImagesTab({ productId }: ProductImagesTabProps) {
 
   // Handle delete confirmation
   const handleDeleteConfirm = async () => {
-    if (!imageToDelete) return;
+    if (!imageToDelete || !productId) return;
 
     try {
       // Delete image record from database
-      await deleteImageMutation.mutateAsync({ id: imageToDelete.id });
+      await deleteImageMutation.mutateAsync({
+        id: imageToDelete.id,
+        imageUrl: imageToDelete.image_url,
+        productId: productId,
+        isMain: imageToDelete.is_main,
+      });
 
-      // Delete image file from storage
+      // Delete image file from storage if needed
       if (imageToDelete.image_url) {
         await deleteStorageMutation.deleteFromUrl(imageToDelete.image_url);
       }
@@ -172,13 +177,14 @@ export function ProductImagesTab({ productId }: ProductImagesTabProps) {
 
   // Handle set as main image
   const handleSetMainImage = async (image: any) => {
-    if (!image || image.is_main) return;
+    if (!image || image.is_main || !productId) return;
 
     try {
       // Update image to set as main
       await updateImageMutation.mutateAsync({
         id: image.id,
-        is_main: true,
+        productId: productId, // Add productId to ensure proper cache invalidation
+        isMain: true, // Use camelCase to match the expected property in the hook
       });
 
       toast.success("Đã đặt làm ảnh chính");

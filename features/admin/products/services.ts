@@ -1,11 +1,11 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { 
-  ProductsResponse, 
-  ProductWithRelations, 
+import {
+  ProductsResponse,
+  ProductWithRelations,
   ProductFilters,
   ProductPagination,
-  ProductSort
+  ProductSort,
 } from "./types";
 
 /**
@@ -16,7 +16,7 @@ import {
 export function extractStoragePath(url: string): string | null {
   try {
     // URL format: https://xxx.supabase.co/storage/v1/object/public/products/path
-    const parts = url.split('/products/');
+    const parts = url.split("/products/");
     return parts.length > 1 ? parts[1] : null;
   } catch (e) {
     console.error("Error extracting path from URL:", e);
@@ -29,7 +29,7 @@ export function extractStoragePath(url: string): string | null {
  * Reusable logic that works with both client and server-side Supabase clients
  */
 export function buildProductsQuery(
-  supabase: any, 
+  supabase: any,
   filters?: ProductFilters,
   pagination?: ProductPagination,
   sort?: ProductSort
@@ -111,7 +111,7 @@ export async function fetchProducts(
   sort?: ProductSort
 ): Promise<ProductsResponse> {
   const supabase = await getSupabaseServerClient();
-  
+
   try {
     const query = buildProductsQuery(supabase, filters, pagination, sort);
     const { data, error, count } = await query;
@@ -131,13 +131,16 @@ export async function fetchProducts(
 /**
  * Get a single product by ID with related entities (server-side)
  */
-export async function fetchProductById(id: number): Promise<ProductWithRelations | null> {
+export async function fetchProductById(
+  id: number
+): Promise<ProductWithRelations | null> {
   const supabase = await getSupabaseServerClient();
-  
+
   try {
     const { data, error } = await supabase
       .from("products")
-      .select(`
+      .select(
+        `
         id, 
         name, 
         slug, 
@@ -160,7 +163,8 @@ export async function fetchProductById(id: number): Promise<ProductWithRelations
         genders:gender_id (id, name),
         perfume_types:perfume_type_id (id, name),
         concentrations:concentration_id (id, name)
-      `)
+      `
+      )
       .eq("id", id)
       .single();
 
@@ -179,13 +183,16 @@ export async function fetchProductById(id: number): Promise<ProductWithRelations
 /**
  * Get a single product by slug with related entities (server-side)
  */
-export async function fetchProductBySlug(slug: string): Promise<ProductWithRelations | null> {
+export async function fetchProductBySlug(
+  slug: string
+): Promise<ProductWithRelations | null> {
   const supabase = await getSupabaseServerClient();
-  
+
   try {
     const { data, error } = await supabase
       .from("products")
-      .select(`
+      .select(
+        `
         id, 
         name, 
         slug, 
@@ -208,7 +215,8 @@ export async function fetchProductBySlug(slug: string): Promise<ProductWithRelat
         genders:gender_id (id, name),
         perfume_types:perfume_type_id (id, name),
         concentrations:concentration_id (id, name)
-      `)
+      `
+      )
       .eq("slug", slug)
       .is("deleted_at", null)
       .single();

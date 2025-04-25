@@ -3,36 +3,38 @@
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { StorageError } from "@supabase/storage-js";
+import { extractStoragePath } from "../services";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 
 const supabase = getSupabaseBrowserClient();
 
-// Type definitions for the storage delete mutation
-type DeleteMutationVariables = string | string[];
-
-interface DeleteMutationResult {
-  data: any[] | null;
-}
-
+/**
+ * Hook for deleting product images from Supabase Storage
+ */
 export function useDeleteProductImages() {
   const queryClient = useQueryClient();
+  const toast = useSonnerToast();
 
   const deleteStorageMutation = useMutation<
-    DeleteMutationResult,
+    { data: any[] | null },
     StorageError | Error,
-    DeleteMutationVariables
+    string | string[]
   >({
     mutationFn: async (pathsToDelete) => {
       try {
+        // Convert single path to array for consistent handling
         const pathsArray = Array.isArray(pathsToDelete)
           ? pathsToDelete
           : [pathsToDelete];
 
         if (pathsArray.length === 0) return { data: [] };
 
+        // Normalize paths to prevent issues
         const normalizedPaths = pathsArray.map((p) =>
           p.replace(/\/+/g, "/").replace(/^\/|\/$/g, "")
         );
 
+        // Remove from storage
         const { data, error } = await supabase.storage
           .from("products")
           .remove(normalizedPaths);
@@ -51,60 +53,50 @@ export function useDeleteProductImages() {
       queryClient.invalidateQueries({
         queryKey: ["product_images", "by_product"],
       });
+
+      toast.success("Success", {
+        description: "Product images deleted successfully",
+      });
     },
     onError: (error) => {
-      // Đảm bảo ghi log lỗi có thông tin rõ ràng
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
       console.error(`Storage delete error (bucket: products):`, errorMessage);
+
+      toast.error("Error", {
+        description: `Failed to delete images: ${errorMessage}`,
+      });
     },
   });
 
-  // Extend mutation to handle URL-based deletion
+  /**
+   * Helper method to delete a file from its full URL
+   */
+  const deleteFromUrl = async (url: string): Promise<boolean> => {
+    try {
+      if (!url) return false;
+
+      // Extract path from URL using the shared service
+      const path = extractStoragePath(url);
+      if (!path) {
+        console.error("Could not extract path from URL:", url);
+        return false;
+      }
+
+      // Delete file using the main mutation
+      await deleteStorageMutation.mutateAsync(path);
+      return true;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error("Error in deleteFromUrl:", errorMessage);
+      throw error;
+    }
+  };
+
+  // Return the original mutation with enhanced functionality
   return {
     ...deleteStorageMutation,
-    // Add method to delete file from URL
-    deleteFromUrl: async (url: string): Promise<boolean> => {
-      try {
-        if (!url) return false;
-
-        // Extract path from URL
-        // URL format: https://xxx.supabase.co/storage/v1/object/public/products/123/image.jpg
-        const urlParts = url.split("/products/");
-        if (urlParts.length <= 1) {
-          console.error("Invalid image URL format:", url);
-          return false;
-        }
-
-        const path = urlParts[1];
-        if (!path) {
-          console.error("Could not extract path from URL:", url);
-          return false;
-        }
-
-        // Delete file
-        const { error } = await supabase.storage
-          .from("products")
-          .remove([path]);
-
-        if (error) {
-          console.error("Error deleting product image:", error);
-          // Đặc biệt quan trọng: Chuyển đổi StorageError thành Error để xử lý nhất quán
-          throw new Error(error.message || "Error deleting image from storage");
-        }
-
-        // Successfully deleted
-        queryClient.invalidateQueries({
-          queryKey: ["product_images", "by_product"],
-        });
-        return true;
-      } catch (error) {
-        // Chi tiết lỗi khi xóa ảnh từ URL
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        console.error("Error in deleteFromUrl:", errorMessage);
-        throw error; // Đảm bảo truyền lỗi để component xử lý
-      }
-    },
+    deleteFromUrl,
   };
 }

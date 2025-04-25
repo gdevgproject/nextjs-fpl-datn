@@ -84,7 +84,7 @@ export interface ProductIngredient {
   id: number;
   product_id: number;
   ingredient_id: number;
-  scent_type: 'top' | 'middle' | 'base';
+  scent_type: "top" | "middle" | "base";
   ingredients?: {
     id: number;
     name: string;
@@ -149,57 +149,67 @@ export interface ProductsResponse {
  * Zod schema for product creation validation
  */
 export const productSchema = z.object({
-  name: z.string()
+  name: z
+    .string()
     .min(1, "Tên sản phẩm không được để trống")
     .max(255, "Tên sản phẩm không được vượt quá 255 ký tự"),
-  product_code: z.string()
+  product_code: z
+    .string()
     .max(100, "Mã sản phẩm không được vượt quá 100 ký tự")
     .optional()
     .nullable(),
-  short_description: z.string()
+  short_description: z
+    .string()
     .max(500, "Mô tả ngắn không được vượt quá 500 ký tự")
     .optional()
     .nullable(),
-  long_description: z.string()
-    .optional()
-    .nullable(),
-  origin_country: z.string()
+  long_description: z.string().optional().nullable(),
+  origin_country: z
+    .string()
     .max(100, "Xuất xứ không được vượt quá 100 ký tự")
     .optional()
     .nullable(),
-  style: z.string()
+  style: z
+    .string()
     .max(100, "Phong cách không được vượt quá 100 ký tự")
     .optional()
     .nullable(),
-  longevity: z.string()
+  longevity: z
+    .string()
     .max(100, "Độ lưu hương không được vượt quá 100 ký tự")
     .optional()
     .nullable(),
-  sillage: z.string()
+  sillage: z
+    .string()
     .max(100, "Độ tỏa hương không được vượt quá 100 ký tự")
     .optional()
     .nullable(),
-  release_year: z.number()
+  release_year: z
+    .number()
     .int("Năm phát hành phải là số nguyên")
     .positive("Năm phát hành phải là số dương")
     .optional()
     .nullable(),
-  brand_id: z.number()
+  brand_id: z
+    .number()
     .int("Thương hiệu phải là số nguyên")
     .positive("Thương hiệu phải là số dương")
     .optional()
     .nullable(),
-  gender_id: z.number()
+  gender_id: z
+    .number()
     .int("Giới tính phải là số nguyên")
     .positive("Giới tính phải là số dương")
     .optional()
     .nullable(),
-  perfume_type_id: z.number()
+  perfume_type_id: z
+    .number()
     .int("Loại nước hoa phải là số nguyên")
     .positive("Loại nước hoa phải là số dương")
     .optional()
     .nullable(),
-  concentration_id: z.number()
+  concentration_id: z
+    .number()
     .int("Nồng độ phải là số nguyên")
     .positive("Nồng độ phải là số dương")
     .optional()
@@ -210,28 +220,42 @@ export const productSchema = z.object({
  * Zod schema for product variant creation/update validation
  */
 export const productVariantSchema = z.object({
-  volume_ml: z.string()
+  volume_ml: z
+    .string()
     .min(1, "Dung tích không được để trống")
     .refine((val) => !isNaN(Number.parseInt(val)) && Number.parseInt(val) > 0, {
       message: "Dung tích phải là số dương",
     }),
-  price: z.string()
+  price: z
+    .string()
     .min(1, "Giá không được để trống")
-    .refine((val) => !isNaN(Number.parseFloat(val)) && Number.parseFloat(val) >= 0, {
-      message: "Giá phải là số không âm",
-    }),
-  sale_price: z.string()
-    .refine((val) => val === "" || (!isNaN(Number.parseFloat(val)) && Number.parseFloat(val) >= 0), {
-      message: "Giá khuyến mãi phải là số không âm",
-    })
+    .refine(
+      (val) => !isNaN(Number.parseFloat(val)) && Number.parseFloat(val) >= 0,
+      {
+        message: "Giá phải là số không âm",
+      }
+    ),
+  sale_price: z
+    .string()
+    .refine(
+      (val) =>
+        val === "" ||
+        (!isNaN(Number.parseFloat(val)) && Number.parseFloat(val) >= 0),
+      {
+        message: "Giá khuyến mãi phải là số không âm",
+      }
+    )
     .optional(),
-  sku: z.string()
-    .min(1, "Mã SKU không được để trống"),
-  stock_quantity: z.string()
+  sku: z.string().min(1, "Mã SKU không được để trống"),
+  stock_quantity: z
+    .string()
     .min(1, "Số lượng tồn kho không được để trống")
-    .refine((val) => !isNaN(Number.parseInt(val)) && Number.parseInt(val) >= 0, {
-      message: "Số lượng tồn kho phải là số không âm",
-    }),
+    .refine(
+      (val) => !isNaN(Number.parseInt(val)) && Number.parseInt(val) >= 0,
+      {
+        message: "Số lượng tồn kho phải là số không âm",
+      }
+    ),
 });
 
 /**

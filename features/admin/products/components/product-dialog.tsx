@@ -227,10 +227,10 @@ export function ProductDialog({
           setActiveTab("variants"); // Move to variants tab after creation
         }
       } else if (mode === "edit" && product) {
-        // Update existing product
+        // Update existing product - Properly format data for the hook
         await updateProductMutation.mutateAsync({
           id: product.id,
-          ...formattedValues,
+          formData: formattedValues, // Properly passing formData as a separate property
         });
         toast.success("Sản phẩm đã được cập nhật thành công");
       }

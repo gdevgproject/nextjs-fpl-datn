@@ -1,43 +1,57 @@
 "use client";
 
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { PostgrestError } from "@supabase/supabase-js";
-import { useCallback } from "react";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { ProductCategory } from "../types";
+import { updateProductCategoriesAction } from "../actions";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 
 const supabase = getSupabaseBrowserClient();
 
-// Hook to fetch categories for a specific product
+/**
+ * Hook to fetch categories for a specific product
+ */
 export function useProductCategories(productId: number | null) {
-  return useQuery({
+  return useQuery<{ data: ProductCategory[]; count: number | null }, Error>({
     queryKey: ["product_categories", "by_product", productId],
     queryFn: async () => {
-      let query = supabase
-        .from("product_categories")
-        .select(
-          "id, product_id, category_id, categories:category_id(id, name)"
-        );
+      try {
+        let query = supabase
+          .from("product_categories")
+          .select(
+            "id, product_id, category_id, categories:category_id(id, name, slug, description, parent_category_id)"
+          );
 
-      if (productId) {
-        query = query.eq("product_id", productId);
-      }
+        if (productId) {
+          query = query.eq("product_id", productId);
+        }
 
-      const { data, error, count } = await query;
+        const { data, error, count } = await query;
 
-      if (error) {
+        if (error) {
+          throw error;
+        }
+
+        return { data: data as ProductCategory[], count };
+      } catch (error) {
         console.error("Error fetching product categories:", error);
-        throw error;
+        throw new Error(
+          error instanceof Error
+            ? error.message
+            : "Unknown error fetching product categories"
+        );
       }
-
-      return { data, count };
     },
     enabled: !!productId, // Only fetch if productId is provided
   });
 }
 
-// Hook to add a category to a product
+/**
+ * Hook to add a category to a product
+ */
 export function useAddProductCategory() {
   const queryClient = useQueryClient();
+  const toast = useSonnerToast();
 
   return useMutation({
     mutationFn: async (payload: {
@@ -47,48 +61,71 @@ export function useAddProductCategory() {
       const { data, error } = await supabase
         .from("product_categories")
         .insert(payload)
-        .select();
+        .select("id");
 
       if (error) {
-        throw error;
+        throw new Error(error.message || "Failed to add category to product");
       }
 
       return data;
     },
     onSuccess: (_, variables) => {
-      // Invalidate the product categories query
+      // Invalidate the query to refetch data
       queryClient.invalidateQueries({
         queryKey: ["product_categories", "by_product", variables.product_id],
       });
+
+      toast.success("Success", {
+        description: "Category added to product successfully",
+      });
     },
-    onError: (error: PostgrestError) => {
+    onError: (error) => {
       console.error("Error adding product category:", error);
+
+      toast.error("Error", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to add category to product",
+      });
     },
   });
 }
 
-// Hook to remove a category from a product
+/**
+ * Hook to remove a category from a product
+ */
 export function useRemoveProductCategory() {
   const queryClient = useQueryClient();
+  const toast = useSonnerToast();
 
   return useMutation({
     mutationFn: async (id: number) => {
       // First, get the product_id for invalidation
-      const { data: categoryData } = await supabase
+      const { data: categoryData, error: fetchError } = await supabase
         .from("product_categories")
         .select("product_id")
         .eq("id", id)
         .single();
 
+      if (fetchError) {
+        throw new Error(
+          fetchError.message || "Failed to fetch category information"
+        );
+      }
+
       const productId = categoryData?.product_id;
 
-      const { error } = await supabase
+      // Then delete the category association
+      const { error: deleteError } = await supabase
         .from("product_categories")
         .delete()
         .eq("id", id);
 
-      if (error) {
-        throw error;
+      if (deleteError) {
+        throw new Error(
+          deleteError.message || "Failed to remove category from product"
+        );
       }
 
       return { id, productId };
@@ -98,64 +135,74 @@ export function useRemoveProductCategory() {
         queryClient.invalidateQueries({
           queryKey: ["product_categories", "by_product", result.productId],
         });
-      } else {
-        queryClient.invalidateQueries({
-          queryKey: ["product_categories", "by_product"],
+
+        toast.success("Success", {
+          description: "Category removed from product successfully",
         });
       }
     },
-    onError: (error: PostgrestError) => {
+    onError: (error) => {
       console.error("Error removing product category:", error);
+
+      toast.error("Error", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to remove category from product",
+      });
     },
   });
 }
 
-// Hook to update all categories for a product (batch operation)
+/**
+ * Hook to update all categories for a product (batch operation)
+ */
 export function useUpdateProductCategories() {
   const queryClient = useQueryClient();
+  const toast = useSonnerToast();
 
-  const updateCategories = useCallback(
-    async (productId: number, categoryIds: number[]) => {
-      try {
-        // First, delete all existing category associations
-        const { error: deleteError } = await supabase
-          .from("product_categories")
-          .delete()
-          .eq("product_id", productId);
+  const updateCategoriesMutation = useMutation({
+    mutationFn: async (payload: {
+      productId: number;
+      categoryIds: number[];
+    }) => {
+      const { productId, categoryIds } = payload;
 
-        if (deleteError) {
-          throw deleteError;
-        }
+      const result = await updateProductCategoriesAction(
+        productId,
+        categoryIds
+      );
 
-        // Then, insert new category associations
-        if (categoryIds.length > 0) {
-          const categoryInserts = categoryIds.map((categoryId) => ({
-            product_id: productId,
-            category_id: categoryId,
-          }));
-
-          const { error: insertError } = await supabase
-            .from("product_categories")
-            .insert(categoryInserts);
-
-          if (insertError) {
-            throw insertError;
-          }
-        }
-
-        // Invalidate queries
-        queryClient.invalidateQueries({
-          queryKey: ["product_categories", "by_product", productId],
-        });
-
-        return { success: true };
-      } catch (error) {
-        console.error("Error updating product categories:", error);
-        throw error;
+      if (!result.success) {
+        throw new Error(result.error || "Failed to update product categories");
       }
-    },
-    [queryClient]
-  );
 
-  return { updateCategories };
+      return result;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["product_categories", "by_product", variables.productId],
+      });
+
+      toast.success("Success", {
+        description: "Product categories updated successfully",
+      });
+    },
+    onError: (error) => {
+      console.error("Error updating product categories:", error);
+
+      toast.error("Error", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to update product categories",
+      });
+    },
+  });
+
+  // Return a simplified interface
+  return {
+    updateCategories: updateCategoriesMutation.mutateAsync,
+    isPending: updateCategoriesMutation.isPending,
+  };
 }
