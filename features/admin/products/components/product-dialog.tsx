@@ -124,6 +124,14 @@ export function ProductDialog({
   const [activeTab, setActiveTab] = useState("basic");
   const [isProcessing, setIsProcessing] = useState(false);
   const [createdProductId, setCreatedProductId] = useState<number | null>(null);
+  const [tabsVisited, setTabsVisited] = useState<Record<string, boolean>>({
+    basic: true,
+    variants: false,
+    images: false,
+    categories: false,
+    scents: false,
+    ingredients: false,
+  });
 
   // Mutations for creating and updating products
   const createProductMutation = useCreateProduct();
@@ -174,6 +182,16 @@ export function ProductDialog({
         longevity: product.longevity,
       });
       setCreatedProductId(product.id);
+
+      // Đánh dấu tất cả các tab đã được truy cập trong chế độ chỉnh sửa
+      setTabsVisited({
+        basic: true,
+        variants: true,
+        images: true,
+        categories: true,
+        scents: true,
+        ingredients: true,
+      });
     } else {
       form.reset({
         name: "",
@@ -191,6 +209,14 @@ export function ProductDialog({
         longevity: null,
       });
       setCreatedProductId(null);
+      setTabsVisited({
+        basic: true,
+        variants: false,
+        images: false,
+        categories: false,
+        scents: false,
+        ingredients: false,
+      });
     }
     setActiveTab("basic");
   }, [mode, product, form, open]);
@@ -231,8 +257,15 @@ export function ProductDialog({
 
         if (newProductId) {
           setCreatedProductId(newProductId);
-          toast.success("Sản phẩm đã được tạo thành công");
+          toast.success("Tạo sản phẩm thành công", {
+            description: "Hãy tiếp tục thêm biến thể sản phẩm",
+          });
           setActiveTab("variants"); // Move to variants tab after creation
+          // Đánh dấu tab variants đã được truy cập
+          setTabsVisited((prev) => ({
+            ...prev,
+            variants: true,
+          }));
         }
       } else if (mode === "edit" && product) {
         // Update existing product - Properly format data for the hook
@@ -240,13 +273,17 @@ export function ProductDialog({
           id: product.id,
           formData: formattedValues, // Properly passing formData as a separate property
         });
-        toast.success("Sản phẩm đã được cập nhật thành công");
+        toast.success("Cập nhật thành công", {
+          description: "Thông tin sản phẩm đã được cập nhật",
+        });
       }
     } catch (error) {
       toast.error(
-        `Lỗi khi ${mode === "create" ? "tạo" : "cập nhật"} sản phẩm: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
+        `${mode === "create" ? "Tạo" : "Cập nhật"} sản phẩm thất bại`,
+        {
+          description:
+            error instanceof Error ? error.message : "Lỗi không xác định",
+        }
       );
     } finally {
       setIsProcessing(false);
@@ -257,6 +294,22 @@ export function ProductDialog({
   const handleClose = () => {
     if (isProcessing) return; // Prevent closing while processing
     onOpenChange(false);
+  };
+
+  // Xử lý chuyển tab
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    // Đánh dấu tab đã được truy cập
+    setTabsVisited((prev) => ({
+      ...prev,
+      [value]: true,
+    }));
+  };
+
+  // Kiểm tra xem tab có thể truy cập (khi đã tạo sản phẩm) hay không
+  const isTabAccessible = (tabName: string) => {
+    if (tabName === "basic") return true;
+    return !!createdProductId;
   };
 
   return (
@@ -273,42 +326,106 @@ export function ProductDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs
+          value={activeTab}
+          onValueChange={handleTabChange}
+          className="w-full"
+        >
           <TabsList className="grid grid-cols-6 mb-4">
-            <TabsTrigger value="basic">Thông tin cơ bản</TabsTrigger>
+            <TabsTrigger value="basic" className="relative">
+              <div className="flex items-center space-x-2">
+                <span className="rounded-full bg-primary text-primary-foreground w-5 h-5 flex items-center justify-center text-xs">
+                  1
+                </span>
+                <span>Thông tin cơ bản</span>
+              </div>
+            </TabsTrigger>
             <TabsTrigger
               value="variants"
-              disabled={mode === "create" && !createdProductId}
+              disabled={!isTabAccessible("variants")}
+              className={`relative ${
+                tabsVisited.variants
+                  ? "after:absolute after:top-1 after:right-1 after:w-2 after:h-2 after:bg-green-500 after:rounded-full"
+                  : ""
+              }`}
             >
-              Biến thể
+              <div className="flex items-center space-x-2">
+                <span className="rounded-full bg-primary/70 text-primary-foreground w-5 h-5 flex items-center justify-center text-xs">
+                  2
+                </span>
+                <span>Biến thể</span>
+              </div>
             </TabsTrigger>
             <TabsTrigger
               value="images"
-              disabled={mode === "create" && !createdProductId}
+              disabled={!isTabAccessible("images")}
+              className={`relative ${
+                tabsVisited.images
+                  ? "after:absolute after:top-1 after:right-1 after:w-2 after:h-2 after:bg-green-500 after:rounded-full"
+                  : ""
+              }`}
             >
-              Hình ảnh
+              <div className="flex items-center space-x-2">
+                <span className="rounded-full bg-primary/70 text-primary-foreground w-5 h-5 flex items-center justify-center text-xs">
+                  3
+                </span>
+                <span>Hình ảnh</span>
+              </div>
             </TabsTrigger>
             <TabsTrigger
               value="categories"
-              disabled={mode === "create" && !createdProductId}
+              disabled={!isTabAccessible("categories")}
+              className={`relative ${
+                tabsVisited.categories
+                  ? "after:absolute after:top-1 after:right-1 after:w-2 after:h-2 after:bg-green-500 after:rounded-full"
+                  : ""
+              }`}
             >
-              Danh mục
+              <div className="flex items-center space-x-2">
+                <span className="rounded-full bg-primary/70 text-primary-foreground w-5 h-5 flex items-center justify-center text-xs">
+                  4
+                </span>
+                <span>Danh mục</span>
+              </div>
             </TabsTrigger>
             <TabsTrigger
               value="scents"
-              disabled={mode === "create" && !createdProductId}
+              disabled={!isTabAccessible("scents")}
+              className={`relative ${
+                tabsVisited.scents
+                  ? "after:absolute after:top-1 after:right-1 after:w-2 after:h-2 after:bg-green-500 after:rounded-full"
+                  : ""
+              }`}
             >
-              Nhóm hương
+              <div className="flex items-center space-x-2">
+                <span className="rounded-full bg-primary/70 text-primary-foreground w-5 h-5 flex items-center justify-center text-xs">
+                  5
+                </span>
+                <span>Nhóm hương</span>
+              </div>
             </TabsTrigger>
             <TabsTrigger
               value="ingredients"
-              disabled={mode === "create" && !createdProductId}
+              disabled={!isTabAccessible("ingredients")}
+              className={`relative ${
+                tabsVisited.ingredients
+                  ? "after:absolute after:top-1 after:right-1 after:w-2 after:h-2 after:bg-green-500 after:rounded-full"
+                  : ""
+              }`}
             >
-              Thành phần
+              <div className="flex items-center space-x-2">
+                <span className="rounded-full bg-primary/70 text-primary-foreground w-5 h-5 flex items-center justify-center text-xs">
+                  6
+                </span>
+                <span>Thành phần</span>
+              </div>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="basic" className="space-y-4 mt-4">
+          <TabsContent
+            value="basic"
+            className="space-y-4 mt-4 border rounded-lg p-4"
+          >
             <Form {...form}>
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
@@ -320,7 +437,9 @@ export function ProductDialog({
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Tên sản phẩm</FormLabel>
+                        <FormLabel className="flex items-center gap-1 font-medium">
+                          Tên sản phẩm <span className="text-red-500">*</span>
+                        </FormLabel>
                         <FormControl>
                           <Input placeholder="Nhập tên sản phẩm" {...field} />
                         </FormControl>
@@ -337,7 +456,9 @@ export function ProductDialog({
                     name="product_code"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Mã sản phẩm</FormLabel>
+                        <FormLabel className="font-medium">
+                          Mã sản phẩm
+                        </FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Nhập mã sản phẩm (tùy chọn)"
@@ -358,17 +479,19 @@ export function ProductDialog({
                     name="brand_id"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Thương hiệu</FormLabel>
+                        <FormLabel className="font-medium">
+                          Thương hiệu
+                        </FormLabel>
                         <Select
                           onValueChange={field.onChange}
-                          value={field.value || ""}
+                          value={field.value || "none"}
                         >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Chọn thương hiệu" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
+                          <SelectContent className="max-h-[300px]">
                             <SelectItem value="none">
                               Không có thương hiệu
                             </SelectItem>
@@ -395,10 +518,10 @@ export function ProductDialog({
                     name="gender_id"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Giới tính</FormLabel>
+                        <FormLabel className="font-medium">Giới tính</FormLabel>
                         <Select
                           onValueChange={field.onChange}
-                          value={field.value || ""}
+                          value={field.value || "none"}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -430,10 +553,12 @@ export function ProductDialog({
                     name="perfume_type_id"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Loại nước hoa</FormLabel>
+                        <FormLabel className="font-medium">
+                          Loại nước hoa
+                        </FormLabel>
                         <Select
                           onValueChange={field.onChange}
-                          value={field.value || ""}
+                          value={field.value || "none"}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -465,10 +590,10 @@ export function ProductDialog({
                     name="concentration_id"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Nồng độ</FormLabel>
+                        <FormLabel className="font-medium">Nồng độ</FormLabel>
                         <Select
                           onValueChange={field.onChange}
-                          value={field.value || ""}
+                          value={field.value || "none"}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -502,7 +627,7 @@ export function ProductDialog({
                     name="origin_country"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Xuất xứ</FormLabel>
+                        <FormLabel className="font-medium">Xuất xứ</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Nhập xuất xứ (tùy chọn)"
@@ -523,7 +648,9 @@ export function ProductDialog({
                     name="release_year"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Năm phát hành</FormLabel>
+                        <FormLabel className="font-medium">
+                          Năm phát hành
+                        </FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -545,7 +672,9 @@ export function ProductDialog({
                     name="style"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Phong cách</FormLabel>
+                        <FormLabel className="font-medium">
+                          Phong cách
+                        </FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Nhập phong cách (tùy chọn)"
@@ -566,7 +695,9 @@ export function ProductDialog({
                     name="sillage"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Độ tỏa hương</FormLabel>
+                        <FormLabel className="font-medium">
+                          Độ tỏa hương
+                        </FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Nhập độ tỏa hương (tùy chọn)"
@@ -587,7 +718,9 @@ export function ProductDialog({
                     name="longevity"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Độ lưu hương</FormLabel>
+                        <FormLabel className="font-medium">
+                          Độ lưu hương
+                        </FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Nhập độ lưu hương (tùy chọn)"
@@ -609,7 +742,7 @@ export function ProductDialog({
                   name="short_description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Mô tả ngắn</FormLabel>
+                      <FormLabel className="font-medium">Mô tả ngắn</FormLabel>
                       <FormControl>
                         <Textarea
                           placeholder="Nhập mô tả ngắn về sản phẩm (tùy chọn)"
@@ -632,7 +765,9 @@ export function ProductDialog({
                   name="long_description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Mô tả chi tiết</FormLabel>
+                      <FormLabel className="font-medium">
+                        Mô tả chi tiết
+                      </FormLabel>
                       <FormControl>
                         <Textarea
                           placeholder="Nhập mô tả chi tiết về sản phẩm (tùy chọn)"
@@ -654,35 +789,59 @@ export function ProductDialog({
                   <Button type="button" variant="outline" onClick={handleClose}>
                     Hủy
                   </Button>
-                  <Button type="submit" disabled={isProcessing}>
-                    {isProcessing
-                      ? "Đang xử lý..."
-                      : mode === "create"
-                      ? "Tạo sản phẩm"
-                      : "Cập nhật sản phẩm"}
+                  <Button
+                    type="submit"
+                    disabled={isProcessing}
+                    className="min-w-[120px]"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin mr-2"></div>
+                        Đang xử lý...
+                      </>
+                    ) : mode === "create" ? (
+                      "Tạo sản phẩm"
+                    ) : (
+                      "Cập nhật sản phẩm"
+                    )}
                   </Button>
                 </DialogFooter>
               </form>
             </Form>
           </TabsContent>
 
-          <TabsContent value="variants" className="space-y-4 mt-4">
+          <TabsContent
+            value="variants"
+            className="space-y-4 mt-4 border rounded-lg p-4"
+          >
             <ProductVariantsTab productId={createdProductId || product?.id} />
           </TabsContent>
 
-          <TabsContent value="images" className="space-y-4 mt-4">
+          <TabsContent
+            value="images"
+            className="space-y-4 mt-4 border rounded-lg p-4"
+          >
             <ProductImagesTab productId={createdProductId || product?.id} />
           </TabsContent>
 
-          <TabsContent value="categories" className="space-y-4 mt-4">
+          <TabsContent
+            value="categories"
+            className="space-y-4 mt-4 border rounded-lg p-4"
+          >
             <ProductCategoriesTab productId={createdProductId || product?.id} />
           </TabsContent>
 
-          <TabsContent value="scents" className="space-y-4 mt-4">
+          <TabsContent
+            value="scents"
+            className="space-y-4 mt-4 border rounded-lg p-4"
+          >
             <ProductScentsTab productId={createdProductId || product?.id} />
           </TabsContent>
 
-          <TabsContent value="ingredients" className="space-y-4 mt-4">
+          <TabsContent
+            value="ingredients"
+            className="space-y-4 mt-4 border rounded-lg p-4"
+          >
             <ProductIngredientsTab
               productId={createdProductId || product?.id}
             />

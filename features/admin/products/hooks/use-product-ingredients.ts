@@ -23,7 +23,7 @@ export function useProductIngredients(productId: number | null) {
         const { data, error, count } = await supabase
           .from("product_ingredients")
           .select(
-            "id, product_id, ingredient_id, scent_type, ingredients:ingredient_id(id, name, description)"
+            "id, product_id, ingredient_id, scent_type, ingredients:ingredients(id, name)"
           )
           .eq("product_id", productId);
 

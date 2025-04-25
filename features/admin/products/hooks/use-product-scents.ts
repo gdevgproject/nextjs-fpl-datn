@@ -1,46 +1,62 @@
 "use client";
 
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 
 const supabase = getSupabaseBrowserClient();
 
 /**
- * Hook to fetch scents assigned to a specific product
+ * Hook để lấy thông tin nhóm hương cho sản phẩm cụ thể
  */
 export function useProductScents(productId: number | null) {
-  return useQuery<{ data: any[]; count: number | null }, Error>({
+  const toast = useSonnerToast();
+
+  return useQuery<{ data: any[]; count: number | null }>({
     queryKey: ["product_scents", "by_product", productId],
     queryFn: async () => {
-      let query = supabase.from("product_scents").select(
-        `
-          id, 
-          scent:scent_id(id, name, description),
-          created_at, 
-          updated_at
-        `
-      );
+      if (!productId) {
+        return { data: [], count: 0 }; // Trả về kết quả rỗng nếu không có productId
+      }
 
-      if (productId) {
+      try {
+        let query = supabase.from("product_scents").select(
+          `
+            id, 
+            product_id,
+            scent_id,
+            scent:scent_id(id, name, description),
+            created_at, 
+            updated_at
+          `
+        );
+
         query = query.eq("product_id", productId);
+        query = query.order("created_at", { ascending: true });
+
+        const { data, error, count } = await query;
+
+        if (error) {
+          console.error("Lỗi truy vấn nhóm hương:", error);
+          toast.error("Không thể tải dữ liệu nhóm hương", {
+            description:
+              "Đã xảy ra lỗi khi tải danh sách nhóm hương của sản phẩm",
+          });
+          return { data: [], count: 0 };
+        }
+
+        return { data: data || [], count };
+      } catch (error) {
+        console.error("Lỗi khi lấy nhóm hương sản phẩm:", error);
+        return { data: [], count: 0 };
       }
-
-      query = query.order("created_at", { ascending: true });
-      const { data, error, count } = await query;
-
-      if (error) {
-        throw new Error(`Error fetching product scents: ${error.message}`);
-      }
-
-      return { data: data || [], count };
     },
-    enabled: !!productId, // Only fetch if productId is provided
+    enabled: !!productId, // Chỉ gọi API khi có productId
   });
 }
 
 /**
- * Hook to add a scent to a product
+ * Hook để thêm nhóm hương vào sản phẩm
  */
 export function useAddProductScent() {
   const queryClient = useQueryClient();
@@ -50,71 +66,118 @@ export function useAddProductScent() {
     mutationFn: async (payload: { productId: number; scentId: number }) => {
       const { productId, scentId } = payload;
 
-      // Add validation to ensure productId is not null
+      // Kiểm tra dữ liệu đầu vào
       if (!productId) {
-        throw new Error("Product ID is required");
+        return { error: "ID sản phẩm không được để trống" };
       }
 
       if (!scentId) {
-        throw new Error("Scent ID is required");
+        return { error: "ID nhóm hương không được để trống" };
       }
 
-      // Check if the scent is already assigned to the product
-      const { data: existingScents, error: checkError } = await supabase
-        .from("product_scents")
-        .select("id")
-        .eq("product_id", productId)
-        .eq("scent_id", scentId)
-        .maybeSingle();
+      try {
+        // Kiểm tra xem nhóm hương đã được gán cho sản phẩm chưa
+        const { data: existingScents, error: checkError } = await supabase
+          .from("product_scents")
+          .select("id, scent:scent_id(name)")
+          .eq("product_id", productId)
+          .eq("scent_id", scentId)
+          .maybeSingle();
 
-      if (checkError) {
-        throw new Error(`Error checking existing scent: ${checkError.message}`);
+        if (checkError) {
+          console.error("Lỗi kiểm tra nhóm hương đã tồn tại:", checkError);
+          return { error: "Không thể kiểm tra nhóm hương đã tồn tại" };
+        }
+
+        if (existingScents) {
+          return {
+            error: "duplicate",
+            scentName: existingScents.scent?.name,
+          };
+        }
+
+        // Lấy thông tin nhóm hương để hiển thị trong thông báo thành công
+        const { data: scentInfo, error: scentInfoError } = await supabase
+          .from("scents")
+          .select("name")
+          .eq("id", scentId)
+          .single();
+
+        if (scentInfoError) {
+          console.error("Lỗi lấy thông tin nhóm hương:", scentInfoError);
+        }
+
+        // Thêm mới liên kết sản phẩm-nhóm hương
+        const { data, error } = await supabase
+          .from("product_scents")
+          .insert({
+            product_id: productId,
+            scent_id: scentId,
+          })
+          .select();
+
+        if (error) {
+          console.error("Lỗi thêm nhóm hương:", error);
+          return { error: "Không thể thêm nhóm hương cho sản phẩm" };
+        }
+
+        return {
+          data,
+          scentName: scentInfo?.name,
+        };
+      } catch (error) {
+        console.error("Lỗi không xác định:", error);
+        return {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Có lỗi xảy ra khi thêm nhóm hương",
+        };
       }
-
-      if (existingScents) {
-        throw new Error("This scent is already assigned to the product");
-      }
-
-      // Insert the new product-scent relationship
-      const { data, error } = await supabase
-        .from("product_scents")
-        .insert({
-          product_id: productId,
-          scent_id: scentId,
-        })
-        .select();
-
-      if (error) {
-        throw new Error(`Error adding scent to product: ${error.message}`);
-      }
-
-      return data;
     },
-    onSuccess: (_, variables) => {
-      // Invalidate relevant queries
+    onSuccess: (result, variables) => {
+      // Kiểm tra kết quả
+      if (result.error) {
+        if (result.error === "duplicate") {
+          toast.warning("Nhóm hương đã tồn tại", {
+            description: `Nhóm hương "${
+              result.scentName || "này"
+            }" đã được gán cho sản phẩm trước đó`,
+          });
+        } else {
+          toast.error("Lỗi thêm nhóm hương", {
+            description: result.error,
+          });
+        }
+        return;
+      }
+
+      // Cập nhật cache
       queryClient.invalidateQueries({
         queryKey: ["product_scents", "by_product", variables.productId],
       });
 
-      toast.success("Success", {
-        description: "Scent added to product successfully",
+      toast.success("Thêm thành công", {
+        description: result.scentName
+          ? `Đã thêm nhóm hương "${result.scentName}" cho sản phẩm`
+          : "Đã thêm nhóm hương cho sản phẩm",
       });
     },
     onError: (error) => {
-      console.error("Error adding scent to product:", error);
+      console.error("Lỗi thêm nhóm hương:", error);
 
-      toast.error("Error", {
+      toast.error("Lỗi thêm nhóm hương", {
         description:
           error instanceof Error
             ? error.message
-            : "Failed to add scent to product",
+            : "Không thể thêm nhóm hương cho sản phẩm",
       });
     },
   });
 }
 
 /**
- * Hook to remove a scent from a product
+ * Hook để xóa nhóm hương khỏi sản phẩm
  */
 export function useRemoveProductScent() {
   const queryClient = useQueryClient();
@@ -124,45 +187,78 @@ export function useRemoveProductScent() {
     mutationFn: async (payload: { id: number; productId: number }) => {
       const { id, productId } = payload;
 
-      // Validate input
+      // Kiểm tra dữ liệu đầu vào
       if (!id) {
-        throw new Error("Product scent ID is required");
+        return { error: "ID liên kết nhóm hương không được để trống" };
       }
 
       if (!productId) {
-        throw new Error("Product ID is required");
+        return { error: "ID sản phẩm không được để trống" };
       }
 
-      // Delete the product-scent relationship
-      const { error } = await supabase
-        .from("product_scents")
-        .delete()
-        .eq("id", id);
+      try {
+        // Lấy thông tin nhóm hương trước khi xóa để hiển thị trong thông báo
+        const { data: scentData, error: fetchError } = await supabase
+          .from("product_scents")
+          .select("scent:scent_id(name)")
+          .eq("id", id)
+          .single();
 
-      if (error) {
-        throw new Error(`Error removing scent from product: ${error.message}`);
+        if (fetchError) {
+          console.error("Lỗi lấy thông tin nhóm hương:", fetchError);
+        }
+
+        const scentName = scentData?.scent?.name;
+
+        // Xóa liên kết sản phẩm-nhóm hương
+        const { error } = await supabase
+          .from("product_scents")
+          .delete()
+          .eq("id", id);
+
+        if (error) {
+          console.error("Lỗi xóa nhóm hương:", error);
+          return { error: "Không thể xóa nhóm hương khỏi sản phẩm" };
+        }
+
+        return { success: true, id, productId, scentName };
+      } catch (error) {
+        console.error("Lỗi xóa nhóm hương:", error);
+        return {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Có lỗi xảy ra khi xóa nhóm hương",
+        };
       }
-
-      return { id, productId };
     },
-    onSuccess: (_, variables) => {
-      // Invalidate relevant queries
+    onSuccess: (result, variables) => {
+      if (result.error) {
+        toast.error("Lỗi xóa nhóm hương", {
+          description: result.error,
+        });
+        return;
+      }
+
+      // Cập nhật cache
       queryClient.invalidateQueries({
         queryKey: ["product_scents", "by_product", variables.productId],
       });
 
-      toast.success("Success", {
-        description: "Scent removed from product successfully",
+      toast.success("Xóa thành công", {
+        description: result.scentName
+          ? `Đã xóa nhóm hương "${result.scentName}" khỏi sản phẩm`
+          : "Đã xóa nhóm hương khỏi sản phẩm",
       });
     },
     onError: (error) => {
-      console.error("Error removing scent from product:", error);
+      console.error("Lỗi xóa nhóm hương:", error);
 
-      toast.error("Error", {
+      toast.error("Lỗi xóa nhóm hương", {
         description:
           error instanceof Error
             ? error.message
-            : "Failed to remove scent from product",
+            : "Không thể xóa nhóm hương khỏi sản phẩm",
       });
     },
   });
