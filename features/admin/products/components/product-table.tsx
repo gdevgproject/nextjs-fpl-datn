@@ -29,6 +29,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   ChevronDown,
   ChevronUp,
@@ -36,7 +44,24 @@ import {
   Pencil,
   Trash,
   Undo,
+  Eye,
+  Grid,
+  List,
+  Tag,
+  Box,
+  ExternalLink,
+  Info,
 } from "lucide-react";
+import { Avatar } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogHeader,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import Image from "next/image";
+import Link from "next/link";
 
 interface ProductTableProps {
   products: any[];
@@ -69,6 +94,7 @@ export function ProductTable({
 }: ProductTableProps) {
   const toast = useSonnerToast();
   const deleteProductMutation = useDeleteProduct();
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
   // State for delete confirmation dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -76,6 +102,10 @@ export function ProductTable({
   const [deleteMode, setDeleteMode] = useState<"soft" | "hard" | "restore">(
     "soft"
   );
+
+  // State for quick view dialog
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
 
   // Calculate pagination
   const totalPages = Math.ceil(totalCount / pageSize);
@@ -143,6 +173,68 @@ export function ProductTable({
     if (page < totalPages) onPageChange(page + 1);
   };
 
+  // Handle quick view
+  const handleQuickView = (product: any) => {
+    setSelectedProduct(product);
+    setQuickViewOpen(true);
+  };
+
+  // Get the main image for a product
+  const getMainImage = (product: any) => {
+    if (product.images && product.images.length > 0) {
+      const mainImage = product.images.find((img: any) => img.is_main);
+      if (mainImage) return mainImage.image_url;
+      return product.images[0].image_url;
+    }
+    return "/placeholder.jpg";
+  };
+
+  // Format price range
+  const formatPriceRange = (product: any) => {
+    if (!product.variants || product.variants.length === 0) {
+      return "Chưa có biến thể";
+    }
+
+    const prices = product.variants.map((v: any) => v.sale_price || v.price);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+
+    if (minPrice === maxPrice) {
+      return new Intl.NumberFormat("vi-VN", {
+        style: "currency",
+        currency: "VND",
+      }).format(minPrice);
+    } else {
+      return `${new Intl.NumberFormat("vi-VN", {
+        style: "currency",
+        currency: "VND",
+      }).format(minPrice)} - ${new Intl.NumberFormat("vi-VN", {
+        style: "currency",
+        currency: "VND",
+      }).format(maxPrice)}`;
+    }
+  };
+
+  // Get stock status
+  const getStockStatus = (product: any) => {
+    if (!product.variants || product.variants.length === 0) {
+      return { status: "Chưa có biến thể", color: "default" };
+    }
+
+    const totalStock = product.variants.reduce(
+      (sum: number, variant: any) => sum + (variant.stock_quantity || 0),
+      0
+    );
+
+    if (totalStock === 0) {
+      return { status: "Hết hàng", color: "destructive" };
+    } else if (totalStock < 10) {
+      return { status: `Sắp hết (${totalStock})`, color: "warning" };
+    } else {
+      return { status: `Còn hàng (${totalStock})`, color: "success" };
+    }
+  };
+
   // Render loading state
   if (isLoading) {
     return (
@@ -165,110 +257,355 @@ export function ProductTable({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[50px]">ID</TableHead>
-              <TableHead
-                className="cursor-pointer"
-                onClick={() => handleSortHeader("name")}
-              >
-                <div className="flex items-center">
-                  Tên sản phẩm
-                  {getSortIcon("name")}
-                </div>
-              </TableHead>
-              <TableHead>Thương hiệu</TableHead>
-              <TableHead>Giới tính</TableHead>
-              <TableHead>Loại</TableHead>
-              <TableHead>Nồng độ</TableHead>
-              <TableHead>Trạng thái</TableHead>
-              <TableHead className="text-right">Thao tác</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {products.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
-                  Không tìm thấy sản phẩm nào.
-                </TableCell>
-              </TableRow>
-            ) : (
-              products.map((product) => (
-                <TableRow
-                  key={product.id}
-                  className={product.deleted_at ? "bg-muted/50" : ""}
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-muted-foreground">
+          Hiển thị {products.length > 0 ? startItem : 0}-{endItem} trong tổng số{" "}
+          {totalCount} sản phẩm
+        </div>
+        <div className="flex items-center space-x-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={viewMode === "table" ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => setViewMode("table")}
                 >
-                  <TableCell className="font-medium">{product.id}</TableCell>
-                  <TableCell>{product.name}</TableCell>
-                  <TableCell>{product.brands?.name || "-"}</TableCell>
-                  <TableCell>{product.genders?.name || "-"}</TableCell>
-                  <TableCell>{product.perfume_types?.name || "-"}</TableCell>
-                  <TableCell>{product.concentrations?.name || "-"}</TableCell>
-                  <TableCell>
-                    {product.deleted_at ? (
-                      <Badge variant="destructive">Đã xóa</Badge>
-                    ) : (
-                      <Badge variant="default">Hoạt động</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Mở menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onEdit(product)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Chỉnh sửa
-                        </DropdownMenuItem>
-                        {product.deleted_at ? (
-                          <>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleDeleteClick(product, "restore")
-                              }
-                            >
-                              <Undo className="mr-2 h-4 w-4" />
-                              Khôi phục
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-red-600"
-                              onClick={() => handleDeleteClick(product, "hard")}
-                            >
-                              <Trash className="mr-2 h-4 w-4" />
-                              Xóa vĩnh viễn
-                            </DropdownMenuItem>
-                          </>
-                        ) : (
-                          <DropdownMenuItem
-                            className="text-red-600"
-                            onClick={() => handleDeleteClick(product, "soft")}
-                          >
-                            <Trash className="mr-2 h-4 w-4" />
-                            Xóa
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  <List className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Chế độ danh sách</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={viewMode === "grid" ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => setViewMode("grid")}
+                >
+                  <Grid className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Chế độ lưới</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      </div>
+
+      {viewMode === "table" ? (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[50px]">ID</TableHead>
+                <TableHead className="w-[60px]">Ảnh</TableHead>
+                <TableHead
+                  className="cursor-pointer"
+                  onClick={() => handleSortHeader("name")}
+                >
+                  <div className="flex items-center">
+                    Tên sản phẩm
+                    {getSortIcon("name")}
+                  </div>
+                </TableHead>
+                <TableHead>Thương hiệu</TableHead>
+                <TableHead>Giới tính</TableHead>
+                <TableHead>Loại / Nồng độ</TableHead>
+                <TableHead>Giá bán</TableHead>
+                <TableHead>Kho</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead className="text-right">Thao tác</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {products.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={10} className="h-24 text-center">
+                    Không tìm thấy sản phẩm nào.
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ) : (
+                products.map((product) => {
+                  const stockStatus = getStockStatus(product);
+                  return (
+                    <TableRow
+                      key={product.id}
+                      className={product.deleted_at ? "bg-muted/50" : ""}
+                    >
+                      <TableCell className="font-medium">
+                        {product.id}
+                      </TableCell>
+                      <TableCell>
+                        <div className="relative h-10 w-10">
+                          <Image
+                            src={getMainImage(product)}
+                            alt={product.name}
+                            fill
+                            className="rounded-md object-cover"
+                            sizes="40px"
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate font-medium">
+                        <div className="flex flex-col">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="truncate">{product.name}</span>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-[300px] whitespace-normal">
+                                <div className="flex flex-col gap-1">
+                                  <span className="font-medium">
+                                    {product.name}
+                                  </span>
+                                  {product.short_description && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {product.short_description}
+                                    </span>
+                                  )}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <span className="text-xs text-muted-foreground truncate">
+                            {product.product_code || "Chưa có mã"}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{product.brands?.name || "-"}</TableCell>
+                      <TableCell>{product.genders?.name || "-"}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex flex-col gap-1">
+                          <span>{product.perfume_types?.name || "-"}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {product.concentrations?.name || "-"}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{formatPriceRange(product)}</TableCell>
+                      <TableCell>
+                        <Badge variant={stockStatus.color as any}>
+                          {stockStatus.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {product.deleted_at ? (
+                          <Badge variant="destructive">Đã xóa</Badge>
+                        ) : (
+                          <Badge variant="default">Hoạt động</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end space-x-1">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => handleQuickView(product)}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Xem nhanh</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => onEdit(product)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Chỉnh sửa</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Mở menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {product.slug && (
+                                <DropdownMenuItem asChild>
+                                  <Link
+                                    href={`/san-pham/${product.slug}`}
+                                    target="_blank"
+                                    className="flex items-center"
+                                  >
+                                    <ExternalLink className="mr-2 h-4 w-4" />
+                                    Xem trên shop
+                                  </Link>
+                                </DropdownMenuItem>
+                              )}
+                              {product.deleted_at ? (
+                                <>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleDeleteClick(product, "restore")
+                                    }
+                                  >
+                                    <Undo className="mr-2 h-4 w-4" />
+                                    Khôi phục
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="text-red-600"
+                                    onClick={() =>
+                                      handleDeleteClick(product, "hard")
+                                    }
+                                  >
+                                    <Trash className="mr-2 h-4 w-4" />
+                                    Xóa vĩnh viễn
+                                  </DropdownMenuItem>
+                                </>
+                              ) : (
+                                <DropdownMenuItem
+                                  className="text-red-600"
+                                  onClick={() =>
+                                    handleDeleteClick(product, "soft")
+                                  }
+                                >
+                                  <Trash className="mr-2 h-4 w-4" />
+                                  Xóa
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {products.length === 0 ? (
+            <div className="col-span-full text-center py-10 text-muted-foreground">
+              Không tìm thấy sản phẩm nào.
+            </div>
+          ) : (
+            products.map((product) => {
+              const stockStatus = getStockStatus(product);
+              return (
+                <Card
+                  key={product.id}
+                  className={product.deleted_at ? "bg-muted/30" : ""}
+                >
+                  <div className="relative p-4 h-[180px]">
+                    <Image
+                      src={getMainImage(product)}
+                      alt={product.name}
+                      fill
+                      className="object-contain rounded-t-lg"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
+                    {product.deleted_at && (
+                      <div className="absolute top-2 right-2">
+                        <Badge variant="destructive">Đã xóa</Badge>
+                      </div>
+                    )}
+                  </div>
+
+                  <CardContent className="pt-4">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3
+                          className="font-medium leading-tight truncate"
+                          title={product.name}
+                        >
+                          {product.name}
+                        </h3>
+                        <Badge
+                          variant={stockStatus.color as any}
+                          className="whitespace-nowrap flex-shrink-0"
+                        >
+                          {stockStatus.status}
+                        </Badge>
+                      </div>
+
+                      <div className="text-sm text-muted-foreground">
+                        {product.brands?.name || "Chưa có thương hiệu"} •{" "}
+                        {product.concentrations?.name || "Chưa phân loại"}
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-1">
+                        <Tag className="h-3.5 w-3.5" />
+                        <span className="font-medium">
+                          {formatPriceRange(product)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Box className="h-3.5 w-3.5" />
+                        <span className="text-sm">
+                          {product.variants?.length || 0} biến thể • ID:{" "}
+                          {product.id}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+
+                  <CardFooter className="flex justify-between border-t pt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickView(product)}
+                    >
+                      <Eye className="mr-2 h-3.5 w-3.5" />
+                      Xem nhanh
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => onEdit(product)}
+                    >
+                      <Pencil className="mr-2 h-3.5 w-3.5" />
+                      Chỉnh sửa
+                    </Button>
+                  </CardFooter>
+                </Card>
+              );
+            })
+          )}
+        </div>
+      )}
 
       {/* Pagination */}
       <div className="flex items-center justify-between">
-        <div className="text-sm text-muted-foreground">
-          Hiển thị {products.length > 0 ? startItem : 0}-{endItem} của{" "}
-          {totalCount} sản phẩm
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-muted-foreground">Hiển thị</span>
+          <select
+            className="h-8 w-16 rounded-md border border-input bg-background px-2 text-xs"
+            value={pageSize}
+            onChange={(e) => onPageSizeChange(Number(e.target.value))}
+          >
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+          <span className="text-sm text-muted-foreground">
+            sản phẩm mỗi trang
+          </span>
         </div>
+
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
@@ -324,6 +661,186 @@ export function ProductTable({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Quick View Dialog */}
+      {selectedProduct && (
+        <Dialog open={quickViewOpen} onOpenChange={setQuickViewOpen}>
+          <DialogContent className="sm:max-w-[700px]">
+            <DialogHeader>
+              <DialogTitle>{selectedProduct.name}</DialogTitle>
+              <DialogDescription>
+                ID: {selectedProduct.id} •{" "}
+                {selectedProduct.product_code || "Chưa có mã"}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="relative aspect-square">
+                <Image
+                  src={getMainImage(selectedProduct)}
+                  alt={selectedProduct.name}
+                  fill
+                  className="object-contain rounded-lg border"
+                  sizes="(max-width: 768px) 100vw, 300px"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">
+                      Thương hiệu
+                    </h4>
+                    <p>
+                      {selectedProduct.brands?.name || "Chưa có thương hiệu"}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">
+                      Giới tính
+                    </h4>
+                    <p>{selectedProduct.genders?.name || "Chưa phân loại"}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">
+                      Loại nước hoa
+                    </h4>
+                    <p>
+                      {selectedProduct.perfume_types?.name || "Chưa phân loại"}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">
+                      Nồng độ
+                    </h4>
+                    <p>
+                      {selectedProduct.concentrations?.name || "Chưa phân loại"}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">
+                      Giá bán
+                    </h4>
+                    <p className="font-medium">
+                      {formatPriceRange(selectedProduct)}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">
+                      Tình trạng kho
+                    </h4>
+                    <Badge
+                      variant={getStockStatus(selectedProduct).color as any}
+                    >
+                      {getStockStatus(selectedProduct).status}
+                    </Badge>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">
+                      Xuất xứ
+                    </h4>
+                    <p>
+                      {selectedProduct.origin_country || "Chưa có thông tin"}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">
+                      Năm phát hành
+                    </h4>
+                    <p>{selectedProduct.release_year || "Chưa có thông tin"}</p>
+                  </div>
+                </div>
+
+                {selectedProduct.short_description && (
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">
+                      Mô tả ngắn
+                    </h4>
+                    <p className="text-sm">
+                      {selectedProduct.short_description}
+                    </p>
+                  </div>
+                )}
+
+                <div className="pt-2 flex items-center gap-2">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link
+                      href={`/san-pham/${selectedProduct.slug}`}
+                      target="_blank"
+                      className="flex items-center"
+                    >
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Xem trên shop
+                    </Link>
+                  </Button>
+                  <Button size="sm" onClick={() => onEdit(selectedProduct)}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Chỉnh sửa
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {selectedProduct.variants &&
+              selectedProduct.variants.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="font-medium mb-2 flex items-center gap-2">
+                    <Box className="h-4 w-4" />
+                    Biến thể sản phẩm ({selectedProduct.variants.length})
+                  </h3>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Dung tích</TableHead>
+                          <TableHead>Giá gốc</TableHead>
+                          <TableHead>Giá sale</TableHead>
+                          <TableHead>SKU</TableHead>
+                          <TableHead>Tồn kho</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedProduct.variants.map((variant: any) => (
+                          <TableRow key={variant.id}>
+                            <TableCell>{variant.volume_ml} ml</TableCell>
+                            <TableCell>
+                              {new Intl.NumberFormat("vi-VN", {
+                                style: "currency",
+                                currency: "VND",
+                              }).format(variant.price)}
+                            </TableCell>
+                            <TableCell>
+                              {variant.sale_price
+                                ? new Intl.NumberFormat("vi-VN", {
+                                    style: "currency",
+                                    currency: "VND",
+                                  }).format(variant.sale_price)
+                                : "-"}
+                            </TableCell>
+                            <TableCell>{variant.sku || "-"}</TableCell>
+                            <TableCell>
+                              {variant.stock_quantity === 0 ? (
+                                <Badge variant="destructive">Hết hàng</Badge>
+                              ) : variant.stock_quantity < 10 ? (
+                                <Badge variant="warning">
+                                  Sắp hết ({variant.stock_quantity})
+                                </Badge>
+                              ) : (
+                                <Badge variant="success">
+                                  Còn hàng ({variant.stock_quantity})
+                                </Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

@@ -42,6 +42,8 @@ export function buildProductsQuery(
     slug, 
     product_code, 
     short_description, 
+    origin_country,
+    release_year,
     brand_id, 
     gender_id, 
     perfume_type_id, 
@@ -50,7 +52,9 @@ export function buildProductsQuery(
     brands:brand_id (id, name, logo_url),
     genders:gender_id (id, name),
     perfume_types:perfume_type_id (id, name),
-    concentrations:concentration_id (id, name)
+    concentrations:concentration_id (id, name),
+    images:product_images(id, image_url, alt_text, is_main, display_order),
+    variants:product_variants(id, price, sale_price, stock_quantity, volume_ml, sku)
   `,
     { count: "exact" }
   );
@@ -75,6 +79,10 @@ export function buildProductsQuery(
 
     if (filters.concentrationId) {
       query = query.eq("concentration_id", filters.concentrationId);
+    }
+
+    if (filters.categoryId) {
+      query = query.eq("product_categories.category_id", filters.categoryId);
     }
 
     // By default, exclude deleted products
@@ -162,7 +170,9 @@ export async function fetchProductById(
         brands:brand_id (id, name, logo_url),
         genders:gender_id (id, name),
         perfume_types:perfume_type_id (id, name),
-        concentrations:concentration_id (id, name)
+        concentrations:concentration_id (id, name),
+        images:product_images(id, image_url, alt_text, is_main, display_order),
+        variants:product_variants(id, price, sale_price, stock_quantity, volume_ml, sku)
       `
       )
       .eq("id", id)
@@ -214,7 +224,9 @@ export async function fetchProductBySlug(
         brands:brand_id (id, name, logo_url),
         genders:gender_id (id, name),
         perfume_types:perfume_type_id (id, name),
-        concentrations:concentration_id (id, name)
+        concentrations:concentration_id (id, name),
+        images:product_images(id, image_url, alt_text, is_main, display_order),
+        variants:product_variants(id, price, sale_price, stock_quantity, volume_ml, sku)
       `
       )
       .eq("slug", slug)

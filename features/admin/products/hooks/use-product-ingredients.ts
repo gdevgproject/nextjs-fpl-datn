@@ -15,18 +15,17 @@ export function useProductIngredients(productId: number | null) {
   return useQuery<{ data: ProductIngredient[]; count: number | null }, Error>({
     queryKey: ["product_ingredients", "by_product", productId],
     queryFn: async () => {
+      if (!productId) {
+        return { data: [], count: 0 }; // Return empty result when productId is null
+      }
+
       try {
-        let query = supabase
+        const { data, error, count } = await supabase
           .from("product_ingredients")
           .select(
             "id, product_id, ingredient_id, scent_type, ingredients:ingredient_id(id, name, description)"
-          );
-
-        if (productId) {
-          query = query.eq("product_id", productId);
-        }
-
-        const { data, error, count } = await query;
+          )
+          .eq("product_id", productId);
 
         if (error) {
           throw error;
