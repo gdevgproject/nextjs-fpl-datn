@@ -84,7 +84,7 @@ async function getNewArrivalsProducts(): Promise<ProductData[]> {
     .select(
       `
       id, name, slug,
-      brands!inner(id, name),
+      brands(id, name),
       product_variants(id, price, sale_price, stock_quantity, volume_ml),
       product_images(image_url, is_main)
     `
@@ -98,11 +98,17 @@ async function getNewArrivalsProducts(): Promise<ProductData[]> {
       (a: any, b: any) => (a.sale_price || a.price) - (b.sale_price || b.price)
     );
     const first = sorted[0] || {};
+
+    // Handle null brands properly
+    const brand = p.brands
+      ? { id: p.brands.id, name: p.brands.name }
+      : { id: null, name: "Unknown" };
+
     return {
       id: p.id,
       name: p.name,
       slug: p.slug,
-      brand: { id: p.brands.id, name: p.brands.name },
+      brand: brand,
       images: p.product_images,
       price: first.price,
       sale_price: first.sale_price,
@@ -178,11 +184,16 @@ async function getFeaturedCategoryProducts(
     if (existing) {
       existing.variants?.push(variant);
     } else {
+      // Handle null brands properly
+      const brand = pr.brands
+        ? { id: pr.brands.id, name: pr.brands.name }
+        : { id: null, name: "Unknown" };
+
       productsMap.set(pr.id, {
         id: pr.id,
         name: pr.name,
         slug: pr.slug,
-        brand: { id: pr.brands.id, name: pr.brands.name },
+        brand: brand,
         images: pr.product_images,
         price: v.price,
         sale_price: v.sale_price,
