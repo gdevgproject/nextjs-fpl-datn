@@ -1,10 +1,9 @@
 "use client";
 
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { StorageError } from "@supabase/storage-js";
-import { extractStoragePath } from "../services";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { StorageError } from "@supabase/storage-js";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -23,29 +22,27 @@ export function useDeleteProductImages() {
     mutationFn: async (pathsToDelete) => {
       try {
         // Convert single path to array for consistent handling
-        const pathsArray = Array.isArray(pathsToDelete)
+        const paths = Array.isArray(pathsToDelete)
           ? pathsToDelete
           : [pathsToDelete];
 
-        if (pathsArray.length === 0) return { data: [] };
+        if (paths.length === 0) {
+          return { data: [] };
+        }
 
-        // Normalize paths to prevent issues
-        const normalizedPaths = pathsArray.map((p) =>
-          p.replace(/\/+/g, "/").replace(/^\/|\/$/g, "")
-        );
-
-        // Remove from storage
+        // Delete files from storage bucket
         const { data, error } = await supabase.storage
           .from("products")
-          .remove(normalizedPaths);
+          .remove(paths);
 
-        if (error) throw error;
+        if (error) {
+          throw error;
+        }
+
         return { data };
       } catch (error) {
-        console.error("Storage deletion error:", error);
-        throw error instanceof StorageError
-          ? error
-          : new Error(String(error) || "Unknown storage deletion error");
+        console.error("Lỗi khi xóa file:", error);
+        throw error;
       }
     },
     onSuccess: () => {
@@ -54,17 +51,20 @@ export function useDeleteProductImages() {
         queryKey: ["product_images", "by_product"],
       });
 
-      toast.success("Success", {
-        description: "Product images deleted successfully",
+      toast.success("Thành công", {
+        description: "Đã xóa hình ảnh sản phẩm thành công",
       });
     },
     onError: (error) => {
       const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-      console.error(`Storage delete error (bucket: products):`, errorMessage);
+        error instanceof Error ? error.message : "Lỗi không xác định";
+      console.error(
+        `Lỗi xóa file trong storage (bucket: products):`,
+        errorMessage
+      );
 
-      toast.error("Error", {
-        description: `Failed to delete images: ${errorMessage}`,
+      toast.error("Lỗi", {
+        description: `Không thể xóa hình ảnh: ${errorMessage}`,
       });
     },
   });
@@ -74,23 +74,20 @@ export function useDeleteProductImages() {
    */
   const deleteFromUrl = async (url: string): Promise<boolean> => {
     try {
-      if (!url) return false;
+      // Extract path from URL
+      // URL format: https://[projectRef].supabase.co/storage/v1/object/public/[bucket]/[path]
+      const urlParts = url.split("/storage/v1/object/public/products/");
 
-      // Extract path from URL using the shared service
-      const path = extractStoragePath(url);
-      if (!path) {
-        console.error("Could not extract path from URL:", url);
-        return false;
+      if (urlParts.length !== 2) {
+        throw new Error("URL không hợp lệ");
       }
 
-      // Delete file using the main mutation
+      const path = urlParts[1];
       await deleteStorageMutation.mutateAsync(path);
       return true;
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      console.error("Error in deleteFromUrl:", errorMessage);
-      throw error;
+      console.error(`Lỗi xóa file từ URL (${url}):`, error);
+      return false;
     }
   };
 

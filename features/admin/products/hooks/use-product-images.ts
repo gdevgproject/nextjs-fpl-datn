@@ -68,7 +68,7 @@ export function useCreateProductImage() {
 
       // Add validation to ensure productId is not null
       if (!productId) {
-        throw new Error("Product ID is required to create an image");
+        throw new Error("ID sản phẩm là bắt buộc để tạo hình ảnh");
       }
 
       const result = await createProductImageAction(
@@ -80,7 +80,7 @@ export function useCreateProductImage() {
       );
 
       if (!result.success) {
-        throw new Error(result.error || "Failed to create product image");
+        throw new Error(result.error || "Không thể tạo hình ảnh sản phẩm");
       }
 
       return result.data;
@@ -91,18 +91,18 @@ export function useCreateProductImage() {
         queryKey: ["product_images", "by_product", variables.productId],
       });
 
-      toast.success("Success", {
-        description: "Product image added successfully",
+      toast.success("Thành công", {
+        description: "Đã thêm hình ảnh sản phẩm thành công",
       });
     },
     onError: (error) => {
-      console.error("Error creating product image:", error);
+      console.error("Lỗi khi tạo hình ảnh sản phẩm:", error);
 
-      toast.error("Error", {
+      toast.error("Lỗi", {
         description:
           error instanceof Error
             ? error.message
-            : "Failed to add product image",
+            : "Không thể thêm hình ảnh sản phẩm",
       });
     },
   });
@@ -142,7 +142,9 @@ export function useUpdateProductImage() {
         .select();
 
       if (error) {
-        throw new Error(error.message || "Failed to update product image");
+        throw new Error(
+          error.message || "Không thể cập nhật hình ảnh sản phẩm"
+        );
       }
 
       return data;
@@ -152,18 +154,18 @@ export function useUpdateProductImage() {
         queryKey: ["product_images", "by_product", variables.productId],
       });
 
-      toast.success("Success", {
-        description: "Product image updated successfully",
+      toast.success("Thành công", {
+        description: "Đã cập nhật hình ảnh sản phẩm thành công",
       });
     },
     onError: (error) => {
-      console.error("Error updating product image:", error);
+      console.error("Lỗi khi cập nhật hình ảnh sản phẩm:", error);
 
-      toast.error("Error", {
+      toast.error("Lỗi", {
         description:
           error instanceof Error
             ? error.message
-            : "Failed to update product image",
+            : "Không thể cập nhật hình ảnh sản phẩm",
       });
     },
   });
@@ -204,7 +206,7 @@ export function useDeleteProductImage() {
               .eq("id", otherImages[0].id);
           }
         } catch (err) {
-          console.error("Error setting new main image:", err);
+          console.error("Lỗi khi đặt hình ảnh chính mới:", err);
           // Continue with deletion even if setting a new main image fails
         }
       }
@@ -213,7 +215,7 @@ export function useDeleteProductImage() {
       const result = await deleteProductImageAction(id, imageUrl || "");
 
       if (!result.success) {
-        throw new Error(result.error || "Failed to delete product image");
+        throw new Error(result.error || "Không thể xóa hình ảnh sản phẩm");
       }
 
       return { ...result, productId };
@@ -224,18 +226,18 @@ export function useDeleteProductImage() {
         queryKey: ["product_images", "by_product", variables.productId],
       });
 
-      toast.success("Success", {
-        description: "Product image deleted successfully",
+      toast.success("Thành công", {
+        description: "Đã xóa hình ảnh sản phẩm thành công",
       });
     },
     onError: (error) => {
-      console.error("Error deleting product image:", error);
+      console.error("Lỗi khi xóa hình ảnh sản phẩm:", error);
 
-      toast.error("Error", {
+      toast.error("Lỗi", {
         description:
           error instanceof Error
             ? error.message
-            : "Failed to delete product image",
+            : "Không thể xóa hình ảnh sản phẩm",
       });
     },
   });
@@ -260,7 +262,7 @@ export function useSetMainProductImage() {
         .eq("is_main", true);
 
       if (updateError) {
-        console.error("Error updating existing main image:", updateError);
+        console.error("Lỗi khi cập nhật hình ảnh chính hiện tại:", updateError);
         throw new Error(updateError.message);
       }
 
@@ -272,7 +274,9 @@ export function useSetMainProductImage() {
         .select();
 
       if (error) {
-        throw new Error(error.message || "Failed to set main product image");
+        throw new Error(
+          error.message || "Không thể đặt hình ảnh chính cho sản phẩm"
+        );
       }
 
       return data;
@@ -282,18 +286,18 @@ export function useSetMainProductImage() {
         queryKey: ["product_images", "by_product", variables.productId],
       });
 
-      toast.success("Success", {
-        description: "Main product image updated",
+      toast.success("Thành công", {
+        description: "Đã cập nhật hình ảnh chính",
       });
     },
     onError: (error) => {
-      console.error("Error setting main product image:", error);
+      console.error("Lỗi khi đặt hình ảnh chính:", error);
 
-      toast.error("Error", {
+      toast.error("Lỗi", {
         description:
           error instanceof Error
             ? error.message
-            : "Failed to set main product image",
+            : "Không thể đặt hình ảnh chính",
       });
     },
   });

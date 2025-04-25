@@ -28,10 +28,8 @@ export function useProductIngredients(productId: number | null) {
           .eq("product_id", productId);
 
         if (error) {
-          console.error("Supabase error fetching product ingredients:", error);
-          throw new Error(
-            error.message || "Failed to fetch product ingredients"
-          );
+          console.error("Lỗi Supabase khi lấy thành phần sản phẩm:", error);
+          throw new Error(error.message || "Không thể lấy thành phần sản phẩm");
         }
 
         // Sort by scent type manually using a custom order
@@ -45,11 +43,11 @@ export function useProductIngredients(productId: number | null) {
 
         return { data: sortedData as ProductIngredient[], count };
       } catch (error) {
-        console.error("Error fetching product ingredients:", error);
+        console.error("Lỗi khi lấy thành phần sản phẩm:", error);
         throw new Error(
           error instanceof Error
             ? error.message
-            : "Failed to fetch product ingredients"
+            : "Không thể lấy thành phần sản phẩm"
         );
       }
     },
@@ -76,7 +74,9 @@ export function useAddProductIngredient() {
         .select("id");
 
       if (error) {
-        throw new Error(error.message || "Failed to add ingredient to product");
+        throw new Error(
+          error.message || "Không thể thêm thành phần vào sản phẩm"
+        );
       }
 
       return data;
@@ -87,18 +87,18 @@ export function useAddProductIngredient() {
         queryKey: ["product_ingredients", "by_product", variables.product_id],
       });
 
-      toast.success("Success", {
-        description: "Ingredient added to product successfully",
+      toast.success("Thành công", {
+        description: "Đã thêm thành phần vào sản phẩm thành công",
       });
     },
     onError: (error) => {
-      console.error("Error adding product ingredient:", error);
+      console.error("Lỗi khi thêm thành phần sản phẩm:", error);
 
-      toast.error("Error", {
+      toast.error("Lỗi", {
         description:
           error instanceof Error
             ? error.message
-            : "Failed to add ingredient to product",
+            : "Không thể thêm thành phần vào sản phẩm",
       });
     },
   });
@@ -122,7 +122,7 @@ export function useRemoveProductIngredient() {
 
       if (fetchError) {
         throw new Error(
-          fetchError.message || "Failed to fetch ingredient information"
+          fetchError.message || "Không thể lấy thông tin thành phần"
         );
       }
 
@@ -136,7 +136,7 @@ export function useRemoveProductIngredient() {
 
       if (deleteError) {
         throw new Error(
-          deleteError.message || "Failed to remove ingredient from product"
+          deleteError.message || "Không thể xóa thành phần khỏi sản phẩm"
         );
       }
 
@@ -148,19 +148,19 @@ export function useRemoveProductIngredient() {
           queryKey: ["product_ingredients", "by_product", result.productId],
         });
 
-        toast.success("Success", {
-          description: "Ingredient removed from product successfully",
+        toast.success("Thành công", {
+          description: "Đã xóa thành phần khỏi sản phẩm thành công",
         });
       }
     },
     onError: (error) => {
-      console.error("Error removing product ingredient:", error);
+      console.error("Lỗi khi xóa thành phần sản phẩm:", error);
 
-      toast.error("Error", {
+      toast.error("Lỗi", {
         description:
           error instanceof Error
             ? error.message
-            : "Failed to remove ingredient from product",
+            : "Không thể xóa thành phần khỏi sản phẩm",
       });
     },
   });
@@ -189,7 +189,9 @@ export function useUpdateProductIngredients() {
       );
 
       if (!result.success) {
-        throw new Error(result.error || "Failed to update product ingredients");
+        throw new Error(
+          result.error || "Không thể cập nhật thành phần sản phẩm"
+        );
       }
 
       return result;
@@ -199,18 +201,18 @@ export function useUpdateProductIngredients() {
         queryKey: ["product_ingredients", "by_product", variables.productId],
       });
 
-      toast.success("Success", {
-        description: "Product ingredients updated successfully",
+      toast.success("Thành công", {
+        description: "Đã cập nhật thành phần sản phẩm thành công",
       });
     },
     onError: (error) => {
-      console.error("Error updating product ingredients:", error);
+      console.error("Lỗi khi cập nhật thành phần sản phẩm:", error);
 
-      toast.error("Error", {
+      toast.error("Lỗi", {
         description:
           error instanceof Error
             ? error.message
-            : "Failed to update product ingredients",
+            : "Không thể cập nhật thành phần sản phẩm",
       });
     },
   });

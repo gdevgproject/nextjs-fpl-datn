@@ -1,14 +1,8 @@
 "use client";
 
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ProductVariant, productVariantSchema } from "../types";
-import {
-  createProductVariantAction,
-  updateProductVariantAction,
-} from "../actions";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
-import { z } from "zod";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -16,30 +10,25 @@ const supabase = getSupabaseBrowserClient();
  * Hook to fetch variants for a specific product
  */
 export function useProductVariants(productId: number | null) {
-  return useQuery<{ data: ProductVariant[]; count: number | null }, Error>({
-    queryKey: ["product_variants", "by_product", productId],
+  return useQuery({
+    queryKey: ["product_variants", productId],
     queryFn: async () => {
-      let query = supabase
-        .from("product_variants")
-        .select(
-          "id, product_id, volume_ml, price, sale_price, sku, stock_quantity, deleted_at, created_at, updated_at"
-        );
-
-      if (productId) {
-        query = query
-          .eq("product_id", productId)
-          .is("deleted_at", null)
-          .order("volume_ml", { ascending: true });
+      if (!productId) {
+        return { data: [], count: null };
       }
 
-      const { data, error, count } = await query;
+      const { data, error, count } = await supabase
+        .from("product_variants")
+        .select("*", { count: "exact" })
+        .eq("product_id", productId)
+        .order("volume_ml", { ascending: true });
 
       if (error) {
-        console.error("Error fetching product variants:", error);
-        throw new Error(error.message || "Failed to fetch product variants");
+        console.error("Lỗi khi lấy biến thể sản phẩm:", error);
+        throw new Error(error.message || "Không thể lấy biến thể sản phẩm");
       }
 
-      return { data: data as ProductVariant[], count };
+      return { data, count };
     },
     enabled: !!productId, // Only fetch if productId is provided
   });
@@ -54,55 +43,48 @@ export function useCreateProductVariant() {
 
   return useMutation({
     mutationFn: async (payload: {
-      productId: number;
-      data: z.infer<typeof productVariantSchema>;
+      product_id: number;
+      volume_ml: number;
+      price: number;
+      sale_price: number | null;
+      sku: string | null;
+      stock_quantity: number;
     }) => {
-      const { productId, data } = payload;
-
-      if (!productId || !data) {
-        throw new Error(
-          "Invalid variant data: Missing product ID or form data"
-        );
-      }
-
-      // Validate data with schema before sending to server
       try {
-        // Client-side validation for extra safety
-        const validated = productVariantSchema.parse(data);
+        const { data, error } = await supabase
+          .from("product_variants")
+          .insert(payload)
+          .select()
+          .single();
 
-        // Send validated data to server action
-        const result = await createProductVariantAction(productId, validated);
-
-        if (!result.success) {
-          throw new Error(result.error || "Failed to create product variant");
+        if (error) {
+          throw new Error(error.message || "Không thể tạo biến thể sản phẩm");
         }
 
-        return result.data;
+        return data;
       } catch (error) {
-        if (error instanceof z.ZodError) {
-          throw new Error(`Validation failed: ${error.errors[0].message}`);
-        }
+        console.error("Lỗi khi tạo biến thể sản phẩm:", error);
         throw error;
       }
     },
-    onSuccess: (_, variables) => {
-      // Invalidate relevant queries
+    onSuccess: (data) => {
       queryClient.invalidateQueries({
-        queryKey: ["product_variants", "by_product", variables.productId],
+        queryKey: ["product_variants", data.product_id],
       });
 
-      toast.success("Success", {
-        description: "Product variant created successfully",
+      // Also invalidate products list query to update stock status
+      queryClient.invalidateQueries({ queryKey: ["products", "list"] });
+
+      toast.success("Thành công", {
+        description: "Đã tạo biến thể sản phẩm thành công",
       });
     },
     onError: (error) => {
-      console.error("Error creating product variant:", error);
-
-      toast.error("Error", {
+      toast.error("Lỗi", {
         description:
           error instanceof Error
             ? error.message
-            : "Failed to create product variant",
+            : "Không thể tạo biến thể sản phẩm",
       });
     },
   });
@@ -118,171 +100,126 @@ export function useUpdateProductVariant() {
   return useMutation({
     mutationFn: async (payload: {
       id: number;
-      productId: number;
-      data: z.infer<typeof productVariantSchema>;
+      product_id: number;
+      volume_ml: number;
+      price: number;
+      sale_price: number | null;
+      sku: string | null;
+      stock_quantity: number;
     }) => {
-      const { id, productId, data } = payload;
-
-      if (!id || !productId || !data) {
-        throw new Error(
-          "Invalid variant data: Missing ID, product ID, or form data"
-        );
-      }
-
-      // Validate data with schema before sending to server
       try {
-        // Client-side validation for extra safety
-        const validated = productVariantSchema.parse(data);
+        const { id, ...updateData } = payload;
 
-        // Send validated data to server action
-        const result = await updateProductVariantAction(
-          id,
-          productId,
-          validated
-        );
+        const { data, error } = await supabase
+          .from("product_variants")
+          .update(updateData)
+          .eq("id", id)
+          .select()
+          .single();
 
-        if (!result.success) {
-          throw new Error(result.error || "Failed to update product variant");
+        if (error) {
+          throw new Error(
+            error.message || "Không thể cập nhật biến thể sản phẩm"
+          );
         }
 
-        return result.data;
+        return data;
       } catch (error) {
-        if (error instanceof z.ZodError) {
-          throw new Error(`Validation failed: ${error.errors[0].message}`);
-        }
+        console.error("Lỗi khi cập nhật biến thể sản phẩm:", error);
         throw error;
       }
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({
-        queryKey: ["product_variants", "by_product", variables.productId],
+        queryKey: ["product_variants", data.product_id],
       });
 
-      toast.success("Success", {
-        description: "Product variant updated successfully",
+      // Also invalidate products list query to update stock status
+      queryClient.invalidateQueries({ queryKey: ["products", "list"] });
+
+      toast.success("Thành công", {
+        description: "Đã cập nhật biến thể sản phẩm thành công",
       });
     },
     onError: (error) => {
-      console.error("Error updating product variant:", error);
-
-      toast.error("Error", {
+      toast.error("Lỗi", {
         description:
           error instanceof Error
             ? error.message
-            : "Failed to update product variant",
+            : "Không thể cập nhật biến thể sản phẩm",
       });
     },
   });
 }
 
 /**
- * Hook to delete a product variant (soft delete)
+ * Hook for product variant deletion operations (soft delete, restore, hard delete)
  */
 export function useDeleteProductVariant() {
   const queryClient = useQueryClient();
   const toast = useSonnerToast();
 
-  // Base mutation for soft delete/restore
+  // Soft delete mutation (mark as deleted)
   const softDeleteMutation = useMutation({
-    mutationFn: async (payload: {
-      id: number;
-      deleted_at: string | null;
-      product_id?: number;
-    }) => {
-      const { id, deleted_at } = payload;
-
-      // If product_id is not provided, fetch it
-      let productId = payload.product_id;
-      if (!productId) {
-        const { data, error } = await supabase
+    mutationFn: async (variantId: number) => {
+      try {
+        // First, get the product_id for invalidation
+        const { data: variantData, error: fetchError } = await supabase
           .from("product_variants")
           .select("product_id")
-          .eq("id", id)
+          .eq("id", variantId)
           .single();
 
-        if (error) {
+        if (fetchError) {
           throw new Error(
-            error.message || "Failed to fetch product variant information"
+            fetchError.message || "Không thể lấy thông tin biến thể sản phẩm"
           );
         }
 
-        productId = data?.product_id;
+        const productId = variantData?.product_id;
+
+        // Then perform the deletion
+        const { data, error } = await supabase
+          .from("product_variants")
+          .delete()
+          .eq("id", variantId)
+          .select();
+
+        if (error) {
+          throw new Error(error.message || "Không thể xóa biến thể sản phẩm");
+        }
+
+        return { data, productId };
+      } catch (error) {
+        console.error("Lỗi khi xóa biến thể sản phẩm:", error);
+        throw error;
       }
-
-      // Update the deleted_at field
-      const { data, error } = await supabase
-        .from("product_variants")
-        .update({ deleted_at })
-        .eq("id", id)
-        .select("id, product_id");
-
-      if (error) {
-        throw new Error(error.message || "Failed to update product variant");
-      }
-
-      return { data, productId };
     },
     onSuccess: (result) => {
-      // Invalidate queries
-      if (result.productId) {
-        queryClient.invalidateQueries({
-          queryKey: ["product_variants", "by_product", result.productId],
-        });
-      } else {
-        queryClient.invalidateQueries({
-          queryKey: ["product_variants", "by_product"],
-        });
-      }
+      queryClient.invalidateQueries({
+        queryKey: ["product_variants", result.productId],
+      });
+
+      // Also invalidate products list query to update stock status
+      queryClient.invalidateQueries({ queryKey: ["products", "list"] });
+
+      toast.success("Thành công", {
+        description: "Đã xóa biến thể sản phẩm thành công",
+      });
     },
     onError: (error) => {
-      console.error("Error updating product variant:", error);
-      toast.error("Error", {
+      toast.error("Lỗi", {
         description:
           error instanceof Error
             ? error.message
-            : "Failed to update product variant",
+            : "Không thể xóa biến thể sản phẩm",
       });
     },
   });
 
-  // Return enhanced mutation with specific interfaces
+  // Return the mutations with simplified interface
   return {
-    ...softDeleteMutation,
-    softDelete: async (variantId: number, productId?: number) => {
-      try {
-        const result = await softDeleteMutation.mutateAsync({
-          id: variantId,
-          deleted_at: new Date().toISOString(),
-          product_id: productId,
-        });
-
-        toast.success("Success", {
-          description: "Product variant removed successfully",
-        });
-
-        return result;
-      } catch (error) {
-        // Error is already handled in onError
-        throw error;
-      }
-    },
-    restore: async (variantId: number, productId?: number) => {
-      try {
-        const result = await softDeleteMutation.mutateAsync({
-          id: variantId,
-          deleted_at: null,
-          product_id: productId,
-        });
-
-        toast.success("Success", {
-          description: "Product variant restored successfully",
-        });
-
-        return result;
-      } catch (error) {
-        // Error is already handled in onError
-        throw error;
-      }
-    },
+    softDelete: softDeleteMutation.mutateAsync,
+    isPending: softDeleteMutation.isPending,
   };
 }

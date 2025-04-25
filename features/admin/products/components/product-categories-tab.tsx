@@ -73,7 +73,11 @@ export function ProductCategoriesTab({ productId }: ProductCategoriesTabProps) {
     setIsProcessing(true);
 
     try {
-      await updateCategories(productId, selectedCategories);
+      // Correction: Passer un objet avec les propriétés productId et categoryIds
+      await updateCategories({
+        productId,
+        categoryIds: selectedCategories
+      });
       toast.success("Danh mục sản phẩm đã được cập nhật thành công");
     } catch (error) {
       toast.error(

@@ -168,13 +168,23 @@ export function useUpdateProductCategories() {
     }) => {
       const { productId, categoryIds } = payload;
 
+      // Validation: ensure productId is defined and categoryIds contains only valid numbers
+      if (!productId) {
+        throw new Error("ID sản phẩm là bắt buộc");
+      }
+
+      // Validate and filter out any undefined or null values from categoryIds
+      const validCategoryIds = categoryIds.filter(id => 
+        id !== undefined && id !== null && !isNaN(Number(id))
+      );
+
       const result = await updateProductCategoriesAction(
         productId,
-        categoryIds
+        validCategoryIds
       );
 
       if (!result.success) {
-        throw new Error(result.error || "Failed to update product categories");
+        throw new Error(result.error || "Không thể cập nhật danh mục sản phẩm");
       }
 
       return result;
@@ -184,18 +194,18 @@ export function useUpdateProductCategories() {
         queryKey: ["product_categories", "by_product", variables.productId],
       });
 
-      toast.success("Success", {
-        description: "Product categories updated successfully",
+      toast.success("Thành công", {
+        description: "Đã cập nhật danh mục sản phẩm thành công",
       });
     },
     onError: (error) => {
-      console.error("Error updating product categories:", error);
+      console.error("Lỗi khi cập nhật danh mục sản phẩm:", error);
 
-      toast.error("Error", {
+      toast.error("Lỗi", {
         description:
           error instanceof Error
             ? error.message
-            : "Failed to update product categories",
+            : "Không thể cập nhật danh mục sản phẩm",
       });
     },
   });

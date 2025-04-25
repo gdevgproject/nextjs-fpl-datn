@@ -1,12 +1,10 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  softDeleteProductAction,
-  restoreProductAction,
-  hardDeleteProductAction,
-} from "../actions";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+
+const supabase = getSupabaseBrowserClient();
 
 /**
  * Hook for product deletion operations (soft delete, restore, hard delete)
@@ -22,27 +20,30 @@ export function useDeleteProduct() {
       queryClient.invalidateQueries({ queryKey: ["products", "list"] });
     },
     onError: (error: Error) => {
-      console.error("Product deletion error:", error);
-      toast.error("Error", {
-        description: error.message || "An error occurred during the operation",
-      });
+      console.error("Lỗi xóa sản phẩm:", error);
     },
   };
 
   // Soft delete mutation
   const softDeleteMutation = useMutation({
     mutationFn: async (productId: number) => {
-      const result = await softDeleteProductAction(productId);
-      if (!result.success) {
-        throw new Error(result.error || "Failed to delete product");
+      const { data, error } = await supabase
+        .from("products")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", productId)
+        .select();
+
+      if (error) {
+        throw new Error(error.message || "Không thể xóa sản phẩm");
       }
-      return result;
+
+      return data;
     },
     ...baseMutationConfig,
     onSuccess: () => {
       baseMutationConfig.onSuccess();
-      toast.success("Success", {
-        description: "Product deleted successfully",
+      toast.success("Thành công", {
+        description: "Sản phẩm đã được xóa tạm thời",
       });
     },
   });
@@ -50,17 +51,23 @@ export function useDeleteProduct() {
   // Restore mutation
   const restoreMutation = useMutation({
     mutationFn: async (productId: number) => {
-      const result = await restoreProductAction(productId);
-      if (!result.success) {
-        throw new Error(result.error || "Failed to restore product");
+      const { data, error } = await supabase
+        .from("products")
+        .update({ deleted_at: null })
+        .eq("id", productId)
+        .select();
+
+      if (error) {
+        throw new Error(error.message || "Không thể khôi phục sản phẩm");
       }
-      return result;
+
+      return data;
     },
     ...baseMutationConfig,
     onSuccess: () => {
       baseMutationConfig.onSuccess();
-      toast.success("Success", {
-        description: "Product restored successfully",
+      toast.success("Thành công", {
+        description: "Sản phẩm đã được khôi phục",
       });
     },
   });
@@ -68,17 +75,33 @@ export function useDeleteProduct() {
   // Hard delete mutation
   const hardDeleteMutation = useMutation({
     mutationFn: async (productId: number) => {
-      const result = await hardDeleteProductAction(productId);
-      if (!result.success) {
-        throw new Error(result.error || "Failed to permanently delete product");
+      // Get product images to delete from storage later
+      const { data: images } = await supabase
+        .from("product_images")
+        .select("image_url")
+        .eq("product_id", productId);
+
+      // Delete the product from the database
+      const { data, error } = await supabase
+        .from("products")
+        .delete()
+        .eq("id", productId);
+
+      if (error) {
+        throw new Error(error.message || "Không thể xóa vĩnh viễn sản phẩm");
       }
-      return result;
+
+      // TODO: Queue up a job to clean up orphaned images in storage
+      // This should be done in a server action or background job
+      // to prevent storage links from being orphaned
+
+      return { data, images };
     },
     ...baseMutationConfig,
     onSuccess: () => {
       baseMutationConfig.onSuccess();
-      toast.success("Success", {
-        description: "Product permanently deleted",
+      toast.success("Thành công", {
+        description: "Sản phẩm đã được xóa vĩnh viễn",
       });
     },
   });
