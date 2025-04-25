@@ -247,7 +247,7 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Variant Form */}
-        <Card>
+        <Card className="border-none shadow-none">
           <CardHeader>
             <CardTitle>
               {editingVariant ? "Chỉnh sửa biến thể" : "Thêm biến thể mới"}
@@ -384,7 +384,7 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
         </Card>
 
         {/* Variants List */}
-        <Card>
+        <Card className="border-none shadow-none">
           <CardHeader>
             <CardTitle>Danh sách biến thể</CardTitle>
             <CardDescription>Các biến thể hiện có của sản phẩm</CardDescription>

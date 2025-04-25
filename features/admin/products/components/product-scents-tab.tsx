@@ -152,7 +152,7 @@ export function ProductScentsTab({ productId }: ProductScentsTabProps) {
   }, {});
 
   return (
-    <Card className="border shadow-sm">
+    <Card className="border-none shadow-none">
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           <Tag className="h-5 w-5" /> Nhóm hương của sản phẩm
@@ -164,8 +164,8 @@ export function ProductScentsTab({ productId }: ProductScentsTabProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Search and add new scent section */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="relative col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="relative lg:col-span-2">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
@@ -288,16 +288,16 @@ export function ProductScentsTab({ productId }: ProductScentsTabProps) {
           ) : (
             <ScrollArea className="h-[250px]">
               <div className="p-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {productScents.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between group p-2 rounded-md hover:bg-accent/50 transition-colors"
+                      className="flex items-center justify-between pr-2 group p-2 rounded-md hover:bg-accent/50 transition-colors"
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="min-w-0 flex-grow flex items-center gap-2">
                         <Badge
                           variant="outline"
-                          className="bg-accent/30 hover:bg-accent/40"
+                          className="bg-accent/30 hover:bg-accent/40 shrink-0"
                         >
                           {item.scent?.name}
                         </Badge>
@@ -315,7 +315,7 @@ export function ProductScentsTab({ productId }: ProductScentsTabProps) {
                           handleRemoveScent(item.id, item.scent?.name)
                         }
                         disabled={removeScentMutation.isPending}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
+                        className="ml-2 shrink-0 h-8 w-8 p-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                         <span className="sr-only">

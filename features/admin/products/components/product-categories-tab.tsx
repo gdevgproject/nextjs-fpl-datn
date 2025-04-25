@@ -76,7 +76,7 @@ export function ProductCategoriesTab({ productId }: ProductCategoriesTabProps) {
       // Correction: Passer un objet avec les propriétés productId et categoryIds
       await updateCategories({
         productId,
-        categoryIds: selectedCategories
+        categoryIds: selectedCategories,
       });
       toast.success("Danh mục sản phẩm đã được cập nhật thành công");
     } catch (error) {
@@ -106,7 +106,7 @@ export function ProductCategoriesTab({ productId }: ProductCategoriesTabProps) {
   }
 
   return (
-    <Card>
+    <Card className="border-none shadow-none">
       <CardHeader>
         <CardTitle>Quản lý danh mục</CardTitle>
         <CardDescription>

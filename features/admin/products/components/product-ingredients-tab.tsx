@@ -241,7 +241,7 @@ export function ProductIngredientsTab({
   }
 
   return (
-    <Card className="border shadow-sm">
+    <Card className="border-none shadow-none">
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           <FlaskConical className="h-5 w-5" /> Quản lý thành phần sản phẩm

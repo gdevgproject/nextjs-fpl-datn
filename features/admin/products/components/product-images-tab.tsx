@@ -215,7 +215,7 @@ export function ProductImagesTab({ productId }: ProductImagesTabProps) {
   return (
     <div className="space-y-6">
       {/* Upload Form */}
-      <Card>
+      <Card className="border-none shadow-none">
         <CardHeader>
           <CardTitle>Tải lên hình ảnh</CardTitle>
           <CardDescription>
@@ -287,7 +287,7 @@ export function ProductImagesTab({ productId }: ProductImagesTabProps) {
       </Card>
 
       {/* Images Gallery */}
-      <Card>
+      <Card className="border-none shadow-none">
         <CardHeader>
           <CardTitle>Thư viện hình ảnh</CardTitle>
           <CardDescription>

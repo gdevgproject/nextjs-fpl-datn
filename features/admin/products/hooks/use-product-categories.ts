@@ -174,8 +174,8 @@ export function useUpdateProductCategories() {
       }
 
       // Validate and filter out any undefined or null values from categoryIds
-      const validCategoryIds = categoryIds.filter(id => 
-        id !== undefined && id !== null && !isNaN(Number(id))
+      const validCategoryIds = categoryIds.filter(
+        (id) => id !== undefined && id !== null && !isNaN(Number(id))
       );
 
       const result = await updateProductCategoriesAction(
