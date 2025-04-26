@@ -521,9 +521,10 @@ export function ProductManagement() {
                         <Checkbox
                           id="includeDeleted"
                           checked={includeDeleted}
-                          onCheckedChange={(checked) =>
-                            setIncludeDeleted(!!checked)
-                          }
+                          onCheckedChange={(checked) => {
+                            setIncludeDeleted(!!checked);
+                            setPage(1); // Reset page to 1 when toggling deleted filter
+                          }}
                         />
                         <Label
                           htmlFor="includeDeleted"
