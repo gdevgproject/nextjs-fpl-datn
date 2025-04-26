@@ -91,6 +91,11 @@ export function useCreateProductImage() {
         queryKey: ["product_images", "by_product", variables.productId],
       });
 
+      // Invalidate products list to update product thumbnails in table
+      queryClient.invalidateQueries({
+        queryKey: ["products", "list"],
+      });
+
       toast.success("Thành công", {
         description: "Đã thêm hình ảnh sản phẩm thành công",
       });
@@ -152,6 +157,11 @@ export function useUpdateProductImage() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["product_images", "by_product", variables.productId],
+      });
+
+      // Invalidate products list to update thumbnail display in product table
+      queryClient.invalidateQueries({
+        queryKey: ["products", "list"],
       });
 
       toast.success("Thành công", {
@@ -226,6 +236,11 @@ export function useDeleteProductImage() {
         queryKey: ["product_images", "by_product", variables.productId],
       });
 
+      // Invalidate products list to update product thumbnails
+      queryClient.invalidateQueries({
+        queryKey: ["products", "list"],
+      });
+
       toast.success("Thành công", {
         description: "Đã xóa hình ảnh sản phẩm thành công",
       });
@@ -284,6 +299,11 @@ export function useSetMainProductImage() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["product_images", "by_product", variables.productId],
+      });
+
+      // Invalidate products list to update product thumbnails in table view
+      queryClient.invalidateQueries({
+        queryKey: ["products", "list"],
       });
 
       toast.success("Thành công", {

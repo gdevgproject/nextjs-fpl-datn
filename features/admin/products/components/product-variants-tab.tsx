@@ -585,7 +585,9 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {deleteMode === "restore" ? "Hiển thị lại biến thể" : "Ẩn biến thể"}
+              {deleteMode === "restore"
+                ? "Hiển thị lại biến thể"
+                : "Ẩn biến thể"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {deleteMode === "restore"

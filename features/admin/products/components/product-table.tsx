@@ -155,14 +155,12 @@ export function ProductTable({
     } catch (error) {
       toast.error(
         `Lỗi khi ${
-          deleteMode === "restore" 
-            ? "hiển thị lại" 
-            : deleteMode === "hard" 
-              ? "xóa vĩnh viễn" 
-              : "ẩn"
-        } sản phẩm: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
+          deleteMode === "restore"
+            ? "hiển thị lại"
+            : deleteMode === "hard"
+            ? "xóa vĩnh viễn"
+            : "ẩn"
+        } sản phẩm: ${error instanceof Error ? error.message : "Unknown error"}`
       );
     } finally {
       setDeleteDialogOpen(false);
@@ -399,9 +397,19 @@ export function ProductTable({
                       </TableCell>
                       <TableCell>
                         {product.deleted_at ? (
-                          <Badge variant="destructive" className="bg-red-100 hover:bg-red-200 text-red-700 border border-red-200">Đã ẩn</Badge>
+                          <Badge
+                            variant="destructive"
+                            className="bg-red-100 hover:bg-red-200 text-red-700 border border-red-200"
+                          >
+                            Đã ẩn
+                          </Badge>
                         ) : (
-                          <Badge variant="default" className="bg-green-100 hover:bg-green-200 text-green-700 border border-green-200">Hoạt động</Badge>
+                          <Badge
+                            variant="default"
+                            className="bg-green-100 hover:bg-green-200 text-green-700 border border-green-200"
+                          >
+                            Hoạt động
+                          </Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -524,7 +532,9 @@ export function ProductTable({
                     />
                     {product.deleted_at && (
                       <div className="absolute top-2 right-2">
-                        <Badge className="bg-red-100 text-red-700 hover:bg-red-200 border border-red-200">Đã ẩn</Badge>
+                        <Badge className="bg-red-100 text-red-700 hover:bg-red-200 border border-red-200">
+                          Đã ẩn
+                        </Badge>
                       </div>
                     )}
                   </div>
@@ -659,18 +669,18 @@ export function ProductTable({
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               className={
-                deleteMode === "hard" 
-                  ? "bg-red-600 hover:bg-red-700" 
+                deleteMode === "hard"
+                  ? "bg-red-600 hover:bg-red-700"
                   : deleteMode === "restore"
-                    ? "bg-green-600 hover:bg-green-700"
-                    : ""
+                  ? "bg-green-600 hover:bg-green-700"
+                  : ""
               }
             >
-              {deleteMode === "restore" 
-                ? "Hiển thị lại" 
+              {deleteMode === "restore"
+                ? "Hiển thị lại"
                 : deleteMode === "hard"
-                  ? "Xóa vĩnh viễn"
-                  : "Ẩn"}
+                ? "Xóa vĩnh viễn"
+                : "Ẩn"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
