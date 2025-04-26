@@ -879,7 +879,7 @@ export function ProductTable({
       {/* Quick View Dialog */}
       {selectedProduct && (
         <Dialog open={quickViewOpen} onOpenChange={setQuickViewOpen}>
-          <DialogContent className="sm:max-w-[700px]">
+          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{selectedProduct.name}</DialogTitle>
               <DialogDescription>
@@ -997,12 +997,12 @@ export function ProductTable({
 
             {selectedProduct.variants &&
               selectedProduct.variants.length > 0 && (
-                <div className="mt-4">
+                <div className="mt-6">
                   <h3 className="font-medium mb-2 flex items-center gap-2">
                     <Box className="h-4 w-4" />
                     Biến thể sản phẩm ({selectedProduct.variants.length})
                   </h3>
-                  <div className="rounded-md border">
+                  <div className="rounded-md border overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -1011,12 +1011,23 @@ export function ProductTable({
                           <TableHead>Giá sale</TableHead>
                           <TableHead>SKU</TableHead>
                           <TableHead>Tồn kho</TableHead>
+                          <TableHead>Trạng thái</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {selectedProduct.variants.map((variant: any) => (
-                          <TableRow key={variant.id}>
-                            <TableCell>{variant.volume_ml} ml</TableCell>
+                          <TableRow 
+                            key={variant.id}
+                            className={variant.deleted_at ? "bg-muted/40" : ""}
+                          >
+                            <TableCell>
+                              {variant.volume_ml} ml
+                              {variant.deleted_at && (
+                                <span className="ml-2 text-xs px-1.5 py-0.5 rounded-md bg-destructive/10 text-destructive border border-destructive/20">
+                                  Đã ẩn
+                                </span>
+                              )}
+                            </TableCell>
                             <TableCell>
                               {new Intl.NumberFormat("vi-VN", {
                                 style: "currency",
@@ -1032,16 +1043,17 @@ export function ProductTable({
                                 : "-"}
                             </TableCell>
                             <TableCell>{variant.sku || "-"}</TableCell>
+                            <TableCell>{variant.stock_quantity}</TableCell>
                             <TableCell>
                               {variant.stock_quantity === 0 ? (
                                 <Badge variant="destructive">Hết hàng</Badge>
                               ) : variant.stock_quantity < 10 ? (
                                 <Badge variant="warning">
-                                  Sắp hết ({variant.stock_quantity})
+                                  Sắp hết
                                 </Badge>
                               ) : (
                                 <Badge variant="success">
-                                  Còn hàng ({variant.stock_quantity})
+                                  Còn hàng
                                 </Badge>
                               )}
                             </TableCell>

@@ -55,48 +55,61 @@ const variantFormSchema = z.object({
   volume_ml: z
     .string()
     .min(1, "Dung tích không được để trống")
-    .refine((val) => {
-      // Kiểm tra giá trị là số nguyên dương
-      const volume = parseInt(val, 10);
-      return !isNaN(volume) && volume > 0 && volume.toString() === val;
-    }, {
-      message: "Dung tích phải là số nguyên dương và không có số thập phân",
-    }),
+    .refine(
+      (val) => {
+        // Kiểm tra giá trị là số nguyên dương
+        const volume = parseInt(val, 10);
+        return !isNaN(volume) && volume > 0 && volume.toString() === val;
+      },
+      {
+        message: "Dung tích phải là số nguyên dương và không có số thập phân",
+      }
+    ),
   price: z
     .string()
     .min(1, "Giá không được để trống")
-    .refine((val) => {
-      // Kiểm tra định dạng số với tối đa 2 chữ số thập phân
-      const priceRegex = /^\d+(\.\d{1,2})?$/;
-      const price = parseFloat(val);
-      return !isNaN(price) && price >= 0 && priceRegex.test(val);
-    }, {
-      message: "Giá phải là số không âm và tối đa 2 chữ số thập phân",
-    }),
+    .refine(
+      (val) => {
+        // Kiểm tra định dạng số với tối đa 2 chữ số thập phân
+        const priceRegex = /^\d+(\.\d{1,2})?$/;
+        const price = parseFloat(val);
+        return !isNaN(price) && price >= 0 && priceRegex.test(val);
+      },
+      {
+        message: "Giá phải là số không âm và tối đa 2 chữ số thập phân",
+      }
+    ),
   sale_price: z
     .string()
-    .refine((val) => {
-      if (val === "") return true; // Cho phép chuỗi rỗng
-      
-      // Kiểm tra định dạng số với tối đa 2 chữ số thập phân
-      const priceRegex = /^\d+(\.\d{1,2})?$/;
-      const price = parseFloat(val);
-      return !isNaN(price) && price >= 0 && priceRegex.test(val);
-    }, {
-      message: "Giá khuyến mãi phải là số không âm và tối đa 2 chữ số thập phân",
-    })
+    .refine(
+      (val) => {
+        if (val === "") return true; // Cho phép chuỗi rỗng
+
+        // Kiểm tra định dạng số với tối đa 2 chữ số thập phân
+        const priceRegex = /^\d+(\.\d{1,2})?$/;
+        const price = parseFloat(val);
+        return !isNaN(price) && price >= 0 && priceRegex.test(val);
+      },
+      {
+        message:
+          "Giá khuyến mãi phải là số không âm và tối đa 2 chữ số thập phân",
+      }
+    )
     .optional(),
   sku: z.string().max(100, "SKU không được vượt quá 100 ký tự").optional(),
   stock_quantity: z
     .string()
     .min(1, "Số lượng tồn kho không được để trống")
-    .refine((val) => {
-      // Kiểm tra giá trị là số nguyên không âm
-      const quantity = parseInt(val, 10);
-      return !isNaN(quantity) && quantity >= 0 && quantity.toString() === val;
-    }, {
-      message: "Số lượng tồn kho phải là số nguyên không âm",
-    }),
+    .refine(
+      (val) => {
+        // Kiểm tra giá trị là số nguyên không âm
+        const quantity = parseInt(val, 10);
+        return !isNaN(quantity) && quantity >= 0 && quantity.toString() === val;
+      },
+      {
+        message: "Số lượng tồn kho phải là số nguyên không âm",
+      }
+    ),
 });
 
 type VariantFormValues = z.infer<typeof variantFormSchema>;
@@ -217,9 +230,10 @@ export function ProductVariantsTab({
         volume_ml: parseInt(values.volume_ml, 10),
         // Làm tròn giá đến 2 chữ số thập phân để tránh sai số
         price: Math.round(parseFloat(values.price) * 100) / 100,
-        sale_price: values.sale_price && values.sale_price.trim() !== ""
-          ? Math.round(parseFloat(values.sale_price) * 100) / 100
-          : null,
+        sale_price:
+          values.sale_price && values.sale_price.trim() !== ""
+            ? Math.round(parseFloat(values.sale_price) * 100) / 100
+            : null,
         sku: values.sku || null,
         stock_quantity: parseInt(values.stock_quantity, 10),
       };
@@ -248,22 +262,26 @@ export function ProductVariantsTab({
         toast.success("Biến thể đã được cập nhật thành công");
       } else {
         // Create new variant
-        const newVariant = await createVariantMutation.mutateAsync(formattedValues);
-        
+        const newVariant = await createVariantMutation.mutateAsync(
+          formattedValues
+        );
+
         // Nếu cần tự động ẩn biến thể mới khi sản phẩm đang bị ẩn
         if (shouldAutoHide && newVariant?.id) {
           try {
             await deleteVariantMutation.softDelete(newVariant.id);
             toast.success(
-              "Biến thể đã được tạo và tự động ẩn do sản phẩm đang bị ẩn", 
+              "Biến thể đã được tạo và tự động ẩn do sản phẩm đang bị ẩn",
               {
-                description: "Khi sản phẩm được hiển thị lại, bạn có thể khôi phục các biến thể đã ẩn."
+                description:
+                  "Khi sản phẩm được hiển thị lại, bạn có thể khôi phục các biến thể đã ẩn.",
               }
             );
           } catch (error) {
             console.error("Lỗi khi tự động ẩn biến thể:", error);
             toast.success("Biến thể đã được tạo thành công", {
-              description: "Tuy nhiên không thể tự động ẩn do sản phẩm đang bị ẩn. Vui lòng ẩn thủ công."
+              description:
+                "Tuy nhiên không thể tự động ẩn do sản phẩm đang bị ẩn. Vui lòng ẩn thủ công.",
             });
           }
         } else {
