@@ -522,38 +522,57 @@ export function ProductManagement() {
                         </Select>
                       </div>
 
-                      <div className="flex items-center space-x-2 pt-2">
-                        <Checkbox
-                          id="includeDeleted"
-                          checked={includeDeleted}
-                          onCheckedChange={(checked) => {
-                            setIncludeDeleted(!!checked);
-                            setPage(1); // Reset page to 1 when toggling deleted filter
-                          }}
-                        />
-                        <Label
-                          htmlFor="includeDeleted"
-                          className="cursor-pointer"
-                        >
-                          Chỉ hiển thị sản phẩm đã xóa
-                        </Label>
-                      </div>
+                      <Separator className="my-2" />
 
-                      <div className="flex items-center space-x-2 pt-2">
-                        <Checkbox
-                          id="hasHiddenVariants"
-                          checked={hasHiddenVariants}
-                          onCheckedChange={(checked) => {
-                            setHasHiddenVariants(!!checked);
-                            setPage(1); // Reset page to 1 when toggling filter
-                          }}
-                        />
-                        <Label
-                          htmlFor="hasHiddenVariants"
-                          className="cursor-pointer"
-                        >
-                          Hiển thị sản phẩm có biến thể đã ẩn
-                        </Label>
+                      <div>
+                        <h3 className="text-sm font-semibold mb-3">
+                          Trạng thái sản phẩm & biến thể
+                        </h3>
+
+                        <div className="rounded-md border p-4 space-y-3">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="hasHiddenVariants"
+                              checked={hasHiddenVariants}
+                              onCheckedChange={(checked) => {
+                                setHasHiddenVariants(!!checked);
+                                setPage(1);
+                              }}
+                            />
+                            <Label
+                              htmlFor="hasHiddenVariants"
+                              className="cursor-pointer text-sm"
+                            >
+                              Hiển thị sản phẩm có biến thể đã ẩn
+                            </Label>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5 p-0 rounded-full"
+                                  >
+                                    <HelpCircle className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent
+                                  side="right"
+                                  className="max-w-xs"
+                                >
+                                  <p className="text-xs">
+                                    Lọc để hiện các sản phẩm vẫn đang hoạt động
+                                    nhưng có một số biến thể đã bị ẩn.
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                          <p className="text-xs text-muted-foreground pt-1 pl-6">
+                            Hữu ích khi bạn muốn kiểm tra những sản phẩm đang
+                            hoạt động nhưng có một số biến thể đã bị ẩn
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </TabsContent>
@@ -660,15 +679,17 @@ export function ProductManagement() {
 
       {/* Products Table with Tabs */}
       <Tabs defaultValue="active" className="w-full">
-        <TabsList className="mb-4">
+        <TabsList className="mb-4 grid grid-cols-2 md:w-fit">
           <TabsTrigger
             value="active"
             onClick={() => {
               setIncludeDeleted(false);
               setPage(1);
             }}
+            className="flex items-center gap-2"
           >
-            Sản phẩm đang hoạt động
+            <div className="h-2.5 w-2.5 rounded-full bg-green-500"></div>
+            Đang hoạt động
           </TabsTrigger>
           <TabsTrigger
             value="deleted"
@@ -676,8 +697,10 @@ export function ProductManagement() {
               setIncludeDeleted(true);
               setPage(1);
             }}
+            className="flex items-center gap-2"
           >
-            Sản phẩm đã ẩn
+            <div className="h-2.5 w-2.5 rounded-full bg-red-500"></div>
+            Đã ẩn
           </TabsTrigger>
         </TabsList>
 
