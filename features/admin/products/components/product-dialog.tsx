@@ -50,20 +50,24 @@ const productFormSchema = z.object({
   name: z
     .string()
     .min(1, "Tên sản phẩm không được để trống")
-    .max(255, "Tên sản phẩm không được vượt quá 255 ký tự"),
+    .max(255, "Tên sản phẩm không được vượt quá 255 ký tự")
+    .trim(),
   product_code: z
     .string()
     .max(100, "Mã sản phẩm không được vượt quá 100 ký tự")
+    .trim()
     .optional()
     .nullable(),
   short_description: z
     .string()
     .max(500, "Mô tả ngắn không được vượt quá 500 ký tự")
+    .trim()
     .optional()
     .nullable(),
   long_description: z
     .string()
     .max(5000, "Mô tả chi tiết không được vượt quá 5000 ký tự")
+    .trim()
     .optional()
     .nullable(),
   brand_id: z.string().optional().nullable(),
@@ -73,15 +77,18 @@ const productFormSchema = z.object({
   origin_country: z
     .string()
     .max(100, "Xuất xứ không được vượt quá 100 ký tự")
+    .trim()
     .optional()
     .nullable(),
   release_year: z
     .string()
+    .refine((val) => !val || /^\d+$/.test(val), {
+      message: "Năm phát hành phải là số nguyên dương",
+    })
     .refine(
       (val) =>
         !val ||
-        (Number.parseInt(val) >= 1800 &&
-          Number.parseInt(val) <= new Date().getFullYear()),
+        (parseInt(val) >= 1800 && parseInt(val) <= new Date().getFullYear()),
       {
         message: `Năm phát hành phải từ 1800 đến ${new Date().getFullYear()}`,
       }
@@ -91,16 +98,19 @@ const productFormSchema = z.object({
   style: z
     .string()
     .max(100, "Phong cách không được vượt quá 100 ký tự")
+    .trim()
     .optional()
     .nullable(),
   sillage: z
     .string()
     .max(100, "Độ tỏa hương không được vượt quá 100 ký tự")
+    .trim()
     .optional()
     .nullable(),
   longevity: z
     .string()
     .max(100, "Độ lưu hương không được vượt quá 100 ký tự")
+    .trim()
     .optional()
     .nullable(),
 });
@@ -604,13 +614,55 @@ export function ProductDialog({
                       <FormItem>
                         <FormLabel className="font-medium">Xuất xứ</FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="Nhập xuất xứ (tùy chọn)"
-                            {...field}
-                            value={field.value || ""}
-                          />
+                          <div className="relative">
+                            <Input
+                              placeholder="Nhập xuất xứ (tùy chọn)"
+                              {...field}
+                              value={field.value || ""}
+                              className="w-full pr-20"
+                            />
+                            <div className="absolute inset-y-0 right-0">
+                              <Select
+                                onValueChange={(value) => {
+                                  if (value !== "custom") {
+                                    field.onChange(value);
+                                  }
+                                }}
+                                value="custom"
+                              >
+                                <SelectTrigger className="h-10 w-[110px] border-0 bg-transparent hover:bg-muted/30 focus:ring-0">
+                                  <SelectValue placeholder="Gợi ý" />
+                                </SelectTrigger>
+                                <SelectContent align="end">
+                                  <SelectItem value="custom">
+                                    Tùy chọn
+                                  </SelectItem>
+                                  <SelectItem value="Pháp">Pháp</SelectItem>
+                                  <SelectItem value="Việt Nam">
+                                    Việt Nam
+                                  </SelectItem>
+                                  <SelectItem value="Ý">Ý</SelectItem>
+                                  <SelectItem value="Anh">Anh</SelectItem>
+                                  <SelectItem value="Mỹ">Mỹ</SelectItem>
+                                  <SelectItem value="Đức">Đức</SelectItem>
+                                  <SelectItem value="Tây Ban Nha">
+                                    Tây Ban Nha
+                                  </SelectItem>
+                                  <SelectItem value="Nhật Bản">
+                                    Nhật Bản
+                                  </SelectItem>
+                                  <SelectItem value="Các Tiểu vương quốc Ả Rập">
+                                    UAE
+                                  </SelectItem>
+                                  <SelectItem value="Thụy Sĩ">
+                                    Thụy Sĩ
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
                         </FormControl>
-                        <FormDescription>
+                        <FormDescription className="text-xs sm:text-sm">
                           Quốc gia xuất xứ của sản phẩm.
                         </FormDescription>
                         <FormMessage />
@@ -627,15 +679,71 @@ export function ProductDialog({
                           Năm phát hành
                         </FormLabel>
                         <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="Nhập năm phát hành (tùy chọn)"
-                            {...field}
-                            value={field.value || ""}
-                          />
+                          <div className="relative">
+                            <Input
+                              type="number"
+                              min={1800}
+                              max={new Date().getFullYear()}
+                              placeholder={`1800-${new Date().getFullYear()}`}
+                              {...field}
+                              value={field.value || ""}
+                              onChange={(e) => {
+                                // Chỉ cho phép nhập giá trị hợp lệ
+                                const value = e.target.value;
+                                const numValue = Number(value);
+
+                                if (
+                                  value === "" ||
+                                  (numValue >= 0 &&
+                                    Number.isInteger(numValue) &&
+                                    value.length <= 4)
+                                ) {
+                                  field.onChange(value);
+                                }
+                              }}
+                              className="pr-24"
+                            />
+                            <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-2">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => {
+                                  const currentYear = new Date().getFullYear();
+                                  field.onChange(currentYear.toString());
+                                }}
+                                title="Đặt năm hiện tại"
+                              >
+                                <span className="text-xs font-medium">
+                                  {new Date().getFullYear()}
+                                </span>
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => field.onChange("")}
+                                title="Xóa giá trị"
+                                disabled={!field.value}
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="16"
+                                  height="16"
+                                  fill="currentColor"
+                                  viewBox="0 0 16 16"
+                                >
+                                  <path d="M5.83 5.146a.5.5 0 0 0 0 .708L7.975 8l-2.147 2.146a.5.5 0 0 0 .707.708l2.147-2.147 2.146 2.147a.5.5 0 0 0 .707-.708L9.39 8l2.146-2.146a.5.5 0 0 0-.707-.708L8.683 7.293 6.536 5.146a.5.5 0 0 0-.707 0z" />
+                                  <path d="M13.683 1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-9.5a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2zM4.183 3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h9.5a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1z" />
+                                </svg>
+                              </Button>
+                            </div>
+                          </div>
                         </FormControl>
-                        <FormDescription>
-                          Năm phát hành sản phẩm.
+                        <FormDescription className="text-xs sm:text-sm">
+                          Năm phát hành sản phẩm (từ 1800 đến hiện tại).
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -651,13 +759,65 @@ export function ProductDialog({
                           Phong cách
                         </FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="Nhập phong cách (tùy chọn)"
-                            {...field}
-                            value={field.value || ""}
-                          />
+                          <div className="relative">
+                            <Input
+                              placeholder="Nhập phong cách (tùy chọn)"
+                              {...field}
+                              value={field.value || ""}
+                              className="w-full pr-20"
+                            />
+                            <div className="absolute inset-y-0 right-0">
+                              <Select
+                                onValueChange={(value) => {
+                                  if (value !== "custom") {
+                                    field.onChange(value);
+                                  }
+                                }}
+                                value="custom"
+                              >
+                                <SelectTrigger className="h-10 w-[110px] border-0 bg-transparent hover:bg-muted/30 focus:ring-0">
+                                  <SelectValue placeholder="Gợi ý" />
+                                </SelectTrigger>
+                                <SelectContent align="end">
+                                  <SelectItem value="custom">
+                                    Tùy chọn
+                                  </SelectItem>
+                                  <SelectItem value="Sang trọng">
+                                    Sang trọng
+                                  </SelectItem>
+                                  <SelectItem value="Thanh lịch">
+                                    Thanh lịch
+                                  </SelectItem>
+                                  <SelectItem value="Quyến rũ">
+                                    Quyến rũ
+                                  </SelectItem>
+                                  <SelectItem value="Tươi mát">
+                                    Tươi mát
+                                  </SelectItem>
+                                  <SelectItem value="Trẻ trung">
+                                    Trẻ trung
+                                  </SelectItem>
+                                  <SelectItem value="Tinh tế">
+                                    Tinh tế
+                                  </SelectItem>
+                                  <SelectItem value="Cá tính">
+                                    Cá tính
+                                  </SelectItem>
+                                  <SelectItem value="Mạnh mẽ">
+                                    Mạnh mẽ
+                                  </SelectItem>
+                                  <SelectItem value="Hiện đại">
+                                    Hiện đại
+                                  </SelectItem>
+                                  <SelectItem value="Cổ điển">
+                                    Cổ điển
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
                         </FormControl>
-                        <FormDescription>
+                        <FormDescription className="text-xs sm:text-sm">
                           Phong cách của sản phẩm (Sang trọng, Quyến rũ...).
                         </FormDescription>
                         <FormMessage />
@@ -674,14 +834,51 @@ export function ProductDialog({
                           Độ tỏa hương
                         </FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="Nhập độ tỏa hương (tùy chọn)"
-                            {...field}
-                            value={field.value || ""}
-                          />
+                          <div className="relative">
+                            <Input
+                              placeholder="Nhập độ tỏa hương (tùy chọn)"
+                              {...field}
+                              value={field.value || ""}
+                              className="w-full pr-20"
+                            />
+                            <div className="absolute inset-y-0 right-0">
+                              <Select
+                                onValueChange={(value) => {
+                                  if (value !== "custom") {
+                                    field.onChange(value);
+                                  }
+                                }}
+                                value="custom"
+                              >
+                                <SelectTrigger className="h-10 w-[110px] border-0 bg-transparent hover:bg-muted/30 focus:ring-0">
+                                  <SelectValue placeholder="Gợi ý" />
+                                </SelectTrigger>
+                                <SelectContent align="end">
+                                  <SelectItem value="custom">
+                                    Tùy chọn
+                                  </SelectItem>
+                                  <SelectItem value="Rất nhẹ">
+                                    Rất nhẹ
+                                  </SelectItem>
+                                  <SelectItem value="Nhẹ">Nhẹ</SelectItem>
+                                  <SelectItem value="Vừa phải">
+                                    Vừa phải
+                                  </SelectItem>
+                                  <SelectItem value="Mạnh">Mạnh</SelectItem>
+                                  <SelectItem value="Rất mạnh">
+                                    Rất mạnh
+                                  </SelectItem>
+                                  <SelectItem value="Lan tỏa xa">
+                                    Lan tỏa xa
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
                         </FormControl>
-                        <FormDescription>
-                          Độ tỏa hương của sản phẩm (Gần, Vừa, Xa...).
+                        <FormDescription className="text-xs sm:text-sm">
+                          Độ tỏa hương là khả năng lan tỏa mùi hương xung quanh
+                          người sử dụng.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -697,14 +894,55 @@ export function ProductDialog({
                           Độ lưu hương
                         </FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="Nhập độ lưu hương (tùy chọn)"
-                            {...field}
-                            value={field.value || ""}
-                          />
+                          <div className="relative">
+                            <Input
+                              placeholder="Nhập độ lưu hương (tùy chọn)"
+                              {...field}
+                              value={field.value || ""}
+                              className="w-full pr-20"
+                            />
+                            <div className="absolute inset-y-0 right-0">
+                              <Select
+                                onValueChange={(value) => {
+                                  if (value !== "custom") {
+                                    field.onChange(value);
+                                  }
+                                }}
+                                value="custom"
+                              >
+                                <SelectTrigger className="h-10 w-[110px] border-0 bg-transparent hover:bg-muted/30 focus:ring-0">
+                                  <SelectValue placeholder="Gợi ý" />
+                                </SelectTrigger>
+                                <SelectContent align="end">
+                                  <SelectItem value="custom">
+                                    Tùy chọn
+                                  </SelectItem>
+                                  <SelectItem value="Rất ngắn (1-2 giờ)">
+                                    Rất ngắn
+                                  </SelectItem>
+                                  <SelectItem value="Ngắn (2-4 giờ)">
+                                    Ngắn
+                                  </SelectItem>
+                                  <SelectItem value="Vừa phải (4-6 giờ)">
+                                    Vừa phải
+                                  </SelectItem>
+                                  <SelectItem value="Tốt (6-8 giờ)">
+                                    Tốt
+                                  </SelectItem>
+                                  <SelectItem value="Rất tốt (8-12 giờ)">
+                                    Rất tốt
+                                  </SelectItem>
+                                  <SelectItem value="Xuất sắc (12+ giờ)">
+                                    Xuất sắc
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
                         </FormControl>
-                        <FormDescription>
-                          Độ lưu hương của sản phẩm (Kém, Tốt, Rất tốt...).
+                        <FormDescription className="text-xs sm:text-sm">
+                          Độ lưu hương là thời gian mùi hương có thể được cảm
+                          nhận trên da sau khi sử dụng.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -715,49 +953,119 @@ export function ProductDialog({
                 <FormField
                   control={form.control}
                   name="short_description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-medium">Mô tả ngắn</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Nhập mô tả ngắn về sản phẩm (tùy chọn)"
-                          className="resize-none"
-                          rows={3}
-                          {...field}
-                          value={field.value || ""}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Mô tả ngắn gọn về sản phẩm (hiển thị ở trang danh sách).
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const maxChars = 500;
+                    const charsLeft = maxChars - (field.value?.length || 0);
+                    const isAlmostFull = charsLeft <= 50;
+
+                    return (
+                      <FormItem>
+                        <FormLabel className="font-medium">
+                          Mô tả ngắn
+                          <span
+                            className={`ml-2 text-xs ${
+                              isAlmostFull
+                                ? "text-red-500"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            (còn {charsLeft} ký tự)
+                          </span>
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Textarea
+                              placeholder="Nhập mô tả ngắn về sản phẩm (tùy chọn)"
+                              className="resize-none pr-16"
+                              rows={3}
+                              maxLength={maxChars}
+                              {...field}
+                              value={field.value || ""}
+                            />
+                            <div className="absolute bottom-2 right-2">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className={`h-6 px-1.5 text-xs ${
+                                  !field.value ? "opacity-50" : ""
+                                }`}
+                                onClick={() => field.onChange("")}
+                                disabled={!field.value}
+                                title="Xóa mô tả ngắn"
+                              >
+                                Xóa
+                              </Button>
+                            </div>
+                          </div>
+                        </FormControl>
+                        <FormDescription className="text-xs sm:text-sm">
+                          Mô tả ngắn gọn về sản phẩm (hiển thị ở trang danh sách
+                          sản phẩm và kết quả tìm kiếm).
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
 
                 <FormField
                   control={form.control}
                   name="long_description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-medium">
-                        Mô tả chi tiết
-                      </FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Nhập mô tả chi tiết về sản phẩm (tùy chọn)"
-                          className="resize-none"
-                          rows={6}
-                          {...field}
-                          value={field.value || ""}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Mô tả chi tiết về sản phẩm (hiển thị ở trang chi tiết).
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const maxChars = 5000;
+                    const charsLeft = maxChars - (field.value?.length || 0);
+                    const isAlmostFull = charsLeft <= 250;
+                    return (
+                      <FormItem>
+                        <FormLabel className="font-medium">
+                          Mô tả chi tiết
+                          <span
+                            className={`ml-2 text-xs ${
+                              isAlmostFull
+                                ? "text-red-500"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            (còn {charsLeft} ký tự)
+                          </span>
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Textarea
+                              placeholder="Nhập mô tả chi tiết về sản phẩm (tùy chọn)"
+                              className="resize-none pr-16"
+                              rows={6}
+                              maxLength={maxChars}
+                              {...field}
+                              value={field.value || ""}
+                            />
+                            <div className="absolute bottom-2 right-2">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className={`h-6 px-1.5 text-xs ${
+                                  !field.value ? "opacity-50" : ""
+                                }`}
+                                onClick={() => field.onChange("")}
+                                disabled={!field.value}
+                                title="Xóa mô tả chi tiết"
+                              >
+                                Xóa
+                              </Button>
+                            </div>
+                          </div>
+                        </FormControl>
+                        <FormDescription className="text-xs sm:text-sm">
+                          Mô tả chi tiết về sản phẩm, bao gồm thông tin về mùi
+                          hương, cảm nhận và lịch sử của sản phẩm. Hiển thị ở
+                          trang chi tiết sản phẩm.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
 
                 <DialogFooter>
