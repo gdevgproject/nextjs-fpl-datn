@@ -1375,53 +1375,52 @@ export function ProductVariantsTab({
                 ? "Xóa vĩnh viễn biến thể"
                 : "Không thể xóa vĩnh viễn biến thể"}
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              {variantHardDelete.isChecking ? (
-                <div className="flex flex-col items-center py-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
-                  <p>Đang kiểm tra điều kiện xóa...</p>
+            {variantHardDelete.isChecking ? (
+              <div className="flex flex-col items-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
+                <p>Đang kiểm tra điều kiện xóa...</p>
+              </div>
+            ) : variantHardDelete.validationResult ? (
+              variantHardDelete.validationResult.canDelete ? (
+                <div className="text-sm text-muted-foreground space-y-2">
+                  <p>
+                    Biến thể này đã thỏa mãn tất cả điều kiện để xóa vĩnh viễn.
+                    Sau khi xóa, biến thể sẽ không thể khôi phục lại được.
+                  </p>
+                  <p className="font-semibold">
+                    Bạn có chắc chắn muốn xóa vĩnh viễn biến thể này?
+                  </p>
                 </div>
-              ) : variantHardDelete.validationResult ? (
-                variantHardDelete.validationResult.canDelete ? (
-                  <>
-                    <p>
-                      Biến thể này đã thỏa mãn tất cả điều kiện để xóa vĩnh
-                      viễn. Sau khi xóa, biến thể sẽ không thể khôi phục lại
-                      được.
-                    </p>
-                    <p className="font-semibold">
-                      Bạn có chắc chắn muốn xóa vĩnh viễn biến thể này?
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <div className="rounded-md bg-destructive/10 p-4 border border-destructive/30 dark:bg-destructive/20">
-                      <div className="flex">
-                        <svg
-                          className="h-5 w-5 text-destructive"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                          aria-hidden="true"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        <div className="ml-3">
-                          <h3 className="text-sm font-medium text-destructive">
-                            Không thể xóa vĩnh viễn
-                          </h3>
-                        </div>
+              ) : (
+                <div className="text-sm text-muted-foreground space-y-2">
+                  <div className="rounded-md bg-destructive/10 p-4 border border-destructive/30 dark:bg-destructive/20">
+                    <div className="flex">
+                      <svg
+                        className="h-5 w-5 text-destructive"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        aria-hidden="true"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-destructive">
+                          Không thể xóa vĩnh viễn
+                        </h3>
                       </div>
                     </div>
+                  </div>
 
-                    <p className="text-sm font-semibold">
+                  <div className="mt-2">
+                    <div className="text-sm font-semibold">
                       Không thể xóa vĩnh viễn biến thể này vì các lý do sau:
-                    </p>
+                    </div>
 
-                    <ul className="list-disc pl-5 space-y-1 text-sm">
+                    <ul className="list-disc pl-5 space-y-1 text-sm mt-1">
                       {variantHardDelete.validationResult.blockingReasons.map(
                         (reason, index) => (
                           <li key={index} className="text-destructive">
@@ -1431,16 +1430,18 @@ export function ProductVariantsTab({
                       )}
                     </ul>
 
-                    <p className="text-xs text-muted-foreground pt-2">
+                    <div className="text-xs text-muted-foreground pt-2">
                       Gỡ bỏ các liên kết đến biến thể này trước khi thử xóa vĩnh
                       viễn lại.
-                    </p>
-                  </>
-                )
-              ) : (
-                <p>Đã xảy ra lỗi khi kiểm tra điều kiện xóa vĩnh viễn.</p>
-              )}
-            </AlertDialogDescription>
+                    </div>
+                  </div>
+                </div>
+              )
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Đã xảy ra lỗi khi kiểm tra điều kiện xóa vĩnh viễn.
+              </p>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
