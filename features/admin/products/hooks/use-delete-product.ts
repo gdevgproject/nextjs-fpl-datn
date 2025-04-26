@@ -220,7 +220,13 @@ export function useDeleteProduct() {
 
   // Restore mutation
   const restoreMutation = useMutation({
-    mutationFn: async (productId: number) => {
+    mutationFn: async ({
+      productId,
+      restoreAllVariants = false,
+    }: {
+      productId: number;
+      restoreAllVariants?: boolean;
+    }) => {
       try {
         // 1. Get all hidden variants for the product
         const { data: variants, error: variantsError } = await supabase
@@ -246,48 +252,63 @@ export function useDeleteProduct() {
           throw new Error(error.message || "Không thể hiển thị lại sản phẩm");
         }
 
-        // 3. Restore variants that were hidden with the product
-        // We only want to restore variants that were hidden at the same time as the product
+        // 3. Restore variants based on the restoreAllVariants parameter
         if (variants && variants.length > 0) {
-          // Get the product's deleted_at timestamp
-          const { data: productData, error: productError } = await supabase
-            .from("products")
-            .select("deleted_at")
-            .eq("id", productId)
-            .single();
+          if (restoreAllVariants) {
+            // Restore ALL hidden variants if restoreAllVariants is true
+            const variantIds = variants.map((variant) => variant.id);
+            const { error: variantRestoreError } = await supabase
+              .from("product_variants")
+              .update({ deleted_at: null })
+              .in("id", variantIds);
 
-          if (productError) {
-            console.error("Error fetching product timestamp:", productError);
-            // Continue without variant restoration if we can't get product timestamp
-          } else if (productData) {
-            const productDeletedTime = new Date(
-              productData.deleted_at
-            ).getTime();
+            if (variantRestoreError) {
+              console.error("Variant restore error:", variantRestoreError);
+              // We don't throw here as the product is already restored
+              // Just log the error and continue
+            }
+          } else {
+            // Otherwise, only restore variants that were hidden with the product (previous behavior)
+            // Get the product's deleted_at timestamp
+            const { data: productData, error: productError } = await supabase
+              .from("products")
+              .select("deleted_at")
+              .eq("id", productId)
+              .single();
 
-            // Filter variants that were hidden at the same time or within 5 seconds of the product
-            // This helps catch variants that were hidden as part of the product hide operation
-            const variantsToRestore = variants
-              .filter((variant) => {
-                const variantDeletedTime = new Date(
-                  variant.deleted_at
-                ).getTime();
-                // Allow 5 second margin for batch operations
-                return (
-                  Math.abs(variantDeletedTime - productDeletedTime) <= 5000
-                );
-              })
-              .map((variant) => variant.id);
+            if (productError) {
+              console.error("Error fetching product timestamp:", productError);
+              // Continue without variant restoration if we can't get product timestamp
+            } else if (productData) {
+              const productDeletedTime = new Date(
+                productData.deleted_at
+              ).getTime();
 
-            if (variantsToRestore.length > 0) {
-              const { error: variantRestoreError } = await supabase
-                .from("product_variants")
-                .update({ deleted_at: null })
-                .in("id", variantsToRestore);
+              // Filter variants that were hidden at the same time or within 5 seconds of the product
+              // This helps catch variants that were hidden as part of the product hide operation
+              const variantsToRestore = variants
+                .filter((variant) => {
+                  const variantDeletedTime = new Date(
+                    variant.deleted_at
+                  ).getTime();
+                  // Allow 5 second margin for batch operations
+                  return (
+                    Math.abs(variantDeletedTime - productDeletedTime) <= 5000
+                  );
+                })
+                .map((variant) => variant.id);
 
-              if (variantRestoreError) {
-                console.error("Variant restore error:", variantRestoreError);
-                // We don't throw here as the product is already restored
-                // Just log the error and continue
+              if (variantsToRestore.length > 0) {
+                const { error: variantRestoreError } = await supabase
+                  .from("product_variants")
+                  .update({ deleted_at: null })
+                  .in("id", variantsToRestore);
+
+                if (variantRestoreError) {
+                  console.error("Variant restore error:", variantRestoreError);
+                  // We don't throw here as the product is already restored
+                  // Just log the error and continue
+                }
               }
             }
           }

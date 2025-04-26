@@ -104,6 +104,7 @@ export function ProductTable({
   const [deleteMode, setDeleteMode] = useState<"soft" | "hard" | "restore">(
     "soft"
   );
+  const [restoreVariants, setRestoreVariants] = useState(false);
 
   // State for quick view dialog
   const [quickViewOpen, setQuickViewOpen] = useState(false);
@@ -176,8 +177,11 @@ export function ProductTable({
 
         toast.success("Sản phẩm đã được xóa vĩnh viễn thành công");
       } else if (deleteMode === "restore") {
-        // Thực hiện khôi phục sản phẩm thông qua API
-        await deleteProductMutation.restore(productToDelete.id);
+        // Thực hiện khôi phục sản phẩm thông qua API, truyền vào tùy chọn khôi phục tất cả biến thể
+        await deleteProductMutation.restore({
+          productId: productToDelete.id,
+          restoreAllVariants: restoreVariants,
+        });
 
         // Cập nhật UI ngay lập tức bằng cách đánh dấu sản phẩm và biến thể liên quan là đã khôi phục
         if (selectedProduct && selectedProduct.id === productToDelete.id) {
@@ -185,28 +189,39 @@ export function ProductTable({
           setSelectedProduct((prev) => ({
             ...prev,
             deleted_at: null,
-            // Chỉ khôi phục những biến thể đã bị ẩn cùng lúc với sản phẩm
+            // Khôi phục biến thể dựa vào tùy chọn restoreVariants
             variants: prev.variants?.map((variant) => {
-              // Kiểm tra nếu biến thể đã bị xóa cùng lúc với sản phẩm
-              const variantDeletedTime = variant.deleted_at
-                ? new Date(variant.deleted_at).getTime()
-                : 0;
-              const productDeletedTime = productBeingModified.deleted_at
-                ? new Date(productBeingModified.deleted_at).getTime()
-                : 0;
+              if (restoreVariants) {
+                // Nếu đã chọn khôi phục tất cả biến thể, đặt deleted_at thành null cho tất cả
+                return {
+                  ...variant,
+                  deleted_at: null,
+                };
+              } else {
+                // Nếu không, chỉ khôi phục những biến thể đã bị ẩn cùng lúc với sản phẩm
+                const variantDeletedTime = variant.deleted_at
+                  ? new Date(variant.deleted_at).getTime()
+                  : 0;
+                const productDeletedTime = productBeingModified.deleted_at
+                  ? new Date(productBeingModified.deleted_at).getTime()
+                  : 0;
 
-              // Nếu thời gian xóa chênh lệch không quá 5 giây, coi như bị xóa cùng lúc
-              const deletedTogether =
-                Math.abs(variantDeletedTime - productDeletedTime) <= 5000;
+                // Nếu thời gian xóa chênh lệch không quá 5 giây, coi như bị xóa cùng lúc
+                const deletedTogether =
+                  Math.abs(variantDeletedTime - productDeletedTime) <= 5000;
 
-              return {
-                ...variant,
-                // Chỉ reset deleted_at nếu biến thể đã bị xóa cùng lúc với sản phẩm
-                deleted_at: deletedTogether ? null : variant.deleted_at,
-              };
+                return {
+                  ...variant,
+                  // Chỉ reset deleted_at nếu biến thể đã bị xóa cùng lúc với sản phẩm
+                  deleted_at: deletedTogether ? null : variant.deleted_at,
+                };
+              }
             }),
           }));
         }
+
+        // Reset trạng thái checkbox cho lần sau
+        setRestoreVariants(false);
 
         toast.success(
           "Sản phẩm và các biến thể liên quan đã được hiển thị lại thành công"
@@ -722,9 +737,38 @@ export function ProductTable({
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               {deleteMode === "restore" ? (
-                <div>
-                  Bạn có chắc chắn muốn hiển thị lại sản phẩm này không? Sản
-                  phẩm sẽ được hiện lại trong cửa hàng.
+                <div className="space-y-3">
+                  <div>
+                    Bạn có chắc chắn muốn hiển thị lại sản phẩm này không? Sản
+                    phẩm sẽ được hiện lại trong cửa hàng.
+                  </div>
+                  <div className="flex items-center gap-2 mb-1 mt-3">
+                    <input
+                      type="checkbox"
+                      id="restoreVariants"
+                      checked={restoreVariants}
+                      onChange={(e) => setRestoreVariants(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <label
+                      htmlFor="restoreVariants"
+                      className="text-sm cursor-pointer"
+                    >
+                      Khôi phục tất cả biến thể đã ẩn của sản phẩm này
+                    </label>
+                  </div>
+                  <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 p-3 border border-blue-200 dark:border-blue-800/30">
+                    <div className="flex">
+                      <Info className="h-5 w-5 text-blue-500 mt-0.5" />
+                      <div className="ml-3">
+                        <div className="text-blue-800 dark:text-blue-200 text-sm">
+                          <strong>Lưu ý:</strong> Nếu không chọn khôi phục biến
+                          thể, chỉ những biến thể đã bị ẩn cùng lúc với sản phẩm
+                          sẽ được khôi phục.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : deleteMode === "hard" ? (
                 <div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -94,9 +94,13 @@ type VariantFormValues = z.infer<typeof variantFormSchema>;
 
 interface ProductVariantsTabProps {
   productId: number | null | undefined;
+  productDeleted?: boolean;
 }
 
-export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
+export function ProductVariantsTab({
+  productId,
+  productDeleted,
+}: ProductVariantsTabProps) {
   const toast = useSonnerToast();
   const [editingVariant, setEditingVariant] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -107,6 +111,15 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
   // Hard delete state & hook
   const [showHardDeleteDialog, setShowHardDeleteDialog] = useState(false);
   const variantHardDelete = useVariantHardDelete();
+
+  // Auto set includeDeleted based on product deleted status
+  useEffect(() => {
+    // Nếu sản phẩm đã bị ẩn và chúng ta đang hiển thị biến thể chưa ẩn (includeDeleted = false),
+    // thì chuyển sang hiển thị biến thể đã ẩn (includeDeleted = true)
+    if (productDeleted && !includeDeleted) {
+      setIncludeDeleted(true);
+    }
+  }, [productDeleted, includeDeleted]);
 
   // Toggle hiển thị chỉ biến thể đã ẩn hoặc hiển thị tất cả
   const handleToggleDeletedVariants = (checked: boolean) => {

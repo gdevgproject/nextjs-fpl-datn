@@ -9,7 +9,10 @@ const supabase = getSupabaseBrowserClient();
 /**
  * Hook to fetch variants for a specific product
  */
-export function useProductVariants(productId: number | null, includeDeleted: boolean = false) {
+export function useProductVariants(
+  productId: number | null,
+  includeDeleted: boolean = false
+) {
   return useQuery({
     queryKey: ["product_variants", productId, { includeDeleted }],
     queryFn: async () => {
@@ -21,7 +24,7 @@ export function useProductVariants(productId: number | null, includeDeleted: boo
         .from("product_variants")
         .select("*", { count: "exact" })
         .eq("product_id", productId);
-      
+
       // Lọc theo trạng thái xóa
       if (includeDeleted) {
         // Nếu đã chọn hiển thị sản phẩm đã xóa, CHỈ hiển thị các biến thể đã xóa
@@ -31,7 +34,9 @@ export function useProductVariants(productId: number | null, includeDeleted: boo
         query = query.is("deleted_at", null);
       }
 
-      const { data, error, count } = await query.order("volume_ml", { ascending: true });
+      const { data, error, count } = await query.order("volume_ml", {
+        ascending: true,
+      });
 
       if (error) {
         console.error("Lỗi khi lấy biến thể sản phẩm:", error);
@@ -41,6 +46,8 @@ export function useProductVariants(productId: number | null, includeDeleted: boo
       return { data, count };
     },
     enabled: !!productId, // Only fetch if productId is provided
+    staleTime: 0, // Đảm bảo luôn refetch khi có thay đổi
+    refetchOnMount: true, // Luôn refetch khi component mount
   });
 }
 
@@ -206,8 +213,10 @@ export function useDeleteProductVariant() {
       }
     },
     onSuccess: (result) => {
+      // Invalidate all queries for this product's variants regardless of includeDeleted setting
       queryClient.invalidateQueries({
         queryKey: ["product_variants", result.productId],
+        exact: false, // Invalidate tất cả các queries liên quan đến product variants bất kể giá trị includeDeleted
       });
 
       // Also invalidate products list query to update stock status
@@ -254,7 +263,9 @@ export function useDeleteProductVariant() {
           .select();
 
         if (error) {
-          throw new Error(error.message || "Không thể khôi phục biến thể sản phẩm");
+          throw new Error(
+            error.message || "Không thể khôi phục biến thể sản phẩm"
+          );
         }
 
         return { data, productId };
@@ -264,8 +275,10 @@ export function useDeleteProductVariant() {
       }
     },
     onSuccess: (result) => {
+      // Invalidate all queries for this product's variants regardless of includeDeleted setting
       queryClient.invalidateQueries({
         queryKey: ["product_variants", result.productId],
+        exact: false, // Invalidate tất cả các queries liên quan đến product variants bất kể giá trị includeDeleted
       });
 
       // Also invalidate products list query to update stock status
@@ -285,10 +298,62 @@ export function useDeleteProductVariant() {
     },
   });
 
+  // Restore all variants for a product
+  const restoreAllVariantsMutation = useMutation({
+    mutationFn: async (productId: number) => {
+      try {
+        // Restore all variants by setting deleted_at to null
+        const { data, error } = await supabase
+          .from("product_variants")
+          .update({ deleted_at: null })
+          .eq("product_id", productId)
+          .not("deleted_at", "is", null) // Chỉ khôi phục những biến thể đã bị ẩn
+          .select();
+
+        if (error) {
+          throw new Error(
+            error.message || "Không thể khôi phục tất cả biến thể sản phẩm"
+          );
+        }
+
+        return { data, productId, count: data.length };
+      } catch (error) {
+        console.error("Lỗi khi khôi phục tất cả biến thể sản phẩm:", error);
+        throw error;
+      }
+    },
+    onSuccess: (result) => {
+      // Invalidate all queries for this product's variants
+      queryClient.invalidateQueries({
+        queryKey: ["product_variants", result.productId],
+        exact: false,
+      });
+
+      // Also invalidate products list query to update stock status
+      queryClient.invalidateQueries({ queryKey: ["products", "list"] });
+
+      toast.success("Thành công", {
+        description: `Đã khôi phục ${result.count} biến thể sản phẩm thành công`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Lỗi", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Không thể khôi phục tất cả biến thể sản phẩm",
+      });
+    },
+  });
+
   // Return the mutations with simplified interface
   return {
     softDelete: softDeleteMutation.mutateAsync,
     restore: restoreMutation.mutateAsync,
-    isPending: softDeleteMutation.isPending || restoreMutation.isPending,
+    restoreAllVariants: restoreAllVariantsMutation.mutateAsync,
+    isPending:
+      softDeleteMutation.isPending ||
+      restoreMutation.isPending ||
+      restoreAllVariantsMutation.isPending,
   };
 }
