@@ -137,12 +137,12 @@ export function ProductTable({
   ) => {
     setProductToDelete(product);
     setDeleteMode(mode);
-    
+
     // Khi khôi phục, luôn đặt restoreVariants thành true để tự động tích chọn
     if (mode === "restore") {
       setRestoreVariants(true);
     }
-    
+
     setDeleteDialogOpen(true);
   };
 
@@ -767,9 +767,9 @@ export function ProductTable({
                   </svg>
                   <div className="ml-3">
                     <div className="text-destructive text-sm">
-                      <strong>Cảnh báo:</strong> Tất cả dữ liệu liên quan
-                      đến sản phẩm này sẽ bị xóa vĩnh viễn, bao gồm biến
-                      thể, hình ảnh, đánh giá, và các thông tin khác.
+                      <strong>Cảnh báo:</strong> Tất cả dữ liệu liên quan đến
+                      sản phẩm này sẽ bị xóa vĩnh viễn, bao gồm biến thể, hình
+                      ảnh, đánh giá, và các thông tin khác.
                     </div>
                   </div>
                 </div>
@@ -778,8 +778,8 @@ export function ProductTable({
           ) : deleteMode === "restore" ? (
             <>
               <div className="text-sm text-muted-foreground mb-4">
-                Bạn có chắc chắn muốn hiển thị lại sản phẩm này không? Sản
-                phẩm sẽ xuất hiện trên cửa hàng.
+                Bạn có chắc chắn muốn hiển thị lại sản phẩm này không? Sản phẩm
+                sẽ xuất hiện trên cửa hàng.
               </div>
 
               {/* Phần lựa chọn khôi phục biến thể */}
@@ -801,19 +801,23 @@ export function ProductTable({
                       <strong>Lưu ý về biến thể sản phẩm:</strong>
                     </div>
                     <div className="text-blue-800 dark:text-blue-200 text-sm mb-2">
-                      Sản phẩm cần có ít nhất một biến thể hoạt động để
-                      khách hàng có thể mua được.
+                      Sản phẩm cần có ít nhất một biến thể hoạt động để khách
+                      hàng có thể mua được.
                     </div>
                     <div className="flex items-center space-x-2">
                       <input
                         type="checkbox"
                         id="restoreVariants"
-                        checked={true} 
+                        checked={true}
                         disabled={true}
                         className="h-4 w-4 rounded border-gray-300 cursor-not-allowed"
                       />
-                      <label htmlFor="restoreVariants" className="text-sm font-semibold text-blue-800 dark:text-blue-200">
-                        Khôi phục tất cả biến thể đã ẩn của sản phẩm này (bắt buộc)
+                      <label
+                        htmlFor="restoreVariants"
+                        className="text-sm font-semibold text-blue-800 dark:text-blue-200"
+                      >
+                        Khôi phục tất cả biến thể đã ẩn của sản phẩm này (bắt
+                        buộc)
                       </label>
                     </div>
                   </div>
@@ -823,8 +827,8 @@ export function ProductTable({
           ) : (
             <>
               <div className="text-sm text-muted-foreground mb-4">
-                Bạn có chắc chắn muốn ẩn sản phẩm này không? Sản phẩm sẽ bị
-                ẩn khỏi cửa hàng nhưng vẫn có thể khôi phục sau.
+                Bạn có chắc chắn muốn ẩn sản phẩm này không? Sản phẩm sẽ bị ẩn
+                khỏi cửa hàng nhưng vẫn có thể khôi phục sau.
               </div>
               <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 p-3 border border-amber-200 dark:border-amber-800/30 mb-4">
                 <div className="flex">
@@ -844,16 +848,16 @@ export function ProductTable({
                   </svg>
                   <div className="ml-3">
                     <div className="text-amber-800 dark:text-amber-200 text-sm">
-                      <strong>Lưu ý:</strong> Sản phẩm này sẽ không xuất
-                      hiện trong cửa hàng và khách hàng sẽ không thể tìm
-                      thấy hoặc mua nó. Tất cả các biến thể sẽ cũng bị ẩn.
+                      <strong>Lưu ý:</strong> Sản phẩm này sẽ không xuất hiện
+                      trong cửa hàng và khách hàng sẽ không thể tìm thấy hoặc
+                      mua nó. Tất cả các biến thể sẽ cũng bị ẩn.
                     </div>
                   </div>
                 </div>
               </div>
             </>
           )}
-          
+
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction
@@ -1016,7 +1020,7 @@ export function ProductTable({
                       </TableHeader>
                       <TableBody>
                         {selectedProduct.variants.map((variant: any) => (
-                          <TableRow 
+                          <TableRow
                             key={variant.id}
                             className={variant.deleted_at ? "bg-muted/40" : ""}
                           >
@@ -1048,13 +1052,9 @@ export function ProductTable({
                               {variant.stock_quantity === 0 ? (
                                 <Badge variant="destructive">Hết hàng</Badge>
                               ) : variant.stock_quantity < 10 ? (
-                                <Badge variant="warning">
-                                  Sắp hết
-                                </Badge>
+                                <Badge variant="warning">Sắp hết</Badge>
                               ) : (
-                                <Badge variant="success">
-                                  Còn hàng
-                                </Badge>
+                                <Badge variant="success">Còn hàng</Badge>
                               )}
                             </TableCell>
                           </TableRow>

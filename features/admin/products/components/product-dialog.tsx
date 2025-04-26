@@ -314,12 +314,12 @@ export function ProductDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent className="max-w-[95vw] md:max-w-4xl max-h-[92vh] overflow-y-auto p-4 md:p-6">
+        <DialogHeader className="px-0 sm:px-2">
+          <DialogTitle className="text-xl sm:text-2xl">
             {mode === "create" ? "Thêm sản phẩm mới" : "Chỉnh sửa sản phẩm"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm sm:text-base">
             {mode === "create"
               ? "Thêm một sản phẩm mới vào hệ thống. Sau khi tạo sản phẩm, bạn có thể thêm biến thể, hình ảnh và các thông tin khác."
               : "Chỉnh sửa thông tin sản phẩm."}
@@ -331,107 +331,82 @@ export function ProductDialog({
           onValueChange={handleTabChange}
           className="w-full"
         >
-          <TabsList className="grid grid-cols-6 mb-4">
-            <TabsTrigger value="basic" className="relative">
-              <div className="flex items-center space-x-2">
-                <span className="rounded-full bg-primary text-primary-foreground w-5 h-5 flex items-center justify-center text-xs">
-                  1
-                </span>
-                <span>Thông tin cơ bản</span>
-              </div>
-            </TabsTrigger>
-            <TabsTrigger
-              value="variants"
-              disabled={!isTabAccessible("variants")}
-              className={`relative ${
-                tabsVisited.variants
-                  ? "after:absolute after:top-1 after:right-1 after:w-2 after:h-2 after:bg-green-500 after:rounded-full"
-                  : ""
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <span className="rounded-full bg-primary/70 text-primary-foreground w-5 h-5 flex items-center justify-center text-xs">
-                  2
-                </span>
-                <span>Biến thể</span>
-              </div>
-            </TabsTrigger>
-            <TabsTrigger
-              value="images"
-              disabled={!isTabAccessible("images")}
-              className={`relative ${
-                tabsVisited.images
-                  ? "after:absolute after:top-1 after:right-1 after:w-2 after:h-2 after:bg-green-500 after:rounded-full"
-                  : ""
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <span className="rounded-full bg-primary/70 text-primary-foreground w-5 h-5 flex items-center justify-center text-xs">
-                  3
-                </span>
-                <span>Hình ảnh</span>
-              </div>
-            </TabsTrigger>
-            <TabsTrigger
-              value="categories"
-              disabled={!isTabAccessible("categories")}
-              className={`relative ${
-                tabsVisited.categories
-                  ? "after:absolute after:top-1 after:right-1 after:w-2 after:h-2 after:bg-green-500 after:rounded-full"
-                  : ""
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <span className="rounded-full bg-primary/70 text-primary-foreground w-5 h-5 flex items-center justify-center text-xs">
-                  4
-                </span>
-                <span>Danh mục</span>
-              </div>
-            </TabsTrigger>
-            <TabsTrigger
-              value="scents"
-              disabled={!isTabAccessible("scents")}
-              className={`relative ${
-                tabsVisited.scents
-                  ? "after:absolute after:top-1 after:right-1 after:w-2 after:h-2 after:bg-green-500 after:rounded-full"
-                  : ""
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <span className="rounded-full bg-primary/70 text-primary-foreground w-5 h-5 flex items-center justify-center text-xs">
-                  5
-                </span>
-                <span>Nhóm hương</span>
-              </div>
-            </TabsTrigger>
-            <TabsTrigger
-              value="ingredients"
-              disabled={!isTabAccessible("ingredients")}
-              className={`relative ${
-                tabsVisited.ingredients
-                  ? "after:absolute after:top-1 after:right-1 after:w-2 after:h-2 after:bg-green-500 after:rounded-full"
-                  : ""
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <span className="rounded-full bg-primary/70 text-primary-foreground w-5 h-5 flex items-center justify-center text-xs">
-                  6
-                </span>
-                <span>Thành phần</span>
-              </div>
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto pb-2">
+            <TabsList className="mb-4 inline-flex min-w-max w-full sm:w-auto">
+              <TabsTrigger value="basic" className="relative">
+                <div className="flex items-center space-x-2">
+                  <span className="rounded-full bg-primary text-primary-foreground w-5 h-5 flex items-center justify-center text-xs">
+                    1
+                  </span>
+                  <span className="sm:inline hidden">Thông tin cơ bản</span>
+                  <span className="sm:hidden inline">Cơ bản</span>
+                </div>
+              </TabsTrigger>
+              <TabsTrigger
+                value="variants"
+                disabled={!isTabAccessible("variants")}
+              >
+                <div className="flex items-center space-x-2">
+                  <span className="rounded-full bg-primary/70 text-primary-foreground w-5 h-5 flex items-center justify-center text-xs">
+                    2
+                  </span>
+                  <span>Biến thể</span>
+                </div>
+              </TabsTrigger>
+              <TabsTrigger value="images" disabled={!isTabAccessible("images")}>
+                <div className="flex items-center space-x-2">
+                  <span className="rounded-full bg-primary/70 text-primary-foreground w-5 h-5 flex items-center justify-center text-xs">
+                    3
+                  </span>
+                  <span>Hình ảnh</span>
+                </div>
+              </TabsTrigger>
+              <TabsTrigger
+                value="categories"
+                disabled={!isTabAccessible("categories")}
+              >
+                <div className="flex items-center space-x-2">
+                  <span className="rounded-full bg-primary/70 text-primary-foreground w-5 h-5 flex items-center justify-center text-xs">
+                    4
+                  </span>
+                  <span className="sm:inline hidden">Danh mục</span>
+                  <span className="sm:hidden inline">D.mục</span>
+                </div>
+              </TabsTrigger>
+              <TabsTrigger value="scents" disabled={!isTabAccessible("scents")}>
+                <div className="flex items-center space-x-2">
+                  <span className="rounded-full bg-primary/70 text-primary-foreground w-5 h-5 flex items-center justify-center text-xs">
+                    5
+                  </span>
+                  <span className="sm:inline hidden">Nhóm hương</span>
+                  <span className="sm:hidden inline">Hương</span>
+                </div>
+              </TabsTrigger>
+              <TabsTrigger
+                value="ingredients"
+                disabled={!isTabAccessible("ingredients")}
+              >
+                <div className="flex items-center space-x-2">
+                  <span className="rounded-full bg-primary/70 text-primary-foreground w-5 h-5 flex items-center justify-center text-xs">
+                    6
+                  </span>
+                  <span className="sm:inline hidden">Thành phần</span>
+                  <span className="sm:hidden inline">T.phần</span>
+                </div>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent
             value="basic"
-            className="space-y-4 mt-4 border rounded-lg p-4"
+            className="space-y-4 mt-2 border rounded-lg p-3 sm:p-4"
           >
             <Form {...form}>
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-6"
+                className="space-y-4 sm:space-y-6"
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <FormField
                     control={form.control}
                     name="name"
@@ -443,7 +418,7 @@ export function ProductDialog({
                         <FormControl>
                           <Input placeholder="Nhập tên sản phẩm" {...field} />
                         </FormControl>
-                        <FormDescription>
+                        <FormDescription className="text-xs sm:text-sm">
                           Tên đầy đủ của sản phẩm.
                         </FormDescription>
                         <FormMessage />
@@ -812,38 +787,38 @@ export function ProductDialog({
 
           <TabsContent
             value="variants"
-            className="space-y-4 mt-4 border rounded-lg p-4"
+            className="space-y-4 mt-2 border rounded-lg p-3 sm:p-4"
           >
-            <ProductVariantsTab 
+            <ProductVariantsTab
               productId={createdProductId || product?.id}
-              productDeleted={!!product?.deleted_at} 
+              productDeleted={!!product?.deleted_at}
             />
           </TabsContent>
 
           <TabsContent
             value="images"
-            className="space-y-4 mt-4 border rounded-lg p-4"
+            className="space-y-4 mt-2 border rounded-lg p-3 sm:p-4"
           >
             <ProductImagesTab productId={createdProductId || product?.id} />
           </TabsContent>
 
           <TabsContent
             value="categories"
-            className="space-y-4 mt-4 border rounded-lg p-4"
+            className="space-y-4 mt-2 border rounded-lg p-3 sm:p-4"
           >
             <ProductCategoriesTab productId={createdProductId || product?.id} />
           </TabsContent>
 
           <TabsContent
             value="scents"
-            className="space-y-4 mt-4 border rounded-lg p-4"
+            className="space-y-4 mt-2 border rounded-lg p-3 sm:p-4"
           >
             <ProductScentsTab productId={createdProductId || product?.id} />
           </TabsContent>
 
           <TabsContent
             value="ingredients"
-            className="space-y-4 mt-4 border rounded-lg p-4"
+            className="space-y-4 mt-2 border rounded-lg p-3 sm:p-4"
           >
             <ProductIngredientsTab
               productId={createdProductId || product?.id}
