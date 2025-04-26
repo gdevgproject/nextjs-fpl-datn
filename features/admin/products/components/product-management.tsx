@@ -73,6 +73,7 @@ export function ProductManagement() {
   );
   const [categoryId, setCategoryId] = useState<number | undefined>(undefined);
   const [includeDeleted, setIncludeDeleted] = useState(false);
+  const [activeTab, setActiveTab] = useState("active"); // State để theo dõi tab hiện tại
   const [activeFiltersCount, setActiveFiltersCount] = useState(0);
   const debouncedSearch = useDebounce(search, 500);
 
@@ -176,6 +177,7 @@ export function ProductManagement() {
     setConcentrationId(undefined);
     setCategoryId(undefined);
     setIncludeDeleted(false);
+    setActiveTab("active"); // Thêm dòng này để đảm bảo UI chuyển về tab "Đang hoạt động"
     setPage(1);
   };
 
@@ -526,10 +528,12 @@ export function ProductManagement() {
 
                         <div className="rounded-md border p-4 space-y-3">
                           <p className="text-xs text-muted-foreground">
-                            Sử dụng tab "Đã ẩn" và "Đang hoạt động" ở phía dưới để xem các sản phẩm theo trạng thái hiển thị.
+                            Sử dụng tab "Đã ẩn" và "Đang hoạt động" ở phía dưới
+                            để xem các sản phẩm theo trạng thái hiển thị.
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Tab "Đã ẩn" sẽ hiển thị tất cả các sản phẩm đã bị ẩn và các sản phẩm có biến thể đã bị ẩn.
+                            Tab "Đã ẩn" sẽ hiển thị tất cả các sản phẩm đã bị ẩn
+                            và các sản phẩm có biến thể đã bị ẩn.
                           </p>
                         </div>
                       </div>
@@ -631,7 +635,7 @@ export function ProductManagement() {
       )}
 
       {/* Products Table with Tabs */}
-      <Tabs defaultValue="active" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-4 grid grid-cols-2 md:w-fit">
           <TabsTrigger
             value="active"

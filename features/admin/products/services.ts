@@ -94,21 +94,25 @@ export async function buildProductsQuery(
       // Khi ở chế độ xem "Đã ẩn", hiển thị:
       // 1. Các sản phẩm đã bị xóa (deleted_at không phải null)
       // 2. Hoặc các sản phẩm có biến thể đã bị xóa
-      
+
       // Lấy danh sách các sản phẩm có biến thể đã ẩn
       const { data: productsWithHiddenVariants } = await supabase
         .from("product_variants")
         .select("product_id")
         .not("deleted_at", "is", null);
-      
+
       // Lấy ID các sản phẩm có biến thể đã ẩn
-      const productIdsWithHiddenVariants = productsWithHiddenVariants 
+      const productIdsWithHiddenVariants = productsWithHiddenVariants
         ? [...new Set(productsWithHiddenVariants.map((v: any) => v.product_id))]
         : [];
-        
+
       if (productIdsWithHiddenVariants.length > 0) {
         // Hiển thị sản phẩm nếu nó bị xóa hoặc có biến thể bị ẩn
-        query = query.or(`deleted_at.not.is.null,id.in.(${productIdsWithHiddenVariants.join(',')})`);
+        query = query.or(
+          `deleted_at.not.is.null,id.in.(${productIdsWithHiddenVariants.join(
+            ","
+          )})`
+        );
       } else {
         // Nếu không có sản phẩm nào có biến thể bị ẩn, chỉ hiển thị sản phẩm đã bị xóa
         query = query.not("deleted_at", "is", null);
