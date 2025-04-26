@@ -195,6 +195,21 @@ export function useDeleteProductVariant() {
 
         const productId = variantData?.product_id;
 
+        // Check if this is the last active variant
+        const { data: activeVariants, error: countError } = await supabase
+          .from("product_variants")
+          .select("id")
+          .eq("product_id", productId)
+          .is("deleted_at", null);
+
+        if (countError) {
+          throw new Error(
+            countError.message || "Không thể kiểm tra số lượng biến thể hoạt động"
+          );
+        }
+
+        const isLastActiveVariant = activeVariants?.length === 1 && activeVariants[0].id === variantId;
+        
         // Perform soft delete by updating deleted_at field
         const { data, error } = await supabase
           .from("product_variants")
@@ -206,7 +221,22 @@ export function useDeleteProductVariant() {
           throw new Error(error.message || "Không thể xóa biến thể sản phẩm");
         }
 
-        return { data, productId };
+        // If this is the last active variant, also hide the product
+        let productUpdated = false;
+        if (isLastActiveVariant) {
+          const { error: productError } = await supabase
+            .from("products")
+            .update({ deleted_at: new Date().toISOString() })
+            .eq("id", productId);
+
+          if (productError) {
+            console.error("Lỗi khi cập nhật sản phẩm:", productError);
+          } else {
+            productUpdated = true;
+          }
+        }
+
+        return { data, productId, isLastActiveVariant, productUpdated };
       } catch (error) {
         console.error("Lỗi khi xóa biến thể sản phẩm:", error);
         throw error;
@@ -221,10 +251,17 @@ export function useDeleteProductVariant() {
 
       // Also invalidate products list query to update stock status
       queryClient.invalidateQueries({ queryKey: ["products", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["products", "detail", result.productId] });
 
-      toast.success("Thành công", {
-        description: "Đã xóa biến thể sản phẩm thành công",
-      });
+      if (result.isLastActiveVariant && result.productUpdated) {
+        toast.info("Sản phẩm đã bị ẩn", {
+          description: "Sản phẩm đã bị ẩn tự động do không còn biến thể nào hoạt động",
+        });
+      } else {
+        toast.success("Thành công", {
+          description: "Đã ẩn biến thể sản phẩm thành công",
+        });
+      }
     },
     onError: (error) => {
       toast.error("Lỗi", {

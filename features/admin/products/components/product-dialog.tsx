@@ -814,7 +814,10 @@ export function ProductDialog({
             value="variants"
             className="space-y-4 mt-4 border rounded-lg p-4"
           >
-            <ProductVariantsTab productId={createdProductId || product?.id} />
+            <ProductVariantsTab 
+              productId={createdProductId || product?.id}
+              productDeleted={!!product?.deleted_at} 
+            />
           </TabsContent>
 
           <TabsContent

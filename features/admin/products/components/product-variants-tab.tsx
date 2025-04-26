@@ -106,7 +106,13 @@ export function ProductVariantsTab({
   const [isDeleting, setIsDeleting] = useState(false);
   const [variantToDelete, setVariantToDelete] = useState<any | null>(null);
   const [includeDeleted, setIncludeDeleted] = useState(false);
+
+  // State for delete confirmation dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<any | null>(null);
   const [deleteMode, setDeleteMode] = useState<"soft" | "restore">("soft");
+  const [restoreVariants, setRestoreVariants] = useState(false);
+  const [hasActiveVariants, setHasActiveVariants] = useState(true); // Track if product has active variants
 
   // Hard delete state & hook
   const [showHardDeleteDialog, setShowHardDeleteDialog] = useState(false);
@@ -121,17 +127,27 @@ export function ProductVariantsTab({
     }
   }, [productDeleted, includeDeleted]);
 
-  // Toggle hiển thị chỉ biến thể đã ẩn hoặc hiển thị tất cả
-  const handleToggleDeletedVariants = (checked: boolean) => {
-    setIncludeDeleted(checked);
-  };
-
-  // Fetch variants for the product
+  // Fetch variants for the product - both active and hidden variants
   const {
     data: variantsData,
     isLoading,
     isError,
   } = useProductVariants(productId || null, includeDeleted);
+
+  // Also fetch active variants to check product status
+  const { data: activeVariantsData } = useProductVariants(productId || null, false);
+
+  // Theo dõi xem sản phẩm có biến thể hoạt động nào không
+  useEffect(() => {
+    // Đếm số lượng biến thể đang hoạt động (không bị ẩn)
+    const activeCount = activeVariantsData?.data?.length || 0;
+    setHasActiveVariants(activeCount > 0);
+  }, [activeVariantsData]);
+
+  // Toggle hiển thị chỉ biến thể đã ẩn hoặc hiển thị tất cả
+  const handleToggleDeletedVariants = (checked: boolean) => {
+    setIncludeDeleted(checked);
+  };
 
   // Mutations for creating, updating, and deleting variants
   const createVariantMutation = useCreateProductVariant();
@@ -275,6 +291,39 @@ export function ProductVariantsTab({
 
   return (
     <div className="space-y-6">
+      {/* Cảnh báo khi không có biến thể hoạt động */}
+      {!hasActiveVariants && (
+        <div className="rounded-md bg-destructive/10 p-4 border border-destructive/30">
+          <div className="flex">
+            <svg
+              className="h-5 w-5 text-destructive"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-destructive">
+                Cảnh báo: Sản phẩm không có biến thể nào đang hoạt động!
+              </h3>
+              <div className="mt-2 text-sm text-destructive/80">
+                <p>
+                  Sản phẩm này hiện không có biến thể nào đang hoạt động. Khách hàng sẽ không thể mua sản phẩm này và sản phẩm sẽ không hiển thị trên cửa hàng.
+                </p>
+                <p className="mt-1">
+                  Vui lòng thêm ít nhất một biến thể mới hoặc khôi phục một biến thể đã ẩn để sản phẩm hoạt động trở lại.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Variant Form */}
         <Card className="border-none shadow-none">

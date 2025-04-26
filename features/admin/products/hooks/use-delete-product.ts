@@ -144,6 +144,22 @@ export function useCheckVariantCanDelete() {
   });
 }
 
+// Helper function to check if a product has any active variants
+async function checkHasActiveVariants(productId: number): Promise<boolean> {
+  const { data, error, count } = await supabase
+    .from("product_variants")
+    .select("*", { count: "exact", head: true })
+    .eq("product_id", productId)
+    .is("deleted_at", null);
+
+  if (error) {
+    console.error("Error checking active variants:", error);
+    throw new Error("Không thể kiểm tra trạng thái biến thể của sản phẩm");
+  }
+
+  return count !== null && count > 0;
+}
+
 /**
  * Hook for product deletion operations (soft delete, restore, hard delete)
  */
@@ -240,7 +256,17 @@ export function useDeleteProduct() {
           throw new Error("Không thể lấy danh sách biến thể ẩn của sản phẩm");
         }
 
-        // 2. Restore the product
+        // 2. Check if there are any active variants or if we're restoring all
+        const hasVisibleVariants = await checkHasActiveVariants(productId);
+
+        if (!hasVisibleVariants && !restoreAllVariants && variants.length > 0) {
+          // Nếu không có biến thể đang hoạt động và không chọn khôi phục tất cả
+          throw new Error(
+            "Không thể khôi phục sản phẩm khi không có biến thể nào hoạt động. Vui lòng chọn khôi phục tất cả biến thể."
+          );
+        }
+
+        // 3. Restore the product
         const { data, error } = await supabase
           .from("products")
           .update({ deleted_at: null })
@@ -252,10 +278,10 @@ export function useDeleteProduct() {
           throw new Error(error.message || "Không thể hiển thị lại sản phẩm");
         }
 
-        // 3. Restore variants based on the restoreAllVariants parameter
+        // 4. Restore variants based on the restoreAllVariants parameter
         if (variants && variants.length > 0) {
-          if (restoreAllVariants) {
-            // Restore ALL hidden variants if restoreAllVariants is true
+          if (restoreAllVariants || !hasVisibleVariants) {
+            // Restore ALL hidden variants if restoreAllVariants is true or there are no active variants
             const variantIds = variants.map((variant) => variant.id);
             const { error: variantRestoreError } = await supabase
               .from("product_variants")

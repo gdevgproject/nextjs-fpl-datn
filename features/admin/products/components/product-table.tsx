@@ -729,57 +729,97 @@ export function ProductTable({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {deleteMode === "restore"
-                ? "Hiển thị lại sản phẩm"
-                : deleteMode === "hard"
+              {deleteMode === "hard"
                 ? "Xóa vĩnh viễn sản phẩm"
+                : deleteMode === "restore"
+                ? "Hiển thị lại sản phẩm"
                 : "Ẩn sản phẩm"}
             </AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              {deleteMode === "restore" ? (
+            <AlertDialogDescription>
+              {deleteMode === "hard" ? (
                 <div className="space-y-3">
                   <div>
-                    Bạn có chắc chắn muốn hiển thị lại sản phẩm này không? Sản
-                    phẩm sẽ được hiện lại trong cửa hàng.
+                    Bạn có chắc chắn muốn xóa vĩnh viễn sản phẩm này không? Hành
+                    động này không thể hoàn tác.
                   </div>
-                  <div className="flex items-center gap-2 mb-1 mt-3">
-                    <input
-                      type="checkbox"
-                      id="restoreVariants"
-                      checked={restoreVariants}
-                      onChange={(e) => setRestoreVariants(e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300"
-                    />
-                    <label
-                      htmlFor="restoreVariants"
-                      className="text-sm cursor-pointer"
-                    >
-                      Khôi phục tất cả biến thể đã ẩn của sản phẩm này
-                    </label>
-                  </div>
-                  <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 p-3 border border-blue-200 dark:border-blue-800/30">
+                  <div className="rounded-md bg-destructive/10 p-3 border border-destructive/20">
                     <div className="flex">
-                      <Info className="h-5 w-5 text-blue-500 mt-0.5" />
+                      <svg
+                        className="h-5 w-5 text-destructive mt-0.5"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                      </svg>
                       <div className="ml-3">
-                        <div className="text-blue-800 dark:text-blue-200 text-sm">
-                          <strong>Lưu ý:</strong> Nếu không chọn khôi phục biến
-                          thể, chỉ những biến thể đã bị ẩn cùng lúc với sản phẩm
-                          sẽ được khôi phục.
+                        <div className="text-destructive text-sm">
+                          <strong>Cảnh báo:</strong> Tất cả dữ liệu liên quan
+                          đến sản phẩm này sẽ bị xóa vĩnh viễn, bao gồm biến
+                          thể, hình ảnh, đánh giá, và các thông tin khác.
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              ) : deleteMode === "hard" ? (
-                <div>
-                  Hành động này không thể hoàn tác. Sản phẩm và tất cả biến thể
-                  của nó sẽ bị xóa vĩnh viễn khỏi hệ thống.
+              ) : deleteMode === "restore" ? (
+                <div className="space-y-3">
+                  <div>
+                    Bạn có chắc chắn muốn hiển thị lại sản phẩm này không? Sản
+                    phẩm sẽ xuất hiện trên cửa hàng.
+                  </div>
+
+                  {/* Phần lựa chọn khôi phục biến thể */}
+                  <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 p-3 border border-blue-200 dark:border-blue-800/30">
+                    <div className="flex">
+                      <svg
+                        className="h-5 w-5 text-blue-500 mt-0.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div className="ml-3 flex-1">
+                        <div className="text-blue-800 dark:text-blue-200 text-sm mb-1">
+                          <strong>Lưu ý về biến thể sản phẩm:</strong>
+                        </div>
+                        <div className="text-blue-800 dark:text-blue-200 text-sm mb-2">
+                          Sản phẩm cần có ít nhất một biến thể hoạt động để
+                          khách hàng có thể mua được. Vui lòng lựa chọn:
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id="restoreVariants"
+                            checked={restoreVariants}
+                            onChange={(e) =>
+                              setRestoreVariants(e.target.checked)
+                            }
+                            className="h-4 w-4 rounded border-gray-300"
+                          />
+                          <label htmlFor="restoreVariants" className="text-sm">
+                            Khôi phục tất cả biến thể đã ẩn của sản phẩm này
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3">
                   <div>
-                    Sản phẩm và <strong>tất cả biến thể</strong> của nó sẽ bị ẩn
-                    khỏi cửa hàng nhưng vẫn có thể hiển thị lại sau.
+                    Bạn có chắc chắn muốn ẩn sản phẩm này không? Sản phẩm sẽ bị
+                    ẩn khỏi cửa hàng nhưng vẫn có thể khôi phục sau.
                   </div>
                   <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 p-3 border border-amber-200 dark:border-amber-800/30">
                     <div className="flex">
@@ -799,10 +839,9 @@ export function ProductTable({
                       </svg>
                       <div className="ml-3">
                         <div className="text-amber-800 dark:text-amber-200 text-sm">
-                          <strong>Lưu ý quan trọng:</strong> Khi ẩn sản phẩm,
-                          tất cả biến thể của nó sẽ không hiển thị trên cửa hàng
-                          và khách hàng không thể mua được, ngay cả khi biến thể
-                          đó không bị ẩn.
+                          <strong>Lưu ý:</strong> Sản phẩm này sẽ không xuất
+                          hiện trong cửa hàng và khách hàng sẽ không thể tìm
+                          thấy hoặc mua nó. Tất cả các biến thể sẽ cũng bị ẩn.
                         </div>
                       </div>
                     </div>
@@ -820,14 +859,14 @@ export function ProductTable({
                   ? "bg-red-600 hover:bg-red-700"
                   : deleteMode === "restore"
                   ? "bg-green-600 hover:bg-green-700"
-                  : ""
+                  : "bg-amber-600 hover:bg-amber-700"
               }
             >
-              {deleteMode === "restore"
-                ? "Hiển thị lại"
-                : deleteMode === "hard"
+              {deleteMode === "hard"
                 ? "Xóa vĩnh viễn"
-                : "Ẩn"}
+                : deleteMode === "restore"
+                ? "Hiển thị lại"
+                : "Ẩn sản phẩm"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
