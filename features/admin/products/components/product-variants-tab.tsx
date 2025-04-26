@@ -623,16 +623,34 @@ export function ProductVariantsTab({
                               size="icon"
                               className={
                                 variant.deleted_at
-                                  ? "text-green-500"
+                                  ? productDeleted
+                                    ? "text-muted-foreground cursor-not-allowed"
+                                    : "text-green-500"
                                   : "text-red-500"
                               }
                               onClick={() => {
+                                // Nếu biến thể đang bị ẩn và sản phẩm cũng đang bị ẩn thì không cho phép khôi phục
+                                if (variant.deleted_at && productDeleted) {
+                                  toast.error("Không thể khôi phục biến thể", {
+                                    description:
+                                      "Không thể khôi phục biến thể khi sản phẩm đang bị ẩn. Vui lòng khôi phục sản phẩm trước.",
+                                  });
+                                  return;
+                                }
+
                                 setDeleteMode(
                                   variant.deleted_at ? "restore" : "soft"
                                 );
                                 setVariantToDelete(variant);
                                 setIsDeleting(true);
                               }}
+                              title={
+                                variant.deleted_at && productDeleted
+                                  ? "Không thể khôi phục khi sản phẩm đang bị ẩn"
+                                  : variant.deleted_at
+                                  ? "Khôi phục biến thể"
+                                  : "Ẩn biến thể"
+                              }
                             >
                               {variant.deleted_at ? (
                                 <>
@@ -722,9 +740,44 @@ export function ProductVariantsTab({
             </AlertDialogTitle>
             <div>
               {deleteMode === "restore" ? (
-                <AlertDialogDescription>
-                  Bạn có chắc chắn muốn hiển thị lại biến thể này không?
-                </AlertDialogDescription>
+                <>
+                  {productDeleted ? (
+                    <AlertDialogDescription className="space-y-2">
+                      <div className="rounded-md bg-destructive/10 p-4 border border-destructive/30">
+                        <div className="flex">
+                          <svg
+                            className="h-5 w-5 text-destructive"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            aria-hidden="true"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          <div className="ml-3">
+                            <h3 className="text-sm font-medium text-destructive">
+                              Không thể khôi phục biến thể
+                            </h3>
+                            <div className="mt-2 text-sm text-destructive/90">
+                              <p>
+                                Biến thể không thể khôi phục khi sản phẩm đang
+                                bị ẩn. Vui lòng khôi phục sản phẩm trước, sau đó
+                                mới khôi phục biến thể.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </AlertDialogDescription>
+                  ) : (
+                    <AlertDialogDescription>
+                      Bạn có chắc chắn muốn hiển thị lại biến thể này không?
+                    </AlertDialogDescription>
+                  )}
+                </>
               ) : (
                 <>
                   <AlertDialogDescription>
@@ -764,9 +817,12 @@ export function ProductVariantsTab({
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
+              disabled={deleteMode === "restore" && productDeleted}
               className={
                 deleteMode === "restore"
-                  ? "bg-green-600 hover:bg-green-700"
+                  ? productDeleted
+                    ? "bg-gray-400 hover:bg-gray-400 cursor-not-allowed"
+                    : "bg-green-600 hover:bg-green-700"
                   : "bg-red-600 hover:bg-red-700"
               }
             >

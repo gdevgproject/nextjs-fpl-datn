@@ -204,12 +204,14 @@ export function useDeleteProductVariant() {
 
         if (countError) {
           throw new Error(
-            countError.message || "Không thể kiểm tra số lượng biến thể hoạt động"
+            countError.message ||
+              "Không thể kiểm tra số lượng biến thể hoạt động"
           );
         }
 
-        const isLastActiveVariant = activeVariants?.length === 1 && activeVariants[0].id === variantId;
-        
+        const isLastActiveVariant =
+          activeVariants?.length === 1 && activeVariants[0].id === variantId;
+
         // Perform soft delete by updating deleted_at field
         const { data, error } = await supabase
           .from("product_variants")
@@ -251,11 +253,14 @@ export function useDeleteProductVariant() {
 
       // Also invalidate products list query to update stock status
       queryClient.invalidateQueries({ queryKey: ["products", "list"] });
-      queryClient.invalidateQueries({ queryKey: ["products", "detail", result.productId] });
+      queryClient.invalidateQueries({
+        queryKey: ["products", "detail", result.productId],
+      });
 
       if (result.isLastActiveVariant && result.productUpdated) {
         toast.info("Sản phẩm đã bị ẩn", {
-          description: "Sản phẩm đã bị ẩn tự động do không còn biến thể nào hoạt động",
+          description:
+            "Sản phẩm đã bị ẩn tự động do không còn biến thể nào hoạt động",
         });
       } else {
         toast.success("Thành công", {
