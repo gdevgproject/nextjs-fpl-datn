@@ -73,7 +73,6 @@ export function ProductManagement() {
   );
   const [categoryId, setCategoryId] = useState<number | undefined>(undefined);
   const [includeDeleted, setIncludeDeleted] = useState(false);
-  const [hasHiddenVariants, setHasHiddenVariants] = useState(false);
   const [activeFiltersCount, setActiveFiltersCount] = useState(0);
   const debouncedSearch = useDebounce(search, 500);
 
@@ -101,7 +100,6 @@ export function ProductManagement() {
     if (concentrationId !== undefined) count++;
     if (categoryId !== undefined) count++;
     if (includeDeleted) count++;
-    if (hasHiddenVariants) count++;
     setActiveFiltersCount(count);
   }, [
     brandId,
@@ -110,7 +108,6 @@ export function ProductManagement() {
     concentrationId,
     categoryId,
     includeDeleted,
-    hasHiddenVariants,
   ]);
 
   // Fetch products with filters, pagination, and sorting
@@ -127,7 +124,6 @@ export function ProductManagement() {
       concentrationId,
       categoryId,
       includeDeleted,
-      hasHiddenVariants,
     },
     { page, pageSize },
     { column: sortColumn, direction: sortDirection }
@@ -180,7 +176,6 @@ export function ProductManagement() {
     setConcentrationId(undefined);
     setCategoryId(undefined);
     setIncludeDeleted(false);
-    setHasHiddenVariants(false);
     setPage(1);
   };
 
@@ -526,51 +521,15 @@ export function ProductManagement() {
 
                       <div>
                         <h3 className="text-sm font-semibold mb-3">
-                          Trạng thái sản phẩm & biến thể
+                          Trạng thái sản phẩm
                         </h3>
 
                         <div className="rounded-md border p-4 space-y-3">
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id="hasHiddenVariants"
-                              checked={hasHiddenVariants}
-                              onCheckedChange={(checked) => {
-                                setHasHiddenVariants(!!checked);
-                                setPage(1);
-                              }}
-                            />
-                            <Label
-                              htmlFor="hasHiddenVariants"
-                              className="cursor-pointer text-sm"
-                            >
-                              Hiển thị sản phẩm có biến thể đã ẩn
-                            </Label>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-5 w-5 p-0 rounded-full"
-                                  >
-                                    <HelpCircle className="h-3.5 w-3.5" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent
-                                  side="right"
-                                  className="max-w-xs"
-                                >
-                                  <p className="text-xs">
-                                    Lọc để hiện các sản phẩm vẫn đang hoạt động
-                                    nhưng có một số biến thể đã bị ẩn.
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </div>
-                          <p className="text-xs text-muted-foreground pt-1 pl-6">
-                            Hữu ích khi bạn muốn kiểm tra những sản phẩm đang
-                            hoạt động nhưng có một số biến thể đã bị ẩn
+                          <p className="text-xs text-muted-foreground">
+                            Sử dụng tab "Đã ẩn" và "Đang hoạt động" ở phía dưới để xem các sản phẩm theo trạng thái hiển thị.
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Tab "Đã ẩn" sẽ hiển thị tất cả các sản phẩm đã bị ẩn và các sản phẩm có biến thể đã bị ẩn.
                           </p>
                         </div>
                       </div>
@@ -658,12 +617,6 @@ export function ProductManagement() {
             <FilterTag
               label="Chỉ hiển thị đã xóa"
               onRemove={() => setIncludeDeleted(false)}
-            />
-          )}
-          {hasHiddenVariants && (
-            <FilterTag
-              label="Hiển thị sản phẩm có biến thể đã ẩn"
-              onRemove={() => setHasHiddenVariants(false)}
             />
           )}
           <Button
