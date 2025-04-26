@@ -155,6 +155,19 @@ export function useDeleteProduct() {
   const softDeleteMutation = useMutation({
     mutationFn: async (productId: number) => {
       try {
+        // 1. Get all variants for the product
+        const { data: variants, error: variantsError } = await supabase
+          .from("product_variants")
+          .select("id")
+          .eq("product_id", productId)
+          .is("deleted_at", null); // Only hide variants that aren't already hidden
+
+        if (variantsError) {
+          console.error("Error fetching variants:", variantsError);
+          throw new Error("Không thể lấy danh sách biến thể của sản phẩm");
+        }
+
+        // 2. Soft delete the product
         const { data, error } = await supabase
           .from("products")
           .update({ deleted_at: new Date().toISOString() })
@@ -166,6 +179,23 @@ export function useDeleteProduct() {
           throw new Error(error.message || "Không thể ẩn sản phẩm");
         }
 
+        // 3. Soft delete all active variants
+        if (variants && variants.length > 0) {
+          const now = new Date().toISOString();
+          const variantIds = variants.map((variant) => variant.id);
+
+          const { error: variantDeleteError } = await supabase
+            .from("product_variants")
+            .update({ deleted_at: now })
+            .in("id", variantIds);
+
+          if (variantDeleteError) {
+            console.error("Variant soft delete error:", variantDeleteError);
+            // We don't throw here as the product is already hidden
+            // Just log the error and continue
+          }
+        }
+
         return data;
       } catch (error) {
         console.error("Exception in softDelete:", error);
@@ -175,8 +205,9 @@ export function useDeleteProduct() {
     onSuccess: () => {
       // Immediately invalidate all product queries to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["product-variants"] });
       toast.success("Thành công", {
-        description: "Sản phẩm đã được ẩn thành công",
+        description: "Sản phẩm và các biến thể đã được ẩn thành công",
       });
     },
     onError: (error: Error) => {
@@ -191,6 +222,19 @@ export function useDeleteProduct() {
   const restoreMutation = useMutation({
     mutationFn: async (productId: number) => {
       try {
+        // 1. Get all hidden variants for the product
+        const { data: variants, error: variantsError } = await supabase
+          .from("product_variants")
+          .select("id, deleted_at")
+          .eq("product_id", productId)
+          .not("deleted_at", "is", null); // Only get variants that are currently hidden
+
+        if (variantsError) {
+          console.error("Error fetching hidden variants:", variantsError);
+          throw new Error("Không thể lấy danh sách biến thể ẩn của sản phẩm");
+        }
+
+        // 2. Restore the product
         const { data, error } = await supabase
           .from("products")
           .update({ deleted_at: null })
@@ -202,6 +246,53 @@ export function useDeleteProduct() {
           throw new Error(error.message || "Không thể hiển thị lại sản phẩm");
         }
 
+        // 3. Restore variants that were hidden with the product
+        // We only want to restore variants that were hidden at the same time as the product
+        if (variants && variants.length > 0) {
+          // Get the product's deleted_at timestamp
+          const { data: productData, error: productError } = await supabase
+            .from("products")
+            .select("deleted_at")
+            .eq("id", productId)
+            .single();
+
+          if (productError) {
+            console.error("Error fetching product timestamp:", productError);
+            // Continue without variant restoration if we can't get product timestamp
+          } else if (productData) {
+            const productDeletedTime = new Date(
+              productData.deleted_at
+            ).getTime();
+
+            // Filter variants that were hidden at the same time or within 5 seconds of the product
+            // This helps catch variants that were hidden as part of the product hide operation
+            const variantsToRestore = variants
+              .filter((variant) => {
+                const variantDeletedTime = new Date(
+                  variant.deleted_at
+                ).getTime();
+                // Allow 5 second margin for batch operations
+                return (
+                  Math.abs(variantDeletedTime - productDeletedTime) <= 5000
+                );
+              })
+              .map((variant) => variant.id);
+
+            if (variantsToRestore.length > 0) {
+              const { error: variantRestoreError } = await supabase
+                .from("product_variants")
+                .update({ deleted_at: null })
+                .in("id", variantsToRestore);
+
+              if (variantRestoreError) {
+                console.error("Variant restore error:", variantRestoreError);
+                // We don't throw here as the product is already restored
+                // Just log the error and continue
+              }
+            }
+          }
+        }
+
         return data;
       } catch (error) {
         console.error("Exception in restore:", error);
@@ -211,8 +302,10 @@ export function useDeleteProduct() {
     onSuccess: () => {
       // Immediately invalidate all product queries to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["product-variants"] });
       toast.success("Thành công", {
-        description: "Sản phẩm đã được hiển thị lại thành công",
+        description:
+          "Sản phẩm và các biến thể liên quan đã được hiển thị lại thành công",
       });
     },
     onError: (error: Error) => {

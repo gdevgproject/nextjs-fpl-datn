@@ -144,15 +144,73 @@ export function ProductTable({
     if (!productToDelete) return;
 
     try {
+      // Lưu trữ sản phẩm trước khi thực hiện thao tác để cập nhật UI sau đó
+      const productBeingModified = { ...productToDelete };
+
       if (deleteMode === "soft") {
+        // Thực hiện ẩn sản phẩm thông qua API
         await deleteProductMutation.softDelete(productToDelete.id);
-        toast.success("Sản phẩm đã được ẩn thành công");
+
+        // Cập nhật UI ngay lập tức bằng cách đánh dấu sản phẩm và tất cả biến thể của nó là đã ẩn
+        if (selectedProduct && selectedProduct.id === productToDelete.id) {
+          // Cập nhật trạng thái cho sản phẩm đang xem nhanh (nếu có)
+          setSelectedProduct((prev) => ({
+            ...prev,
+            deleted_at: new Date().toISOString(),
+            variants: prev.variants?.map((variant) => ({
+              ...variant,
+              deleted_at: new Date().toISOString(),
+            })),
+          }));
+        }
+
+        toast.success("Sản phẩm và các biến thể đã được ẩn thành công");
       } else if (deleteMode === "hard") {
         await deleteProductMutation.hardDelete(productToDelete.id);
+
+        // Nếu đang xem nhanh sản phẩm bị xóa vĩnh viễn, đóng dialog xem nhanh
+        if (selectedProduct && selectedProduct.id === productToDelete.id) {
+          setQuickViewOpen(false);
+          setSelectedProduct(null);
+        }
+
         toast.success("Sản phẩm đã được xóa vĩnh viễn thành công");
       } else if (deleteMode === "restore") {
+        // Thực hiện khôi phục sản phẩm thông qua API
         await deleteProductMutation.restore(productToDelete.id);
-        toast.success("Sản phẩm đã được hiển thị lại thành công");
+
+        // Cập nhật UI ngay lập tức bằng cách đánh dấu sản phẩm và biến thể liên quan là đã khôi phục
+        if (selectedProduct && selectedProduct.id === productToDelete.id) {
+          // Cập nhật trạng thái cho sản phẩm đang xem nhanh (nếu có)
+          setSelectedProduct((prev) => ({
+            ...prev,
+            deleted_at: null,
+            // Chỉ khôi phục những biến thể đã bị ẩn cùng lúc với sản phẩm
+            variants: prev.variants?.map((variant) => {
+              // Kiểm tra nếu biến thể đã bị xóa cùng lúc với sản phẩm
+              const variantDeletedTime = variant.deleted_at
+                ? new Date(variant.deleted_at).getTime()
+                : 0;
+              const productDeletedTime = productBeingModified.deleted_at
+                ? new Date(productBeingModified.deleted_at).getTime()
+                : 0;
+
+              // Nếu thời gian xóa chênh lệch không quá 5 giây, coi như bị xóa cùng lúc
+              const deletedTogether =
+                Math.abs(variantDeletedTime - productDeletedTime) <= 5000;
+
+              return {
+                ...variant,
+                // Chỉ reset deleted_at nếu biến thể đã bị xóa cùng lúc với sản phẩm
+                deleted_at: deletedTogether ? null : variant.deleted_at,
+              };
+            }),
+          }));
+        }
+
+        toast.success(
+          "Sản phẩm và các biến thể liên quan đã được hiển thị lại thành công"
+        );
       }
     } catch (error) {
       toast.error(
@@ -662,12 +720,51 @@ export function ProductTable({
                 ? "Xóa vĩnh viễn sản phẩm"
                 : "Ẩn sản phẩm"}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteMode === "restore"
-                ? "Bạn có chắc chắn muốn hiển thị lại sản phẩm này không? Sản phẩm sẽ được hiện lại trong cửa hàng."
-                : deleteMode === "hard"
-                ? "Hành động này không thể hoàn tác. Sản phẩm và tất cả biến thể của nó sẽ bị xóa vĩnh viễn khỏi hệ thống."
-                : "Sản phẩm và tất cả biến thể của nó sẽ bị ẩn khỏi cửa hàng nhưng vẫn có thể hiển thị lại sau."}
+            <AlertDialogDescription asChild>
+              {deleteMode === "restore" ? (
+                <div>
+                  Bạn có chắc chắn muốn hiển thị lại sản phẩm này không? Sản
+                  phẩm sẽ được hiện lại trong cửa hàng.
+                </div>
+              ) : deleteMode === "hard" ? (
+                <div>
+                  Hành động này không thể hoàn tác. Sản phẩm và tất cả biến thể
+                  của nó sẽ bị xóa vĩnh viễn khỏi hệ thống.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    Sản phẩm và <strong>tất cả biến thể</strong> của nó sẽ bị ẩn
+                    khỏi cửa hàng nhưng vẫn có thể hiển thị lại sau.
+                  </div>
+                  <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 p-3 border border-amber-200 dark:border-amber-800/30">
+                    <div className="flex">
+                      <svg
+                        className="h-5 w-5 text-amber-500 mt-0.5"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                      </svg>
+                      <div className="ml-3">
+                        <div className="text-amber-800 dark:text-amber-200 text-sm">
+                          <strong>Lưu ý quan trọng:</strong> Khi ẩn sản phẩm,
+                          tất cả biến thể của nó sẽ không hiển thị trên cửa hàng
+                          và khách hàng không thể mua được, ngay cả khi biến thể
+                          đó không bị ẩn.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

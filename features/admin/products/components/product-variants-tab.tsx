@@ -419,8 +419,8 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
               />
               <label htmlFor="showDeleted" className="text-sm cursor-pointer">
                 {includeDeleted
-                  ? "Chỉ hiển thị biến thể đã xóa"
-                  : "Hiển thị biến thể đã xóa"}
+                  ? "Chỉ hiển thị biến thể đã ẩn"
+                  : "Hiển thị biến thể đã ẩn"}
               </label>
             </div>
           </CardHeader>
@@ -599,9 +599,41 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
                 : "Ẩn biến thể"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteMode === "restore"
-                ? "Bạn có chắc chắn muốn hiển thị lại biến thể này không?"
-                : "Bạn có chắc chắn muốn ẩn biến thể này không? Biến thể sẽ bị ẩn khỏi cửa hàng nhưng vẫn có thể hiển thị lại sau."}
+              {deleteMode === "restore" ? (
+                "Bạn có chắc chắn muốn hiển thị lại biến thể này không?"
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    Bạn có chắc chắn muốn ẩn biến thể này không? Biến thể sẽ bị
+                    ẩn khỏi cửa hàng nhưng vẫn có thể hiển thị lại sau.
+                  </div>
+                  <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 p-3 border border-amber-200 dark:border-amber-800/30">
+                    <div className="flex">
+                      <svg
+                        className="h-5 w-5 text-amber-500 mt-0.5"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                      </svg>
+                      <div className="ml-3">
+                        <div className="text-amber-800 dark:text-amber-200 text-sm">
+                          <strong>Lưu ý:</strong> Biến thể này sẽ không xuất
+                          hiện trong cửa hàng và khách hàng sẽ không thể mua
+                          được.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
