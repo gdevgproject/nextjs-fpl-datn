@@ -144,17 +144,23 @@ export function ProductTable({
     try {
       if (deleteMode === "soft") {
         await deleteProductMutation.softDelete(productToDelete.id);
-        toast.success("Sản phẩm đã được xóa tạm thời");
+        toast.success("Sản phẩm đã được ẩn thành công");
       } else if (deleteMode === "hard") {
         await deleteProductMutation.hardDelete(productToDelete.id);
-        toast.success("Sản phẩm đã được xóa vĩnh viễn");
+        toast.success("Sản phẩm đã được xóa vĩnh viễn thành công");
       } else if (deleteMode === "restore") {
         await deleteProductMutation.restore(productToDelete.id);
-        toast.success("Sản phẩm đã được khôi phục");
+        toast.success("Sản phẩm đã được hiển thị lại thành công");
       }
     } catch (error) {
       toast.error(
-        `Lỗi khi ${deleteMode === "restore" ? "khôi phục" : "xóa"} sản phẩm: ${
+        `Lỗi khi ${
+          deleteMode === "restore" 
+            ? "hiển thị lại" 
+            : deleteMode === "hard" 
+              ? "xóa vĩnh viễn" 
+              : "ẩn"
+        } sản phẩm: ${
           error instanceof Error ? error.message : "Unknown error"
         }`
       );
@@ -393,9 +399,9 @@ export function ProductTable({
                       </TableCell>
                       <TableCell>
                         {product.deleted_at ? (
-                          <Badge variant="destructive">Đã xóa</Badge>
+                          <Badge variant="destructive" className="bg-red-100 hover:bg-red-200 text-red-700 border border-red-200">Đã ẩn</Badge>
                         ) : (
-                          <Badge variant="default">Hoạt động</Badge>
+                          <Badge variant="default" className="bg-green-100 hover:bg-green-200 text-green-700 border border-green-200">Hoạt động</Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -480,7 +486,7 @@ export function ProductTable({
                                   }
                                 >
                                   <Trash className="mr-2 h-4 w-4" />
-                                  Xóa
+                                  Ẩn
                                 </DropdownMenuItem>
                               )}
                             </DropdownMenuContent>
@@ -518,7 +524,7 @@ export function ProductTable({
                     />
                     {product.deleted_at && (
                       <div className="absolute top-2 right-2">
-                        <Badge variant="destructive">Đã xóa</Badge>
+                        <Badge className="bg-red-100 text-red-700 hover:bg-red-200 border border-red-200">Đã ẩn</Badge>
                       </div>
                     )}
                   </div>
@@ -635,17 +641,17 @@ export function ProductTable({
           <AlertDialogHeader>
             <AlertDialogTitle>
               {deleteMode === "restore"
-                ? "Khôi phục sản phẩm"
+                ? "Hiển thị lại sản phẩm"
                 : deleteMode === "hard"
                 ? "Xóa vĩnh viễn sản phẩm"
-                : "Xóa sản phẩm"}
+                : "Ẩn sản phẩm"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {deleteMode === "restore"
-                ? "Bạn có chắc chắn muốn khôi phục sản phẩm này không?"
+                ? "Bạn có chắc chắn muốn hiển thị lại sản phẩm này không? Sản phẩm sẽ được hiện lại trong cửa hàng."
                 : deleteMode === "hard"
-                ? "Hành động này không thể hoàn tác. Sản phẩm sẽ bị xóa vĩnh viễn khỏi hệ thống."
-                : "Sản phẩm sẽ bị xóa tạm thời và có thể khôi phục sau."}
+                ? "Hành động này không thể hoàn tác. Sản phẩm và tất cả biến thể của nó sẽ bị xóa vĩnh viễn khỏi hệ thống."
+                : "Sản phẩm và tất cả biến thể của nó sẽ bị ẩn khỏi cửa hàng nhưng vẫn có thể hiển thị lại sau."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -653,10 +659,18 @@ export function ProductTable({
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               className={
-                deleteMode === "hard" ? "bg-red-600 hover:bg-red-700" : ""
+                deleteMode === "hard" 
+                  ? "bg-red-600 hover:bg-red-700" 
+                  : deleteMode === "restore"
+                    ? "bg-green-600 hover:bg-green-700"
+                    : ""
               }
             >
-              {deleteMode === "restore" ? "Khôi phục" : "Xóa"}
+              {deleteMode === "restore" 
+                ? "Hiển thị lại" 
+                : deleteMode === "hard"
+                  ? "Xóa vĩnh viễn"
+                  : "Ẩn"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

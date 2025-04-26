@@ -222,14 +222,14 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
     try {
       if (deleteMode === "soft") {
         await deleteVariantMutation.softDelete(variantToDelete.id);
-        toast.success("Biến thể đã được xóa thành công");
+        toast.success("Biến thể đã được ẩn thành công");
       } else {
         await deleteVariantMutation.restore(variantToDelete.id);
-        toast.success("Biến thể đã được khôi phục thành công");
+        toast.success("Biến thể đã được hiển thị lại thành công");
       }
     } catch (error) {
       toast.error(
-        `Lỗi khi ${deleteMode === "soft" ? "xóa" : "khôi phục"} biến thể: ${
+        `Lỗi khi ${deleteMode === "soft" ? "ẩn" : "hiển thị lại"} biến thể: ${
           error instanceof Error ? error.message : "Unknown error"
         }`
       );
@@ -455,8 +455,8 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
                         <TableCell className="font-medium">
                           {variant.volume_ml} ml
                           {variant.deleted_at && (
-                            <span className="ml-2 text-xs text-red-500 font-normal">
-                              (Đã xóa)
+                            <span className="ml-2 text-xs px-1.5 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-100">
+                              Đã ẩn
                             </span>
                           )}
                         </TableCell>
@@ -585,12 +585,12 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {deleteMode === "restore" ? "Khôi phục biến thể" : "Xóa biến thể"}
+              {deleteMode === "restore" ? "Hiển thị lại biến thể" : "Ẩn biến thể"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {deleteMode === "restore"
-                ? "Bạn có chắc chắn muốn khôi phục biến thể này không?"
-                : "Bạn có chắc chắn muốn xóa biến thể này không? Biến thể sẽ bị đánh dấu là đã xóa nhưng vẫn có thể khôi phục lại sau."}
+                ? "Bạn có chắc chắn muốn hiển thị lại biến thể này không?"
+                : "Bạn có chắc chắn muốn ẩn biến thể này không? Biến thể sẽ bị ẩn khỏi cửa hàng nhưng vẫn có thể hiển thị lại sau."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -603,7 +603,7 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
                   : "bg-red-600 hover:bg-red-700"
               }
             >
-              {deleteMode === "restore" ? "Khôi phục" : "Xóa"}
+              {deleteMode === "restore" ? "Hiển thị lại" : "Ẩn"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
