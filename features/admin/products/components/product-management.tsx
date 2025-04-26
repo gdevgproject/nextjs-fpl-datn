@@ -73,6 +73,7 @@ export function ProductManagement() {
   );
   const [categoryId, setCategoryId] = useState<number | undefined>(undefined);
   const [includeDeleted, setIncludeDeleted] = useState(false);
+  const [hasHiddenVariants, setHasHiddenVariants] = useState(false);
   const [activeFiltersCount, setActiveFiltersCount] = useState(0);
   const debouncedSearch = useDebounce(search, 500);
 
@@ -100,6 +101,7 @@ export function ProductManagement() {
     if (concentrationId !== undefined) count++;
     if (categoryId !== undefined) count++;
     if (includeDeleted) count++;
+    if (hasHiddenVariants) count++;
     setActiveFiltersCount(count);
   }, [
     brandId,
@@ -108,6 +110,7 @@ export function ProductManagement() {
     concentrationId,
     categoryId,
     includeDeleted,
+    hasHiddenVariants,
   ]);
 
   // Fetch products with filters, pagination, and sorting
@@ -124,6 +127,7 @@ export function ProductManagement() {
       concentrationId,
       categoryId,
       includeDeleted,
+      hasHiddenVariants,
     },
     { page, pageSize },
     { column: sortColumn, direction: sortDirection }
@@ -176,6 +180,7 @@ export function ProductManagement() {
     setConcentrationId(undefined);
     setCategoryId(undefined);
     setIncludeDeleted(false);
+    setHasHiddenVariants(false);
     setPage(1);
   };
 
@@ -533,6 +538,23 @@ export function ProductManagement() {
                           Chỉ hiển thị sản phẩm đã xóa
                         </Label>
                       </div>
+
+                      <div className="flex items-center space-x-2 pt-2">
+                        <Checkbox
+                          id="hasHiddenVariants"
+                          checked={hasHiddenVariants}
+                          onCheckedChange={(checked) => {
+                            setHasHiddenVariants(!!checked);
+                            setPage(1); // Reset page to 1 when toggling filter
+                          }}
+                        />
+                        <Label
+                          htmlFor="hasHiddenVariants"
+                          className="cursor-pointer"
+                        >
+                          Hiển thị sản phẩm có biến thể đã ẩn
+                        </Label>
+                      </div>
                     </div>
                   </TabsContent>
                 </Tabs>
@@ -619,6 +641,12 @@ export function ProductManagement() {
               onRemove={() => setIncludeDeleted(false)}
             />
           )}
+          {hasHiddenVariants && (
+            <FilterTag
+              label="Hiển thị sản phẩm có biến thể đã ẩn"
+              onRemove={() => setHasHiddenVariants(false)}
+            />
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -630,21 +658,64 @@ export function ProductManagement() {
         </div>
       )}
 
-      {/* Products Table */}
-      <ProductTable
-        products={productsData?.data || []}
-        isLoading={isLoadingProducts}
-        isError={isProductsError}
-        totalCount={productsData?.count || 0}
-        page={page}
-        pageSize={pageSize}
-        sortColumn={sortColumn}
-        sortDirection={sortDirection}
-        onPageChange={setPage}
-        onPageSizeChange={setPageSize}
-        onSortChange={handleSortChange}
-        onEdit={handleEditProduct}
-      />
+      {/* Products Table with Tabs */}
+      <Tabs defaultValue="active" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger
+            value="active"
+            onClick={() => {
+              setIncludeDeleted(false);
+              setPage(1);
+            }}
+          >
+            Sản phẩm đang hoạt động
+          </TabsTrigger>
+          <TabsTrigger
+            value="deleted"
+            onClick={() => {
+              setIncludeDeleted(true);
+              setPage(1);
+            }}
+          >
+            Sản phẩm đã ẩn
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="active">
+          <ProductTable
+            products={productsData?.data || []}
+            isLoading={isLoadingProducts}
+            isError={isProductsError}
+            totalCount={productsData?.count || 0}
+            page={page}
+            pageSize={pageSize}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            onSortChange={handleSortChange}
+            onEdit={handleEditProduct}
+          />
+        </TabsContent>
+
+        <TabsContent value="deleted">
+          <ProductTable
+            products={productsData?.data || []}
+            isLoading={isLoadingProducts}
+            isError={isProductsError}
+            totalCount={productsData?.count || 0}
+            page={page}
+            pageSize={pageSize}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            onSortChange={handleSortChange}
+            onEdit={handleEditProduct}
+            isDeletedView={true}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Product Dialog */}
       <ProductDialog

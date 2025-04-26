@@ -108,6 +108,11 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
   const [showHardDeleteDialog, setShowHardDeleteDialog] = useState(false);
   const variantHardDelete = useVariantHardDelete();
 
+  // Toggle hiển thị chỉ biến thể đã ẩn hoặc hiển thị tất cả
+  const handleToggleDeletedVariants = (checked: boolean) => {
+    setIncludeDeleted(checked);
+  };
+
   // Fetch variants for the product
   const {
     data: variantsData,
@@ -409,7 +414,7 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
                 type="checkbox"
                 id="showDeleted"
                 checked={includeDeleted}
-                onChange={(e) => setIncludeDeleted(e.target.checked)}
+                onChange={(e) => handleToggleDeletedVariants(e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300"
               />
               <label htmlFor="showDeleted" className="text-sm cursor-pointer">
@@ -450,12 +455,16 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
                     {variantsData?.data?.map((variant: any) => (
                       <TableRow
                         key={variant.id}
-                        className={variant.deleted_at ? "bg-gray-50" : ""}
+                        className={
+                          variant.deleted_at
+                            ? "bg-muted/40 hover:bg-muted/60"
+                            : ""
+                        }
                       >
                         <TableCell className="font-medium">
                           {variant.volume_ml} ml
                           {variant.deleted_at && (
-                            <span className="ml-2 text-xs px-1.5 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-100">
+                            <span className="ml-2 text-xs px-1.5 py-0.5 rounded-md bg-destructive/10 text-destructive border border-destructive/20">
                               Đã ẩn
                             </span>
                           )}
@@ -643,10 +652,10 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
                   </>
                 ) : (
                   <>
-                    <div className="rounded-md bg-red-50 p-4 border border-red-100">
+                    <div className="rounded-md bg-destructive/10 p-4 border border-destructive/30 dark:bg-destructive/20">
                       <div className="flex">
                         <svg
-                          className="h-5 w-5 text-red-500"
+                          className="h-5 w-5 text-destructive"
                           viewBox="0 0 20 20"
                           fill="currentColor"
                           aria-hidden="true"
@@ -658,7 +667,7 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
                           />
                         </svg>
                         <div className="ml-3">
-                          <h3 className="text-sm font-medium text-red-800">
+                          <h3 className="text-sm font-medium text-destructive">
                             Không thể xóa vĩnh viễn
                           </h3>
                         </div>
@@ -672,14 +681,14 @@ export function ProductVariantsTab({ productId }: ProductVariantsTabProps) {
                     <ul className="list-disc pl-5 space-y-1 text-sm">
                       {variantHardDelete.validationResult.blockingReasons.map(
                         (reason, index) => (
-                          <li key={index} className="text-red-700">
+                          <li key={index} className="text-destructive">
                             {reason}
                           </li>
                         )
                       )}
                     </ul>
 
-                    <p className="text-xs text-gray-500 pt-2">
+                    <p className="text-xs text-muted-foreground pt-2">
                       Gỡ bỏ các liên kết đến biến thể này trước khi thử xóa vĩnh
                       viễn lại.
                     </p>

@@ -43,7 +43,12 @@ export function useProducts(
   const fetchProducts = async (): Promise<ProductsResponse> => {
     try {
       // Use the shared query builder from services
-      const query = buildProductsQuery(supabase, filters, pagination, sort);
+      const query = await buildProductsQuery(
+        supabase,
+        filters,
+        pagination,
+        sort
+      );
 
       // Execute the query
       const { data, error, count } = await query;

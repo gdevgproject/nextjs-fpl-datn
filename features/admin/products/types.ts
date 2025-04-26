@@ -119,6 +119,7 @@ export interface ProductFilters {
   concentrationId?: number;
   categoryId?: number;
   includeDeleted?: boolean;
+  hasHiddenVariants?: boolean; // Thêm option lọc sản phẩm có biến thể bị ẩn
 }
 
 /**

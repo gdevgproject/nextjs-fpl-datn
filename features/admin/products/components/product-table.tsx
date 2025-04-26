@@ -76,6 +76,7 @@ interface ProductTableProps {
   onPageSizeChange: (pageSize: number) => void;
   onSortChange: (column: string) => void;
   onEdit: (product: any) => void;
+  isDeletedView?: boolean;
 }
 
 export function ProductTable({
@@ -91,6 +92,7 @@ export function ProductTable({
   onPageSizeChange,
   onSortChange,
   onEdit,
+  isDeletedView = false,
 }: ProductTableProps) {
   const toast = useSonnerToast();
   const deleteProductMutation = useDeleteProduct();
@@ -337,7 +339,11 @@ export function ProductTable({
                   return (
                     <TableRow
                       key={product.id}
-                      className={product.deleted_at ? "bg-muted/50" : ""}
+                      className={
+                        product.deleted_at
+                          ? "bg-muted/40 hover:bg-muted/60"
+                          : ""
+                      }
                     >
                       <TableCell className="font-medium">
                         {product.id}

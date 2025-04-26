@@ -28,7 +28,7 @@ export function extractStoragePath(url: string): string | null {
  * Build a query for fetching products with filters, pagination, and sorting
  * Reusable logic that works with both client and server-side Supabase clients
  */
-export function buildProductsQuery(
+export async function buildProductsQuery(
   supabase: any,
   filters?: ProductFilters,
   pagination?: ProductPagination,
@@ -97,6 +97,26 @@ export function buildProductsQuery(
       // Ngược lại, chỉ hiển thị các sản phẩm chưa xóa
       query = query.is("deleted_at", null);
     }
+
+    // Lọc các sản phẩm có biến thể bị ẩn
+    if (filters.hasHiddenVariants) {
+      // Sử dụng một subquery để tìm các sản phẩm có ít nhất một biến thể bị ẩn
+      const { data: productsWithHiddenVariants } = await supabase
+        .from("product_variants")
+        .select("product_id")
+        .not("deleted_at", "is", null)
+        .order("product_id");
+
+      if (productsWithHiddenVariants && productsWithHiddenVariants.length > 0) {
+        const productIds = [
+          ...new Set(productsWithHiddenVariants.map((v: any) => v.product_id)),
+        ];
+        query = query.in("id", productIds);
+      } else {
+        // Nếu không có sản phẩm nào có biến thể bị ẩn, trả về rỗng
+        query = query.in("id", [-1]); // Trick để không có kết quả nào
+      }
+    }
   } else {
     // Default behavior: exclude deleted products
     query = query.is("deleted_at", null);
@@ -129,7 +149,7 @@ export async function fetchProducts(
   const supabase = await getSupabaseServerClient();
 
   try {
-    const query = buildProductsQuery(supabase, filters, pagination, sort);
+    const query = await buildProductsQuery(supabase, filters, pagination, sort);
     const { data, error, count } = await query;
 
     if (error) {
