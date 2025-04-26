@@ -51,66 +51,113 @@ import {
 import { Pencil, Trash } from "lucide-react";
 
 // Define the form schema with Zod
-const variantFormSchema = z.object({
-  volume_ml: z
-    .string()
-    .min(1, "Dung tích không được để trống")
-    .refine(
-      (val) => {
-        // Kiểm tra giá trị là số nguyên dương
-        const volume = parseInt(val, 10);
-        return !isNaN(volume) && volume > 0 && volume.toString() === val;
-      },
-      {
-        message: "Dung tích phải là số nguyên dương và không có số thập phân",
-      }
-    ),
-  price: z
-    .string()
-    .min(1, "Giá không được để trống")
-    .refine(
-      (val) => {
-        // Kiểm tra định dạng số với tối đa 2 chữ số thập phân
-        const priceRegex = /^\d+(\.\d{1,2})?$/;
-        const price = parseFloat(val);
-        return !isNaN(price) && price >= 0 && priceRegex.test(val);
-      },
-      {
-        message: "Giá phải là số không âm và tối đa 2 chữ số thập phân",
-      }
-    ),
-  sale_price: z
-    .string()
-    .refine(
-      (val) => {
-        if (val === "") return true; // Cho phép chuỗi rỗng
+const variantFormSchema = z
+  .object({
+    volume_ml: z
+      .string()
+      .min(1, "Dung tích không được để trống")
+      .refine(
+        (val) => {
+          // Kiểm tra giá trị là số nguyên dương
+          const volume = parseInt(val, 10);
+          return !isNaN(volume) && volume > 0 && Number.isInteger(volume);
+        },
+        {
+          message: "Dung tích phải là số nguyên dương (vd: 50, 100)",
+        }
+      ),
+    price: z
+      .string()
+      .min(1, "Giá không được để trống")
+      .refine(
+        (val) => {
+          // Kiểm tra định dạng số không âm và giá phải hợp lệ
+          const price = parseFloat(val);
+          return !isNaN(price) && price >= 0;
+        },
+        {
+          message: "Giá phải là số không âm",
+        }
+      )
+      .refine(
+        (val) => {
+          // Đảm bảo giá không vượt quá 1 tỷ VND
+          const price = parseFloat(val);
+          return price <= 1000000000;
+        },
+        {
+          message: "Giá không được vượt quá 1 tỷ VND",
+        }
+      ),
+    sale_price: z
+      .string()
+      .refine(
+        (val) => {
+          if (val === "") return true; // Cho phép chuỗi rỗng
 
-        // Kiểm tra định dạng số với tối đa 2 chữ số thập phân
-        const priceRegex = /^\d+(\.\d{1,2})?$/;
-        const price = parseFloat(val);
-        return !isNaN(price) && price >= 0 && priceRegex.test(val);
-      },
-      {
-        message:
-          "Giá khuyến mãi phải là số không âm và tối đa 2 chữ số thập phân",
+          // Kiểm tra định dạng số không âm
+          const price = parseFloat(val);
+          return !isNaN(price) && price >= 0;
+        },
+        {
+          message: "Giá khuyến mãi phải là số không âm",
+        }
+      )
+      .refine(
+        (val) => {
+          if (val === "") return true; // Cho phép chuỗi rỗng
+
+          // Đảm bảo giá khuyến mãi không vượt quá 1 tỷ VND
+          const price = parseFloat(val);
+          return price <= 1000000000;
+        },
+        {
+          message: "Giá khuyến mãi không được vượt quá 1 tỷ VND",
+        }
+      )
+      .optional(),
+    sku: z.string().max(100, "SKU không được vượt quá 100 ký tự").optional(),
+    stock_quantity: z
+      .string()
+      .min(1, "Số lượng tồn kho không được để trống")
+      .refine(
+        (val) => {
+          // Kiểm tra giá trị là số nguyên không âm
+          const quantity = parseInt(val, 10);
+          return (
+            !isNaN(quantity) && quantity >= 0 && Number.isInteger(quantity)
+          );
+        },
+        {
+          message: "Số lượng tồn kho phải là số nguyên không âm",
+        }
+      )
+      .refine(
+        (val) => {
+          // Giới hạn số lượng tồn kho không quá lớn
+          const quantity = parseInt(val, 10);
+          return quantity <= 100000;
+        },
+        {
+          message: "Số lượng tồn kho không được vượt quá 100.000",
+        }
+      ),
+  })
+  .refine(
+    (data) => {
+      // Kiểm tra giá khuyến mãi (nếu có) không được lớn hơn giá gốc
+      if (data.sale_price && data.sale_price.trim() !== "") {
+        const regularPrice = parseFloat(data.price);
+        const salePrice = parseFloat(data.sale_price);
+        return salePrice <= regularPrice;
       }
-    )
-    .optional(),
-  sku: z.string().max(100, "SKU không được vượt quá 100 ký tự").optional(),
-  stock_quantity: z
-    .string()
-    .min(1, "Số lượng tồn kho không được để trống")
-    .refine(
-      (val) => {
-        // Kiểm tra giá trị là số nguyên không âm
-        const quantity = parseInt(val, 10);
-        return !isNaN(quantity) && quantity >= 0 && quantity.toString() === val;
-      },
-      {
-        message: "Số lượng tồn kho phải là số nguyên không âm",
-      }
-    ),
-});
+      return true;
+    },
+    {
+      message: "Giá khuyến mãi không thể cao hơn giá gốc",
+      path: ["sale_price"],
+    }
+  );
 
 type VariantFormValues = z.infer<typeof variantFormSchema>;
 
@@ -408,16 +455,50 @@ export function ProductVariantsTab({
                   name="volume_ml"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Dung tích (ml)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="Nhập dung tích"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Dung tích của biến thể (ml).
+                      <FormLabel className="flex items-center gap-1">
+                        Dung tích (ml)
+                        <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+                        <div className="md:col-span-3">
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="1"
+                              placeholder="Nhập dung tích"
+                              {...field}
+                              className="w-full"
+                            />
+                          </FormControl>
+                        </div>
+                        <div className="md:col-span-2">
+                          <select
+                            className="w-full px-3 py-2 border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-input"
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                field.onChange(e.target.value);
+                              }
+                            }}
+                            value=""
+                          >
+                            <option value="">Dung tích phổ biến</option>
+                            <option value="5">5ml</option>
+                            <option value="10">10ml</option>
+                            <option value="15">15ml</option>
+                            <option value="30">30ml</option>
+                            <option value="50">50ml</option>
+                            <option value="60">60ml</option>
+                            <option value="75">75ml</option>
+                            <option value="100">100ml</option>
+                            <option value="125">125ml</option>
+                            <option value="150">150ml</option>
+                            <option value="200">200ml</option>
+                          </select>
+                        </div>
+                      </div>
+                      <FormDescription className="text-xs">
+                        Dung tích phải là số nguyên dương (ml). Bạn có thể nhập
+                        trực tiếp hoặc chọn từ danh sách.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -429,17 +510,103 @@ export function ProductVariantsTab({
                   name="price"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Giá gốc</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="Nhập giá gốc"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Giá gốc của biến thể (VND).
+                      <FormLabel className="flex items-center gap-1">
+                        Giá gốc
+                        <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <div className="relative">
+                        <FormControl>
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="Nhập giá gốc"
+                            {...field}
+                            className="pl-10"
+                            onChange={(e) => {
+                              // Chỉ cho phép nhập số
+                              const value = e.target.value.replace(
+                                /[^0-9]/g,
+                                ""
+                              );
+                              // Giới hạn giá trị tối đa là 1 tỷ
+                              const numValue = Number(value);
+                              if (numValue <= 1000000000) {
+                                field.onChange(value);
+
+                                // Nếu đã có giá khuyến mãi, kiểm tra xem có hợp lệ không
+                                const salePrice = form.getValues("sale_price");
+                                if (salePrice && Number(salePrice) > numValue) {
+                                  form.setError("sale_price", {
+                                    type: "manual",
+                                    message:
+                                      "Giá khuyến mãi không thể cao hơn giá gốc",
+                                  });
+                                } else {
+                                  form.clearErrors("sale_price");
+                                }
+                              }
+                            }}
+                          />
+                        </FormControl>
+                        <div className="absolute inset-y-0 left-0 flex items-center px-3 pointer-events-none text-muted-foreground font-medium">
+                          ₫
+                        </div>
+                        {field.value && !isNaN(parseFloat(field.value)) && (
+                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <span className="text-xs text-muted-foreground">
+                              {new Intl.NumberFormat("vi-VN").format(
+                                parseInt(field.value, 10)
+                              )}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <FormDescription className="text-xs flex items-center justify-between">
+                        <span>Giá gốc của biến thể (VND)</span>
+                        <span className="text-muted-foreground">
+                          Tối đa: 1.000.000.000đ
+                        </span>
                       </FormDescription>
+                      <div className="mt-1.5">
+                        <div className="flex justify-between gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => field.onChange("100000")}
+                            className="h-6 text-xs flex-1"
+                          >
+                            100.000đ
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => field.onChange("500000")}
+                            className="h-6 text-xs flex-1"
+                          >
+                            500.000đ
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => field.onChange("1000000")}
+                            className="h-6 text-xs flex-1"
+                          >
+                            1.000.000đ
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => field.onChange("5000000")}
+                            className="h-6 text-xs flex-1"
+                          >
+                            5.000.000đ
+                          </Button>
+                        </div>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -450,17 +617,188 @@ export function ProductVariantsTab({
                   name="sale_price"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Giá khuyến mãi</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="Nhập giá khuyến mãi (tùy chọn)"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Giá khuyến mãi của biến thể (VND, nếu có).
+                      <FormLabel className="flex items-center justify-between">
+                        <span>Giá khuyến mãi</span>
+                        <span className="text-xs text-muted-foreground font-normal">
+                          (Để trống nếu không có khuyến mãi)
+                        </span>
+                      </FormLabel>
+                      <div className="relative">
+                        <FormControl>
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="Nhập giá khuyến mãi (tùy chọn)"
+                            {...field}
+                            className="pl-10"
+                            onChange={(e) => {
+                              // Chỉ cho phép nhập số
+                              const value = e.target.value.replace(
+                                /[^0-9]/g,
+                                ""
+                              );
+
+                              // Nếu xóa hết thì set về rỗng
+                              if (value === "") {
+                                field.onChange("");
+                                form.clearErrors("sale_price");
+                                return;
+                              }
+
+                              // Giới hạn giá trị tối đa là 1 tỷ
+                              const numValue = Number(value);
+                              if (numValue <= 1000000000) {
+                                field.onChange(value);
+
+                                // Kiểm tra ngay lập tức giá khuyến mãi không được lớn hơn giá gốc
+                                const regularPrice = form.getValues("price");
+                                if (
+                                  regularPrice &&
+                                  numValue > Number(regularPrice)
+                                ) {
+                                  form.setError("sale_price", {
+                                    type: "manual",
+                                    message:
+                                      "Giá khuyến mãi không thể cao hơn giá gốc",
+                                  });
+                                } else {
+                                  form.clearErrors("sale_price");
+                                }
+                              }
+                            }}
+                          />
+                        </FormControl>
+                        <div className="absolute inset-y-0 left-0 flex items-center px-3 pointer-events-none text-muted-foreground font-medium">
+                          ₫
+                        </div>
+                        {field.value &&
+                          field.value.trim() !== "" &&
+                          !isNaN(parseFloat(field.value)) && (
+                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                              <span className="text-xs text-muted-foreground">
+                                {new Intl.NumberFormat("vi-VN").format(
+                                  parseInt(field.value, 10)
+                                )}
+                              </span>
+                            </div>
+                          )}
+                      </div>
+                      <FormDescription className="text-xs flex items-center justify-between">
+                        <span>
+                          Giá sau khi giảm. Phải thấp hơn hoặc bằng giá gốc.
+                        </span>
+                        <span className="flex items-center gap-1">
+                          {form.getValues("price") &&
+                            field.value &&
+                            parseFloat(field.value) > 0 &&
+                            (Number(field.value) <=
+                            Number(form.getValues("price")) ? (
+                              <span className="text-xs font-medium text-green-600">
+                                {Math.round(
+                                  ((parseFloat(form.getValues("price")) -
+                                    parseFloat(field.value)) /
+                                    parseFloat(form.getValues("price"))) *
+                                    100
+                                )}
+                                % giảm
+                              </span>
+                            ) : (
+                              <span className="text-xs font-medium text-destructive">
+                                Giá khuyến mãi không thể cao hơn giá gốc
+                              </span>
+                            ))}
+                        </span>
                       </FormDescription>
+                      <div className="mt-1.5">
+                        {form.getValues("price") &&
+                          parseFloat(form.getValues("price")) > 0 && (
+                            <div className="flex justify-between gap-1">
+                              {/* Nút đặt giảm giá 10% */}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const regularPrice = Number(
+                                    form.getValues("price")
+                                  );
+                                  const discountedPrice = Math.floor(
+                                    regularPrice * 0.9
+                                  );
+                                  field.onChange(discountedPrice.toString());
+                                  form.clearErrors("sale_price");
+                                }}
+                                className="h-6 text-xs flex-1"
+                                disabled={
+                                  !form.getValues("price") ||
+                                  form.getValues("price") === "0"
+                                }
+                              >
+                                Giảm 10%
+                              </Button>
+                              {/* Nút đặt giảm giá 20% */}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const regularPrice = Number(
+                                    form.getValues("price")
+                                  );
+                                  const discountedPrice = Math.floor(
+                                    regularPrice * 0.8
+                                  );
+                                  field.onChange(discountedPrice.toString());
+                                  form.clearErrors("sale_price");
+                                }}
+                                className="h-6 text-xs flex-1"
+                                disabled={
+                                  !form.getValues("price") ||
+                                  form.getValues("price") === "0"
+                                }
+                              >
+                                Giảm 20%
+                              </Button>
+                              {/* Nút đặt giảm giá 30% */}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const regularPrice = Number(
+                                    form.getValues("price")
+                                  );
+                                  const discountedPrice = Math.floor(
+                                    regularPrice * 0.7
+                                  );
+                                  field.onChange(discountedPrice.toString());
+                                  form.clearErrors("sale_price");
+                                }}
+                                className="h-6 text-xs flex-1"
+                                disabled={
+                                  !form.getValues("price") ||
+                                  form.getValues("price") === "0"
+                                }
+                              >
+                                Giảm 30%
+                              </Button>
+                              {/* Nút xóa giá khuyến mãi */}
+                              <Button
+                                type="button"
+                                variant={field.value ? "outline" : "ghost"}
+                                size="sm"
+                                onClick={() => {
+                                  field.onChange("");
+                                  form.clearErrors("sale_price");
+                                }}
+                                className="h-6 text-xs flex-1"
+                                disabled={!field.value}
+                              >
+                                Bỏ KM
+                              </Button>
+                            </div>
+                          )}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -471,15 +809,78 @@ export function ProductVariantsTab({
                   name="sku"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>SKU</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Nhập mã SKU (tùy chọn)"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Mã SKU để quản lý kho (tùy chọn).
+                      <FormLabel className="flex items-center justify-between">
+                        <span>SKU</span>
+                        <span className="text-xs text-muted-foreground font-normal">
+                          (Tùy chọn)
+                        </span>
+                      </FormLabel>
+                      <div className="relative">
+                        <FormControl>
+                          <Input
+                            placeholder="VD: ML-100-2023"
+                            {...field}
+                            className={field.value ? "pr-10" : ""}
+                          />
+                        </FormControl>
+                        {field.value && (
+                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                              onClick={() => field.onChange("")}
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="h-3 w-3"
+                              >
+                                <path d="M18 6 6 18"></path>
+                                <path d="m6 6 12 12"></path>
+                              </svg>
+                              <span className="sr-only">Xóa</span>
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      <FormDescription className="text-xs flex items-center justify-between">
+                        <span>Mã quản lý kho hàng (Stock Keeping Unit)</span>
+                        <span className="flex gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              // Generate a simple SKU based on product ID and volume
+                              const productIdPart = productId
+                                ? productId.toString().padStart(4, "0")
+                                : "0000";
+                              const volumePart = form
+                                .getValues("volume_ml")
+                                .padStart(3, "0");
+                              const randomPart = Math.floor(
+                                Math.random() * 1000
+                              )
+                                .toString()
+                                .padStart(3, "0");
+                              field.onChange(
+                                `P${productIdPart}V${volumePart}R${randomPart}`
+                              );
+                            }}
+                            className="h-6 px-2 text-xs"
+                          >
+                            Tạo SKU tự động
+                          </Button>
+                        </span>
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -491,17 +892,147 @@ export function ProductVariantsTab({
                   name="stock_quantity"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Số lượng tồn kho</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="Nhập số lượng tồn kho"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Số lượng hiện có trong kho.
+                      <FormLabel className="flex items-center gap-1">
+                        Số lượng tồn kho
+                        <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <div className="relative">
+                        <div className="flex">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="rounded-r-none border-r-0"
+                            onClick={() => {
+                              const currentValue =
+                                parseInt(field.value, 10) || 0;
+                              if (currentValue > 0) {
+                                field.onChange((currentValue - 1).toString());
+                              }
+                            }}
+                            disabled={field.value === "0" || field.value === ""}
+                            title="Giảm số lượng"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="lucide lucide-minus"
+                            >
+                              <path d="M5 12h14" />
+                            </svg>
+                            <span className="sr-only">Giảm</span>
+                          </Button>
+                          <FormControl>
+                            <Input
+                              type="text"
+                              inputMode="numeric"
+                              placeholder="Số lượng tồn kho"
+                              className="rounded-none text-center"
+                              value={field.value}
+                              onChange={(e) => {
+                                // Chỉ cho phép nhập số nguyên không âm
+                                const value = e.target.value.replace(
+                                  /[^0-9]/g,
+                                  ""
+                                );
+
+                                // Giới hạn số lượng tồn kho tối đa là 100.000
+                                const numValue = Number(value);
+                                if (numValue <= 100000) {
+                                  field.onChange(value);
+                                }
+                              }}
+                            />
+                          </FormControl>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="rounded-l-none border-l-0"
+                            onClick={() => {
+                              const currentValue =
+                                parseInt(field.value, 10) || 0;
+                              const newValue = currentValue + 1;
+                              // Đảm bảo không vượt quá giới hạn
+                              if (newValue <= 100000) {
+                                field.onChange(newValue.toString());
+                              }
+                            }}
+                            title="Tăng số lượng"
+                            disabled={parseInt(field.value, 10) >= 100000}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="lucide lucide-plus"
+                            >
+                              <path d="M5 12h14" />
+                              <path d="M12 5v14" />
+                            </svg>
+                            <span className="sr-only">Tăng</span>
+                          </Button>
+                        </div>
+                      </div>
+                      <FormDescription className="text-xs flex items-center justify-between">
+                        <span>Số lượng có sẵn để bán</span>
+                        <span className="text-muted-foreground">
+                          Tối đa: 100.000
+                        </span>
                       </FormDescription>
+                      <div className="mt-1.5">
+                        <div className="flex justify-between gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => field.onChange("0")}
+                            className="h-6 px-2 text-xs flex-1"
+                          >
+                            Đặt là 0
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => field.onChange("10")}
+                            className="h-6 px-2 text-xs flex-1"
+                          >
+                            Đặt là 10
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => field.onChange("50")}
+                            className="h-6 px-2 text-xs flex-1"
+                          >
+                            Đặt là 50
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => field.onChange("100")}
+                            className="h-6 px-2 text-xs flex-1"
+                          >
+                            Đặt là 100
+                          </Button>
+                        </div>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
