@@ -660,16 +660,18 @@ export function ProductVariantsTab({
                 ? "Hiển thị lại biến thể"
                 : "Ẩn biến thể"}
             </AlertDialogTitle>
-            <AlertDialogDescription>
+            <div>
               {deleteMode === "restore" ? (
-                "Bạn có chắc chắn muốn hiển thị lại biến thể này không?"
+                <AlertDialogDescription>
+                  Bạn có chắc chắn muốn hiển thị lại biến thể này không?
+                </AlertDialogDescription>
               ) : (
-                <div className="space-y-3">
-                  <div>
+                <>
+                  <AlertDialogDescription>
                     Bạn có chắc chắn muốn ẩn biến thể này không? Biến thể sẽ bị
                     ẩn khỏi cửa hàng nhưng vẫn có thể hiển thị lại sau.
-                  </div>
-                  <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 p-3 border border-amber-200 dark:border-amber-800/30">
+                  </AlertDialogDescription>
+                  <div className="mt-3 rounded-md bg-amber-50 dark:bg-amber-900/20 p-3 border border-amber-200 dark:border-amber-800/30">
                     <div className="flex">
                       <svg
                         className="h-5 w-5 text-amber-500 mt-0.5"
@@ -694,9 +696,9 @@ export function ProductVariantsTab({
                       </div>
                     </div>
                   </div>
-                </div>
+                </>
               )}
-            </AlertDialogDescription>
+            </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
