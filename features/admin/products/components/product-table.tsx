@@ -133,19 +133,20 @@ export function ProductTable({
   };
 
   // Handle delete button click
-  const handleDeleteClick = async (
+  const handleDeleteClick = (
     product: any,
     mode: "soft" | "hard" | "restore"
   ) => {
     setProductToDelete(product);
     setDeleteMode(mode);
-    // If hard delete, run validation first
-    if (mode === "hard") {
-      await productHardDelete.prepareDelete(product.id);
-    }
     // Khi khôi phục, luôn đặt restoreVariants thành true để tự động tích chọn
     if (mode === "restore") setRestoreVariants(true);
+    // Mở dialog ngay lập tức
     setDeleteDialogOpen(true);
+    // Nếu hard delete, chạy validation sau khi mở dialog
+    if (mode === "hard") {
+      productHardDelete.prepareDelete(product.id);
+    }
   };
 
   // Handle delete confirmation
