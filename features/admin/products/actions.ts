@@ -261,6 +261,86 @@ export async function hardDeleteProductAction(id: number) {
 }
 
 /**
+ * Check if a product and all its variants can be hard deleted.
+ */
+export async function checkProductCanDeleteAction(productId: number) {
+  const supabase = await getSupabaseServerClient();
+
+  // Fetch all variants of the product
+  const { data: variants, error: variantsError } = await supabase
+    .from("product_variants")
+    .select("id, deleted_at")
+    .eq("product_id", productId);
+  if (variantsError) {
+    console.error("Error fetching variants for delete check:", variantsError);
+    return { success: false, error: variantsError.message };
+  }
+
+  let canDeleteAll = true;
+  const variantResults: Array<{
+    variantId: number;
+    canDelete: boolean;
+    blockingReasons: string[];
+  }> = [];
+
+  for (const v of variants || []) {
+    const blockingReasons: string[] = [];
+
+    // 1. Order items
+    const { count: orderCount } = await supabase
+      .from("order_items")
+      .select("*", { count: "exact", head: true })
+      .eq("variant_id", v.id);
+    if (orderCount && orderCount > 0) {
+      blockingReasons.push(
+        `Biến thể ${v.id} tồn tại trong ${orderCount} đơn hàng`
+      );
+    }
+
+    // 2. Cart items
+    const { count: cartCount } = await supabase
+      .from("cart_items")
+      .select("*", { count: "exact", head: true })
+      .eq("variant_id", v.id);
+    if (cartCount && cartCount > 0) {
+      blockingReasons.push(`Biến thể ${v.id} có trong ${cartCount} giỏ hàng`);
+    }
+
+    // 3. Inventory history
+    const { count: invCount } = await supabase
+      .from("inventory")
+      .select("*", { count: "exact", head: true })
+      .eq("variant_id", v.id);
+    if (invCount && invCount > 0) {
+      blockingReasons.push(
+        `Biến thể ${v.id} có ${invCount} bản ghi lịch sử kho`
+      );
+    }
+
+    // 4. Last active variant check (if not soft-deleted)
+    if (!v.deleted_at) {
+      const { count: activeCount } = await supabase
+        .from("product_variants")
+        .select("*", { count: "exact", head: true })
+        .eq("product_id", productId)
+        .is("deleted_at", null)
+        .neq("id", v.id);
+      if (activeCount === 0) {
+        blockingReasons.push(
+          `Biến thể ${v.id} là biến thể cuối cùng chưa ẩn của sản phẩm`
+        );
+      }
+    }
+
+    const canDelete = blockingReasons.length === 0;
+    if (!canDelete) canDeleteAll = false;
+    variantResults.push({ variantId: v.id, canDelete, blockingReasons });
+  }
+
+  return { success: true, canDelete: canDeleteAll, variantResults };
+}
+
+/**
  * Create a product variant
  */
 export async function createProductVariantAction(

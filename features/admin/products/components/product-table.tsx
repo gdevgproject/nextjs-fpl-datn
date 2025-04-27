@@ -62,6 +62,7 @@ import {
 } from "@/components/ui/dialog";
 import Image from "next/image";
 import Link from "next/link";
+import { useProductHardDelete } from "../hooks/use-product-hard-delete";
 
 interface ProductTableProps {
   products: any[];
@@ -96,6 +97,7 @@ export function ProductTable({
 }: ProductTableProps) {
   const toast = useSonnerToast();
   const deleteProductMutation = useDeleteProduct();
+  const productHardDelete = useProductHardDelete();
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
   // State for delete confirmation dialog
@@ -131,18 +133,18 @@ export function ProductTable({
   };
 
   // Handle delete button click
-  const handleDeleteClick = (
+  const handleDeleteClick = async (
     product: any,
     mode: "soft" | "hard" | "restore"
   ) => {
     setProductToDelete(product);
     setDeleteMode(mode);
-
-    // Khi khôi phục, luôn đặt restoreVariants thành true để tự động tích chọn
-    if (mode === "restore") {
-      setRestoreVariants(true);
+    // If hard delete, run validation first
+    if (mode === "hard") {
+      await productHardDelete.prepareDelete(product.id);
     }
-
+    // Khi khôi phục, luôn đặt restoreVariants thành true để tự động tích chọn
+    if (mode === "restore") setRestoreVariants(true);
     setDeleteDialogOpen(true);
   };
 
@@ -173,15 +175,8 @@ export function ProductTable({
 
         toast.success("Sản phẩm và các biến thể đã được ẩn thành công");
       } else if (deleteMode === "hard") {
-        await deleteProductMutation.hardDelete(productToDelete.id);
-
-        // Nếu đang xem nhanh sản phẩm bị xóa vĩnh viễn, đóng dialog xem nhanh
-        if (selectedProduct && selectedProduct.id === productToDelete.id) {
-          setQuickViewOpen(false);
-          setSelectedProduct(null);
-        }
-
-        toast.success("Sản phẩm đã được xóa vĩnh viễn thành công");
+        // perform hard delete via hook
+        await productHardDelete.confirmDelete();
       } else if (deleteMode === "restore") {
         // Thực hiện khôi phục sản phẩm thông qua API, truyền vào tùy chọn khôi phục tất cả biến thể
         await deleteProductMutation.restore({
@@ -743,39 +738,79 @@ export function ProductTable({
             </AlertDialogTitle>
           </AlertDialogHeader>
 
-          {deleteMode === "hard" ? (
-            <>
-              <div className="text-sm text-muted-foreground mb-4">
-                Bạn có chắc chắn muốn xóa vĩnh viễn sản phẩm này không? Hành
-                động này không thể hoàn tác.
-              </div>
-              <div className="rounded-md bg-destructive/10 p-3 border border-destructive/20 mb-4">
-                <div className="flex">
-                  <svg
-                    className="h-5 w-5 text-destructive mt-0.5"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                    <line x1="12" y1="9" x2="12" y2="13"></line>
-                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                  </svg>
-                  <div className="ml-3">
-                    <div className="text-destructive text-sm">
-                      <strong>Cảnh báo:</strong> Tất cả dữ liệu liên quan đến
-                      sản phẩm này sẽ bị xóa vĩnh viễn, bao gồm biến thể, hình
-                      ảnh, đánh giá, và các thông tin khác.
+          {deleteMode === "hard" && (
+            <div className="space-y-4">
+              {productHardDelete.isChecking ? (
+                <div className="flex flex-col items-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
+                  <p>Đang kiểm tra điều kiện xóa...</p>
+                </div>
+              ) : productHardDelete.validationResult ? (
+                productHardDelete.validationResult.canDelete ? (
+                  <div>
+                    <AlertDialogDescription className="text-destructive font-medium">
+                      CẢNH BÁO: Đây là hành động không thể hoàn tác!
+                    </AlertDialogDescription>
+                    <div className="text-sm mb-4 mt-4">
+                      Xóa vĩnh viễn sẽ:
+                      <ul className="list-disc pl-5 space-y-1 mt-2">
+                        <li>Xóa hoàn toàn sản phẩm này khỏi hệ thống</li>
+                        <li>
+                          Xóa tất cả biến thể, hình ảnh và dữ liệu liên quan
+                        </li>
+                        <li>
+                          Hành động này{" "}
+                          <span className="font-bold">không thể khôi phục</span>{" "}
+                          sau khi thực hiện
+                        </li>
+                      </ul>
+                    </div>
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-800">
+                      <div className="flex items-start">
+                        <svg
+                          className="h-5 w-5 text-red-500 mt-0.5"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                          <line x1="12" y1="9" x2="12" y2="13"></line>
+                          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        <div className="ml-3">
+                          <p className="text-sm font-semibold">
+                            Bạn có chắc chắn muốn xóa vĩnh viễn?
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            </>
-          ) : deleteMode === "restore" ? (
+                ) : (
+                  <div>
+                    <div className="text-sm font-semibold text-destructive mb-2">
+                      Không thể xóa vĩnh viễn sản phẩm vì các biến thể sau:
+                    </div>
+                    <ul className="list-disc pl-5 space-y-1 text-sm">
+                      {productHardDelete.validationResult.variantResults
+                        .filter((v) => !v.canDelete)
+                        .flatMap((v) => v.blockingReasons)
+                        .map((reason, idx) => (
+                          <li key={idx} className="text-destructive">
+                            {reason}
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                )
+              ) : null}
+            </div>
+          )}
+
+          {deleteMode === "restore" ? (
             <>
               <div className="text-sm text-muted-foreground mb-4">
                 Bạn có chắc chắn muốn hiển thị lại sản phẩm này không? Sản phẩm
@@ -825,43 +860,51 @@ export function ProductTable({
               </div>
             </>
           ) : (
-            <>
-              <div className="text-sm text-muted-foreground mb-4">
-                Bạn có chắc chắn muốn ẩn sản phẩm này không? Sản phẩm sẽ bị ẩn
-                khỏi cửa hàng nhưng vẫn có thể khôi phục sau.
-              </div>
-              <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 p-3 border border-amber-200 dark:border-amber-800/30 mb-4">
-                <div className="flex">
-                  <svg
-                    className="h-5 w-5 text-amber-500 mt-0.5"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                    <line x1="12" y1="9" x2="12" y2="13"></line>
-                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                  </svg>
-                  <div className="ml-3">
-                    <div className="text-amber-800 dark:text-amber-200 text-sm">
-                      <strong>Lưu ý:</strong> Sản phẩm này sẽ không xuất hiện
-                      trong cửa hàng và khách hàng sẽ không thể tìm thấy hoặc
-                      mua nó. Tất cả các biến thể sẽ cũng bị ẩn.
+            deleteMode === "soft" && (
+              <>
+                <div className="text-sm text-muted-foreground mb-4">
+                  Bạn có chắc chắn muốn ẩn sản phẩm này không? Sản phẩm sẽ bị ẩn
+                  khỏi cửa hàng nhưng vẫn có thể khôi phục sau.
+                </div>
+                <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 p-3 border border-amber-200 dark:border-amber-800/30 mb-4">
+                  <div className="flex">
+                    <svg
+                      className="h-5 w-5 text-amber-500 mt-0.5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                      <line x1="12" y1="9" x2="12" y2="13"></line>
+                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <div className="ml-3">
+                      <div className="text-amber-800 dark:text-amber-200 text-sm">
+                        <strong>Lưu ý:</strong> Sản phẩm này sẽ không xuất hiện
+                        trong cửa hàng và khách hàng sẽ không thể tìm thấy hoặc
+                        mua nó. Tất cả các biến thể sẽ cũng bị ẩn.
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </>
+              </>
+            )
           )}
 
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
+              disabled={
+                deleteMode === "hard" &&
+                (productHardDelete.isChecking ||
+                  (productHardDelete.validationResult &&
+                    !productHardDelete.validationResult.canDelete))
+              }
               className={
                 deleteMode === "hard"
                   ? "bg-red-600 hover:bg-red-700"
