@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import {
   ChevronDown,
   ChevronRight,
@@ -26,25 +26,25 @@ import {
   CreditCard,
   Store,
   AlertCircle,
-} from "lucide-react"
+} from "lucide-react";
 
 interface AdminSidebarProps {
-  onNavClick?: () => void
+  onNavClick?: () => void;
 }
 
 interface SidebarItemProps {
-  href: string
-  icon: React.ReactNode
-  label: string
-  active?: boolean
-  onClick?: () => void
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  active?: boolean;
+  onClick?: () => void;
 }
 
 interface SidebarGroupProps {
-  icon: React.ReactNode
-  label: string
-  children: React.ReactNode
-  defaultOpen?: boolean
+  icon: React.ReactNode;
+  label: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
 }
 
 function SidebarItem({ href, icon, label, active, onClick }: SidebarItemProps) {
@@ -61,11 +61,16 @@ function SidebarItem({ href, icon, label, active, onClick }: SidebarItemProps) {
         <span className="ml-2 truncate">{label}</span>
       </Link>
     </Button>
-  )
+  );
 }
 
-function SidebarGroup({ icon, label, children, defaultOpen = false }: SidebarGroupProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen)
+function SidebarGroup({
+  icon,
+  label,
+  children,
+  defaultOpen = false,
+}: SidebarGroupProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
     <div className="space-y-1">
@@ -85,16 +90,17 @@ function SidebarGroup({ icon, label, children, defaultOpen = false }: SidebarGro
       </Button>
       {isOpen && <div className="pl-3 md:pl-4 space-y-1">{children}</div>}
     </div>
-  )
+  );
 }
 
 export function AdminSidebar({ onNavClick }: AdminSidebarProps) {
-  const pathname = usePathname()
-  const isActive = (path: string) => pathname === path || pathname?.startsWith(`${path}/`)
+  const pathname = usePathname();
+  const isActive = (path: string) =>
+    pathname === path || pathname?.startsWith(`${path}/`);
 
   const handleClick = () => {
-    if (onNavClick) onNavClick()
-  }
+    if (onNavClick) onNavClick();
+  };
 
   return (
     <div className="flex h-full flex-col border-r bg-background">
@@ -134,13 +140,6 @@ export function AdminSidebar({ onNavClick }: AdminSidebarProps) {
               icon={<Layers className="h-4 w-4" />}
               label="Danh mục"
               active={isActive("/admin/catalog/categories")}
-              onClick={handleClick}
-            />
-            <SidebarItem
-              href="/admin/catalog/inventory"
-              icon={<ClipboardList className="h-4 w-4" />}
-              label="Kho hàng"
-              active={isActive("/admin/catalog/inventory")}
               onClick={handleClick}
             />
             <SidebarItem
@@ -272,5 +271,5 @@ export function AdminSidebar({ onNavClick }: AdminSidebarProps) {
         </div>
       </ScrollArea>
     </div>
-  )
+  );
 }
