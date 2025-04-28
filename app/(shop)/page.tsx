@@ -193,11 +193,7 @@ async function getFeaturedCategoryProducts(
         id: pr.id,
         name: pr.name,
         slug: pr.slug,
-<<<<<<< HEAD
         brand: brand,
-=======
-        brand: pr.brands ? { id: pr.brands.id, name: pr.brands.name } : null,
->>>>>>> 967dd70 (feat: thanh toan thanh cong)
         images: pr.product_images,
         price: v.price,
         sale_price: v.sale_price,
