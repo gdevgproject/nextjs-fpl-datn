@@ -56,6 +56,9 @@ import {
   XCircle,
   AlertCircle,
   Clock,
+  Plus,
+  Minus,
+  Save,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import {
@@ -65,9 +68,11 @@ import {
   DialogHeader,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import Image from "next/image";
 import Link from "next/link";
 import { useProductHardDelete } from "../hooks/use-product-hard-delete";
+import { useUpdateProductVariant } from "../hooks/use-product-variants";
 
 interface ProductTableProps {
   products: any[];
@@ -116,6 +121,11 @@ export function ProductTable({
   // State for quick view dialog
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+
+  // State cho việc chỉnh sửa nhanh số lượng tồn kho
+  const [editingVariantId, setEditingVariantId] = useState<number | null>(null);
+  const [editingStockQuantity, setEditingStockQuantity] = useState<string>("");
+  const updateVariantMutation = useUpdateProductVariant();
 
   // Calculate pagination
   const totalPages = Math.ceil(totalCount / pageSize);
@@ -1548,16 +1558,187 @@ export function ProductTable({
                               </TableCell>
                               <TableCell>{variant.sku || "-"}</TableCell>
                               <TableCell
-                                className={`${stockStatus.color} ${stockStatus.bgColor} rounded-md px-2`}
+                                className={`group ${stockStatus.color} ${stockStatus.bgColor} rounded-md px-2 dark:bg-opacity-20 dark:border-opacity-40`}
                               >
-                                <div className="flex items-center justify-between gap-1">
-                                  <span className="font-medium">
-                                    {variant.stock_quantity}
-                                  </span>
-                                  {variant.stock_quantity === 0 && (
-                                    <AlertCircle className="h-3.5 w-3.5" />
-                                  )}
-                                </div>
+                                {editingVariantId === variant.id ? (
+                                  <div className="flex items-center gap-1">
+                                    <div className="flex border rounded-md overflow-hidden dark:border-border">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 p-0 rounded-none border-r dark:border-border"
+                                        onClick={() => {
+                                          const currentVal =
+                                            parseInt(editingStockQuantity) || 0;
+                                          if (currentVal > 0) {
+                                            setEditingStockQuantity(
+                                              (currentVal - 1).toString()
+                                            );
+                                          }
+                                        }}
+                                      >
+                                        <Minus className="h-3 w-3" />
+                                      </Button>
+                                      <Input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={editingStockQuantity}
+                                        onChange={(e) => {
+                                          // Chỉ cho phép nhập số nguyên không âm
+                                          const value = e.target.value.replace(
+                                            /[^0-9]/g,
+                                            ""
+                                          );
+                                          // Giới hạn số lượng tồn kho tối đa là 100.000
+                                          const numValue = Number(value);
+                                          if (numValue <= 100000) {
+                                            setEditingStockQuantity(value);
+                                          }
+                                        }}
+                                        className="w-14 h-7 p-0 text-center border-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
+                                        onKeyDown={(e) => {
+                                          // Submit khi nhấn Enter
+                                          if (e.key === "Enter") {
+                                            const saveButton =
+                                              e.currentTarget.parentElement?.nextElementSibling?.querySelector(
+                                                "button"
+                                              );
+                                            if (saveButton) {
+                                              saveButton.click();
+                                            }
+                                          }
+                                          // Cancel khi nhấn Escape
+                                          if (e.key === "Escape") {
+                                            setEditingVariantId(null);
+                                            setEditingStockQuantity("");
+                                          }
+                                        }}
+                                        autoFocus
+                                      />
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 p-0 rounded-none border-l dark:border-border"
+                                        onClick={() => {
+                                          const currentVal =
+                                            parseInt(editingStockQuantity) || 0;
+                                          if (currentVal < 100000) {
+                                            setEditingStockQuantity(
+                                              (currentVal + 1).toString()
+                                            );
+                                          }
+                                        }}
+                                      >
+                                        <Plus className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 p-0 text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30"
+                                      onClick={async () => {
+                                        try {
+                                          // Lấy giá trị số lượng mới
+                                          const newQuantity =
+                                            parseInt(editingStockQuantity) || 0;
+
+                                          // Không thực hiện cập nhật nếu số lượng không thay đổi
+                                          if (
+                                            variant.stock_quantity ===
+                                            newQuantity
+                                          ) {
+                                            setEditingVariantId(null);
+                                            setEditingStockQuantity("");
+                                            return;
+                                          }
+
+                                          // Cập nhật biến thể
+                                          await updateVariantMutation.mutateAsync(
+                                            {
+                                              id: variant.id,
+                                              product_id: selectedProduct.id,
+                                              volume_ml: variant.volume_ml,
+                                              price: variant.price,
+                                              sale_price:
+                                                variant.sale_price || null,
+                                              sku: variant.sku || null,
+                                              stock_quantity: newQuantity,
+                                            }
+                                          );
+
+                                          // Cập nhật state của sản phẩm đang xem để hiển thị ngay lập tức
+                                          setSelectedProduct((prev) => ({
+                                            ...prev,
+                                            variants: prev.variants.map(
+                                              (v: any) =>
+                                                v.id === variant.id
+                                                  ? {
+                                                      ...v,
+                                                      stock_quantity:
+                                                        newQuantity,
+                                                    }
+                                                  : v
+                                            ),
+                                          }));
+
+                                          // Kết thúc chế độ chỉnh sửa
+                                          setEditingVariantId(null);
+                                          setEditingStockQuantity("");
+
+                                          toast.success(
+                                            "Đã cập nhật số lượng tồn kho",
+                                            {
+                                              description: `${variant.volume_ml}ml: ${variant.stock_quantity} → ${newQuantity}`,
+                                            }
+                                          );
+                                        } catch (error) {
+                                          toast.error("Lỗi cập nhật tồn kho", {
+                                            description:
+                                              error instanceof Error
+                                                ? error.message
+                                                : "Đã xảy ra lỗi khi cập nhật số lượng tồn kho",
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <Save className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                      onClick={() => {
+                                        setEditingVariantId(null);
+                                        setEditingStockQuantity("");
+                                      }}
+                                    >
+                                      <XCircle className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div
+                                    className="flex items-center justify-between gap-1 cursor-pointer relative select-none"
+                                    onClick={() => {
+                                      setEditingVariantId(variant.id);
+                                      setEditingStockQuantity(
+                                        variant.stock_quantity.toString()
+                                      );
+                                    }}
+                                  >
+                                    <span className="font-medium">
+                                      {variant.stock_quantity}
+                                    </span>
+                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 inset-y-0 flex items-center justify-end pr-1 bg-gradient-to-l from-transparent via-transparent to-transparent">
+                                      {variant.stock_quantity === 0 ? (
+                                        <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+                                      ) : (
+                                        <Pencil className="h-3 w-3 text-muted-foreground" />
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
                               </TableCell>
                               <TableCell>{stockStatus.badge}</TableCell>
                             </TableRow>
@@ -1567,17 +1748,8 @@ export function ProductTable({
                     </Table>
                   </div>
 
-                  {/* Nút cập nhật kho và báo cáo */}
-                  <div className="mt-4 flex justify-between">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center gap-1"
-                      onClick={() => onEdit(selectedProduct)}
-                    >
-                      <Clock className="h-3.5 w-3.5 mr-1" />
-                      Cập nhật tồn kho
-                    </Button>
+                  {/* Nút lịch sử kho */}
+                  <div className="mt-4 flex justify-end">
                     <Button
                       variant="secondary"
                       size="sm"
