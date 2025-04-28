@@ -1,9 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
+import { getInventoryHistoryByVariantId } from "../actions";
 
 export interface InventoryHistoryItem {
   id: number;
@@ -22,67 +22,12 @@ export interface InventoryHistoryItem {
  * Hook to fetch inventory history for a specific product variant
  */
 export function useInventoryHistory(variantId: number | null) {
-  const supabase = getSupabaseBrowserClient();
-
   return useQuery({
     queryKey: ["inventory_history", variantId],
     queryFn: async (): Promise<InventoryHistoryItem[]> => {
       if (!variantId) return [];
-
-      try {
-        // Query inventory history
-        const { data: inventoryData, error: inventoryError } = await supabase
-          .from("inventory")
-          .select(
-            `
-            *,
-            orders:order_id (
-              id
-            )
-          `
-          )
-          .eq("variant_id", variantId)
-          .order("timestamp", { ascending: false });
-
-        if (inventoryError) {
-          console.error("Error fetching inventory history:", inventoryError);
-          throw new Error(inventoryError.message);
-        }
-
-        // Process the data to include user email
-        const result = await Promise.all(
-          (inventoryData || []).map(async (item) => {
-            let userEmail = null;
-
-            // If there's an updated_by user ID, fetch that user's email separately
-            if (item.updated_by) {
-              const { data: userData, error: userError } = await supabase
-                .from("profiles")
-                .select("id")
-                .eq("id", item.updated_by)
-                .single();
-
-              if (!userError && userData) {
-                // Now get the email from auth.users
-                const { data: authUser } =
-                  await supabase.auth.admin.getUserById(item.updated_by);
-                userEmail = authUser?.user?.email || "Hệ thống";
-              }
-            }
-
-            return {
-              ...item,
-              user_email: userEmail || "Hệ thống",
-              order_number: item.orders?.id ? `#${item.orders.id}` : null,
-            };
-          })
-        );
-
-        return result;
-      } catch (error) {
-        console.error("Error fetching inventory history:", error);
-        return [];
-      }
+      // Gọi server action để lấy lịch sử kho (bypass RLS)
+      return await getInventoryHistoryByVariantId(variantId);
     },
     enabled: !!variantId,
   });

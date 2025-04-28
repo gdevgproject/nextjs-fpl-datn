@@ -10,6 +10,7 @@ import {
 import { StorageError } from "@supabase/storage-js";
 import { PostgrestError } from "@supabase/supabase-js";
 import { z } from "zod";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 
 /**
  * Create a new product
@@ -784,4 +785,53 @@ export async function createProductImageAction(
     console.error("Error in createProductImageAction:", error);
     return { error: "Failed to create product image", success: false };
   }
+}
+
+/**
+ * Lấy lịch sử kho cho một biến thể sản phẩm, bao gồm email người thực hiện
+ */
+export async function getInventoryHistoryByVariantId(variantId: number) {
+  if (!variantId) return [];
+  const supabase = await createServiceRoleClient();
+
+  // Lấy lịch sử kho
+  const { data: inventoryData, error: inventoryError } = await supabase
+    .from("inventory")
+    .select(`*, orders:order_id (id)`)
+    .eq("variant_id", variantId)
+    .order("timestamp", { ascending: false });
+
+  if (inventoryError) {
+    console.error("Error fetching inventory history:", inventoryError);
+    return [];
+  }
+
+  // Lấy danh sách userId cần lấy email
+  const userIds = (inventoryData || [])
+    .map((item) => item.updated_by)
+    .filter((id) => !!id);
+  let userEmailMap: Record<string, string> = {};
+  if (userIds.length > 0) {
+    // Lấy email từ bảng auth.users
+    const { data: usersData, error: usersError } =
+      await supabase.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000,
+      });
+    if (!usersError && usersData?.users) {
+      userEmailMap = usersData.users.reduce((acc, user) => {
+        acc[user.id] = user.email || "Hệ thống";
+        return acc;
+      }, {} as Record<string, string>);
+    }
+  }
+
+  // Gắn email vào từng bản ghi
+  return (inventoryData || []).map((item) => ({
+    ...item,
+    user_email: item.updated_by
+      ? userEmailMap[item.updated_by] || "Hệ thống"
+      : "Hệ thống",
+    order_number: item.orders?.id ? `#${item.orders.id}` : null,
+  }));
 }
