@@ -51,6 +51,11 @@ import {
   Box,
   ExternalLink,
   Info,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Clock,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import {
@@ -299,20 +304,139 @@ export function ProductTable({
   // Get stock status
   const getStockStatus = (product: any) => {
     if (!product.variants || product.variants.length === 0) {
-      return { status: "Chưa có biến thể", color: "default" };
+      return {
+        status: "Chưa có biến thể",
+        color: "default",
+        icon: <Info className="h-4 w-4 mr-1.5" />,
+        bgColor: "bg-gray-100",
+        textColor: "text-gray-700",
+      };
     }
 
-    const totalStock = product.variants.reduce(
+    // Chỉ tính các biến thể chưa bị xóa nếu product đang hiển thị (chưa bị xóa)
+    const activeVariants = !product.deleted_at
+      ? product.variants.filter((v: any) => !v.deleted_at)
+      : product.variants;
+
+    if (activeVariants.length === 0) {
+      return {
+        status: "Không có biến thể hiển thị",
+        color: "default",
+        icon: <Info className="h-4 w-4 mr-1.5" />,
+        bgColor: "bg-gray-100",
+        textColor: "text-gray-700",
+      };
+    }
+
+    // Phân loại biến thể theo trạng thái tồn kho
+    const outOfStockVariants = activeVariants.filter(
+      (v: any) => v.stock_quantity === 0
+    );
+    const lowStockVariants = activeVariants.filter(
+      (v: any) => v.stock_quantity > 0 && v.stock_quantity < 5
+    );
+    const healthyStockVariants = activeVariants.filter(
+      (v: any) => v.stock_quantity >= 5
+    );
+
+    // Tính tổng tồn kho
+    const totalStock = activeVariants.reduce(
       (sum: number, variant: any) => sum + (variant.stock_quantity || 0),
       0
     );
 
+    // Thống kê số lượng biến thể theo trạng thái
+    const outOfStockCount = outOfStockVariants.length;
+    const lowStockCount = lowStockVariants.length;
+    const variantsCount = activeVariants.length;
+
+    // Thống kê thêm về tình trạng tồn kho
+    const stockStats = {
+      total: totalStock,
+      avgPerVariant:
+        totalStock > 0 ? Math.round((totalStock / variantsCount) * 10) / 10 : 0,
+      lowStockCount,
+      outOfStockCount,
+      healthyCount: healthyStockVariants.length,
+      lowStockPercent: Math.round((lowStockCount / variantsCount) * 100),
+      outOfStockPercent: Math.round((outOfStockCount / variantsCount) * 100),
+      healthyPercent: Math.round(
+        (healthyStockVariants.length / variantsCount) * 100
+      ),
+    };
+
+    // Đánh giá trạng thái tồn kho tổng thể
     if (totalStock === 0) {
-      return { status: "Hết hàng", color: "destructive" };
-    } else if (totalStock < 10) {
-      return { status: `Sắp hết (${totalStock})`, color: "warning" };
+      return {
+        status: `Hết hàng (${variantsCount} biến thể)`,
+        color: "destructive",
+        icon: <XCircle className="h-4 w-4 mr-1.5" />,
+        detail: `${outOfStockCount}/${variantsCount} biến thể hết hàng`,
+        variantStats: {
+          outOfStock: outOfStockCount,
+          lowStock: lowStockCount,
+          healthy: healthyStockVariants.length,
+          total: variantsCount,
+        },
+        stockStats,
+        bgColor: "bg-red-50",
+        textColor: "text-red-700",
+        borderColor: "border-red-200",
+      };
+    } else if (outOfStockCount > 0) {
+      // Có biến thể đã hết hàng
+      return {
+        status: `${outOfStockCount} biến thể hết hàng (${totalStock})`,
+        color: "warning",
+        icon: <AlertTriangle className="h-4 w-4 mr-1.5" />,
+        detail: `${outOfStockCount}/${variantsCount} biến thể đã hết hàng, còn ${totalStock} sản phẩm ở các biến thể khác`,
+        variantStats: {
+          outOfStock: outOfStockCount,
+          lowStock: lowStockCount,
+          healthy: healthyStockVariants.length,
+          total: variantsCount,
+        },
+        stockStats,
+        bgColor: "bg-amber-50",
+        textColor: "text-amber-700",
+        borderColor: "border-amber-200",
+      };
+    } else if (lowStockCount > 0) {
+      // Có biến thể sắp hết hàng
+      return {
+        status: `${lowStockCount} biến thể sắp hết (${totalStock})`,
+        color: "warning",
+        icon: <AlertCircle className="h-4 w-4 mr-1.5" />,
+        detail: `${lowStockCount}/${variantsCount} biến thể sắp hết hàng, tổng còn ${totalStock} sản phẩm`,
+        variantStats: {
+          outOfStock: outOfStockCount,
+          lowStock: lowStockCount,
+          healthy: healthyStockVariants.length,
+          total: variantsCount,
+        },
+        stockStats,
+        bgColor: "bg-yellow-50",
+        textColor: "text-yellow-700",
+        borderColor: "border-yellow-200",
+      };
     } else {
-      return { status: `Còn hàng (${totalStock})`, color: "success" };
+      // Tất cả đều ổn
+      return {
+        status: `Còn hàng (${totalStock})`,
+        color: "success",
+        icon: <CheckCircle2 className="h-4 w-4 mr-1.5" />,
+        detail: `${variantsCount} biến thể có đủ hàng, tổng ${totalStock} sản phẩm`,
+        variantStats: {
+          outOfStock: outOfStockCount,
+          lowStock: lowStockCount,
+          healthy: healthyStockVariants.length,
+          total: variantsCount,
+        },
+        stockStats,
+        bgColor: "bg-green-50",
+        textColor: "text-green-700",
+        borderColor: "border-green-200",
+      };
     }
   };
 
@@ -472,9 +596,132 @@ export function ProductTable({
                       </TableCell>
                       <TableCell>{formatPriceRange(product)}</TableCell>
                       <TableCell>
-                        <Badge variant={stockStatus.color as any}>
-                          {stockStatus.status}
-                        </Badge>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center">
+                                <Badge
+                                  variant={stockStatus.color as any}
+                                  className={`flex items-center gap-1 ${stockStatus.bgColor} ${stockStatus.textColor} hover:${stockStatus.bgColor} border ${stockStatus.borderColor}`}
+                                >
+                                  {stockStatus.icon}
+                                  {stockStatus.status}
+                                </Badge>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent className="p-3 w-64">
+                              <div className="space-y-2">
+                                <p className="font-semibold mb-1 border-b pb-1">
+                                  Chi tiết tồn kho:
+                                </p>
+                                <p className={stockStatus.textColor}>
+                                  {stockStatus.detail || stockStatus.status}
+                                </p>
+
+                                {product.variants &&
+                                  product.variants.length > 0 && (
+                                    <>
+                                      <div className="mt-2 pt-2 border-t">
+                                        <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+                                          <div className="flex justify-between">
+                                            <span className="text-muted-foreground">
+                                              Tổng tồn kho:
+                                            </span>
+                                            <span className="font-medium">
+                                              {stockStatus.stockStats?.total}{" "}
+                                              sản phẩm
+                                            </span>
+                                          </div>
+                                          <div className="flex justify-between">
+                                            <span className="text-muted-foreground">
+                                              Trung bình:
+                                            </span>
+                                            <span className="font-medium">
+                                              {
+                                                stockStatus.stockStats
+                                                  ?.avgPerVariant
+                                              }
+                                              /biến thể
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="space-y-1.5">
+                                        <div className="flex items-center gap-1">
+                                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                          <span className="text-sm">
+                                            {stockStatus.variantStats?.healthy}/
+                                            {stockStatus.variantStats?.total}{" "}
+                                            biến thể đủ hàng
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                          <span className="text-sm">
+                                            {stockStatus.variantStats?.lowStock}
+                                            /{stockStatus.variantStats?.total}{" "}
+                                            biến thể sắp hết
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                          <span className="text-sm">
+                                            {
+                                              stockStatus.variantStats
+                                                ?.outOfStock
+                                            }
+                                            /{stockStatus.variantStats?.total}{" "}
+                                            biến thể hết hàng
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      {product.variants &&
+                                        product.variants.length > 0 && (
+                                          <div className="mt-2 pt-2 border-t space-y-1">
+                                            <p className="text-xs font-medium">
+                                              Chi tiết biến thể:
+                                            </p>
+                                            <div className="max-h-32 overflow-y-auto pr-1">
+                                              {product.variants.map(
+                                                (variant: any) => (
+                                                  <div
+                                                    key={variant.id}
+                                                    className="flex justify-between text-xs py-0.5 border-b border-dashed last:border-0"
+                                                  >
+                                                    <span>
+                                                      {variant.volume_ml}ml:
+                                                    </span>
+                                                    <span
+                                                      className={
+                                                        variant.stock_quantity ===
+                                                        0
+                                                          ? "text-red-500 font-medium"
+                                                          : variant.stock_quantity <
+                                                            5
+                                                          ? "text-yellow-500 font-medium"
+                                                          : "text-green-600"
+                                                      }
+                                                    >
+                                                      {variant.stock_quantity}{" "}
+                                                      {variant.stock_quantity ===
+                                                        0 && (
+                                                        <XCircle className="inline h-3 w-3 ml-0.5" />
+                                                      )}
+                                                    </span>
+                                                  </div>
+                                                )
+                                              )}
+                                            </div>
+                                          </div>
+                                        )}
+                                    </>
+                                  )}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </TableCell>
                       <TableCell>
                         {product.deleted_at ? (
@@ -642,19 +889,34 @@ export function ProductTable({
                         {product.concentrations?.name || "Chưa phân loại"}
                       </div>
 
-                      <div className="flex items-center gap-2 mt-1">
-                        <Tag className="h-3.5 w-3.5" />
-                        <span className="font-medium">
-                          {formatPriceRange(product)}
-                        </span>
-                      </div>
+                      <div className="flex flex-col gap-1 mt-1">
+                        <div className="flex items-center gap-2">
+                          <Tag className="h-3.5 w-3.5" />
+                          <span className="font-medium">
+                            {formatPriceRange(product)}
+                          </span>
+                        </div>
 
-                      <div className="flex items-center gap-2">
-                        <Box className="h-3.5 w-3.5" />
-                        <span className="text-sm">
-                          {product.variants?.length || 0} biến thể • ID:{" "}
-                          {product.id}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <Box className="h-3.5 w-3.5" />
+                          <span className="text-sm">
+                            {product.variants?.length || 0} biến thể • ID:{" "}
+                            {product.id}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1 mt-1">
+                          {stockStatus.icon}
+                          <div className="flex-1">
+                            <div className="text-xs flex items-center gap-1">
+                              <span
+                                className={`font-medium ${stockStatus.textColor}`}
+                              >
+                                {stockStatus.detail || stockStatus.status}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -1050,6 +1312,153 @@ export function ProductTable({
                     <Box className="h-4 w-4" />
                     Biến thể sản phẩm ({selectedProduct.variants.length})
                   </h3>
+
+                  {/* Thêm biểu đồ tóm tắt tồn kho */}
+                  <div className="mb-4 p-4 border rounded-md bg-card">
+                    <h4 className="text-sm font-medium mb-3">
+                      Tóm tắt tồn kho
+                    </h4>
+
+                    {/* Thêm số liệu tổng quan */}
+                    <div className="grid grid-cols-3 gap-4 mb-4">
+                      <div className="p-3 rounded-md bg-blue-50 border border-blue-100">
+                        <p className="text-xs text-blue-700 mb-1">
+                          Tổng tồn kho
+                        </p>
+                        <p className="text-2xl font-semibold text-blue-600">
+                          {selectedProduct.variants.reduce(
+                            (sum: number, v: any) =>
+                              sum + (v.stock_quantity || 0),
+                            0
+                          )}
+                        </p>
+                      </div>
+
+                      <div className="p-3 rounded-md bg-amber-50 border border-amber-100">
+                        <p className="text-xs text-amber-700 mb-1">
+                          Biến thể chứa hàng
+                        </p>
+                        <p className="text-2xl font-semibold text-amber-600">
+                          {
+                            selectedProduct.variants.filter(
+                              (v: any) => v.stock_quantity > 0
+                            ).length
+                          }
+                          /{selectedProduct.variants.length}
+                        </p>
+                      </div>
+
+                      <div className="p-3 rounded-md bg-emerald-50 border border-emerald-100">
+                        <p className="text-xs text-emerald-700 mb-1">
+                          Trung bình/biến thể
+                        </p>
+                        <p className="text-2xl font-semibold text-emerald-600">
+                          {Math.round(
+                            (selectedProduct.variants.reduce(
+                              (sum: number, v: any) =>
+                                sum + (v.stock_quantity || 0),
+                              0
+                            ) /
+                              selectedProduct.variants.length) *
+                              10
+                          ) / 10}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-4 mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                        <span className="text-sm">
+                          {
+                            selectedProduct.variants.filter(
+                              (v: any) => v.stock_quantity >= 5
+                            ).length
+                          }{" "}
+                          đủ hàng
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                        <span className="text-sm">
+                          {
+                            selectedProduct.variants.filter(
+                              (v: any) =>
+                                v.stock_quantity > 0 && v.stock_quantity < 5
+                            ).length
+                          }{" "}
+                          sắp hết
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                        <span className="text-sm">
+                          {
+                            selectedProduct.variants.filter(
+                              (v: any) => v.stock_quantity === 0
+                            ).length
+                          }{" "}
+                          hết hàng
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(40px,1fr))] gap-2 h-10 mt-2">
+                      {selectedProduct.variants.map((variant: any) => {
+                        let bgColor = "bg-red-500";
+                        let borderColor = "border-red-600";
+                        let textColor = "text-white";
+
+                        if (variant.stock_quantity >= 5) {
+                          bgColor = "bg-green-500";
+                          borderColor = "border-green-600";
+                        } else if (variant.stock_quantity > 0) {
+                          bgColor = "bg-yellow-500";
+                          borderColor = "border-yellow-600";
+                        }
+
+                        return (
+                          <TooltipProvider key={variant.id}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div
+                                  className={`relative h-full rounded ${bgColor} border ${borderColor} flex items-center justify-center font-medium ${textColor} text-xs`}
+                                >
+                                  {variant.volume_ml}
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent className="p-2">
+                                <div className="text-xs space-y-1">
+                                  <div className="font-medium text-sm">
+                                    {variant.volume_ml}ml
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span>Tồn kho:</span>
+                                    <span
+                                      className={
+                                        variant.stock_quantity === 0
+                                          ? "text-red-500 font-medium"
+                                          : variant.stock_quantity < 5
+                                          ? "text-yellow-500 font-medium"
+                                          : "text-green-600 font-medium"
+                                      }
+                                    >
+                                      {variant.stock_quantity}
+                                    </span>
+                                  </div>
+                                  <div>SKU: {variant.sku || "N/A"}</div>
+                                  {variant.deleted_at && (
+                                    <div className="text-red-500">Đã ẩn</div>
+                                  )}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   <div className="rounded-md border overflow-x-auto">
                     <Table>
                       <TableHeader>
@@ -1063,48 +1472,136 @@ export function ProductTable({
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {selectedProduct.variants.map((variant: any) => (
-                          <TableRow
-                            key={variant.id}
-                            className={variant.deleted_at ? "bg-muted/40" : ""}
-                          >
-                            <TableCell>
-                              {variant.volume_ml} ml
-                              {variant.deleted_at && (
-                                <span className="ml-2 text-xs px-1.5 py-0.5 rounded-md bg-destructive/10 text-destructive border border-destructive/20">
-                                  Đã ẩn
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {new Intl.NumberFormat("vi-VN", {
-                                style: "currency",
-                                currency: "VND",
-                              }).format(variant.price)}
-                            </TableCell>
-                            <TableCell>
-                              {variant.sale_price
-                                ? new Intl.NumberFormat("vi-VN", {
-                                    style: "currency",
-                                    currency: "VND",
-                                  }).format(variant.sale_price)
-                                : "-"}
-                            </TableCell>
-                            <TableCell>{variant.sku || "-"}</TableCell>
-                            <TableCell>{variant.stock_quantity}</TableCell>
-                            <TableCell>
-                              {variant.stock_quantity === 0 ? (
-                                <Badge variant="destructive">Hết hàng</Badge>
-                              ) : variant.stock_quantity < 10 ? (
-                                <Badge variant="warning">Sắp hết</Badge>
-                              ) : (
-                                <Badge variant="success">Còn hàng</Badge>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {selectedProduct.variants.map((variant: any) => {
+                          // Xác định màu sắc và trạng thái dựa trên số lượng tồn kho
+                          let stockStatus = {
+                            badge: (
+                              <Badge
+                                variant="destructive"
+                                className="bg-red-100 text-red-700 border border-red-200 hover:bg-red-200"
+                              >
+                                Hết hàng
+                              </Badge>
+                            ),
+                            color: "text-red-500",
+                            bgColor: "bg-red-50",
+                          };
+
+                          if (variant.stock_quantity > 0) {
+                            if (variant.stock_quantity < 5) {
+                              stockStatus = {
+                                badge: (
+                                  <Badge
+                                    variant="warning"
+                                    className="bg-yellow-100 text-yellow-700 border border-yellow-200 hover:bg-yellow-200"
+                                  >
+                                    Sắp hết
+                                  </Badge>
+                                ),
+                                color: "text-yellow-700",
+                                bgColor: "bg-yellow-50",
+                              };
+                            } else {
+                              stockStatus = {
+                                badge: (
+                                  <Badge
+                                    variant="success"
+                                    className="bg-green-100 text-green-700 border border-green-200 hover:bg-green-200"
+                                  >
+                                    Còn hàng
+                                  </Badge>
+                                ),
+                                color: "text-green-700",
+                                bgColor: "bg-green-50",
+                              };
+                            }
+                          }
+
+                          return (
+                            <TableRow
+                              key={variant.id}
+                              className={
+                                variant.deleted_at ? "bg-muted/40" : ""
+                              }
+                            >
+                              <TableCell>
+                                {variant.volume_ml} ml
+                                {variant.deleted_at && (
+                                  <span className="ml-2 text-xs px-1.5 py-0.5 rounded-md bg-destructive/10 text-destructive border border-destructive/20">
+                                    Đã ẩn
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {new Intl.NumberFormat("vi-VN", {
+                                  style: "currency",
+                                  currency: "VND",
+                                }).format(variant.price)}
+                              </TableCell>
+                              <TableCell>
+                                {variant.sale_price
+                                  ? new Intl.NumberFormat("vi-VN", {
+                                      style: "currency",
+                                      currency: "VND",
+                                    }).format(variant.sale_price)
+                                  : "-"}
+                              </TableCell>
+                              <TableCell>{variant.sku || "-"}</TableCell>
+                              <TableCell
+                                className={`${stockStatus.color} ${stockStatus.bgColor} rounded-md px-2`}
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="font-medium">
+                                    {variant.stock_quantity}
+                                  </span>
+                                  {variant.stock_quantity === 0 && (
+                                    <AlertCircle className="h-3.5 w-3.5" />
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>{stockStatus.badge}</TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
+                  </div>
+
+                  {/* Nút cập nhật kho và báo cáo */}
+                  <div className="mt-4 flex justify-between">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-1"
+                      onClick={() => onEdit(selectedProduct)}
+                    >
+                      <Clock className="h-3.5 w-3.5 mr-1" />
+                      Cập nhật tồn kho
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="flex items-center gap-1"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="h-3.5 w-3.5 mr-1"
+                      >
+                        <rect x="4" y="3" width="16" height="18" rx="2" />
+                        <line x1="8" y1="7" x2="16" y2="7" />
+                        <line x1="8" y1="11" x2="16" y2="11" />
+                        <line x1="8" y1="15" x2="12" y2="15" />
+                      </svg>
+                      Lịch sử kho
+                    </Button>
                   </div>
                 </div>
               )}
