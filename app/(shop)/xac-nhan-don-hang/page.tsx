@@ -11,67 +11,27 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle, ShoppingBag } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
-import { OrderConfirmationClient } from "@/features/shop/order-confirmation/components/order-confirmation-client";
 import { CopyAccessToken } from "@/features/shop/order-confirmation/components/copy-access-token";
-import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import OrderConfirmationRedirect from "@/features/shop/order-confirmation/components/order-confirmation-redirect";
 
-// Server-side fetch for order details
-async function getOrderServerSide(
-  orderId: string | null,
-  token: string | null
-) {
+export default async function OrderConfirmationPage({
+  searchParams,
+}: {
+  searchParams: Record<string, string>;
+}) {
+  const token = searchParams?.token || null;
+  const resultCode = searchParams?.resultCode || null;
+  const extraData = searchParams?.extraData || null;
+
+  // Fetch order data server-side
   const { getOrderDetails } = await import(
     "@/features/shop/order-confirmation/actions"
   );
-
-  if (!orderId && !token) {
-    return { error: "Không tìm thấy thông tin đơn hàng", data: null };
-  }
-
-  try {
-    if (token) {
-      // Get order details using access token (for guest users)
-      const result = await getOrderDetails(token, true);
-      return result;
-    } else if (orderId) {
-      // Get order details using orderId (for authenticated users)
-      const result = await getOrderDetails(orderId);
-      return result;
-    } else {
-      return { error: "Không tìm thấy thông tin đơn hàng", data: null };
-    }
-  } catch (err) {
-    console.error("Error fetching order:", err);
-    return {
-      error: "Đã xảy ra lỗi khi lấy thông tin đơn hàng",
-      data: null,
-    };
-  }
-}
-
-export default function OrderConfirmationPage() {
-  const router = useRouter();
-  const params = useSearchParams();
-  const resultCode = params.get("resultCode");
-  // Nếu có resultCode và khác 0 thì chuyển sang trang thất bại
-  useEffect(() => {
-    if (resultCode && resultCode !== "0") {
-      router.replace("/thanh-toan/that-bai");
-    }
-  }, [resultCode, router]);
-
-  const orderId =
-    typeof params.get("orderId") === "string" ? params.get("orderId") : null;
-  const token =
-    typeof params.get("token") === "string" ? params.get("token") : null;
-
-  const { data: order, error } = await getOrderServerSide(orderId, token);
+  const { data: order, error } = await getOrderDetails(extraData, token);
 
   return (
     <div className="container py-8 max-w-3xl mx-auto">
-      {/* Client component for state management, doesn't render anything */}
-      <OrderConfirmationClient />
+      <OrderConfirmationRedirect resultCode={resultCode} />
 
       {error ? (
         <Card>
