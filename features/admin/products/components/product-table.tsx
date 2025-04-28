@@ -73,6 +73,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useProductHardDelete } from "../hooks/use-product-hard-delete";
 import { useUpdateProductVariant } from "../hooks/use-product-variants";
+import { InventoryHistoryModal } from "./inventory-history-modal";
 
 interface ProductTableProps {
   products: any[];
@@ -122,9 +123,13 @@ export function ProductTable({
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
 
-  // State cho việc chỉnh sửa nhanh số lượng tồn kho
+  // State for inventory history modal
+  const [inventoryHistoryOpen, setInventoryHistoryOpen] = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState<any | null>(null);
+
+  // Edit variant stock quantity state
   const [editingVariantId, setEditingVariantId] = useState<number | null>(null);
-  const [editingStockQuantity, setEditingStockQuantity] = useState<string>("");
+  const [editingStockQuantity, setEditingStockQuantity] = useState("");
   const updateVariantMutation = useUpdateProductVariant();
 
   // Calculate pagination
@@ -273,6 +278,12 @@ export function ProductTable({
   const handleQuickView = (product: any) => {
     setSelectedProduct(product);
     setQuickViewOpen(true);
+  };
+
+  // Handle opening inventory history modal
+  const handleOpenInventoryHistory = (variant: any) => {
+    setSelectedVariant(variant);
+    setInventoryHistoryOpen(true);
   };
 
   // Get the main image for a product
@@ -1740,7 +1751,53 @@ export function ProductTable({
                                   </div>
                                 )}
                               </TableCell>
-                              <TableCell>{stockStatus.badge}</TableCell>
+                              <TableCell>
+                                {variant.deleted_at ? (
+                                  <span className="ml-2 text-xs px-1.5 py-0.5 rounded-md bg-destructive/10 text-destructive border border-destructive/20">
+                                    Đã ẩn
+                                  </span>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    {stockStatus.badge}
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 p-0 text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400"
+                                      onClick={() =>
+                                        handleOpenInventoryHistory({
+                                          ...variant,
+                                          product_name: selectedProduct.name,
+                                        })
+                                      }
+                                      title="Xem lịch sử kho"
+                                    >
+                                      <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        className="h-4 w-4"
+                                      >
+                                        <rect
+                                          x="4"
+                                          y="3"
+                                          width="16"
+                                          height="18"
+                                          rx="2"
+                                        />
+                                        <line x1="8" y1="7" x2="16" y2="7" />
+                                        <line x1="8" y1="11" x2="16" y2="11" />
+                                        <line x1="8" y1="15" x2="12" y2="15" />
+                                      </svg>
+                                    </Button>
+                                  </div>
+                                )}
+                              </TableCell>
                             </TableRow>
                           );
                         })}
@@ -1750,36 +1807,63 @@ export function ProductTable({
 
                   {/* Nút lịch sử kho */}
                   <div className="mt-4 flex justify-end">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="flex items-center gap-1"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="h-3.5 w-3.5 mr-1"
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-1"
+                        onClick={() => {
+                          // Find the variant with the highest stock for demonstration
+                          const variantToShow =
+                            selectedProduct.variants.length > 0
+                              ? selectedProduct.variants[0]
+                              : null;
+
+                          if (variantToShow) {
+                            handleOpenInventoryHistory({
+                              ...variantToShow,
+                              product_name: selectedProduct.name,
+                            });
+                          } else {
+                            toast.error(
+                              "Không có biến thể nào để hiển thị lịch sử kho"
+                            );
+                          }
+                        }}
                       >
-                        <rect x="4" y="3" width="16" height="18" rx="2" />
-                        <line x1="8" y1="7" x2="16" y2="7" />
-                        <line x1="8" y1="11" x2="16" y2="11" />
-                        <line x1="8" y1="15" x2="12" y2="15" />
-                      </svg>
-                      Lịch sử kho
-                    </Button>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="h-3.5 w-3.5 mr-1"
+                        >
+                          <rect x="4" y="3" width="16" height="18" rx="2" />
+                          <line x1="8" y1="7" x2="16" y2="7" />
+                          <line x1="8" y1="11" x2="16" y2="11" />
+                          <line x1="8" y1="15" x2="12" y2="15" />
+                        </svg>
+                        Xem lịch sử kho
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Inventory History Modal */}
+      <InventoryHistoryModal
+        open={inventoryHistoryOpen}
+        onOpenChange={setInventoryHistoryOpen}
+        variant={selectedVariant}
+      />
     </div>
   );
 }
