@@ -129,7 +129,7 @@ export function InventoryHistoryModal({
               <Input
                 type="search"
                 placeholder="Tìm kiếm lý do, người thực hiện..."
-                className="pl-8 w-full sm:w-[260px]"
+                className="pl-8 w-full sm:w-[260px] [::-webkit-search-cancel-button]:hidden"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -139,6 +139,8 @@ export function InventoryHistoryModal({
                   size="icon"
                   className="absolute right-0 top-0 h-9 w-9"
                   onClick={() => setSearchTerm("")}
+                  tabIndex={-1}
+                  aria-label="Xóa tìm kiếm"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -223,17 +225,14 @@ export function InventoryHistoryModal({
           </div>
         ) : (
           <div className="rounded-md border overflow-x-auto">
-            <Table>
+            <Table className="min-w-[700px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Thời gian</TableHead>
                   <TableHead>Thay đổi</TableHead>
                   <TableHead>Lý do</TableHead>
-                  <TableHead className="text-center">
-                    Kho sau điều chỉnh
-                  </TableHead>
+                  <TableHead className="text-center">Kho sau điều chỉnh</TableHead>
                   <TableHead>Thực hiện bởi</TableHead>
-                  <TableHead>Chi tiết</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -251,9 +250,7 @@ export function InventoryHistoryModal({
                           <TooltipTrigger asChild>
                             <Badge
                               variant="outline"
-                              className={`${getInventoryChangeColor(
-                                item.change_amount
-                              )} flex items-center gap-1.5 whitespace-nowrap`}
+                              className={`${getInventoryChangeColor(item.change_amount)} flex items-center gap-1.5 whitespace-nowrap`}
                             >
                               {item.change_amount > 0 ? (
                                 <ArrowUpCircle className="h-3.5 w-3.5" />
@@ -269,9 +266,7 @@ export function InventoryHistoryModal({
                             <div className="text-xs">
                               {item.change_amount > 0
                                 ? `Thêm ${item.change_amount} vào kho`
-                                : `Giảm ${Math.abs(
-                                    item.change_amount
-                                  )} khỏi kho`}
+                                : `Giảm ${Math.abs(item.change_amount)} khỏi kho`}
                             </div>
                           </TooltipContent>
                         </Tooltip>
@@ -281,7 +276,7 @@ export function InventoryHistoryModal({
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <div className="flex items-center gap-2 max-w-[180px] truncate">
+                            <div className="flex items-center gap-2 max-w-[180px] truncate cursor-pointer">
                               {item.order_id && (
                                 <ShoppingBag className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
                               )}
@@ -354,45 +349,6 @@ export function InventoryHistoryModal({
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                    </TableCell>
-                    <TableCell>
-                      {item.order_id && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <ShoppingBag className="h-3.5 w-3.5" />
-                                <span className="truncate max-w-[80px]">
-                                  {item.order_number}
-                                </span>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-[300px]">
-                              <div className="text-xs space-y-1">
-                                <div className="font-medium">
-                                  Chi tiết đơn hàng
-                                </div>
-                                {item.order_number && (
-                                  <div>Mã đơn: {item.order_number}</div>
-                                )}
-                                {item.recipient_name && (
-                                  <div>Người nhận: {item.recipient_name}</div>
-                                )}
-                                {item.order_date && (
-                                  <div>
-                                    Ngày đặt:{" "}
-                                    {format(
-                                      new Date(item.order_date),
-                                      "dd/MM/yyyy",
-                                      { locale: vi }
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
                     </TableCell>
                   </TableRow>
                 ))}
