@@ -74,6 +74,8 @@ import Link from "next/link";
 import { useProductHardDelete } from "../hooks/use-product-hard-delete";
 import { useUpdateProductVariant } from "../hooks/use-product-variants";
 import { InventoryHistoryModal } from "./inventory-history-modal";
+import { useAdjustStock } from "../hooks/use-adjust-stock";
+import { StockAdjustmentDialog } from "./stock-adjustment-dialog";
 
 interface ProductTableProps {
   products: any[];
@@ -130,7 +132,18 @@ export function ProductTable({
   // Edit variant stock quantity state
   const [editingVariantId, setEditingVariantId] = useState<number | null>(null);
   const [editingStockQuantity, setEditingStockQuantity] = useState("");
-  const updateVariantMutation = useUpdateProductVariant();
+  // We don't need the updateVariantMutation anymore as we're using the adjustStock hook
+  // const updateVariantMutation = useUpdateProductVariant();
+
+  // Add the adjust stock hook
+  const {
+    prepareAdjustStock,
+    executeAdjustStock,
+    cancelAdjustStock,
+    isPending: isAdjustingStock,
+    isOpen: isAdjustmentDialogOpen,
+    currentVariant,
+  } = useAdjustStock();
 
   // Calculate pagination
   const totalPages = Math.ceil(totalCount / pageSize);
@@ -1649,69 +1662,31 @@ export function ProductTable({
                                       variant="ghost"
                                       size="icon"
                                       className="h-6 w-6 p-0 text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30"
-                                      onClick={async () => {
-                                        try {
-                                          // Lấy giá trị số lượng mới
-                                          const newQuantity =
-                                            parseInt(editingStockQuantity) || 0;
+                                      onClick={() => {
+                                        // Lấy giá trị số lượng mới
+                                        const newQuantity =
+                                          parseInt(editingStockQuantity) || 0;
 
-                                          // Không thực hiện cập nhật nếu số lượng không thay đổi
-                                          if (
-                                            variant.stock_quantity ===
-                                            newQuantity
-                                          ) {
-                                            setEditingVariantId(null);
-                                            setEditingStockQuantity("");
-                                            return;
-                                          }
-
-                                          // Cập nhật biến thể
-                                          await updateVariantMutation.mutateAsync(
-                                            {
-                                              id: variant.id,
-                                              product_id: selectedProduct.id,
-                                              volume_ml: variant.volume_ml,
-                                              price: variant.price,
-                                              sale_price:
-                                                variant.sale_price || null,
-                                              sku: variant.sku || null,
-                                              stock_quantity: newQuantity,
-                                            }
-                                          );
-
-                                          // Cập nhật state của sản phẩm đang xem để hiển thị ngay lập tức
-                                          setSelectedProduct((prev) => ({
-                                            ...prev,
-                                            variants: prev.variants.map(
-                                              (v: any) =>
-                                                v.id === variant.id
-                                                  ? {
-                                                      ...v,
-                                                      stock_quantity:
-                                                        newQuantity,
-                                                    }
-                                                  : v
-                                            ),
-                                          }));
-
-                                          // Kết thúc chế độ chỉnh sửa
+                                        // Không thực hiện cập nhật nếu số lượng không thay đổi
+                                        if (
+                                          variant.stock_quantity === newQuantity
+                                        ) {
                                           setEditingVariantId(null);
                                           setEditingStockQuantity("");
-
-                                          toast.success(
-                                            "Đã cập nhật số lượng tồn kho",
-                                            {
-                                              description: `${variant.volume_ml}ml: ${variant.stock_quantity} → ${newQuantity}`,
-                                            }
-                                          );
-                                        } catch (error) {
-                                          toast.error("Lỗi cập nhật tồn kho", {
-                                            description:
-                                              error instanceof Error
-                                                ? error.message
-                                                : "Đã xảy ra lỗi khi cập nhật số lượng tồn kho",
-                                          });
+                                          return;
                                         }
+
+                                        // Use the prepareAdjustStock instead of directly updating
+                                        prepareAdjustStock(
+                                          variant.id,
+                                          selectedProduct.id,
+                                          variant.stock_quantity,
+                                          newQuantity
+                                        );
+
+                                        // Clear editing state
+                                        setEditingVariantId(null);
+                                        setEditingStockQuantity("");
                                       }}
                                     >
                                       <Save className="h-3.5 w-3.5" />
@@ -1864,6 +1839,19 @@ export function ProductTable({
         onOpenChange={setInventoryHistoryOpen}
         variant={selectedVariant}
       />
+
+      {/* Stock Adjustment Dialog */}
+      {currentVariant && (
+        <StockAdjustmentDialog
+          open={isAdjustmentDialogOpen}
+          onClose={cancelAdjustStock}
+          onConfirm={executeAdjustStock}
+          isPending={isAdjustingStock}
+          changeAmount={currentVariant.newStock - currentVariant.currentStock}
+          currentStock={currentVariant.currentStock}
+          newStock={currentVariant.newStock}
+        />
+      )}
     </div>
   );
 }
