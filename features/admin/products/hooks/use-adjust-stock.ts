@@ -5,55 +5,40 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 
-interface AdjustStockParams {
-  variantId: number;
-  changeAmount: number;
-  reason: string;
-}
-
-interface AdjustStockResult {
-  success: boolean;
-  newStockQuantity?: number;
-  error?: string;
+interface VariantInfo {
+  id: number;
+  productId: number;
+  currentStock: number;
+  newStock: number;
 }
 
 /**
- * Hook for adjusting product variant stock quantity with reason tracking
+ * Hook to handle stock adjustments with reason tracking
+ * Uses the adjust_stock RPC function in Supabase
  */
 export function useAdjustStock() {
   const supabase = getSupabaseBrowserClient();
   const queryClient = useQueryClient();
   const toast = useSonnerToast();
-  const [isOpen, setIsOpen] = useState(false);
-  const [currentVariant, setCurrentVariant] = useState<{
-    id: number;
-    productId: number;
-    currentStock: number;
-    newStock: number;
-  } | null>(null);
 
-  // Mutation for calling the adjust_stock RPC
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentVariant, setCurrentVariant] = useState<VariantInfo | null>(
+    null
+  );
+
+  // Mutation for adjusting stock
   const adjustStockMutation = useMutation({
     mutationFn: async ({
       variantId,
       changeAmount,
       reason,
-    }: AdjustStockParams): Promise<AdjustStockResult> => {
+    }: {
+      variantId: number;
+      changeAmount: number;
+      reason: string;
+    }) => {
       try {
-        // Validate inputs
-        if (!variantId) {
-          throw new Error("Thiếu ID biến thể sản phẩm");
-        }
-
-        if (!changeAmount || changeAmount === 0) {
-          throw new Error("Số lượng thay đổi không được bằng 0");
-        }
-
-        if (!reason || reason.trim() === "") {
-          throw new Error("Vui lòng cung cấp lý do điều chỉnh kho");
-        }
-
-        // Call the adjust_stock RPC
+        // Call the adjust_stock RPC function
         const { data, error } = await supabase.rpc("adjust_stock", {
           p_variant_id: variantId,
           p_change_amount: changeAmount,
@@ -61,62 +46,66 @@ export function useAdjustStock() {
         });
 
         if (error) {
-          console.error("Lỗi điều chỉnh tồn kho:", error);
-          throw new Error(error.message || "Không thể điều chỉnh tồn kho");
+          throw new Error(
+            error.message || "Không thể điều chỉnh số lượng tồn kho"
+          );
         }
 
-        return {
-          success: true,
-          newStockQuantity: data,
-        };
+        return data;
       } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : "Lỗi không xác định",
-        };
+        console.error("Error adjusting stock:", error);
+        throw error;
       }
     },
-    onSuccess: (result, variables) => {
-      if (result.success && currentVariant) {
-        // Update the local UI to show the new stock
+
+    onSuccess: (_, variables) => {
+      // Invalidate related queries to refresh data
+      if (currentVariant) {
+        // Invalidate product variants query
         queryClient.invalidateQueries({
           queryKey: ["product_variants", currentVariant.productId],
         });
 
-        // Also invalidate products list query to update stock status
-        queryClient.invalidateQueries({ queryKey: ["products", "list"] });
-
-        // Also invalidate inventory history if that's being used
+        // Invalidate inventory history for this variant
         queryClient.invalidateQueries({
-          queryKey: ["inventory_history", variables.variantId],
+          queryKey: ["inventory_history", currentVariant.id],
         });
 
-        toast.success("Cập nhật thành công", {
-          description: `Đã ${
-            variables.changeAmount > 0 ? "thêm" : "giảm"
-          } ${Math.abs(variables.changeAmount)} vào kho. Tồn kho mới: ${
-            result.newStockQuantity
-          }`,
+        // Invalidate products list to update stock status
+        queryClient.invalidateQueries({
+          queryKey: ["products", "list"],
         });
 
-        // Close dialog and reset state
-        setIsOpen(false);
-        setCurrentVariant(null);
-      } else if (!result.success) {
-        toast.error("Lỗi khi điều chỉnh kho", {
-          description: result.error || "Không thể cập nhật tồn kho",
-        });
+        // Show success toast with change details
+        const changeAmount = variables.changeAmount;
+        toast.success(
+          changeAmount > 0
+            ? "Đã thêm sản phẩm vào kho"
+            : "Đã giảm số lượng tồn kho",
+          {
+            description: `${Math.abs(changeAmount)} sản phẩm đã được ${
+              changeAmount > 0 ? "thêm vào" : "giảm khỏi"
+            } kho với lý do: ${variables.reason}`,
+          }
+        );
       }
+
+      // Reset state
+      setIsOpen(false);
+      setCurrentVariant(null);
     },
+
     onError: (error) => {
-      toast.error("Lỗi khi điều chỉnh kho", {
+      toast.error("Lỗi khi điều chỉnh số lượng tồn kho", {
         description:
-          error instanceof Error ? error.message : "Không thể cập nhật tồn kho",
+          error instanceof Error ? error.message : "Lỗi không xác định",
       });
     },
   });
 
-  // Function to prepare the stock adjustment
+  /**
+   * Prepare to adjust stock by showing the dialog
+   */
   const prepareAdjustStock = (
     variantId: number,
     productId: number,
@@ -132,28 +121,25 @@ export function useAdjustStock() {
     setIsOpen(true);
   };
 
-  // Function to execute the stock adjustment with a reason
-  const executeAdjustStock = async (reason: string) => {
+  /**
+   * Execute the stock adjustment with the provided reason
+   */
+  const executeAdjustStock = (reason: string) => {
     if (!currentVariant) return;
 
     const changeAmount = currentVariant.newStock - currentVariant.currentStock;
 
-    // Don't proceed if trying to adjust by 0
-    if (changeAmount === 0) {
-      toast.error("Không có thay đổi", {
-        description: "Số lượng tồn kho không thay đổi",
-      });
-      return;
-    }
-
-    return adjustStockMutation.mutateAsync({
+    // Call the adjust_stock RPC
+    adjustStockMutation.mutate({
       variantId: currentVariant.id,
       changeAmount,
       reason,
     });
   };
 
-  // Function to cancel the stock adjustment
+  /**
+   * Cancel the current adjustment
+   */
   const cancelAdjustStock = () => {
     setIsOpen(false);
     setCurrentVariant(null);
@@ -163,8 +149,8 @@ export function useAdjustStock() {
     prepareAdjustStock,
     executeAdjustStock,
     cancelAdjustStock,
-    isPending: adjustStockMutation.isPending,
     isOpen,
     currentVariant,
+    isPending: adjustStockMutation.isPending,
   };
 }

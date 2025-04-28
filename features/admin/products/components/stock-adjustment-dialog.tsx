@@ -4,20 +4,23 @@ import { useState } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  ArrowUpCircle,
+  ArrowDownCircle,
+  PackageOpen,
+  ShieldAlert,
+  Package,
+  AlertCircle,
+  ClipboardCheck,
+  ClipboardList,
+} from "lucide-react";
 
 interface StockAdjustmentDialogProps {
   open: boolean;
@@ -29,6 +32,34 @@ interface StockAdjustmentDialogProps {
   newStock: number;
 }
 
+const COMMON_REASONS = [
+  {
+    label: "Điều chỉnh số lượng tồn kho",
+    value: "Điều chỉnh số lượng tồn kho",
+    icon: <ClipboardCheck className="h-4 w-4 mr-2" />,
+  },
+  {
+    label: "Kiểm kê hàng tồn kho",
+    value: "Kiểm kê hàng tồn kho",
+    icon: <ClipboardList className="h-4 w-4 mr-2" />,
+  },
+  {
+    label: "Thêm hàng từ nhà cung cấp",
+    value: "Thêm hàng từ nhà cung cấp",
+    icon: <Package className="h-4 w-4 mr-2" />,
+  },
+  {
+    label: "Hàng bị hư hỏng",
+    value: "Hàng bị hư hỏng",
+    icon: <AlertCircle className="h-4 w-4 mr-2" />,
+  },
+  {
+    label: "Hàng bị mất",
+    value: "Hàng bị mất",
+    icon: <ShieldAlert className="h-4 w-4 mr-2" />,
+  },
+];
+
 export function StockAdjustmentDialog({
   open,
   onClose,
@@ -38,157 +69,139 @@ export function StockAdjustmentDialog({
   currentStock,
   newStock,
 }: StockAdjustmentDialogProps) {
-  const [reason, setReason] = useState<string>("");
+  const [reason, setReason] = useState("");
 
-  // Common reasons for stock adjustments
-  const commonReasons = [
-    { value: "manual-count", label: "Kiểm kê thực tế" },
-    { value: "lost-damaged", label: "Sản phẩm bị mất/hư hỏng" },
-    { value: "vendor-return", label: "Trả hàng cho nhà cung cấp" },
-    { value: "inventory-correction", label: "Điều chỉnh sai sót" },
-    { value: "new-shipment", label: "Nhập hàng mới" },
-    { value: "product-testing", label: "Sử dụng cho kiểm tra sản phẩm" },
-    { value: "customer-return", label: "Khách hàng trả lại" },
-  ];
-
-  const handleReasonSelect = (value: string) => {
-    switch (value) {
-      case "manual-count":
-        setReason("Điều chỉnh sau kiểm kê thực tế");
-        break;
-      case "lost-damaged":
-        setReason("Sản phẩm bị mất/hư hỏng");
-        break;
-      case "vendor-return":
-        setReason("Trả hàng cho nhà cung cấp");
-        break;
-      case "inventory-correction":
-        setReason("Điều chỉnh sai sót trong kho");
-        break;
-      case "new-shipment":
-        setReason("Nhập hàng mới từ nhà cung cấp");
-        break;
-      case "product-testing":
-        setReason("Sử dụng cho kiểm tra sản phẩm");
-        break;
-      case "customer-return":
-        setReason("Khách hàng trả lại hàng");
-        break;
-      case "custom":
-        // Keep the current reason when selecting custom
-        break;
-      default:
-        setReason("");
+  const handleConfirm = () => {
+    if (reason.trim()) {
+      onConfirm(reason);
     }
   };
 
-  const handleConfirm = () => {
-    if (!reason.trim()) {
-      return;
-    }
-    onConfirm(reason);
+  const handleSelectReason = (selectedReason: string) => {
+    setReason(selectedReason);
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Điều chỉnh tồn kho</DialogTitle>
-          <DialogDescription>
-            Vui lòng cung cấp lý do điều chỉnh số lượng tồn kho.
-          </DialogDescription>
+          <DialogTitle className="flex items-center gap-2">
+            <PackageOpen className="h-5 w-5" />
+            Điều chỉnh số lượng tồn kho
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4 py-2">
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div className="flex flex-col">
-              <span className="text-muted-foreground">Tồn kho hiện tại:</span>
-              <span className="font-medium">{currentStock}</span>
+        <div className="py-2">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="p-3 border rounded-md bg-muted/30 flex flex-col items-center w-32">
+              <span className="text-xs text-muted-foreground mb-1">
+                Hiện tại
+              </span>
+              <span className="font-bold text-xl">{currentStock}</span>
             </div>
-            <div className="flex flex-col">
-              <span className="text-muted-foreground">Tồn kho mới:</span>
-              <span className="font-medium">{newStock}</span>
-            </div>
-            <div className="flex flex-col col-span-2">
-              <span className="text-muted-foreground">Thay đổi:</span>
-              <span
-                className={`font-medium ${
-                  changeAmount > 0
-                    ? "text-green-600"
-                    : changeAmount < 0
-                    ? "text-red-600"
-                    : ""
+            <div>
+              <ArrowUpCircle
+                className={`h-6 w-6 ${
+                  changeAmount > 0 ? "text-green-500" : "text-transparent"
                 }`}
-              >
-                {changeAmount > 0 ? "+" : ""}
-                {changeAmount} ({changeAmount > 0 ? "Tăng" : "Giảm"}{" "}
-                {Math.abs(changeAmount)})
+              />
+              <ArrowDownCircle
+                className={`h-6 w-6 ${
+                  changeAmount < 0 ? "text-red-500" : "text-transparent"
+                }`}
+              />
+            </div>
+            <div className="p-3 border rounded-md bg-muted/30 flex flex-col items-center w-32">
+              <span className="text-xs text-muted-foreground mb-1">
+                Sau thay đổi
+              </span>
+              <span className="font-bold text-xl">{newStock}</span>
+            </div>
+          </div>
+
+          <div
+            className={`mb-4 p-3 rounded-md ${
+              changeAmount > 0
+                ? "bg-green-50 border border-green-200 text-green-800"
+                : "bg-red-50 border border-red-200 text-red-800"
+            } text-sm`}
+          >
+            <div className="flex items-center">
+              {changeAmount > 0 ? (
+                <ArrowUpCircle className="h-5 w-5 mr-2 flex-shrink-0" />
+              ) : (
+                <ArrowDownCircle className="h-5 w-5 mr-2 flex-shrink-0" />
+              )}
+              <span>
+                {changeAmount > 0
+                  ? `Bạn đang thêm ${changeAmount} sản phẩm vào kho`
+                  : `Bạn đang giảm ${Math.abs(changeAmount)} sản phẩm khỏi kho`}
               </span>
             </div>
           </div>
 
-          <div className="grid gap-2">
-            <label
-              htmlFor="reason-select"
-              className="text-sm font-medium leading-none"
-            >
-              Lý do phổ biến
-            </label>
-            <Select onValueChange={handleReasonSelect}>
-              <SelectTrigger id="reason-select">
-                <SelectValue placeholder="Chọn lý do điều chỉnh" />
-              </SelectTrigger>
-              <SelectContent>
-                {commonReasons.map((reason) => (
-                  <SelectItem key={reason.value} value={reason.value}>
-                    {reason.label}
-                  </SelectItem>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="quick-reasons" className="text-sm font-medium">
+                Lý do phổ biến
+              </Label>
+              <div className="grid grid-cols-1 gap-2 mt-2">
+                {COMMON_REASONS.map((reasonOption) => (
+                  <Button
+                    key={reasonOption.value}
+                    type="button"
+                    variant="outline"
+                    className={`justify-start h-auto py-2 text-sm ${
+                      reason === reasonOption.value
+                        ? "border-primary/50 bg-primary/5"
+                        : ""
+                    }`}
+                    onClick={() => handleSelectReason(reasonOption.value)}
+                  >
+                    {reasonOption.icon}
+                    {reasonOption.label}
+                  </Button>
                 ))}
-                <SelectItem value="custom">Lý do khác</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+              </div>
+            </div>
 
-          <div className="grid gap-2">
-            <label
-              htmlFor="reason-text"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              Lý do điều chỉnh <span className="text-red-500">*</span>
-            </label>
-            <Textarea
-              id="reason-text"
-              placeholder="Nhập chi tiết lý do điều chỉnh tồn kho..."
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="resize-none"
-              rows={3}
-              required
-            />
-            {!reason.trim() && (
-              <p className="text-xs text-red-500">
-                Vui lòng điền lý do điều chỉnh
+            <div className="space-y-2">
+              <Label htmlFor="reason" className="text-sm font-medium">
+                Lý do điều chỉnh <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Nhập lý do cho sự thay đổi tồn kho này"
+                className="resize-none"
+                rows={3}
+              />
+              <p className="text-xs text-muted-foreground">
+                Thông tin này sẽ xuất hiện trong lịch sử kho.
               </p>
-            )}
+            </div>
           </div>
         </div>
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose} disabled={isPending}>
             Hủy
           </Button>
           <Button
-            type="button"
             onClick={handleConfirm}
-            disabled={isPending || !reason.trim()}
+            disabled={!reason.trim() || isPending}
+            className={
+              changeAmount > 0 ? "bg-green-600 hover:bg-green-700" : undefined
+            }
           >
             {isPending ? (
               <>
-                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-r-transparent"></span>
-                Đang lưu...
+                <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+                Đang xử lý...
               </>
             ) : (
-              "Lưu thay đổi"
+              "Xác nhận điều chỉnh"
             )}
           </Button>
         </DialogFooter>
