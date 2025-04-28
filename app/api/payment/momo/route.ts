@@ -19,7 +19,7 @@ async function getOrderInfo(orderId: string) {
   const { data, error } = await supabase
     .from("orders")
     .select("id, total_amount, user_id")
-    .eq("id", orderId)
+    .eq("id", Number(orderId))
     .single();
   if (error || !data) throw new Error("Order not found");
   return data;
@@ -41,10 +41,10 @@ export async function POST(req: NextRequest) {
     const requestId = partnerCode + Date.now();
     const momoOrderId = requestId;
     const orderInfo = `Thanh toán đơn hàng #${orderId}`;
-    const redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/(shop)/xac-nhan-don-hang?orderId=${orderId}`;
+    const redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/xac-nhan-don-hang?orderId=${orderId}`;
     const ipnUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/momo/callback`;
     const requestType = "captureWallet";
-    const extraData = "";
+    const extraData = order.id.toString(); // orderId thực của hệ thống bạn
 
     // Build raw signature
     const rawSignature =

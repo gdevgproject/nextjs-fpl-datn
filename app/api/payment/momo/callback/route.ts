@@ -30,6 +30,28 @@ function buildRawSignature(data: any) {
 export async function POST(req: NextRequest) {
   try {
     const data = await req.json();
+    // Lấy orderId thực từ extraData (phải là số, id thực trong bảng orders)
+    const realOrderId = Number(data.extraData);
+    if (!realOrderId || isNaN(realOrderId)) {
+      return NextResponse.json(
+        { error: "Invalid order id in extraData" },
+        { status: 400 }
+      );
+    }
+    // Khởi tạo supabase client
+    const supabase = createClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+    // Kiểm tra đơn hàng có tồn tại không
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("id", realOrderId)
+      .single();
+    if (orderError || !order) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
     // Validate signature
     const rawSignature = buildRawSignature(data);
     const signature = crypto
@@ -41,29 +63,32 @@ export async function POST(req: NextRequest) {
     }
     // Only process successful payment
     if (data.resultCode !== 0) {
+      // Nếu thanh toán thất bại, cập nhật trạng thái thanh toán
+      await supabase
+        .from("orders")
+        .update({
+          payment_status: "Failed",
+        })
+        .eq("id", realOrderId);
       return NextResponse.json({ error: "Payment failed" }, { status: 400 });
     }
-    // Update payment and order status in DB
-    const supabase = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
     // Insert payment record
     await supabase.from("payments").insert({
-      order_id: data.orderId,
+      order_id: realOrderId,
       amount: data.amount,
       payment_method_id: 2, // 2 = MoMo (giả định)
       status: "SUCCESS",
       momo_trans_id: data.transId,
       momo_response: data,
     });
-    // Update order status
+    // Update order status và trạng thái thanh toán
     await supabase
       .from("orders")
       .update({
-        order_status_id: 4, // 4 = Đã thanh toán (giả định, cần map đúng schema)
+        order_status_id: 1, //
+        payment_status: "Paid",
       })
-      .eq("id", data.orderId);
+      .eq("id", realOrderId);
     return NextResponse.json({ success: true });
   } catch (e: any) {
     return NextResponse.json(
