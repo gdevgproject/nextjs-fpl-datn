@@ -84,7 +84,7 @@ export function useCreateProductVariant() {
         throw error;
       }
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({
         queryKey: ["product_variants", data.product_id],
       });
@@ -95,6 +95,17 @@ export function useCreateProductVariant() {
       toast.success("Thành công", {
         description: "Đã tạo biến thể sản phẩm thành công",
       });
+      
+      // Tự động bỏ ẩn sản phẩm nếu đang ở trạng thái ẩn
+      const { error: unhideError } = await supabase
+        .from("products")
+        .update({ deleted_at: null })
+        .eq("id", data.product_id);
+      if (!unhideError) {
+        // Cập nhật lại cache chi tiết và danh sách sản phẩm
+        queryClient.invalidateQueries({ queryKey: ["products", "detail", data.product_id] });
+        queryClient.invalidateQueries({ queryKey: ["products", "list"] });
+      }
     },
     onError: (error) => {
       toast.error("Lỗi", {

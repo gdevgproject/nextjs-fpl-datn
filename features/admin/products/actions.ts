@@ -32,9 +32,13 @@ export async function createProductAction(
       return { error: "Unauthorized", success: false };
     }
 
+    const creationPayload = {
+      ...validatedData,
+      deleted_at: new Date().toISOString(),
+    };
     const { data, error } = await supabase
       .from("products")
-      .insert(validatedData)
+      .insert(creationPayload)
       .select()
       .single();
 
@@ -405,6 +409,14 @@ export async function createProductVariantAction(
     }
 
     // Revalidate paths
+    revalidatePath("/admin/catalog/products");
+    revalidatePath(`/admin/catalog/products/${productId}`);
+    // Automatically unhide product if hidden by default
+    await supabase
+      .from("products")
+      .update({ deleted_at: null })
+      .eq("id", productId);
+    // Revalidate product paths after unhiding
     revalidatePath("/admin/catalog/products");
     revalidatePath(`/admin/catalog/products/${productId}`);
 

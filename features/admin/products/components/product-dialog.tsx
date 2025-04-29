@@ -262,8 +262,12 @@ export function ProductDialog({
       if (mode === "create") {
         // Create new product
         const result = await createProductMutation.mutateAsync(formattedValues);
-        const newProductId =
-          Array.isArray(result) && result.length > 0 ? result[0].id : null;
+        // Handle array or object return
+        const newProductId = Array.isArray(result)
+          ? result.length > 0
+            ? result[0].id
+            : null
+          : result?.id ?? null;
 
         if (newProductId) {
           setCreatedProductId(newProductId);
