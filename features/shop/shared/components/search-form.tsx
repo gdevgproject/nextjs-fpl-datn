@@ -113,7 +113,7 @@ export function SearchForm() {
               maxLength={
                 searchMode === "product" ? PRODUCT_SEARCH_MAX : ORDER_TOKEN_MAX
               }
-              className={`w-full pl-[110px] pr-10 ${
+              className={`w-full pl-[120px] pr-10 ${
                 errors.query || customError ? "border-destructive" : ""
               }`}
               aria-invalid={errors.query || customError ? "true" : "false"}

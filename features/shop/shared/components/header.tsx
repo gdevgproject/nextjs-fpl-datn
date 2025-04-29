@@ -293,13 +293,13 @@ export function Header({
         )}
       >
         <div className="container mx-auto px-4">
-          <ul className="flex items-center flex-wrap">
+          <ul className="flex items-center justify-center w-full">
             {mainNavItems.map((item) => (
-              <li key={item.href}>
+              <li key={item.href} className="flex-shrink-0">
                 <Link
                   href={item.href}
                   className={cn(
-                    "relative flex h-11 items-center px-3 text-sm font-medium transition-colors group",
+                    "relative flex h-11 items-center px-4 text-sm font-medium transition-colors group whitespace-nowrap",
                     pathname === item.href
                       ? "text-primary"
                       : "text-muted-foreground hover:text-foreground"
