@@ -187,8 +187,11 @@ export function useChat(): ChatContextValue {
           ];
         });
       });
-      // Log interaction khi đã có full content
-      await logChatInteraction(user?.id || null, content, lastContent);
+
+      // Log interaction nhưng KHÔNG đợi nó hoàn thành
+      // Sử dụng void để báo hiệu chúng ta không quan tâm đến Promise này
+      void logChatInteraction(user?.id || null, content, lastContent);
+
       return { content: lastContent };
     },
     onSettled: () => {

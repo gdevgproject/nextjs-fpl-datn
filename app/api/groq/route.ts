@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
     // Sử dụng hàm callGroqAPI từ thư viện tiện ích mới
     const groqRes = await callGroqAPI(messages, {
       stream: true,
-      temperature: 0.7,
+      temperature: 0.5,
       max_tokens: 1024,
     });
 
