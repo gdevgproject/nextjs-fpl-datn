@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { Message, ChatContextValue } from "../types";
 import {
@@ -18,11 +18,16 @@ import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings"
 
 const SYSTEM_PROMPT_KEY = "mybeauty-ai-system-prompt";
 const CHAT_HISTORY_KEY = "mybeauty-ai-chat-history";
+// Limit how often we save to localStorage during streaming
+const SAVE_DEBOUNCE_MS = 1000;
 
 export function useChat(): ChatContextValue {
   const [messages, setMessages] = useState<Message[]>([]);
   const [systemPrompt, setSystemPrompt] = useState<string>("");
   const [isInitialized, setIsInitialized] = useState(false);
+  // Use refs to track streaming state without triggering re-renders
+  const streamingRef = useRef(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Lấy context cá nhân hóa
   const { data: sessionData } = useAuthQuery();
@@ -136,12 +141,35 @@ export function useChat(): ChatContextValue {
     isShopSettingsLoading,
   ]);
 
-  // Save messages to localStorage whenever they change
-  useEffect(() => {
-    if (isInitialized && messages.length > 0) {
-      localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages));
+  // Debounced save to localStorage
+  const debounceSaveMessages = useCallback((messagesToSave: Message[]) => {
+    // Clear any existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
     }
-  }, [messages, isInitialized]);
+
+    // Set a new timeout
+    saveTimeoutRef.current = setTimeout(() => {
+      if (messagesToSave.length > 0) {
+        localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messagesToSave));
+      }
+      saveTimeoutRef.current = null;
+    }, SAVE_DEBOUNCE_MS);
+  }, []);
+
+  // Save messages to localStorage when they change, but not during streaming
+  useEffect(() => {
+    if (isInitialized && messages.length > 0 && !streamingRef.current) {
+      debounceSaveMessages(messages);
+    }
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [messages, isInitialized, debounceSaveMessages]);
 
   // AI response mutation
   const {
@@ -149,60 +177,105 @@ export function useChat(): ChatContextValue {
     isPending,
     error,
     reset: resetMutation,
-    isSuccess,
   } = useMutation({
     mutationFn: async (content: string) => {
+      // Create user message
       const userMessage: Message = {
         id: uuidv4(),
         role: "user",
         content,
         createdAt: new Date(),
       };
-      setMessages((prev) => [...prev, userMessage]);
+
+      // Add user message to state
+      setMessages((prev) => {
+        const updatedMessages = [...prev, userMessage];
+        // Save immediately when adding user message
+        localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(updatedMessages));
+        return updatedMessages;
+      });
+
+      // Prepare AI response
       const messagesForAPI = [
         { role: "system", content: systemPrompt },
         ...formatMessagesForGroq([...messages, userMessage]),
       ];
-      let assistantId = uuidv4();
+
+      const assistantId = uuidv4();
       let lastContent = "";
-      await generateAIResponse(messagesForAPI, (partial) => {
-        lastContent = partial;
-        setMessages((prev) => {
-          // Nếu đã có assistant message tạm thời, update nó
-          if (prev[prev.length - 1]?.role === "assistant") {
-            return [
-              ...prev.slice(0, -1),
-              { ...prev[prev.length - 1], content: partial },
-            ];
-          }
-          // Nếu chưa có, thêm mới
-          return [
-            ...prev,
-            {
-              id: assistantId,
-              role: "assistant",
-              content: partial,
-              createdAt: new Date(),
-            },
-          ];
+
+      // Mark that we're starting to stream
+      streamingRef.current = true;
+
+      try {
+        // Stream response
+        await generateAIResponse(messagesForAPI, (partial) => {
+          lastContent = partial;
+
+          setMessages((prev) => {
+            // Find if we already have an assistant message
+            const lastIndex = prev.findIndex((msg) => msg.id === assistantId);
+
+            if (lastIndex !== -1) {
+              // Update existing message
+              const updated = [...prev];
+              updated[lastIndex] = {
+                ...updated[lastIndex],
+                content: partial,
+              };
+
+              // Debounced save during streaming to reduce writes
+              debounceSaveMessages(updated);
+
+              return updated;
+            } else {
+              // Create new assistant message if not exists
+              const updatedMessages = [
+                ...prev,
+                {
+                  id: assistantId,
+                  role: "assistant",
+                  content: partial,
+                  createdAt: new Date(),
+                },
+              ];
+
+              // Debounced save
+              debounceSaveMessages(updatedMessages);
+
+              return updatedMessages;
+            }
+          });
         });
-      });
 
-      // Log interaction nhưng KHÔNG đợi nó hoàn thành
-      // Sử dụng void để báo hiệu chúng ta không quan tâm đến Promise này
-      void logChatInteraction(user?.id || null, content, lastContent);
+        // Log chat interaction in the background
+        void logChatInteraction(user?.id || null, content, lastContent);
 
-      return { content: lastContent };
+        return { content: lastContent };
+      } finally {
+        // Always mark streaming as complete, even if there was an error
+        streamingRef.current = false;
+
+        // Final save to ensure we have the complete message
+        setMessages((currentMessages) => {
+          localStorage.setItem(
+            CHAT_HISTORY_KEY,
+            JSON.stringify(currentMessages)
+          );
+          return currentMessages;
+        });
+      }
     },
     onSettled: () => {
-      resetMutation();
+      // Safe to reset mutation state after completion
+      setTimeout(() => resetMutation(), 100);
     },
   });
 
   // Send message function
   const sendMessage = useCallback(
     async (content: string) => {
-      if (!content.trim() || isPending) return;
+      if (!content.trim() || isPending || streamingRef.current) return;
       await sendMessageMutation(content);
     },
     [sendMessageMutation, isPending]
@@ -210,8 +283,15 @@ export function useChat(): ChatContextValue {
 
   // Reset chat function
   const resetChat = useCallback(() => {
+    // Clean up any pending operations
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
     setMessages([]);
     localStorage.removeItem(CHAT_HISTORY_KEY);
+
     // Cập nhật lại systemPrompt khi dọn chat
     if (
       products &&

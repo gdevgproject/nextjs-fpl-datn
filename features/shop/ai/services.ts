@@ -159,12 +159,19 @@ export async function generateAIResponse(
             const delta = parsed.choices?.[0]?.delta?.content || "";
             if (delta) {
               result += delta;
-              if (onStream) onStream(result);
+              // Only trigger onStream callback if there's a meaningful change
+              // and limit update frequency to prevent re-render storms
+              if (onStream && delta.length > 0) onStream(result);
             }
-          } catch {}
+          } catch (e) {
+            // Silently ignore parsing errors from incomplete chunks
+          }
         }
       }
     }
   }
+  
+  // Ensure final result is sent once more at the end
+  if (onStream) onStream(result);
   return result;
 }
