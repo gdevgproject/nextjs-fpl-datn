@@ -3,7 +3,14 @@
 import { Fragment } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Loader2, Search, Sparkles, AlertTriangle, Clock } from "lucide-react";
+import {
+  Loader2,
+  Search,
+  Sparkles,
+  AlertTriangle,
+  Clock,
+  BadgeInfo,
+} from "lucide-react";
 import { type ProductSuggestion } from "../hooks/use-ai-search-suggestions";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +24,7 @@ interface SearchSuggestionsProps {
   selectedItemIndex?: number | null;
   onSelectSuggestion: () => void;
   rateLimited?: boolean;
+  usingFallbackModel?: boolean;
 }
 
 export function SearchSuggestions({
@@ -29,6 +37,7 @@ export function SearchSuggestions({
   selectedItemIndex = null,
   onSelectSuggestion,
   rateLimited = false,
+  usingFallbackModel = false,
 }: SearchSuggestionsProps) {
   // Don't render if not open or if query is empty
   if (!isOpen || !query.trim()) {
@@ -150,6 +159,13 @@ export function SearchSuggestions({
                 )}
               </span>
             </div>
+
+            {usingFallbackModel && (
+              <div className="px-2 py-1 text-xs text-muted-foreground border-t border-border/50 flex items-center gap-1.5">
+                <BadgeInfo className="h-3 w-3 text-blue-500" />
+                <span>Đang sử dụng model dự phòng</span>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-6 px-4 text-center">
@@ -157,6 +173,15 @@ export function SearchSuggestions({
             <p className="mt-2 text-sm text-muted-foreground">
               Không tìm thấy sản phẩm nào cho "{query}"
             </p>
+
+            {usingFallbackModel && (
+              <div className="mt-2 px-4 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-full text-xs flex items-center gap-1.5">
+                <BadgeInfo className="h-3 w-3 text-blue-500" />
+                <span className="text-blue-600 dark:text-blue-400">
+                  Đang sử dụng model dự phòng
+                </span>
+              </div>
+            )}
           </div>
         )}
 

@@ -54,14 +54,13 @@ export function SearchForm() {
     isStale: isStaleResults,
     error: suggestionsError,
     rateLimited,
+    usingFallbackModel,
   } = useAISearchSuggestions("", {
     // Only enable suggestions when in AI mode
     enabled: searchMode === "ai",
     debounceMs: 700, // Increased from 400ms to reduce API requests
     minQueryLength: 2,
     requestCooldown: 1000, // Increased cooldown to prevent rate limits
-    maxRetryAttempts: 3,
-    initialBackoff: 2000,
   });
 
   const {
@@ -492,6 +491,7 @@ export function SearchForm() {
             onSelectSuggestion={handleSelectSuggestion}
             selectedItemIndex={selectedItemRef.current}
             rateLimited={rateLimited}
+            usingFallbackModel={usingFallbackModel}
           />
         )}
       </div>

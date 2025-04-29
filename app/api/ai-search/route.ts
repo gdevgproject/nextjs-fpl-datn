@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { formatMessagesForGroq } from "@/features/shop/ai/services";
+import { callGroqAPI, getGroqModel } from "@/lib/utils/ai-models";
 
 export const runtime = "edge";
 
@@ -180,77 +181,70 @@ export async function POST(request: Request) {
       { id: "user", role: "user", content: query, createdAt: new Date() },
     ]);
 
-    // Call Groq API
-    const groqResponse = await fetch(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: "meta-llama/llama-4-maverick-17b-128e-instruct",
-          messages,
-          temperature: 0.1, // Low temperature for consistent results
-          max_tokens: 1024,
-        }),
-      }
-    );
-
-    if (!groqResponse.ok) {
-      console.error("Error from Groq API", await groqResponse.text());
-      return NextResponse.json({ suggestions: [] }, { status: 500 });
-    }
-
-    const groqData = await groqResponse.json();
-
-    // Extract response
-    const aiResponse = groqData?.choices?.[0]?.message?.content;
-
-    if (!aiResponse) {
-      return NextResponse.json({ suggestions: [] });
-    }
-
-    // Parse JSON from AI response
-    let aiSuggestions;
     try {
-      // Find and extract JSON array from response
-      const jsonMatch = aiResponse.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        aiSuggestions = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("No valid JSON array found in response");
+      // Get the current model being used
+      const currentModel = getGroqModel();
+
+      // Sử dụng hàm callGroqAPI từ thư viện tiện ích mới
+      const groqResponse = await callGroqAPI(messages, {
+        temperature: 0.2, // Low temperature for consistent results
+        max_tokens: 1024,
+        stream: false,
+      });
+
+      if (!groqResponse.ok) {
+        console.error("Error from Groq API", await groqResponse.text());
+        return NextResponse.json({ suggestions: [] }, { status: 500 });
       }
-    } catch (e) {
-      console.error(
-        "Error parsing AI response:",
-        e,
-        "\nRaw AI response:",
-        aiResponse
-      );
-      aiSuggestions = [];
-    }
 
-    if (!Array.isArray(aiSuggestions)) {
-      console.error("AI response is not an array:", aiSuggestions);
-      return NextResponse.json({ suggestions: [] });
-    }
+      const groqData = await groqResponse.json();
 
-    // Extract product IDs suggested by AI
-    const suggestedProductIds = aiSuggestions
-      .map((item: any) => item.id)
-      .filter(Boolean);
+      // Extract response
+      const aiResponse = groqData?.choices?.[0]?.message?.content;
 
-    if (suggestedProductIds.length === 0) {
-      return NextResponse.json({ suggestions: [] });
-    }
+      if (!aiResponse) {
+        return NextResponse.json({ suggestions: [] });
+      }
 
-    // Fetch complete product data for the suggested products
-    const { data: suggestedProducts, error: suggestError } = await supabase
-      .from("products")
-      .select(
-        `
+      // Parse JSON from AI response
+      let aiSuggestions;
+      try {
+        // Find and extract JSON array from response
+        const jsonMatch = aiResponse.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          aiSuggestions = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error("No valid JSON array found in response");
+        }
+      } catch (e) {
+        console.error(
+          "Error parsing AI response:",
+          e,
+          "\nRaw AI response:",
+          aiResponse
+        );
+        aiSuggestions = [];
+      }
+
+      if (!Array.isArray(aiSuggestions)) {
+        console.error("AI response is not an array:", aiSuggestions);
+        return NextResponse.json({ suggestions: [] });
+      }
+
+      // Extract product IDs suggested by AI
+      const suggestedProductIds = aiSuggestions
+        .map((item: any) => item.id)
+        .filter(Boolean);
+
+      if (suggestedProductIds.length === 0) {
+        return NextResponse.json({ suggestions: [] });
+      }
+
+      // Fetch complete product data for the suggested products
+      const { data: suggestedProducts, error: suggestError } = await supabase
+        .from("products")
+        .select(
+          `
         id, 
         name,
         slug,
@@ -264,51 +258,66 @@ export async function POST(request: Request) {
           is_main
         )
       `
-      )
-      .in("id", suggestedProductIds)
-      .is("deleted_at", null);
+        )
+        .in("id", suggestedProductIds)
+        .is("deleted_at", null);
 
-    if (suggestError) {
-      console.error("Error fetching suggested products:", suggestError);
-      return NextResponse.json({ suggestions: [] }, { status: 500 });
+      if (suggestError) {
+        console.error("Error fetching suggested products:", suggestError);
+        return NextResponse.json({ suggestions: [] }, { status: 500 });
+      }
+
+      // Format final suggestions with complete data
+      const finalSuggestions = suggestedProducts.map((product: any) => {
+        // Find main image
+        const mainImage =
+          product.product_images?.find((img: any) => img.is_main === true) ||
+          product.product_images?.[0];
+
+        // Find variant with lowest price
+        const variant = product.product_variants?.reduce((min: any, v: any) => {
+          if (
+            !min ||
+            (v.sale_price || v.price) < (min.sale_price || min.price)
+          ) {
+            return v;
+          }
+          return min;
+        }, null);
+
+        // Find AI relevance information
+        const aiSuggestion = aiSuggestions.find((s: any) => s.id == product.id);
+
+        return {
+          id: product.id,
+          name: product.name,
+          slug: product.slug,
+          image_url: mainImage?.image_url || "/placeholder.jpg",
+          price: variant?.price || 0,
+          sale_price: variant?.sale_price || null,
+          brand_name: product.brands?.name || "",
+          relevance: aiSuggestion?.relevance || "Sản phẩm phù hợp",
+        };
+      });
+
+      // Add timestamp and model information to track request timing and model used
+      return NextResponse.json({
+        suggestions: finalSuggestions,
+        source: "ai",
+        timestamp: timestamp,
+        modelUsed: currentModel, // Trả về model đang được sử dụng
+      });
+    } catch (error) {
+      console.error("Error in Groq API call:", error);
+      return NextResponse.json(
+        {
+          suggestions: [],
+          error: "Failed to generate AI response",
+          timestamp: timestamp,
+        },
+        { status: 500 }
+      );
     }
-
-    // Format final suggestions with complete data
-    const finalSuggestions = suggestedProducts.map((product: any) => {
-      // Find main image
-      const mainImage =
-        product.product_images?.find((img: any) => img.is_main === true) ||
-        product.product_images?.[0];
-
-      // Find variant with lowest price
-      const variant = product.product_variants?.reduce((min: any, v: any) => {
-        if (!min || (v.sale_price || v.price) < (min.sale_price || min.price)) {
-          return v;
-        }
-        return min;
-      }, null);
-
-      // Find AI relevance information
-      const aiSuggestion = aiSuggestions.find((s: any) => s.id == product.id);
-
-      return {
-        id: product.id,
-        name: product.name,
-        slug: product.slug,
-        image_url: mainImage?.image_url || "/placeholder.jpg",
-        price: variant?.price || 0,
-        sale_price: variant?.sale_price || null,
-        brand_name: product.brands?.name || "",
-        relevance: aiSuggestion?.relevance || "Sản phẩm phù hợp",
-      };
-    });
-
-    // Add timestamp to track request timing
-    return NextResponse.json({
-      suggestions: finalSuggestions,
-      source: "ai",
-      timestamp: timestamp,
-    });
   } catch (error) {
     console.error("AI search suggestion error:", error);
     return NextResponse.json({ suggestions: [] }, { status: 500 });

@@ -1,34 +1,35 @@
 import { NextRequest } from "next/server";
+import { callGroqAPI } from "@/lib/utils/ai-models";
 
 export async function POST(req: NextRequest) {
   const { messages } = await req.json();
-  const apiKey = process.env.GROQ_API_KEY;
 
-  // old model AI: llama-3.3-70b-versatile
-  const groqRes = await fetch(
-    "https://api.groq.com/openai/v1/chat/completions",
-    {
-      method: "POST",
+  try {
+    // Sử dụng hàm callGroqAPI từ thư viện tiện ích mới
+    const groqRes = await callGroqAPI(messages, {
+      stream: true,
+      temperature: 0.7,
+      max_tokens: 1024,
+    });
+
+    // Forward Groq stream về client
+    return new Response(groqRes.body, {
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
       },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages,
-        stream: true,
-        temperature: 0.7,
-        max_tokens: 1024,
-      }),
-    }
-  );
-  // llama-3.3-70b-versatile meta-llama/llama-4-maverick-17b-128e-instruct
-  // Forward Groq stream về client
-  return new Response(groqRes.body, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    },
-  });
+    });
+  } catch (error) {
+    console.error("Error calling Groq API:", error);
+    return new Response(
+      JSON.stringify({ error: "Failed to generate AI response" }),
+      {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  }
 }

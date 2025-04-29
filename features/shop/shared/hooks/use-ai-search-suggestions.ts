@@ -19,6 +19,7 @@ interface AISearchResponse {
   suggestions: ProductSuggestion[];
   source?: string;
   timestamp?: number;
+  modelUsed?: string;
 }
 
 /**
@@ -44,6 +45,7 @@ export function useAISearchSuggestions(
   const [rateLimited, setRateLimited] = useState(false);
   const [backoffTime, setBackoffTime] = useState(options.initialBackoff);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [usingFallbackModel, setUsingFallbackModel] = useState(false);
 
   const lastRequestTime = useRef<number>(0);
   const pendingRequest = useRef<boolean>(false);
@@ -161,6 +163,15 @@ export function useAISearchSuggestions(
                 setErrorMessage(null);
 
                 const result = await response.json();
+
+                // Check if we're using fallback model from response
+                if (result?.modelUsed) {
+                  const primaryModel =
+                    process.env.NEXT_PUBLIC_GROQ_PRIMARY_MODEL ||
+                    "meta-llama/llama-4-maverick-17b-128e-instruct";
+                  setUsingFallbackModel(result.modelUsed !== primaryModel);
+                }
+
                 return result;
               } catch (err) {
                 console.error("Error in delayed AI search request:", err);
@@ -221,7 +232,19 @@ export function useAISearchSuggestions(
           setRateLimited(false);
           setErrorMessage(null);
 
-          return await response.json();
+          const result = await response.json();
+
+          // Check if we're using fallback model from response
+          if (result?.modelUsed) {
+            const primaryModel =
+              process.env.NEXT_PUBLIC_GROQ_PRIMARY_MODEL ||
+              "meta-llama/llama-4-maverick-17b-128e-instruct";
+            setUsingFallbackModel(result.modelUsed !== primaryModel);
+          } else {
+            setUsingFallbackModel(false);
+          }
+
+          return result;
         } catch (err) {
           console.error("Error in AI search request:", err);
           setErrorMessage((err as Error).message || "Lỗi khi tìm kiếm");
@@ -260,5 +283,6 @@ export function useAISearchSuggestions(
     refetch,
     formatPrice,
     rateLimited,
+    usingFallbackModel,
   };
 }
