@@ -3,7 +3,7 @@
 import { Fragment } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Loader2, Search, Sparkles } from "lucide-react";
+import { Loader2, Search, Sparkles, AlertTriangle, Clock } from "lucide-react";
 import { type ProductSuggestion } from "../hooks/use-ai-search-suggestions";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +16,7 @@ interface SearchSuggestionsProps {
   isStale?: boolean;
   selectedItemIndex?: number | null;
   onSelectSuggestion: () => void;
+  rateLimited?: boolean;
 }
 
 export function SearchSuggestions({
@@ -27,6 +28,7 @@ export function SearchSuggestions({
   isStale = false,
   selectedItemIndex = null,
   onSelectSuggestion,
+  rateLimited = false,
 }: SearchSuggestionsProps) {
   // Don't render if not open or if query is empty
   if (!isOpen || !query.trim()) {
@@ -53,9 +55,29 @@ export function SearchSuggestions({
               Đang tìm kiếm sản phẩm...
             </span>
           </div>
+        ) : rateLimited ? (
+          <div className="flex flex-col items-center justify-center p-4 text-center">
+            <div className="mb-2 p-2 rounded-full bg-amber-100 dark:bg-amber-900/30">
+              <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+            </div>
+            <p className="text-sm font-medium text-foreground">
+              Đã đạt giới hạn tìm kiếm
+            </p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-xs">
+              Hệ thống tạm thời quá tải. Vui lòng đợi vài giây và thử lại sau.
+            </p>
+          </div>
         ) : error ? (
-          <div className="p-4 text-center text-sm text-destructive">
-            {error}
+          <div className="flex flex-col items-center justify-center p-4 text-center">
+            <div className="mb-2 p-2 rounded-full bg-destructive/10">
+              <AlertTriangle className="h-6 w-6 text-destructive" />
+            </div>
+            <p className="text-sm font-medium text-destructive">
+              Đã xảy ra lỗi
+            </p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-xs">
+              {error}
+            </p>
           </div>
         ) : suggestions.length > 0 ? (
           <div className="overflow-y-auto p-1">
@@ -138,7 +160,7 @@ export function SearchSuggestions({
           </div>
         )}
 
-        {isStale && (
+        {isStale && !rateLimited && (
           <div className="bg-muted/20 py-1 px-3 text-center">
             <span className="text-xs text-muted-foreground animate-pulse">
               Đang cập nhật kết quả...

@@ -53,12 +53,15 @@ export function SearchForm() {
     isLoading: loadingSuggestions,
     isStale: isStaleResults,
     error: suggestionsError,
+    rateLimited,
   } = useAISearchSuggestions("", {
     // Only enable suggestions when in AI mode
     enabled: searchMode === "ai",
-    debounceMs: 400,
+    debounceMs: 700, // Increased from 400ms to reduce API requests
     minQueryLength: 2,
-    requestCooldown: 250,
+    requestCooldown: 1000, // Increased cooldown to prevent rate limits
+    maxRetryAttempts: 3,
+    initialBackoff: 2000,
   });
 
   const {
@@ -488,6 +491,7 @@ export function SearchForm() {
             isStale={isStaleResults}
             onSelectSuggestion={handleSelectSuggestion}
             selectedItemIndex={selectedItemRef.current}
+            rateLimited={rateLimited}
           />
         )}
       </div>

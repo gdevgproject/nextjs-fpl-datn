@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-4-maverick-17b-128e-instruct",
+        model: "llama-3.3-70b-versatile",
         messages,
         stream: true,
         temperature: 0.7,
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       }),
     }
   );
-
+  // llama-3.3-70b-versatile meta-llama/llama-4-maverick-17b-128e-instruct
   // Forward Groq stream về client
   return new Response(groqRes.body, {
     headers: {
