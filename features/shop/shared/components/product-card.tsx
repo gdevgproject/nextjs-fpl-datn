@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, Heart, AlertCircle, Loader2 } from "lucide-react";
+import { ShoppingCart, Heart, Loader2 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { useAddCartItem } from "@/features/shop/cart/use-cart";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
@@ -40,7 +40,6 @@ export interface ProductCardProps {
     variants?: ProductVariantType[];
     defaultVariantId?: number;
   };
-  // Support for legacy format
   id?: number;
   slug?: string;
   name?: string;
@@ -78,70 +77,43 @@ export function ProductCard({
     isLoading: hookLoading,
   } = useWishlist();
 
-  const handleToggleWishlist = (e: React.MouseEvent) => {
-    e.preventDefault();
-    // use prop or hook
-    if (onToggleWishlist) {
-      onToggleWishlist();
-    } else if (productId) {
-      toggleWishlist(productId);
-    }
-  };
-
-  // Support both new format (product object) and legacy format (direct props)
   const productId = product?.id || id;
   const productSlug = product?.slug || slug || `product-${productId}`;
   const productName = product?.name || name || "Sản phẩm";
   const brandName = product?.brand?.name || brand_name;
 
-  // Find main image
   const mainImage =
     product?.images?.find((img) => img.is_main)?.image_url ||
     product?.images?.[0]?.image_url ||
     image_url ||
     "/placeholder.svg";
 
-  // Determine price and sale price
   const productPrice = product?.price ?? directPrice ?? 0;
   const productSalePrice = product?.sale_price ?? directSalePrice;
-
-  // Determine if product is on sale
-  const isOnSale =
-    productSalePrice !== null &&
-    productSalePrice !== undefined &&
-    productSalePrice < productPrice;
-
-  // Calculate discount percentage if product is on sale
+  const isOnSale = productSalePrice != null && productSalePrice < productPrice;
   const discountPercentage = isOnSale
     ? Math.round(
         ((productPrice - (productSalePrice as number)) / productPrice) * 100
       )
     : 0;
 
-  // Determine if product is out of stock
   let isOutOfStock = true;
-
-  // Get variant ID (use first variant if available or provided variant_id)
   const productVariantId =
     variant_id ||
     (product?.variants && product.variants.length > 0
       ? product.variants[0].id
-      : productId); // Sử dụng productId làm fallback thay vì undefined
-
-  // Check stock from variants
+      : productId);
   if (product?.variants && product.variants.length > 0) {
-    // Check if any variant has stock
     isOutOfStock = !product.variants.some(
-      (v) => v.stock_quantity === undefined || v.stock_quantity > 0
+      (v) => v.stock_quantity == null || v.stock_quantity > 0
     );
-  } else if (stock_quantity !== undefined) {
+  } else if (stock_quantity != null) {
     isOutOfStock = stock_quantity <= 0;
   } else {
-    isOutOfStock = false; // Default to in-stock if no stock info available
+    isOutOfStock = false;
   }
 
-  // Handle add to cart
-  const handleAddToCart = async (e: React.MouseEvent) => {
+  const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     addToCart(
       {
@@ -166,32 +138,65 @@ export function ProductCard({
   const heartLoading = isWishlistLoading || hookLoading;
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow transition-shadow duration-300 hover:shadow-lg">
-      <Link href={`/san-pham/${productSlug}`} className="block relative">
-        {isOnSale && (
-          <Badge className="absolute top-3 left-3 z-10 bg-red-500 text-white shadow-sm backdrop-blur-sm">
-            -{discountPercentage}%
-          </Badge>
-        )}
-        {isOutOfStock && (
-          <Badge
-            variant="outline"
-            className="absolute top-3 right-3 z-10 border-muted bg-background/80 text-foreground/70 backdrop-blur-sm"
-          >
-            Hết hàng
-          </Badge>
-        )}
-        <div className="aspect-square relative overflow-hidden bg-muted rounded-t-2xl">
+    <div className="group relative overflow-hidden rounded-3xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-xl transition-transform hover:-translate-y-1">
+      {/* Image & overlays */}
+      <Link
+        href={`/san-pham/${productSlug}`}
+        className="block rounded-t-3xl overflow-hidden"
+      >
+        <div className="relative aspect-square bg-gray-100 dark:bg-gray-900 transition-brightness duration-300 group-hover:brightness-110">
           <Image
             src={mainImage}
             alt={productName}
             fill
-            className="object-cover transition-transform duration-300 group-hover:scale-110"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            className="object-cover"
           />
+          {isOnSale && (
+            <Badge className="absolute top-3 left-3 bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg">
+              -{discountPercentage}%
+            </Badge>
+          )}
+          {isOutOfStock && (
+            <div className="absolute inset-0 bg-black/50 dark:bg-white/50 flex items-center justify-center">
+              <span className="text-sm font-semibold text-white dark:text-gray-900 uppercase">
+                Hết hàng
+              </span>
+            </div>
+          )}
+          {/* Hover actions */}
+          <div className="absolute inset-0 flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+            <button
+              onClick={handleAddToCart}
+              disabled={isAdding || isOutOfStock}
+              className="p-3 bg-white dark:bg-gray-900 rounded-full shadow hover:bg-primary/90 dark:hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {isAdding ? (
+                <Loader2 className="w-5 h-5 animate-spin text-gray-700 dark:text-gray-300" />
+              ) : (
+                <ShoppingCart className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+              )}
+            </button>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                onToggleWishlist
+                  ? onToggleWishlist()
+                  : toggleWishlist(productId!);
+              }}
+              disabled={heartLoading}
+              className="p-3 bg-white dark:bg-gray-900 rounded-full shadow hover:bg-pink-100 dark:hover:bg-pink-900 transition-colors disabled:opacity-50"
+            >
+              {heartFilled ? (
+                <Heart fill="#e11d48" className="w-5 h-5" />
+              ) : (
+                <Heart className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+              )}
+            </button>
+          </div>
         </div>
       </Link>
 
+      {/* Details */}
       <div className="p-4 space-y-2">
         {brandName && (
           <Link
@@ -199,63 +204,34 @@ export function ProductCard({
               .toLowerCase()
               .replace(/\s+/g, "-")}`}
           >
-            <p className="text-xs uppercase tracking-wide text-muted-foreground hover:text-primary transition-colors">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors">
               {brandName}
             </p>
           </Link>
         )}
-        <Link
-          href={`/san-pham/${productSlug}`}
-          className="block group-hover:text-primary transition-colors"
-        >
-          <h3 className="font-medium text-sm leading-snug text-balance line-clamp-2">
+        <Link href={`/san-pham/${productSlug}`}>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-primary dark:group-hover:text-primary transition-colors line-clamp-2">
             {productName}
           </h3>
         </Link>
-
-        <div className="flex items-center justify-between pt-1">
-          <div>
+        <div className="flex items-baseline justify-between">
+          <div className="flex items-baseline gap-2">
             {isOnSale ? (
-              <div className="flex items-center gap-1.5">
-                <span className="font-semibold text-primary">
+              <>
+                <span className="text-lg font-bold text-red-600 dark:text-red-400">
                   {formatPrice(productSalePrice as number)}
                 </span>
-                <span className="text-xs text-muted-foreground line-through">
+                <span className="text-sm text-gray-400 dark:text-gray-500 line-through">
                   {formatPrice(productPrice)}
                 </span>
-              </div>
+              </>
             ) : (
-              <span className="font-semibold">{formatPrice(productPrice)}</span>
+              <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                {formatPrice(productPrice)}
+              </span>
             )}
           </div>
-
-          <button
-            onClick={handleToggleWishlist}
-            disabled={heartLoading}
-            className="h-8 w-8 flex items-center justify-center rounded-full border border-muted bg-background hover:bg-accent transition-colors"
-          >
-            {heartFilled ? (
-              <Heart fill="currentColor" className="h-4 w-4 text-red-500" />
-            ) : (
-              <Heart className="h-4 w-4 text-muted-foreground" />
-            )}
-            <span className="sr-only">Thêm vào wishlist</span>
-          </button>
         </div>
-
-        <Button
-          className="w-full mt-2"
-          size="sm"
-          onClick={handleAddToCart}
-          disabled={isAdding || isOutOfStock || !productVariantId}
-        >
-          {isAdding ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <ShoppingCart className="h-4 w-4 mr-2" />
-          )}
-          {isOutOfStock ? "Hết hàng" : "Thêm vào giỏ hàng"}
-        </Button>
       </div>
     </div>
   );
