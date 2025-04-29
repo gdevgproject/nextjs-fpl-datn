@@ -138,8 +138,8 @@ function Header({
     "rounded-full hidden md:flex border border-border shadow-md bg-background hover:bg-primary/10 dark:hover:bg-primary/20 transition";
   return (
     <div className="flex items-center justify-between">
-      <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
-        Thương hiệu
+      <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-primary">
+        Thương Hiệu
       </h2>
       <div className="flex items-center gap-3">
         <Button

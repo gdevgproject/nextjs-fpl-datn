@@ -22,17 +22,17 @@ export default function BestSellersSection({
     error = query.error;
   }
 
-  // Handle loading state
+  // Loading state
   if (isLoading) {
     return (
       <section className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
-            Sản phẩm bán chạy
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-primary">
+            Sản Phẩm Bán Chạy
           </h2>
           <Link
             href="/san-pham?sortBy=popular"
-            className="text-sm font-medium hover:underline self-end sm:self-auto"
+            className="px-4 py-2 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition shadow-sm"
           >
             Xem tất cả
           </Link>
@@ -69,12 +69,12 @@ export default function BestSellersSection({
   return (
     <section className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
-          Sản phẩm bán chạy
+        <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-primary">
+          Sản Phẩm Bán Chạy
         </h2>
         <Link
           href="/san-pham?sortBy=popular"
-          className="text-sm font-medium hover:underline self-end sm:self-auto"
+          className="px-4 py-2 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition shadow-sm"
         >
           Xem tất cả
         </Link>
