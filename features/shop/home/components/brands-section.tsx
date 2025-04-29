@@ -141,7 +141,7 @@ function Header({
       <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
         Thương hiệu
       </h2>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <Button
           variant="outline"
           size="icon"
@@ -160,12 +160,6 @@ function Header({
         >
           <ChevronRight className="h-5 w-5" />
         </Button>
-        <Link
-          href="/san-pham"
-          className="text-sm font-medium hover:underline text-primary"
-        >
-          Xem tất cả
-        </Link>
       </div>
     </div>
   );
