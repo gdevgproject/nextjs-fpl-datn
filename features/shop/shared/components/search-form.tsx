@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Search, Package, ChevronDown, Sparkles } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { useAISearchSuggestions } from "../hooks/use-ai-search-suggestions";
+import { SearchSuggestions } from "./search-suggestions";
 
 const uuidV4Regex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -38,8 +40,26 @@ export function SearchForm() {
   const [isFocused, setIsFocused] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isSubmitAttempted, setIsSubmitAttempted] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const selectedItemRef = useRef<number | null>(null);
+
+  // Initialize AI search suggestions hook with options
+  const {
+    query: aiQuery,
+    setQuery: setAiQuery,
+    suggestions,
+    isLoading: loadingSuggestions,
+    isStale: isStaleResults,
+    error: suggestionsError,
+  } = useAISearchSuggestions("", {
+    // Only enable suggestions when in AI mode
+    enabled: searchMode === "ai",
+    debounceMs: 400,
+    minQueryLength: 2,
+    requestCooldown: 250,
+  });
 
   const {
     control,
@@ -49,13 +69,25 @@ export function SearchForm() {
     setValue,
     trigger,
     clearErrors,
+    watch,
+    getValues,
   } = useForm<SearchFormValues>({
     resolver: zodResolver(searchSchema),
     defaultValues: { query: "" },
     mode: "onChange",
   });
 
-  // Reset form state when search mode changes
+  // Watch current query for suggestions
+  const currentQuery = watch("query");
+
+  // Update AI query when current query changes
+  useEffect(() => {
+    if (searchMode === "ai") {
+      setAiQuery(currentQuery || "");
+    }
+  }, [searchMode, currentQuery, setAiQuery]);
+
+  // Reset form when search mode changes
   useEffect(() => {
     // Clear form
     reset({ query: "" });
@@ -68,7 +100,16 @@ export function SearchForm() {
 
     // Reset submission status
     setIsSubmitAttempted(false);
-  }, [searchMode, reset, clearErrors]);
+
+    // Hide suggestions
+    setShowSuggestions(false);
+
+    // Reset AI query
+    setAiQuery("");
+
+    // Reset selected item
+    selectedItemRef.current = null;
+  }, [searchMode, reset, clearErrors, setAiQuery]);
 
   // Clear error when dropdown is opened
   useEffect(() => {
@@ -84,6 +125,7 @@ export function SearchForm() {
       if (formRef.current && !formRef.current.contains(event.target as Node)) {
         setIsFocused(false);
         setIsSubmitAttempted(false);
+        setShowSuggestions(false);
       }
     };
 
@@ -92,6 +134,44 @@ export function SearchForm() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Handle keyboard navigation for suggestions
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!showSuggestions || suggestions.length === 0) return;
+
+      // Arrow down - move selection down
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        selectedItemRef.current =
+          selectedItemRef.current === null
+            ? 0
+            : Math.min(selectedItemRef.current + 1, suggestions.length - 1);
+      }
+
+      // Arrow up - move selection up
+      else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        selectedItemRef.current =
+          selectedItemRef.current === null
+            ? suggestions.length - 1
+            : Math.max(selectedItemRef.current - 1, 0);
+      }
+
+      // Enter - select current item or submit search
+      else if (e.key === "Enter" && selectedItemRef.current !== null) {
+        e.preventDefault();
+        const selectedItem = suggestions[selectedItemRef.current];
+        if (selectedItem) {
+          router.push(`/san-pham/${selectedItem.slug}`);
+          handleSelectSuggestion();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showSuggestions, suggestions, router]);
 
   const onSubmit = (data: SearchFormValues) => {
     setIsSubmitAttempted(true);
@@ -105,15 +185,20 @@ export function SearchForm() {
     }
 
     try {
+      // For AI mode, just show suggestions instead of navigating
       if (searchMode === "ai") {
         if (value.length > AI_QUERY_MAX) {
           setCustomError(`Câu hỏi không được vượt quá ${AI_QUERY_MAX} ký tự`);
           return;
         }
-        router.push(`/ai/tim-kiem?q=${encodeURIComponent(value)}`);
-        reset();
+
+        // Show suggestions instead of navigating
+        setShowSuggestions(true);
         setIsSubmitAttempted(false);
-      } else if (searchMode === "product") {
+        return;
+      }
+      // For product mode, navigate to search page
+      else if (searchMode === "product") {
         if (value.length > PRODUCT_SEARCH_MAX) {
           setCustomError(
             `Từ khóa tìm kiếm không được vượt quá ${PRODUCT_SEARCH_MAX} ký tự`
@@ -123,7 +208,9 @@ export function SearchForm() {
         router.push(`/san-pham?search=${encodeURIComponent(value)}`);
         reset();
         setIsSubmitAttempted(false);
-      } else {
+      }
+      // For order lookup, validate and navigate
+      else {
         if (value.length > ORDER_TOKEN_MAX) {
           setCustomError(
             `Mã tra cứu đơn hàng không được vượt quá ${ORDER_TOKEN_MAX} ký tự`
@@ -143,11 +230,19 @@ export function SearchForm() {
     }
   };
 
-  // Handle changing search mode
+  // Handle search mode change
   const handleSearchModeChange = (mode: "ai" | "product" | "order") => {
     if (searchMode !== mode) {
       setSearchMode(mode);
     }
+  };
+
+  // Handle selecting a suggestion
+  const handleSelectSuggestion = () => {
+    setShowSuggestions(false);
+    reset();
+    setAiQuery("");
+    selectedItemRef.current = null;
   };
 
   const getSearchModeLabel = () => {
@@ -166,7 +261,11 @@ export function SearchForm() {
   const getSearchModeIcon = () => {
     switch (searchMode) {
       case "ai":
-        return <Sparkles className="h-4 w-4" />;
+        return (
+          <Sparkles
+            className={`h-4 w-4 ${loadingSuggestions ? "animate-pulse" : ""}`}
+          />
+        );
       case "product":
         return <Search className="h-4 w-4" />;
       case "order":
@@ -179,13 +278,13 @@ export function SearchForm() {
   const getSearchPlaceholder = () => {
     switch (searchMode) {
       case "ai":
-        return "Hỏi AI...";
+        return "Tìm với AI...";
       case "product":
         return "Tìm sản phẩm...";
       case "order":
         return "Mã đơn hàng...";
       default:
-        return "Hỏi AI...";
+        return "Tìm với AI...";
     }
   };
 
@@ -222,13 +321,17 @@ export function SearchForm() {
     );
   };
 
-  // Handle focus events more carefully
+  // Handle focus events
   const handleFocus = () => {
     setIsFocused(true);
+    // Show suggestions when focusing in AI mode
+    if (searchMode === "ai" && currentQuery?.trim()) {
+      setShowSuggestions(true);
+    }
   };
 
   const handleBlur = (e: React.FocusEvent) => {
-    // Don't blur if clicking within the form (like on the icon buttons)
+    // Don't blur if clicking within the form
     if (formRef.current && formRef.current.contains(e.relatedTarget as Node)) {
       return;
     }
@@ -252,13 +355,24 @@ export function SearchForm() {
     onChange: (...event: any[]) => void
   ) => {
     onChange(e);
+
+    // Show suggestions when typing in AI mode
+    if (searchMode === "ai" && e.target.value.trim()) {
+      setShowSuggestions(true);
+      // Reset selected item when input changes
+      selectedItemRef.current = null;
+    } else {
+      setShowSuggestions(false);
+    }
+
     if (e.target.value.trim()) {
       setIsSubmitAttempted(false);
     }
+
     if (customError) setCustomError(null);
   };
 
-  // Handle button click specifically
+  // Handle search button click
   const handleSearchButtonClick = () => {
     setIsFocused(true);
     setIsSubmitAttempted(true);
@@ -270,12 +384,36 @@ export function SearchForm() {
       return;
     }
 
-    // Otherwise submit the form
+    // For AI mode, just trigger suggestions instead of submitting form
+    if (searchMode === "ai") {
+      setShowSuggestions(true);
+      return;
+    }
+
+    // Otherwise submit the form (for product search and order lookup)
     formRef.current?.requestSubmit();
   };
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="w-full">
+    <form
+      ref={formRef}
+      onSubmit={(e) => {
+        if (searchMode === "ai") {
+          e.preventDefault();
+          const query = getValues("query").trim();
+
+          // Show suggestions if query is not empty
+          if (query) {
+            setShowSuggestions(true);
+            setAiQuery(query);
+          }
+        } else {
+          // For other modes, let handleSubmit process it
+          handleSubmit(onSubmit)(e);
+        }
+      }}
+      className="w-full"
+    >
       <div className="relative flex w-full items-center">
         <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
           <DropdownMenuTrigger asChild>
@@ -311,7 +449,7 @@ export function SearchForm() {
             <Input
               {...field}
               ref={(e) => {
-                // Connect the ref to both react-hook-form and our local ref
+                // Connect ref to both react-hook-form and our local ref
                 field.ref(e);
                 inputRef.current = e;
               }}
@@ -325,6 +463,7 @@ export function SearchForm() {
               onFocus={handleFocus}
               onBlur={handleBlur}
               onChange={(e) => handleInputChange(e, field.onChange)}
+              aria-expanded={showSuggestions}
             />
           )}
         />
@@ -337,6 +476,20 @@ export function SearchForm() {
         >
           {getSearchModeIcon()}
         </Button>
+
+        {/* AI Search Suggestions dropdown */}
+        {searchMode === "ai" && (
+          <SearchSuggestions
+            query={currentQuery || ""}
+            suggestions={suggestions}
+            isLoading={loadingSuggestions}
+            error={suggestionsError}
+            isOpen={showSuggestions}
+            isStale={isStaleResults}
+            onSelectSuggestion={handleSelectSuggestion}
+            selectedItemIndex={selectedItemRef.current}
+          />
+        )}
       </div>
       {shouldShowError() && (
         <p className="text-xs text-destructive mt-1">
