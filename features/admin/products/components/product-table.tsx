@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useDeleteProduct } from "../hooks/use-delete-product";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   Table,
   TableBody,
@@ -113,13 +114,25 @@ export function ProductTable({
   const productHardDelete = useProductHardDelete();
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
-  // State for delete confirmation dialog
+  // State for delete/restore product
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<any | null>(null);
   const [deleteMode, setDeleteMode] = useState<"soft" | "hard" | "restore">(
     "soft"
   );
-  const [restoreVariants, setRestoreVariants] = useState(false);
+  const [restoreVariants, setRestoreVariants] = useState(true); // Đặt mặc định là true
+  // State cho việc kiểm tra khôi phục sản phẩm
+  const [isCheckingRestoreCondition, setIsCheckingRestoreCondition] =
+    useState(false);
+  const [restoreValidation, setRestoreValidation] = useState<{
+    canRestore: boolean;
+    message: string;
+    details?: {
+      totalVariants: number;
+      activeVariants: number;
+      hiddenVariants: number;
+    };
+  } | null>(null);
 
   // State for quick view dialog
   const [quickViewOpen, setQuickViewOpen] = useState(false);
@@ -166,16 +179,99 @@ export function ProductTable({
   };
 
   // Handle delete button click
-  const handleDeleteClick = (
+  const handleDeleteClick = async (
     product: any,
     mode: "soft" | "hard" | "restore"
   ) => {
     setProductToDelete(product);
     setDeleteMode(mode);
-    // Khi khôi phục, luôn đặt restoreVariants thành true để tự động tích chọn
-    if (mode === "restore") setRestoreVariants(true);
+
+    // Nếu là chế độ khôi phục sản phẩm, kiểm tra điều kiện trước
+    if (mode === "restore") {
+      setRestoreVariants(true); // Đặt mặc định là true - luôn khôi phục tất cả biến thể
+      setIsCheckingRestoreCondition(true); // Bắt đầu trạng thái loading
+      setRestoreValidation(null); // Reset kết quả validation
+
+      try {
+        // Gọi API để kiểm tra số lượng biến thể
+        const supabase = getSupabaseBrowserClient();
+
+        // Lấy số lượng biến thể (cả đã ẩn và chưa ẩn)
+        const { count: totalCount, error: totalError } = await supabase
+          .from("product_variants")
+          .select("*", { count: "exact", head: true })
+          .eq("product_id", product.id);
+
+        if (totalError) {
+          throw new Error(
+            `Không thể kiểm tra danh sách biến thể: ${totalError.message}`
+          );
+        }
+
+        // Lấy số lượng biến thể đang hoạt động (chưa ẩn)
+        const { count: activeCount, error: activeError } = await supabase
+          .from("product_variants")
+          .select("*", { count: "exact", head: true })
+          .eq("product_id", product.id)
+          .is("deleted_at", null);
+
+        if (activeError) {
+          throw new Error(
+            `Không thể kiểm tra biến thể hoạt động: ${activeError.message}`
+          );
+        }
+
+        // Lấy số lượng biến thể đã ẩn
+        const { count: hiddenCount, error: hiddenError } = await supabase
+          .from("product_variants")
+          .select("*", { count: "exact", head: true })
+          .eq("product_id", product.id)
+          .not("deleted_at", "is", null);
+
+        if (hiddenError) {
+          throw new Error(
+            `Không thể kiểm tra biến thể đã ẩn: ${hiddenError.message}`
+          );
+        }
+
+        const counts = {
+          totalVariants: totalCount || 0,
+          activeVariants: activeCount || 0,
+          hiddenVariants: hiddenCount || 0,
+        };
+
+        // Kiểm tra điều kiện:
+        let canRestore = true;
+        let message = "";
+
+        if (counts.totalVariants === 0) {
+          canRestore = false;
+          message =
+            "Không thể khôi phục sản phẩm vì sản phẩm không có biến thể nào. Một sản phẩm cần phải có ít nhất một biến thể để hoạt động.";
+        }
+
+        // Cập nhật trạng thái validation
+        setRestoreValidation({
+          canRestore,
+          message,
+          details: counts,
+        });
+      } catch (error) {
+        // Nếu có lỗi, hiển thị thông báo lỗi
+        setRestoreValidation({
+          canRestore: false,
+          message: `Đã xảy ra lỗi khi kiểm tra điều kiện khôi phục: ${
+            error instanceof Error ? error.message : "Lỗi không xác định"
+          }`,
+        });
+      } finally {
+        setIsCheckingRestoreCondition(false); // Kết thúc trạng thái loading
+      }
+    }
+
     // Mở dialog ngay lập tức
     setDeleteDialogOpen(true);
+
     // Nếu hard delete, chạy validation sau khi mở dialog
     if (mode === "hard") {
       productHardDelete.prepareDelete(product.id);
@@ -1114,47 +1210,121 @@ export function ProductTable({
                 sẽ xuất hiện trên cửa hàng.
               </div>
 
-              {/* Phần lựa chọn khôi phục biến thể */}
-              <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 p-3 border border-blue-200 dark:border-blue-800/30 mb-4">
-                <div className="flex">
-                  <svg
-                    className="h-5 w-5 text-blue-500 mt-0.5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M13 16h-1v-4h-1m-1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div className="ml-3 flex-1">
-                    <div className="text-blue-800 dark:text-blue-200 text-sm mb-1">
-                      <strong>Lưu ý về biến thể sản phẩm:</strong>
+              {/* Trạng thái loading khi đang kiểm tra điều kiện */}
+              {isCheckingRestoreCondition ? (
+                <div className="flex flex-col items-center py-6">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3"></div>
+                  <p className="text-sm text-muted-foreground">
+                    Đang kiểm tra điều kiện khôi phục...
+                  </p>
+                </div>
+              ) : restoreValidation ? (
+                // Hiển thị kết quả kiểm tra
+                restoreValidation.canRestore ? (
+                  // Nếu có thể khôi phục
+                  <>
+                    <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 p-3 border border-blue-200 dark:border-blue-800/30 mb-4">
+                      <div className="flex">
+                        <svg
+                          className="h-5 w-5 text-blue-500 mt-0.5"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M13 16h-1v-4h-1m-1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div className="ml-3 flex-1">
+                          <div className="text-blue-800 dark:text-blue-200 text-sm mb-1">
+                            <strong>Thông tin về biến thể sản phẩm:</strong>
+                          </div>
+
+                          {restoreValidation.details && (
+                            <div className="grid grid-cols-2 gap-2 mb-3">
+                              <div className="p-2 rounded bg-white dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800/30">
+                                <div className="text-xs text-blue-700 dark:text-blue-300">
+                                  Tổng số biến thể
+                                </div>
+                                <div className="text-lg font-medium text-blue-800 dark:text-blue-200">
+                                  {restoreValidation.details.totalVariants}
+                                </div>
+                              </div>
+                              <div className="p-2 rounded bg-white dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800/30">
+                                <div className="text-xs text-blue-700 dark:text-blue-300">
+                                  Biến thể đã ẩn
+                                </div>
+                                <div className="text-lg font-medium text-blue-800 dark:text-blue-200">
+                                  {restoreValidation.details.hiddenVariants}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="text-blue-800 dark:text-blue-200 text-sm mb-2">
+                            <strong>Lưu ý:</strong> Một sản phẩm cần có ít nhất
+                            một biến thể hoạt động để hiển thị đúng trên cửa
+                            hàng. Tất cả biến thể đã ẩn sẽ được khôi phục cùng
+                            với sản phẩm.
+                          </div>
+                          <div className="flex items-center space-x-2 opacity-80">
+                            <input
+                              type="checkbox"
+                              id="restoreVariants"
+                              checked={true}
+                              disabled={true}
+                              className="h-4 w-4 rounded border-blue-300 cursor-not-allowed"
+                            />
+                            <label
+                              htmlFor="restoreVariants"
+                              className="text-sm font-medium text-blue-800 dark:text-blue-200"
+                            >
+                              Khôi phục tất cả biến thể đã ẩn của sản phẩm
+                            </label>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-blue-800 dark:text-blue-200 text-sm mb-2">
-                      Sản phẩm cần có ít nhất một biến thể hoạt động để khách
-                      hàng có thể mua được.
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="restoreVariants"
-                        checked={true}
-                        disabled={true}
-                        className="h-4 w-4 rounded border-gray-300 cursor-not-allowed"
-                      />
-                      <label
-                        htmlFor="restoreVariants"
-                        className="text-sm font-semibold text-blue-800 dark:text-blue-200"
+                  </>
+                ) : (
+                  // Nếu không thể khôi phục, hiển thị lý do không thể khôi phục
+                  <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 p-4 border border-amber-200 dark:border-amber-800/30 mb-4">
+                    <div className="flex">
+                      <svg
+                        className="h-5 w-5 text-amber-500 mt-0.5"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                       >
-                        Khôi phục tất cả biến thể đã ẩn của sản phẩm này (bắt
-                        buộc)
-                      </label>
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                      </svg>
+                      <div className="ml-3">
+                        <div className="text-amber-800 dark:text-amber-200 font-medium mb-2">
+                          Không thể khôi phục sản phẩm
+                        </div>
+                        <div className="text-amber-800 dark:text-amber-300 text-sm">
+                          {restoreValidation.message}
+                        </div>
+                        {restoreValidation.details && (
+                          <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-700/50">
+                            <div className="text-sm text-amber-800 dark:text-amber-300">
+                              Bạn cần tạo ít nhất một biến thể cho sản phẩm này
+                              trước khi có thể khôi phục.
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                )
+              ) : null}
             </>
           ) : (
             deleteMode === "soft" && (
@@ -1197,10 +1367,13 @@ export function ProductTable({
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               disabled={
-                deleteMode === "hard" &&
-                (productHardDelete.isChecking ||
-                  (productHardDelete.validationResult &&
-                    !productHardDelete.validationResult.canDelete))
+                (deleteMode === "hard" &&
+                  (productHardDelete.isChecking ||
+                    (productHardDelete.validationResult &&
+                      !productHardDelete.validationResult.canDelete))) ||
+                (deleteMode === "restore" &&
+                  (isCheckingRestoreCondition ||
+                    (restoreValidation && !restoreValidation.canRestore)))
               }
               className={
                 deleteMode === "hard"
@@ -1332,7 +1505,7 @@ export function ProductTable({
                     </Link>
                   </Button>
                   <Button size="sm" onClick={() => onEdit(selectedProduct)}>
-                    <Pencil className="mr-2 h-4 w-4" />
+                    <Pencil className="mr-2 h-3.5 w-3.5" />
                     Chỉnh sửa
                   </Button>
                 </div>

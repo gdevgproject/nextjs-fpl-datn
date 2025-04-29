@@ -160,6 +160,65 @@ async function checkHasActiveVariants(productId: number): Promise<boolean> {
   return count !== null && count > 0;
 }
 
+// Helper function to check if a product has any variants (including hidden ones)
+async function checkHasAnyVariants(productId: number): Promise<boolean> {
+  const { data, error, count } = await supabase
+    .from("product_variants")
+    .select("*", { count: "exact", head: true })
+    .eq("product_id", productId);
+
+  if (error) {
+    console.error("Error checking any variants:", error);
+    throw new Error("Không thể kiểm tra danh sách biến thể của sản phẩm");
+  }
+
+  return count !== null && count > 0;
+}
+
+// Helper function to get counts of all product variants
+async function getProductVariantCounts(productId: number): Promise<{
+  totalVariants: number;
+  activeVariants: number;
+  hiddenVariants: number;
+}> {
+  try {
+    // Get count of all variants
+    const { count: totalCount, error: totalError } = await supabase
+      .from("product_variants")
+      .select("*", { count: "exact", head: true })
+      .eq("product_id", productId);
+
+    if (totalError) throw totalError;
+
+    // Get count of active variants
+    const { count: activeCount, error: activeError } = await supabase
+      .from("product_variants")
+      .select("*", { count: "exact", head: true })
+      .eq("product_id", productId)
+      .is("deleted_at", null);
+
+    if (activeError) throw activeError;
+
+    // Get count of hidden variants
+    const { count: hiddenCount, error: hiddenError } = await supabase
+      .from("product_variants")
+      .select("*", { count: "exact", head: true })
+      .eq("product_id", productId)
+      .not("deleted_at", "is", null);
+
+    if (hiddenError) throw hiddenError;
+
+    return {
+      totalVariants: totalCount || 0,
+      activeVariants: activeCount || 0,
+      hiddenVariants: hiddenCount || 0,
+    };
+  } catch (error) {
+    console.error("Error fetching variant counts:", error);
+    throw new Error("Không thể đếm số lượng biến thể sản phẩm");
+  }
+}
+
 /**
  * Hook for product deletion operations (soft delete, restore, hard delete)
  */
@@ -244,7 +303,36 @@ export function useDeleteProduct() {
       restoreAllVariants?: boolean;
     }) => {
       try {
-        // 1. Get all hidden variants for the product
+        // 0. Kiểm tra xem sản phẩm có biến thể nào không (bao gồm cả biến thể đã ẩn)
+        const hasAnyVariants = await checkHasAnyVariants(productId);
+        if (!hasAnyVariants) {
+          throw new Error(
+            "Không thể khôi phục sản phẩm vì sản phẩm không có biến thể nào. Một sản phẩm cần phải có ít nhất một biến thể để hoạt động."
+          );
+        }
+
+        // 1. Lấy số liệu thống kê về biến thể của sản phẩm
+        const variantCounts = await getProductVariantCounts(productId);
+
+        // Nếu không có biến thể nào (kể cả biến thể đã ẩn), không thể khôi phục
+        if (variantCounts.totalVariants === 0) {
+          throw new Error(
+            "Không thể khôi phục sản phẩm vì sản phẩm không có biến thể nào. Một sản phẩm cần phải có ít nhất một biến thể để hoạt động."
+          );
+        }
+
+        // Nếu không có biến thể đang hoạt động và không chọn khôi phục tất cả
+        if (
+          variantCounts.activeVariants === 0 &&
+          !restoreAllVariants &&
+          variantCounts.hiddenVariants > 0
+        ) {
+          throw new Error(
+            "Sản phẩm này không có biến thể nào đang hoạt động. Vui lòng chọn 'Khôi phục tất cả biến thể' để khôi phục sản phẩm."
+          );
+        }
+
+        // 2. Get all hidden variants for the product
         const { data: variants, error: variantsError } = await supabase
           .from("product_variants")
           .select("id, deleted_at")
@@ -254,16 +342,6 @@ export function useDeleteProduct() {
         if (variantsError) {
           console.error("Error fetching hidden variants:", variantsError);
           throw new Error("Không thể lấy danh sách biến thể ẩn của sản phẩm");
-        }
-
-        // 2. Check if there are any active variants or if we're restoring all
-        const hasVisibleVariants = await checkHasActiveVariants(productId);
-
-        if (!hasVisibleVariants && !restoreAllVariants && variants.length > 0) {
-          // Nếu không có biến thể đang hoạt động và không chọn khôi phục tất cả
-          throw new Error(
-            "Không thể khôi phục sản phẩm khi không có biến thể nào hoạt động. Vui lòng chọn khôi phục tất cả biến thể."
-          );
         }
 
         // 3. Restore the product
@@ -280,7 +358,7 @@ export function useDeleteProduct() {
 
         // 4. Restore variants based on the restoreAllVariants parameter
         if (variants && variants.length > 0) {
-          if (restoreAllVariants || !hasVisibleVariants) {
+          if (restoreAllVariants || variantCounts.activeVariants === 0) {
             // Restore ALL hidden variants if restoreAllVariants is true or there are no active variants
             const variantIds = variants.map((variant) => variant.id);
             const { error: variantRestoreError } = await supabase
@@ -340,24 +418,34 @@ export function useDeleteProduct() {
           }
         }
 
-        return data;
+        return {
+          data,
+          variantStats: await getProductVariantCounts(productId), // Return updated counts
+        };
       } catch (error) {
         console.error("Exception in restore:", error);
         throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       // Immediately invalidate all product queries to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["product-variants"] });
-      toast.success("Thành công", {
-        description:
-          "Sản phẩm và các biến thể liên quan đã được hiển thị lại thành công",
-      });
+
+      // Thông báo thành công chi tiết hơn
+      let description = "Sản phẩm đã được hiển thị lại thành công";
+
+      // Nếu có thông tin về biến thể được khôi phục, hiển thị chi tiết
+      if (result?.variantStats) {
+        const { activeVariants } = result.variantStats;
+        description += ` với ${activeVariants} biến thể đang hoạt động`;
+      }
+
+      toast.success("Khôi phục thành công", { description });
     },
     onError: (error: Error) => {
       console.error("Lỗi hiển thị lại sản phẩm:", error);
-      toast.error("Lỗi", {
+      toast.error("Không thể khôi phục", {
         description: error.message || "Không thể hiển thị lại sản phẩm",
       });
     },
