@@ -22,13 +22,22 @@
  * ```
  */
 
-// Danh sách model được hỗ trợ
-const MODELS = {
-  PRIMARY:
-    process.env.GROQ_PRIMARY_MODEL ||
-    "meta-llama/llama-4-maverick-17b-128e-instruct",
-  FALLBACK: process.env.GROQ_FALLBACK_MODEL || "llama-3.3-70b-versatile",
-};
+// Danh sách model theo thứ tự ưu tiên
+const DEFAULT_MODEL_PRIORITY = [
+  "meta-llama/llama-4-maverick-17b-128e-instruct", // Ưu tiên 1
+  "meta-llama/llama-4-scout-17b-16e-instruct", // Ưu tiên 2
+  "llama-3.3-70b-versatile", // Ưu tiên 3
+  "llama-3.1-8b-instant", // Ưu tiên 4
+  "deepseek-r1-distill-llama-70b", // Ưu tiên 5
+  "llama3-70b-8192", // Ưu tiên 6
+  "llama3-8b-8192", // Ưu tiên 7
+  "gemma2-9b-it", // Ưu tiên 8 (cuối)
+];
+
+// Lấy danh sách model từ môi trường hoặc sử dụng danh sách mặc định
+const MODEL_PRIORITY = process.env.GROQ_MODEL_PRIORITY
+  ? process.env.GROQ_MODEL_PRIORITY.split(",").map((model) => model.trim())
+  : DEFAULT_MODEL_PRIORITY;
 
 // Lưu trạng thái rate limit của các model
 const modelRateLimits: Record<
@@ -38,15 +47,17 @@ const modelRateLimits: Record<
     retryAt: number;
     retryCount: number;
   }
-> = {
-  [MODELS.PRIMARY]: { limited: false, retryAt: 0, retryCount: 0 },
-  [MODELS.FALLBACK]: { limited: false, retryAt: 0, retryCount: 0 },
-};
+> = {};
+
+// Khởi tạo trạng thái cho tất cả model
+MODEL_PRIORITY.forEach((model) => {
+  modelRateLimits[model] = { limited: false, retryAt: 0, retryCount: 0 };
+});
 
 // Các hằng số cấu hình
 const RATE_LIMIT_RESET_TIME = 60 * 1000; // 1 phút
 const MAX_RETRY_COUNT = 5; // Số lần thử tối đa trước khi ngừng tự động reset
-const MAX_FALLBACK_RETRIES = 2; // Số lần thử tối đa cho model thay thế trước khi bỏ cuộc
+const MAX_FALLBACK_RETRIES = 2; // Số lần thử tối đa cho model thay thế trước khi thử model tiếp theo
 
 /**
  * Kiểm tra xem lỗi có phải là do rate limit không
@@ -100,31 +111,54 @@ export function handleModelRateLimit(currentModel: string): string {
     }, RATE_LIMIT_RESET_TIME);
   }
 
-  // Trả về model thay thế
-  return getAlternativeModel(currentModel);
+  // Trả về model thay thế theo thứ tự ưu tiên
+  return getNextAvailableModel(currentModel);
 }
 
 /**
- * Lấy model thay thế cho model hiện tại
+ * Lấy model tiếp theo có sẵn theo thứ tự ưu tiên
  */
-function getAlternativeModel(currentModel: string): string {
-  // Nếu model hiện tại là model chính, trả về model dự phòng
-  if (currentModel === MODELS.PRIMARY) {
-    return MODELS.FALLBACK;
+function getNextAvailableModel(currentModel: string): string {
+  // Tìm vị trí của model hiện tại trong danh sách ưu tiên
+  const currentIndex = MODEL_PRIORITY.indexOf(currentModel);
+
+  // Nếu không tìm thấy model hiện tại trong danh sách, trả về model đầu tiên
+  if (currentIndex === -1) return MODEL_PRIORITY[0];
+
+  // Tìm model tiếp theo chưa bị rate limit
+  for (let i = 0; i < MODEL_PRIORITY.length; i++) {
+    // Bắt đầu từ model sau model hiện tại, nếu đến cuối danh sách thì quay lại đầu
+    const nextIndex = (currentIndex + i + 1) % MODEL_PRIORITY.length;
+    const nextModel = MODEL_PRIORITY[nextIndex];
+
+    // Nếu model tiếp theo không bị rate limit, sử dụng nó
+    if (!modelRateLimits[nextModel]?.limited) {
+      return nextModel;
+    }
   }
-  // Ngược lại, trả về model chính
-  return MODELS.PRIMARY;
+
+  // Nếu tất cả model đều bị rate limit, trả về model có thời gian retry sớm nhất
+  return MODEL_PRIORITY.reduce((earliest, model) => {
+    if (
+      !modelRateLimits[earliest] ||
+      (modelRateLimits[model] &&
+        modelRateLimits[model].retryAt < modelRateLimits[earliest].retryAt)
+    ) {
+      return model;
+    }
+    return earliest;
+  }, MODEL_PRIORITY[0]);
 }
 
 /**
  * Lấy model phù hợp nhất để sử dụng tại thời điểm hiện tại
- * Ưu tiên model PRIMARY nếu không bị rate limit
+ * Ưu tiên theo thứ tự trong MODEL_PRIORITY
  */
 export function getGroqModel(): string {
   // Dọn dẹp trạng thái rate limit nếu đã hết thời gian
   Object.keys(modelRateLimits).forEach((model) => {
     if (
-      modelRateLimits[model].limited &&
+      modelRateLimits[model]?.limited &&
       Date.now() >= modelRateLimits[model].retryAt
     ) {
       modelRateLimits[model].limited = false;
@@ -134,25 +168,24 @@ export function getGroqModel(): string {
     }
   });
 
-  // Ưu tiên model chính nếu không bị rate limit
-  if (!modelRateLimits[MODELS.PRIMARY].limited) {
-    return MODELS.PRIMARY;
+  // Tìm model đầu tiên trong danh sách ưu tiên mà không bị rate limit
+  for (const model of MODEL_PRIORITY) {
+    if (!modelRateLimits[model]?.limited) {
+      return model;
+    }
   }
 
-  // Nếu model chính bị rate limit, kiểm tra model dự phòng
-  if (!modelRateLimits[MODELS.FALLBACK].limited) {
-    return MODELS.FALLBACK;
-  }
-
-  // Nếu cả hai model đều bị rate limit, trả về model có thời gian retry sớm hơn
-  if (
-    modelRateLimits[MODELS.PRIMARY].retryAt <=
-    modelRateLimits[MODELS.FALLBACK].retryAt
-  ) {
-    return MODELS.PRIMARY;
-  } else {
-    return MODELS.FALLBACK;
-  }
+  // Nếu tất cả model đều bị rate limit, trả về model có thời gian retry sớm nhất
+  return MODEL_PRIORITY.reduce((earliest, model) => {
+    if (
+      !modelRateLimits[earliest] ||
+      (modelRateLimits[model] &&
+        modelRateLimits[model].retryAt < modelRateLimits[earliest].retryAt)
+    ) {
+      return model;
+    }
+    return earliest;
+  }, MODEL_PRIORITY[0]);
 }
 
 /**
@@ -227,21 +260,32 @@ export async function callGroqAPI(
           );
 
           // Xử lý rate limit và lấy model thay thế
-          const alternativeModel = handleModelRateLimit(model);
-          console.log(
-            `[AI-MODEL] 🔀 Switching to alternative model: ${alternativeModel}`
-          );
+          let alternativeModel = model;
+          const triedModels = new Set([model]); // Lưu lại các model đã thử để tránh lặp vô hạn
 
-          // Bắt đầu thời gian request thay thế
-          const altStartTime = Date.now();
+          // Thử từng model theo thứ tự ưu tiên cho đến khi tìm được model hoạt động
+          for (
+            let attempt = 0;
+            attempt < MODEL_PRIORITY.length - 1;
+            attempt++
+          ) {
+            // Lấy model thay thế tiếp theo
+            alternativeModel = handleModelRateLimit(alternativeModel);
 
-          // Thử lại với model thay thế
-          let retryCount = 0;
-          let altResponse = null;
+            // Nếu đã thử model này rồi, bỏ qua để tránh lặp vô hạn
+            if (triedModels.has(alternativeModel)) continue;
+            triedModels.add(alternativeModel);
 
-          while (retryCount < MAX_FALLBACK_RETRIES && !altResponse) {
+            console.log(
+              `[AI-MODEL] 🔀 Switching to alternative model: ${alternativeModel}`
+            );
+
+            // Bắt đầu thời gian request thay thế
+            const altStartTime = Date.now();
+
+            // Thử với model thay thế
             try {
-              const attemptResponse = await fetch(
+              const alternativeResponse = await fetch(
                 "https://api.groq.com/openai/v1/chat/completions",
                 {
                   method: "POST",
@@ -262,70 +306,51 @@ export async function callGroqAPI(
               // Thời gian hoàn thành request thay thế
               const altRequestTime = Date.now() - altStartTime;
 
-              if (attemptResponse.ok) {
+              if (alternativeResponse.ok) {
                 console.log(
                   `[AI-MODEL] ✅ Request với model thay thế ${alternativeModel} thành công sau ${altRequestTime}ms`
                 );
-                altResponse = attemptResponse;
-                break;
+                return alternativeResponse;
               } else {
+                const altErrorText = await alternativeResponse.text();
                 console.error(
-                  `[AI-MODEL] ⚠️ Lần thử ${
-                    retryCount + 1
-                  }: Request với model thay thế ${alternativeModel} thất bại sau ${altRequestTime}ms`
+                  `[AI-MODEL] ❌ Request với model thay thế ${alternativeModel} thất bại sau ${altRequestTime}ms: ${altErrorText}`
                 );
 
-                // Đọc nội dung lỗi từ phản hồi model thay thế
-                const altErrorText = await attemptResponse.text();
-                console.error(
-                  `[AI-MODEL] Lỗi khi dùng model thay thế: ${altErrorText}`
-                );
-
-                // Tăng số lần thử và chờ một chút trước khi thử lại
-                retryCount++;
-                if (retryCount < MAX_FALLBACK_RETRIES) {
-                  console.log(
-                    `[AI-MODEL] 🔄 Đợi 1 giây và thử lại với model thay thế...`
-                  );
-                  await new Promise((resolve) => setTimeout(resolve, 1000));
+                // Kiểm tra nếu lỗi là do rate limit, đánh dấu model này cũng bị rate limit
+                if (
+                  alternativeResponse.status === 429 ||
+                  altErrorText.includes("rate_limit_exceeded")
+                ) {
+                  handleModelRateLimit(alternativeModel);
                 }
               }
             } catch (attemptError) {
               console.error(
-                `[AI-MODEL] ❌ Lỗi kết nối khi thử model thay thế lần ${
-                  retryCount + 1
-                }:`,
+                `[AI-MODEL] ❌ Lỗi kết nối khi thử model ${alternativeModel}:`,
                 attemptError
               );
-              retryCount++;
-              if (retryCount < MAX_FALLBACK_RETRIES) {
-                await new Promise((resolve) => setTimeout(resolve, 1000));
-              }
             }
           }
 
-          if (altResponse) {
-            return altResponse;
-          } else {
-            // Nếu cả hai model đều lỗi, trả về thông báo lỗi
-            console.error(
-              `[AI-MODEL] ❌ Đã thử ${MAX_FALLBACK_RETRIES} lần, không thể sử dụng model thay thế.`
-            );
+          // Nếu đã thử tất cả model và không có model nào hoạt động
+          console.error(
+            `[AI-MODEL] ❌ Đã thử tất cả ${triedModels.size} model nhưng không có model nào khả dụng.`
+          );
 
-            // Trả về response lỗi có thể xử lý
-            return new Response(
-              JSON.stringify({
-                error: "Cả hai model đều không khả dụng, vui lòng thử lại sau.",
-                suggestions: [],
-              }),
-              {
-                status: 503,
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-          }
+          // Trả về response lỗi có thể xử lý
+          return new Response(
+            JSON.stringify({
+              error: "Tất cả model đều không khả dụng, vui lòng thử lại sau.",
+              suggestions: [],
+            }),
+            {
+              status: 503,
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
         }
 
         // Nếu không phải lỗi rate limit, throw lỗi

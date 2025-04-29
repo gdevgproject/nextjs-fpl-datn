@@ -138,18 +138,19 @@ export function ProductCard({
   const heartLoading = isWishlistLoading || hookLoading;
 
   return (
-    <div className="group relative overflow-hidden rounded-3xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-xl transition-transform hover:-translate-y-1">
+    <div className="group relative overflow-hidden rounded-2xl bg-white dark:bg-gray-950/30 border border-gray-200 dark:border-gray-800/40 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 backdrop-blur-sm dark:backdrop-blur-md">
       {/* Image & overlays */}
       <Link
         href={`/san-pham/${productSlug}`}
-        className="block rounded-t-3xl overflow-hidden"
+        className="block rounded-t-2xl overflow-hidden"
       >
-        <div className="relative aspect-square bg-gray-100 dark:bg-gray-900 transition-brightness duration-300 group-hover:brightness-110">
+        <div className="relative aspect-square bg-gray-50 dark:bg-black/20 transition-all duration-300 group-hover:brightness-105">
           <Image
             src={mainImage}
             alt={productName}
             fill
             className="object-cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
           {isOnSale && (
             <Badge className="absolute top-3 left-3 bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg">
@@ -157,23 +158,23 @@ export function ProductCard({
             </Badge>
           )}
           {isOutOfStock && (
-            <div className="absolute inset-0 bg-black/50 dark:bg-white/50 flex items-center justify-center">
-              <span className="text-sm font-semibold text-white dark:text-gray-900 uppercase">
+            <div className="absolute inset-0 bg-black/50 dark:bg-black/60 flex items-center justify-center backdrop-blur-sm">
+              <span className="text-sm font-semibold text-white uppercase tracking-wider">
                 Hết hàng
               </span>
             </div>
           )}
           {/* Hover actions */}
-          <div className="absolute inset-0 flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+          <div className="absolute inset-0 flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300 bg-black/10 dark:bg-black/20">
             <button
               onClick={handleAddToCart}
               disabled={isAdding || isOutOfStock}
-              className="p-3 bg-white dark:bg-gray-900 rounded-full shadow hover:bg-primary/90 dark:hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="p-3 bg-white/90 dark:bg-gray-900/90 rounded-full shadow-lg hover:bg-primary hover:text-white dark:hover:bg-primary dark:hover:text-white transition-all disabled:opacity-50 scale-90 group-hover:scale-100"
             >
               {isAdding ? (
-                <Loader2 className="w-5 h-5 animate-spin text-gray-700 dark:text-gray-300" />
+                <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
-                <ShoppingCart className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                <ShoppingCart className="w-5 h-5" />
               )}
             </button>
             <button
@@ -184,12 +185,15 @@ export function ProductCard({
                   : toggleWishlist(productId!);
               }}
               disabled={heartLoading}
-              className="p-3 bg-white dark:bg-gray-900 rounded-full shadow hover:bg-pink-100 dark:hover:bg-pink-900 transition-colors disabled:opacity-50"
+              className="p-3 bg-white/90 dark:bg-gray-900/90 rounded-full shadow-lg hover:bg-pink-500 hover:text-white dark:hover:bg-pink-500 dark:hover:text-white transition-all disabled:opacity-50 scale-90 group-hover:scale-100"
             >
               {heartFilled ? (
-                <Heart fill="#e11d48" className="w-5 h-5" />
+                <Heart
+                  fill="#e11d48"
+                  className="w-5 h-5 transition-transform duration-300 hover:scale-110"
+                />
               ) : (
-                <Heart className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                <Heart className="w-5 h-5 transition-transform duration-300 hover:scale-110" />
               )}
             </button>
           </div>
@@ -197,20 +201,20 @@ export function ProductCard({
       </Link>
 
       {/* Details */}
-      <div className="p-4 space-y-2">
+      <div className="p-4 space-y-2 dark:bg-gradient-to-b dark:from-gray-900/5 dark:to-gray-900/30">
         {brandName && (
           <Link
             href={`/thuong-hieu/${brandName
               .toLowerCase()
               .replace(/\s+/g, "-")}`}
           >
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-primary/80 transition-colors">
               {brandName}
             </p>
           </Link>
         )}
         <Link href={`/san-pham/${productSlug}`}>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-primary dark:group-hover:text-primary transition-colors line-clamp-2">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-primary dark:group-hover:text-primary/90 transition-colors line-clamp-2">
             {productName}
           </h3>
         </Link>

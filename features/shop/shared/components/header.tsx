@@ -153,9 +153,9 @@ export function Header({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="relative hover:bg-primary/10 dark:hover:bg-primary/20"
+                  className="relative hover:bg-pink-100/80 dark:hover:bg-pink-900/30 hover:text-pink-500 dark:hover:text-pink-400 transition-colors"
                 >
-                  <Heart className="h-[1.2rem] w-[1.2rem] text-muted-foreground hover:text-primary transition-colors" />
+                  <Heart className="h-[1.2rem] w-[1.2rem] transition-transform duration-200 hover:scale-110" />
                   <span className="sr-only">Yêu thích</span>
                 </Button>
               </Link>
@@ -239,7 +239,7 @@ export function Header({
                       <div className="pt-2">
                         <Link
                           href="/tai-khoan/yeu-thich"
-                          className="flex items-center gap-2 py-2.5 px-3 rounded-md hover:bg-muted text-foreground"
+                          className="flex items-center gap-2 py-2.5 px-3 rounded-md hover:bg-pink-50 dark:hover:bg-pink-900/20 hover:text-pink-500 dark:hover:text-pink-400 transition-all"
                           onClick={() => setMobileMenuOpen(false)}
                         >
                           <Heart className="h-4 w-4" />
@@ -248,7 +248,7 @@ export function Header({
 
                         <Link
                           href="/gio-hang"
-                          className="flex items-center gap-2 py-2.5 px-3 rounded-md hover:bg-muted text-foreground"
+                          className="flex items-center gap-2 py-2.5 px-3 rounded-md hover:bg-primary/10 dark:hover:bg-primary/20 hover:text-primary dark:hover:text-primary/90 transition-all"
                           onClick={() => setMobileMenuOpen(false)}
                         >
                           <svg
