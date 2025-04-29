@@ -136,13 +136,13 @@ export const Footer = memo(function Footer({
                 <span className="font-bold text-xl text-primary">
                   {isLoading ? <Skeleton className="h-7 w-32" /> : shopName}
                 </span>
-                <p className="text-xs text-muted-foreground">
+                <span className="block text-xs text-muted-foreground">
                   {isLoading ? (
                     <Skeleton className="h-4 w-40" />
                   ) : (
                     "Nước hoa chính hãng"
                   )}
-                </p>
+                </span>
               </div>
             </div>
 
