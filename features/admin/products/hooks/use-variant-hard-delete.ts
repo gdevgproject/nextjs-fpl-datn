@@ -167,18 +167,16 @@ export function useVariantHardDelete() {
     mutationFn: async ({
       variantId,
       productId,
+      validationResult,
     }: {
       variantId: number;
       productId: number;
+      validationResult: VariantDeleteValidationResult;
     }) => {
-      // Kiểm tra lại điều kiện trước khi thực hiện xóa vĩnh viễn
-      const validationResult = await checkDeleteConditionsMutation.mutateAsync(
-        variantId
-      );
-
-      if (!validationResult.canDelete) {
+      // Sử dụng validationResult đã kiểm tra trước từ prepareDelete để tránh kiểm tra lặp
+      if (!validationResult?.canDelete) {
         throw new Error(
-          `Không thể xóa vĩnh viễn biến thể: ${validationResult.blockingReasons.join(
+          `Không thể xóa vĩnh viễn biến thể: ${validationResult?.blockingReasons.join(
             ", "
           )}`
         );
@@ -241,10 +239,15 @@ export function useVariantHardDelete() {
 
   // Hàm thực hiện xóa vĩnh viễn
   const confirmDelete = async () => {
-    if (!variantToDelete) return;
+    if (!variantToDelete || !validationResult) return;
 
     try {
-      await hardDeleteMutation.mutateAsync(variantToDelete);
+      // Truyền đúng variantId, productId và validationResult vào mutation
+      await hardDeleteMutation.mutateAsync({
+        variantId: variantToDelete.id,
+        productId: variantToDelete.productId,
+        validationResult,
+      });
     } catch (error) {
       // Error handling already in mutation
     }
