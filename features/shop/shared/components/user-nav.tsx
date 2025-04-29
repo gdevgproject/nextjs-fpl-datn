@@ -157,9 +157,16 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="relative h-8 w-8 rounded-full p-0 overflow-hidden border border-border/40 hover:border-primary/40 hover:shadow-sm transition-all duration-300 focus-visible:ring-2 focus-visible:ring-primary/70"
+          className="relative group h-8 w-8 rounded-full p-0 overflow-visible focus-visible:ring-2 focus-visible:ring-primary/70"
         >
-          <Avatar className="h-8 w-8 rounded-full">
+          {/* Decorative ring effect */}
+          <span className="absolute inset-0 rounded-full border border-primary/30 group-hover:border-primary/50 transition-all duration-300" />
+          <span className="absolute inset-[-2px] rounded-full bg-gradient-to-r from-primary/20 via-primary/5 to-primary/20 dark:from-primary/30 dark:via-primary/10 dark:to-primary/30 opacity-0 group-hover:opacity-100 blur-sm transition-all duration-500" />
+
+          {/* Status indicator dot - only shown for authenticated users */}
+          <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-green-500 border border-background z-10" />
+
+          <Avatar className="h-8 w-8 rounded-full shadow-sm ring-1 ring-primary/10 group-hover:ring-primary/30 transition-all duration-300">
             <AvatarImage
               src={avatarUrl}
               alt={displayName}
@@ -168,13 +175,12 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
                 const target = e.currentTarget as HTMLImageElement;
                 target.src = DEFAULT_AVATAR_URL;
               }}
-              className="object-cover aspect-square h-full w-full transition-opacity duration-300 hover:opacity-90"
+              className="object-cover aspect-square h-full w-full transition-all duration-300 group-hover:scale-105"
             />
-            <AvatarFallback className="bg-primary/10 text-primary font-medium">
+            <AvatarFallback className="bg-gradient-to-br from-primary/15 to-primary/5 text-primary font-medium">
               {displayName.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <span className="absolute inset-0 rounded-full bg-black/0 hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-200" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
