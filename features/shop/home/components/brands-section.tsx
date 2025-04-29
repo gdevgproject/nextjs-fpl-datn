@@ -53,7 +53,7 @@ export default function BrandsSection({
       />
       <div
         ref={scrollContainerRef}
-        className="scroll-container flex space-x-8 pb-4 overflow-x-auto snap-x rounded-xl bg-muted/40 dark:bg-muted/10 px-4 transition-all scrollbar-thin"
+        className="scroll-container flex space-x-4 pb-4 overflow-x-auto snap-x rounded-xl bg-muted/40 dark:bg-muted/10 px-4 transition-all scrollbar-thin"
         style={
           {
             "--scroll-thumb": "#d864a5",

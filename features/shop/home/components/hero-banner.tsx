@@ -152,17 +152,17 @@ export default function HeroBanner({ banners }: HeroBannerProps) {
   // If no banners, show a default banner
   if (banners.length === 0) {
     return (
-      <div className="relative w-full h-[350px] sm:h-[400px] md:h-[500px] lg:h-[600px] bg-gradient-to-r from-primary/20 to-primary/5">
+      <div className="relative w-full h-[250px] sm:h-[300px] md:h-[350px] lg:h-[400px] xl:h-[450px] 2xl:h-[500px] bg-gradient-to-r from-primary/20 to-primary/5">
         <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4">
             Welcome to MyBeauty
           </h2>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mb-6">
+          <p className="text-sm md:text-base lg:text-lg text-muted-foreground max-w-2xl mb-4 md:mb-6">
             Discover our exclusive collection of premium fragrances
           </p>
           <Button
-            size="lg"
-            className="rounded-full px-8 shadow-lg hover:shadow-xl transition-all"
+            size="sm"
+            className="rounded-full px-4 md:px-6 lg:px-8 shadow-lg hover:shadow-xl transition-all"
           >
             Shop Now
           </Button>
@@ -176,7 +176,7 @@ export default function HeroBanner({ banners }: HeroBannerProps) {
   return (
     <div
       key={currentBanner.id}
-      className="relative w-full h-[350px] sm:h-[400px] md:h-[500px] lg:h-[600px] overflow-hidden"
+      className="relative w-full h-[250px] sm:h-[300px] md:h-[350px] lg:h-[400px] xl:h-[450px] 2xl:h-[500px] overflow-hidden"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
@@ -194,7 +194,7 @@ export default function HeroBanner({ banners }: HeroBannerProps) {
           fill
           priority
           className="object-cover"
-          sizes="100vw"
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 100vw"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-transparent" />
       </div>
@@ -202,26 +202,26 @@ export default function HeroBanner({ banners }: HeroBannerProps) {
       {/* Banner Content */}
       <div
         className={cn(
-          "absolute inset-0 flex flex-col justify-center p-6 md:p-12",
+          "absolute inset-0 flex flex-col justify-center p-4 sm:p-6 md:p-8 lg:p-10",
           "transition-all duration-500 ease-in-out",
           isAnimating ? "translate-y-4 opacity-0" : "translate-y-0 opacity-100"
         )}
       >
         <div className="container mx-auto">
-          <div className="max-w-lg">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 drop-shadow-md">
+          <div className="max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg">
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-1 sm:mb-2 md:mb-3 drop-shadow-md">
               {currentBanner.title}
             </h2>
             {currentBanner.subtitle && (
-              <p className="text-base sm:text-lg md:text-xl text-white/90 mb-6 drop-shadow-md">
+              <p className="text-xs sm:text-sm md:text-base lg:text-lg text-white/90 mb-2 sm:mb-3 md:mb-4 lg:mb-5 drop-shadow-md line-clamp-2 md:line-clamp-3">
                 {currentBanner.subtitle}
               </p>
             )}
             {currentBanner.link_url && (
               <Link href={currentBanner.link_url}>
                 <Button
-                  size="lg"
-                  className="rounded-full px-8 shadow-lg hover:shadow-xl transition-all"
+                  size="sm"
+                  className="rounded-full text-xs sm:text-sm px-4 sm:px-6 md:px-7 shadow-lg hover:shadow-xl transition-all"
                 >
                   Khám phá ngay
                 </Button>
@@ -237,34 +237,34 @@ export default function HeroBanner({ banners }: HeroBannerProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/20 hover:bg-black/40 text-white rounded-full h-10 w-10 sm:h-12 sm:w-12 shadow-md backdrop-blur-sm z-10"
+            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 bg-black/20 hover:bg-black/40 text-white rounded-full h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 shadow-md backdrop-blur-sm z-10"
             onClick={goToPrevious}
             disabled={isAnimating}
             aria-label="Previous banner"
           >
-            <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
+            <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/20 hover:bg-black/40 text-white rounded-full h-10 w-10 sm:h-12 sm:w-12 shadow-md backdrop-blur-sm z-10"
+            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 bg-black/20 hover:bg-black/40 text-white rounded-full h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 shadow-md backdrop-blur-sm z-10"
             onClick={goToNext}
             disabled={isAnimating}
             aria-label="Next banner"
           >
-            <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" />
+            <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
           </Button>
 
           {/* Dots Indicator */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+          <div className="absolute bottom-3 sm:bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 sm:gap-2 z-10">
             {banners.map((_, index) => (
               <button
                 key={index}
                 className={cn(
-                  "h-2.5 rounded-full transition-all duration-300",
+                  "h-2 md:h-2.5 rounded-full transition-all duration-300",
                   index === currentIndex
-                    ? "bg-white w-8"
-                    : "bg-white/50 hover:bg-white/70 w-2.5"
+                    ? "bg-white w-6 md:w-8"
+                    : "bg-white/50 hover:bg-white/70 w-2 md:w-2.5"
                 )}
                 onClick={() => goToSlide(index)}
                 disabled={isAnimating}
