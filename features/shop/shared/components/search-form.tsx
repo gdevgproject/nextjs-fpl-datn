@@ -61,6 +61,8 @@ export function SearchForm() {
     debounceMs: 700, // Increased from 400ms to reduce API requests
     minQueryLength: 2,
     requestCooldown: 1000, // Increased cooldown to prevent rate limits
+    maxRetryAttempts: 3,
+    initialBackoff: 2000,
   });
 
   const {
