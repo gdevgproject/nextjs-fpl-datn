@@ -144,24 +144,35 @@ export async function generateAIResponse(
   const decoder = new TextDecoder();
   let result = "";
   let done = false;
+  let lastUpdateTime = Date.now();
+  const UPDATE_FREQUENCY = 50; // ms between UI updates to prevent too frequent re-renders
 
   while (!done) {
     const { value, done: doneReading } = await reader.read();
     done = doneReading;
     if (value) {
       const chunk = decoder.decode(value, { stream: true });
+
+      // Process each line in the chunk
       for (const line of chunk.split("\n")) {
         if (line.trim().startsWith("data:")) {
           const json = line.replace(/^data:/, "").trim();
           if (json === "[DONE]") continue;
+
           try {
             const parsed = JSON.parse(json);
             const delta = parsed.choices?.[0]?.delta?.content || "";
+
             if (delta) {
+              // Add to our accumulated result
               result += delta;
-              // Only trigger onStream callback if there's a meaningful change
-              // and limit update frequency to prevent re-render storms
-              if (onStream && delta.length > 0) onStream(result);
+
+              // Control update frequency to avoid overwhelming the UI
+              const now = Date.now();
+              if (now - lastUpdateTime >= UPDATE_FREQUENCY || doneReading) {
+                lastUpdateTime = now;
+                if (onStream) onStream(result);
+              }
             }
           } catch (e) {
             // Silently ignore parsing errors from incomplete chunks
@@ -170,8 +181,8 @@ export async function generateAIResponse(
       }
     }
   }
-  
-  // Ensure final result is sent once more at the end
+
+  // Always ensure the final result is sent at once at the end
   if (onStream) onStream(result);
   return result;
 }

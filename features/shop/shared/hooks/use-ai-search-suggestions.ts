@@ -84,122 +84,136 @@ export function useAISearchSuggestions(
   }, []);
 
   // Fetch suggestions implementation
-  const fetchSuggestions = useCallback(async (searchQuery: string): Promise<AISearchResponse> => {
-    // Skip if query is too short
-    if (!searchQuery.trim() || searchQuery.trim().length < options.minQueryLength) {
-      return { suggestions: [] };
-    }
+  const fetchSuggestions = useCallback(
+    async (searchQuery: string): Promise<AISearchResponse> => {
+      // Skip if query is too short
+      if (
+        !searchQuery.trim() ||
+        searchQuery.trim().length < options.minQueryLength
+      ) {
+        return { suggestions: [] };
+      }
 
-    // If we're rate limited, return empty results
-    if (rateLimited) {
-      return { suggestions: [], source: "rate_limited" };
-    }
+      // If we're rate limited, return empty results
+      if (rateLimited) {
+        return { suggestions: [], source: "rate_limited" };
+      }
 
-    // Set up abort controller for this request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    abortControllerRef.current = new AbortController();
+      // Set up abort controller for this request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
 
-    try {
-      const response = await fetch("/api/ai-search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: searchQuery }),
-        signal: abortControllerRef.current.signal,
-      });
+      try {
+        const response = await fetch("/api/ai-search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: searchQuery }),
+          signal: abortControllerRef.current.signal,
+        });
 
-      // Handle non-OK responses
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        
-        // Handle rate limiting specifically
-        if (response.status === 429 || 
-           (response.status === 500 && errorData?.error?.includes("rate_limit"))) {
-          setRateLimited(true);
-          setErrorMessage("Đã đạt giới hạn tìm kiếm. Đang thử mô hình khác...");
-          
-          // Implement exponential backoff with jitter
-          const jitter = Math.random() * 1000;
-          const waitTime = backoffTime * (1 << Math.min(retryCount.current, 3)) + jitter;
-          retryCount.current++;
-          
-          // Auto-retry after backoff if under max attempts
-          if (retryCount.current <= options.maxRetryAttempts) {
-            if (requestDelayTimeout.current) {
-              clearTimeout(requestDelayTimeout.current);
-            }
-            
-            requestDelayTimeout.current = setTimeout(() => {
-              if (isMounted.current) {
-                setRateLimited(false);
-                setErrorMessage(null);
-                refetch(); // Try again with a different model
+        // Handle non-OK responses
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+
+          // Handle rate limiting specifically
+          if (
+            response.status === 429 ||
+            (response.status === 500 &&
+              errorData?.error?.includes("rate_limit"))
+          ) {
+            setRateLimited(true);
+            setErrorMessage(
+              "Đã đạt giới hạn tìm kiếm. Đang thử mô hình khác..."
+            );
+
+            // Implement exponential backoff with jitter
+            const jitter = Math.random() * 1000;
+            const waitTime =
+              backoffTime * (1 << Math.min(retryCount.current, 3)) + jitter;
+            retryCount.current++;
+
+            // Auto-retry after backoff if under max attempts
+            if (retryCount.current <= options.maxRetryAttempts) {
+              if (requestDelayTimeout.current) {
+                clearTimeout(requestDelayTimeout.current);
               }
-            }, waitTime);
-          } else {
-            setErrorMessage("Tất cả mô hình đều đang bận. Vui lòng thử lại sau vài phút.");
-          }
-          
-          return { suggestions: [], source: "rate_limited" };
-        }
-        
-        // Other errors
-        throw new Error(errorData?.error || `API Error: ${response.status}`);
-      }
 
-      // Successful response
-      const result = await response.json();
-      
-      // Check if we're using fallback model
-      if (result?.modelUsed) {
-        const primaryModel =
-          process.env.NEXT_PUBLIC_GROQ_PRIMARY_MODEL ||
-          "meta-llama/llama-4-maverick-17b-128e-instruct";
-        setUsingFallbackModel(result.modelUsed !== primaryModel);
-      } else {
-        setUsingFallbackModel(false);
+              requestDelayTimeout.current = setTimeout(() => {
+                if (isMounted.current) {
+                  setRateLimited(false);
+                  setErrorMessage(null);
+                  refetch(); // Try again with a different model
+                }
+              }, waitTime);
+            } else {
+              setErrorMessage(
+                "Tất cả mô hình đều đang bận. Vui lòng thử lại sau vài phút."
+              );
+            }
+
+            return { suggestions: [], source: "rate_limited" };
+          }
+
+          // Other errors
+          throw new Error(errorData?.error || `API Error: ${response.status}`);
+        }
+
+        // Successful response
+        const result = await response.json();
+
+        // Check if we're using fallback model
+        if (result?.modelUsed) {
+          const primaryModel =
+            process.env.NEXT_PUBLIC_GROQ_PRIMARY_MODEL ||
+            "meta-llama/llama-4-maverick-17b-128e-instruct";
+          setUsingFallbackModel(result.modelUsed !== primaryModel);
+        } else {
+          setUsingFallbackModel(false);
+        }
+
+        // Reset error states on success
+        retryCount.current = 0;
+        setRateLimited(false);
+        setErrorMessage(null);
+
+        return result;
+      } catch (err) {
+        // Only set error if the request wasn't aborted
+        if (!(err instanceof DOMException && err.name === "AbortError")) {
+          console.error("Error in AI search request:", err);
+          setErrorMessage((err as Error).message || "Lỗi khi tìm kiếm");
+        }
+        return { suggestions: [] };
       }
-      
-      // Reset error states on success
-      retryCount.current = 0;
-      setRateLimited(false);
-      setErrorMessage(null);
-      
-      return result;
-    } catch (err) {
-      // Only set error if the request wasn't aborted
-      if (!(err instanceof DOMException && err.name === 'AbortError')) {
-        console.error("Error in AI search request:", err);
-        setErrorMessage((err as Error).message || "Lỗi khi tìm kiếm");
-      }
-      return { suggestions: [] };
-    }
-  }, [backoffTime, options.maxRetryAttempts, options.minQueryLength, rateLimited]);
+    },
+    [backoffTime, options.maxRetryAttempts, options.minQueryLength, rateLimited]
+  );
 
   // Execute request with rate limiting
   const executeRequest = useCallback(async (): Promise<AISearchResponse> => {
     const now = Date.now();
     const timeSinceLastRequest = now - lastRequestTime.current;
-    
+
     // If we're making requests too quickly, delay this one
     if (timeSinceLastRequest < options.requestCooldown) {
       pendingRequest.current = true;
-      
+
       return new Promise((resolve) => {
         // Clear any existing timeout
         if (requestDelayTimeout.current) {
           clearTimeout(requestDelayTimeout.current);
         }
-        
+
         // Set a timeout to make the request after the cooldown period
         const delay = options.requestCooldown - timeSinceLastRequest;
         requestDelayTimeout.current = setTimeout(async () => {
           if (!isMounted.current) return;
-          
+
           pendingRequest.current = false;
           lastRequestTime.current = Date.now();
-          
+
           try {
             const result = await fetchSuggestions(debouncedQuery);
             resolve(result);
@@ -210,7 +224,7 @@ export function useAISearchSuggestions(
         }, delay);
       });
     }
-    
+
     // Execute immediately if not rate limited
     pendingRequest.current = false;
     lastRequestTime.current = now;
