@@ -72,7 +72,11 @@ export function ProductCard({
 }: ProductCardProps) {
   const { mutate: addToCart, isPending: isAdding } = useAddCartItem();
   const { toast } = useSonnerToast();
-  const { isInWishlist: hookInList, toggleWishlist, isLoading: hookLoading } = useWishlist();
+  const {
+    isInWishlist: hookInList,
+    toggleWishlist,
+    isLoading: hookLoading,
+  } = useWishlist();
 
   const handleToggleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -162,39 +166,40 @@ export function ProductCard({
   const heartLoading = isWishlistLoading || hookLoading;
 
   return (
-    <div className="group relative overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md">
-      <Link href={`/san-pham/${productSlug}`} className="block">
+    <div className="group relative overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow transition-shadow duration-300 hover:shadow-lg">
+      <Link href={`/san-pham/${productSlug}`} className="block relative">
         {isOnSale && (
-          <Badge className="absolute top-2 left-2 z-10 bg-red-500 hover:bg-red-600">
+          <Badge className="absolute top-3 left-3 z-10 bg-red-500 text-white shadow-sm backdrop-blur-sm">
             -{discountPercentage}%
           </Badge>
         )}
         {isOutOfStock && (
           <Badge
             variant="outline"
-            className="absolute top-2 right-2 z-10 bg-background/80"
+            className="absolute top-3 right-3 z-10 border-muted bg-background/80 text-foreground/70 backdrop-blur-sm"
           >
             Hết hàng
           </Badge>
         )}
-        <div className="aspect-square relative overflow-hidden bg-muted">
+        <div className="aspect-square relative overflow-hidden bg-muted rounded-t-2xl">
           <Image
             src={mainImage}
             alt={productName}
             fill
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            className="object-cover transition-transform duration-300 group-hover:scale-110"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
         </div>
       </Link>
-      <div className="p-4 space-y-1">
+
+      <div className="p-4 space-y-2">
         {brandName && (
           <Link
             href={`/thuong-hieu/${brandName
               .toLowerCase()
               .replace(/\s+/g, "-")}`}
           >
-            <p className="text-xs text-muted-foreground font-medium hover:text-primary transition-colors">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground hover:text-primary transition-colors">
               {brandName}
             </p>
           </Link>
@@ -203,16 +208,16 @@ export function ProductCard({
           href={`/san-pham/${productSlug}`}
           className="block group-hover:text-primary transition-colors"
         >
-          <h3 className="font-medium text-sm leading-tight line-clamp-2">
+          <h3 className="font-medium text-sm leading-snug text-balance line-clamp-2">
             {productName}
           </h3>
         </Link>
 
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center justify-between pt-1">
           <div>
             {isOnSale ? (
-              <div className="flex items-center gap-2">
-                <span className="font-semibold">
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-primary">
                   {formatPrice(productSalePrice as number)}
                 </span>
                 <span className="text-xs text-muted-foreground line-through">
@@ -223,20 +228,19 @@ export function ProductCard({
               <span className="font-semibold">{formatPrice(productPrice)}</span>
             )}
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
+
+          <button
             onClick={handleToggleWishlist}
             disabled={heartLoading}
+            className="h-8 w-8 flex items-center justify-center rounded-full border border-muted bg-background hover:bg-accent transition-colors"
           >
             {heartFilled ? (
               <Heart fill="currentColor" className="h-4 w-4 text-red-500" />
             ) : (
-              <Heart className="h-4 w-4" />
+              <Heart className="h-4 w-4 text-muted-foreground" />
             )}
-            <span className="sr-only">Add to wishlist</span>
-          </Button>
+            <span className="sr-only">Thêm vào wishlist</span>
+          </button>
         </div>
 
         <Button
