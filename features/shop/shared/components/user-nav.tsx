@@ -88,23 +88,33 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
   if (!isAuthenticated) {
     return (
       <>
-        {/* Desktop: Hiện chữ Đăng nhập/Đăng ký */}
+        {/* Desktop: login/register buttons with hover effects */}
         <div className="gap-2 hidden md:flex">
           <Link href="/dang-nhap">
-            <Button variant="ghost" className="font-semibold px-4">
+            <Button
+              variant="ghost"
+              className="font-medium px-4 hover:bg-primary/10 dark:hover:bg-primary/20 transition-colors"
+            >
               Đăng nhập
             </Button>
           </Link>
           <Link href="/dang-ky">
-            <Button variant="outline" className="font-semibold px-4">
+            <Button
+              variant="outline"
+              className="font-medium px-4 hover:bg-primary/10 hover:text-primary transition-all duration-300 hover:border-primary"
+            >
               Đăng ký
             </Button>
           </Link>
         </div>
-        {/* Mobile: Chỉ hiện nút đăng nhập, không cần đăng ký */}
+        {/* Mobile: Only show login button */}
         <div className="flex gap-2 md:hidden">
           <Link href="/dang-nhap">
-            <Button variant="ghost" size="icon">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hover:bg-primary/10 dark:hover:bg-primary/20"
+            >
               <LogIn className="h-5 w-5" />
               <span className="sr-only">Đăng nhập</span>
             </Button>
@@ -147,9 +157,9 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="relative h-8 w-8 rounded-[10px] p-0 border border-border focus-visible:ring-2 focus-visible:ring-primary/70"
+          className="relative h-8 w-8 rounded-full p-0 overflow-hidden border border-border/40 hover:border-primary/40 hover:shadow-sm transition-all duration-300 focus-visible:ring-2 focus-visible:ring-primary/70"
         >
-          <Avatar className="h-8 w-8 rounded-[8px]">
+          <Avatar className="h-8 w-8 rounded-full">
             <AvatarImage
               src={avatarUrl}
               alt={displayName}
@@ -158,120 +168,135 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
                 const target = e.currentTarget as HTMLImageElement;
                 target.src = DEFAULT_AVATAR_URL;
               }}
-              className="object-cover aspect-square h-full w-full"
+              className="object-cover aspect-square h-full w-full transition-opacity duration-300 hover:opacity-90"
             />
-            <AvatarFallback>
+            <AvatarFallback className="bg-primary/10 text-primary font-medium">
               {displayName.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
+          <span className="absolute inset-0 rounded-full bg-black/0 hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-200" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="w-72 p-0 overflow-hidden rounded-[12px] shadow-xl border border-border bg-background"
+        className="w-72 p-0 overflow-hidden rounded-xl shadow-lg border border-border/60 bg-background backdrop-blur-sm"
         align="end"
         forceMount
+        sideOffset={8}
       >
-        <div className="px-4 py-3 bg-muted/60 flex items-center gap-3 border-b border-border">
-          <Avatar className="h-10 w-10 rounded-[8px]">
+        <div className="px-4 py-3.5 bg-muted/30 backdrop-blur-sm flex items-center gap-3 border-b border-border/40">
+          <Avatar className="h-10 w-10 rounded-full ring-2 ring-background shadow-sm">
             <AvatarImage
               src={avatarUrl}
               alt={displayName}
               className="object-cover aspect-square h-full w-full"
             />
-            <AvatarFallback>
+            <AvatarFallback className="bg-primary/10 text-primary font-medium">
               {displayName.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-base truncate">{displayName}</p>
+            <p className="font-semibold text-base truncate text-foreground">
+              {displayName}
+            </p>
             <p className="text-xs text-muted-foreground truncate">{email}</p>
-            <p className="text-xs text-muted-foreground capitalize truncate">
+            <p className="text-xs text-primary/70 capitalize truncate">
               {userRoleDisplay}
             </p>
           </div>
         </div>
-        <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <Link
-              href="/tai-khoan"
-              className="flex items-center gap-2 rounded-[8px]"
-            >
-              <User className="w-4 h-4" />
-              <span>Tài khoản</span>
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link
-              href="/tai-khoan/don-hang"
-              className="flex items-center gap-2 rounded-[8px]"
-            >
-              <ShoppingBag className="w-4 h-4" />
-              <span>Đơn hàng</span>
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link
-              href="/tai-khoan/yeu-thich"
-              className="flex items-center gap-2 rounded-[8px]"
-            >
-              <Heart className="w-4 h-4" />
-              <span>Yêu thích</span>
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link
-              href="/tai-khoan/dia-chi"
-              className="flex items-center gap-2 rounded-[8px]"
-            >
-              <MapPin className="w-4 h-4" />
-              <span>Địa chỉ</span>
-            </Link>
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-        {role === "admin" && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel>Quản trị</DropdownMenuLabel>
+
+        <div className="p-1.5">
+          <DropdownMenuGroup>
             <DropdownMenuItem asChild>
               <Link
-                href="/admin/orders"
-                className="flex items-center gap-2 rounded-[8px]"
+                href="/tai-khoan"
+                className="flex cursor-pointer items-center gap-2.5 rounded-md py-2 px-3 hover:bg-muted transition-colors"
               >
-                <ShoppingBag className="w-4 h-4" />
+                <User className="w-4 h-4 text-muted-foreground" />
+                <span>Tài khoản</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link
+                href="/tai-khoan/don-hang"
+                className="flex cursor-pointer items-center gap-2.5 rounded-md py-2 px-3 hover:bg-muted transition-colors"
+              >
+                <ShoppingBag className="w-4 h-4 text-muted-foreground" />
                 <span>Đơn hàng</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link
-                href="/admin/catalog/products"
-                className="flex items-center gap-2 rounded-[8px]"
+                href="/tai-khoan/yeu-thich"
+                className="flex cursor-pointer items-center gap-2.5 rounded-md py-2 px-3 hover:bg-muted transition-colors"
               >
-                <Boxes className="w-4 h-4" />
-                <span>Sản phẩm</span>
+                <Heart className="w-4 h-4 text-muted-foreground" />
+                <span>Yêu thích</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link
-                href="/admin/users"
-                className="flex items-center gap-2 rounded-[8px]"
+                href="/tai-khoan/dia-chi"
+                className="flex cursor-pointer items-center gap-2.5 rounded-md py-2 px-3 hover:bg-muted transition-colors"
               >
-                <UserGroup className="w-4 h-4" />
-                <span>Người dùng</span>
+                <MapPin className="w-4 h-4 text-muted-foreground" />
+                <span>Địa chỉ</span>
               </Link>
             </DropdownMenuItem>
+          </DropdownMenuGroup>
+        </div>
+
+        {role === "admin" && (
+          <>
+            <DropdownMenuSeparator className="mx-1.5" />
+            <div className="p-1.5">
+              <DropdownMenuLabel className="px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+                Quản trị
+              </DropdownMenuLabel>
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/admin/orders"
+                  className="flex cursor-pointer items-center gap-2.5 rounded-md py-2 px-3 hover:bg-muted transition-colors"
+                >
+                  <ShoppingBag className="w-4 h-4 text-muted-foreground" />
+                  <span>Đơn hàng</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/admin/catalog/products"
+                  className="flex cursor-pointer items-center gap-2.5 rounded-md py-2 px-3 hover:bg-muted transition-colors"
+                >
+                  <Boxes className="w-4 h-4 text-muted-foreground" />
+                  <span>Sản phẩm</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/admin/users"
+                  className="flex cursor-pointer items-center gap-2.5 rounded-md py-2 px-3 hover:bg-muted transition-colors"
+                >
+                  <UserGroup className="w-4 h-4 text-muted-foreground" />
+                  <span>Người dùng</span>
+                </Link>
+              </DropdownMenuItem>
+            </div>
           </>
         )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={handleSignOut}
-          disabled={logoutMutation.isPending}
-          className="text-destructive flex items-center gap-2 rounded-[8px]"
-        >
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>
-            {logoutMutation.isPending ? "Đang đăng xuất..." : "Đăng xuất"}
-          </span>
-        </DropdownMenuItem>
+
+        <DropdownMenuSeparator className="mx-1.5" />
+        <div className="p-1.5">
+          <DropdownMenuItem
+            onClick={handleSignOut}
+            disabled={logoutMutation.isPending}
+            className="flex cursor-pointer items-center gap-2.5 text-destructive rounded-md py-2 px-3 hover:bg-destructive/10 hover:text-destructive transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>
+              {logoutMutation.isPending ? "Đang đăng xuất..." : "Đăng xuất"}
+            </span>
+          </DropdownMenuItem>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );
