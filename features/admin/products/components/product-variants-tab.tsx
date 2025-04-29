@@ -904,13 +904,12 @@ export function ProductVariantsTab({
                             size="icon"
                             className="rounded-r-none border-r-0"
                             onClick={() => {
-                              const currentValue =
-                                parseInt(field.value, 10) || 0;
+                              const currentValue = parseInt(field.value, 10) || 0;
                               if (currentValue > 0) {
                                 field.onChange((currentValue - 1).toString());
                               }
                             }}
-                            disabled={field.value === "0" || field.value === ""}
+                            disabled={editingVariant !== null || field.value === "0" || field.value === ""}
                             title="Giảm số lượng"
                           >
                             <svg
@@ -949,6 +948,7 @@ export function ProductVariantsTab({
                                   field.onChange(value);
                                 }
                               }}
+                              disabled={editingVariant !== null}
                             />
                           </FormControl>
                           <Button
@@ -957,16 +957,14 @@ export function ProductVariantsTab({
                             size="icon"
                             className="rounded-l-none border-l-0"
                             onClick={() => {
-                              const currentValue =
-                                parseInt(field.value, 10) || 0;
+                              const currentValue = parseInt(field.value, 10) || 0;
                               const newValue = currentValue + 1;
-                              // Đảm bảo không vượt quá giới hạn
                               if (newValue <= 100000) {
                                 field.onChange(newValue.toString());
                               }
                             }}
                             title="Tăng số lượng"
-                            disabled={parseInt(field.value, 10) >= 100000}
+                            disabled={editingVariant !== null || parseInt(field.value, 10) >= 100000}
                           >
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
@@ -989,10 +987,13 @@ export function ProductVariantsTab({
                       </div>
                       <FormDescription className="text-xs flex items-center justify-between">
                         <span>Số lượng có sẵn để bán</span>
-                        <span className="text-muted-foreground">
-                          Tối đa: 100.000
-                        </span>
+                        <span className="text-muted-foreground">Tối đa: 100.000</span>
                       </FormDescription>
+                      {editingVariant !== null && (
+                        <div className="text-xs text-amber-600 mt-1">
+                          Chỉ có thể thay đổi tồn kho tại chức năng <b>điều chỉnh kho nhanh</b> (Quick View).
+                        </div>
+                      )}
                       <div className="mt-1.5">
                         <div className="flex justify-between gap-1">
                           <Button
@@ -1001,6 +1002,7 @@ export function ProductVariantsTab({
                             size="sm"
                             onClick={() => field.onChange("0")}
                             className="h-6 px-2 text-xs flex-1"
+                            disabled={editingVariant !== null}
                           >
                             Đặt là 0
                           </Button>
@@ -1010,6 +1012,7 @@ export function ProductVariantsTab({
                             size="sm"
                             onClick={() => field.onChange("10")}
                             className="h-6 px-2 text-xs flex-1"
+                            disabled={editingVariant !== null}
                           >
                             Đặt là 10
                           </Button>
@@ -1019,6 +1022,7 @@ export function ProductVariantsTab({
                             size="sm"
                             onClick={() => field.onChange("50")}
                             className="h-6 px-2 text-xs flex-1"
+                            disabled={editingVariant !== null}
                           >
                             Đặt là 50
                           </Button>
@@ -1028,6 +1032,7 @@ export function ProductVariantsTab({
                             size="sm"
                             onClick={() => field.onChange("100")}
                             className="h-6 px-2 text-xs flex-1"
+                            disabled={editingVariant !== null}
                           >
                             Đặt là 100
                           </Button>
