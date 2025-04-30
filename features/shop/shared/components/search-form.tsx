@@ -139,44 +139,6 @@ export function SearchForm() {
     };
   }, []);
 
-  // Handle keyboard navigation for suggestions
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!showSuggestions || suggestions.length === 0) return;
-
-      // Arrow down - move selection down
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        selectedItemRef.current =
-          selectedItemRef.current === null
-            ? 0
-            : Math.min(selectedItemRef.current + 1, suggestions.length - 1);
-      }
-
-      // Arrow up - move selection up
-      else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        selectedItemRef.current =
-          selectedItemRef.current === null
-            ? suggestions.length - 1
-            : Math.max(selectedItemRef.current - 1, 0);
-      }
-
-      // Enter - select current item or submit search
-      else if (e.key === "Enter" && selectedItemRef.current !== null) {
-        e.preventDefault();
-        const selectedItem = suggestions[selectedItemRef.current];
-        if (selectedItem) {
-          router.push(`/san-pham/${selectedItem.slug}`);
-          handleSelectSuggestion();
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showSuggestions, suggestions, router]);
-
   const onSubmit = (data: SearchFormValues) => {
     setIsSubmitAttempted(true);
     setCustomError(null);
@@ -452,6 +414,9 @@ export function SearchForm() {
           render={({ field }) => (
             <Input
               {...field}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
               ref={(e) => {
                 // Connect ref to both react-hook-form and our local ref
                 field.ref(e);

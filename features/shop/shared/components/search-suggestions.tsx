@@ -90,6 +90,16 @@ export function SearchSuggestions({
           </div>
         ) : suggestions.length > 0 ? (
           <div className="overflow-y-auto p-1">
+            {/* AI summary moved to top */}
+            <div className="px-2 py-1.5 text-xs text-muted-foreground border-b border-border/50">
+              <span className="flex items-center gap-1.5">
+                <span className="font-semibold text-primary flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  AI
+                </span>
+                <span>đề xuất {suggestions.length} sản phẩm phù hợp</span>
+              </span>
+            </div>
             {suggestions.map((suggestion, index) => (
               <Link
                 key={suggestion.id}
@@ -145,21 +155,6 @@ export function SearchSuggestions({
                 </div>
               </Link>
             ))}
-            <div className="px-2 py-1.5 text-xs text-muted-foreground border-t border-border/50 mt-1">
-              <span className="flex items-center gap-1.5">
-                <span className="font-semibold text-primary flex items-center gap-1">
-                  <Sparkles className="h-3 w-3" />
-                  AI
-                </span>
-                <span>đề xuất {suggestions.length} sản phẩm phù hợp</span>
-                {!isLoading && suggestions.length > 0 && (
-                  <span className="text-xs text-muted-foreground/70 ml-auto">
-                    ↑↓ để chọn, Enter để xem
-                  </span>
-                )}
-              </span>
-            </div>
-
             {usingFallbackModel && (
               <div className="px-2 py-1 text-xs text-muted-foreground border-t border-border/50 flex items-center gap-1.5">
                 <BadgeInfo className="h-3 w-3 text-blue-500" />
