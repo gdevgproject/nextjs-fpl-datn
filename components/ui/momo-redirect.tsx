@@ -31,11 +31,9 @@ export default function MomoRedirect({ payUrl }: MomoRedirectProps) {
       // Nếu sau 2s vẫn chưa chuyển app, chuyển sang store
       timeout = setTimeout(() => {
         if (isIOS) {
-          window.location.href =
-            "https://apps.apple.com/vn/app/momo-chuyen-tien-thanh-toan/id918751511";
+          window.location.href = "https://developers.momo.vn/v3/vi/download";
         } else if (isAndroid) {
-          window.location.href =
-            "https://play.google.com/store/apps/details?id=com.mservice.momotransfer";
+          window.location.href = "https://developers.momo.vn/v3/vi/download";
         }
       }, 2000);
     } else {
