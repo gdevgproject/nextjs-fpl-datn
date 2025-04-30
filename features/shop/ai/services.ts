@@ -69,6 +69,7 @@ Name: ${p.name}
 Brand: ${p.brand_name || "Unknown"}
 Brand Logo: ${p.brand_logo_url || "N/A"}
 Gender: ${p.gender_name || "Unisex"}
+Type: ${p.type || "Unknown"}
 Concentration: ${p.concentration_name || "N/A"}
 Release Year: ${p.release_year || "N/A"}
 Origin Country: ${p.origin_country || "N/A"}
@@ -81,15 +82,29 @@ Price: ${p.price.toLocaleString("vi-VN")}đ${
         p.sale_price ? ` (Sale: ${p.sale_price.toLocaleString("vi-VN")}đ)` : ""
       }
 Volume: ${p.volume_ml}ml
-Description: ${p.short_description || "No description available"}
+Description: ${
+        p.short_description || p.description || "No description available"
+      }
 Scents: ${p.scents.join(", ") || "Not specified"}
-Main Image: ${p.main_image_url || "N/A"}
+Notes: ${p.notes || "N/A"}
+Main Image: ${p.main_image_url || p.image_url || "N/A"}
+Image URL: ${p.image_url || p.main_image_url || "N/A"}
+${
+  p.variants && p.variants.length > 0
+    ? `Variants: [${p.variants
+        .map(
+          (v) =>
+            `{id: ${v.id}, volume_ml: ${v.volume_ml}, price: ${v.price}, sale_price: ${v.sale_price}, stock_quantity: ${v.stock_quantity}}`
+        )
+        .join(", ")}]`
+    : ""
+}
 URL: ${baseUrl}/san-pham/${p.slug}
 `
     )
     .join("\n---\n");
 
-  return `You are an AI beauty advisor for MyBeauty, a Vietnamese perfume e-commerce store.
+  const systemPrompt = `You are an AI beauty advisor for MyBeauty, a Vietnamese perfume e-commerce store.
 
 STRICT RULES:
 - ONLY answer questions about perfumes sold at MyBeauty.
@@ -99,6 +114,8 @@ STRICT RULES:
 - If the user asks about a product, year, or attribute that does not exist in the catalog, politely inform them that it is not available and DO NOT suggest unrelated alternatives.
 - DO NOT provide information about products, brands, or shops not present in the product catalog below.
 - DO NOT provide personal opinions or external links.
+
+IMPORTANT: Each product may have multiple variants (different volumes, prices, sale prices, and stock quantities). When answering, always refer to the correct variant that matches the user's request (e.g., if the user asks for 100ml, show the price and stock for the 100ml variant). Do NOT assume a product only has one price or volume.
 
 ${shopInfo ? `Shop info: ${shopInfo}` : ""}
 User info: ${profileInfo}
@@ -118,6 +135,7 @@ Guidelines:
 3.  **Product Information**:
     *   Use the provided product catalog to give accurate details.
     *   If a product is not in the catalog, politely explain that you can only provide information about products currently in stock.
+    *   When mentioning price, volume, or stock, always specify the correct variant.
 4.  **Perfume Terminology**: When appropriate, explain perfume terminology such as "notes," "sillage," and "concentration" to educate the customer.
 5.  **Professionalism**: Be friendly, professional, and knowledgeable about perfumes. Maintain a helpful and engaging tone.
 6.  **Pricing**: Always format prices in Vietnamese Dong (VND) with the "đ" symbol.
@@ -132,6 +150,11 @@ ${productInfo}
 
 Always prioritize the customer's needs and provide accurate, helpful, and engaging recommendations. Never provide information or suggestions outside the provided product catalog.
 `;
+
+  // Log toàn bộ system prompt và dữ liệu truyền vào AI chat bot
+  console.log("=== [AI SYSTEM PROMPT SENT TO AI CHAT BOT] ===\n", systemPrompt);
+
+  return systemPrompt;
 }
 
 /**

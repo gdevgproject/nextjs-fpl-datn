@@ -94,10 +94,12 @@ export async function getProductsForAIContext(
       longevity,
       brands(name, logo_url),
       genders(name),
+      perfume_types(name),
       concentrations(name),
-      product_variants(price, sale_price, volume_ml),
+      product_variants(id, price, sale_price, volume_ml, stock_quantity, deleted_at),
       product_ingredients(
-        ingredients(name)
+        ingredients(name),
+        scent_type
       ),
       scents:product_ingredients(
         scent_type,
@@ -135,6 +137,11 @@ export async function getProductsForAIContext(
         .map(([type, notes]) => `${type} notes: ${notes.join(", ")}`)
         .join("; ");
 
+      // Notes (kim tự tháp hương)
+      const notes = Object.entries(scentsByType)
+        .map(([type, notes]) => `${type}: ${notes.join(", ")}`)
+        .join("; ");
+
       // Main image
       const mainImage =
         product.product_images?.find((img: any) => img.is_main === true) ||
@@ -146,19 +153,33 @@ export async function getProductsForAIContext(
           ?.map((pc: any) => pc.categories?.name)
           .filter(Boolean) || [];
 
+      // All valid variants
+      const variants = (product.product_variants || [])
+        .filter((v: any) => v.deleted_at === null || v.deleted_at === undefined)
+        .map((v: any) => ({
+          id: v.id,
+          volume_ml: v.volume_ml,
+          price: Number(v.price),
+          sale_price: v.sale_price !== null ? Number(v.sale_price) : null,
+          stock_quantity: v.stock_quantity,
+        }));
+
       return {
         id: product.id,
         name: product.name,
         slug: product.slug,
         short_description: product.short_description,
+        description: product.short_description, // alias for compatibility
         brand_name: product.brands?.name || null,
         brand_logo_url: product.brands?.logo_url || null,
         gender_name: product.genders?.name || null,
+        type: product.perfume_types?.name || null,
         concentration_name: product.concentrations?.name || null,
         price: product.product_variants?.[0]?.price || 0,
         sale_price: product.product_variants?.[0]?.sale_price || null,
         volume_ml: product.product_variants?.[0]?.volume_ml || 0,
         scents: [scentsFormatted],
+        notes: notes,
         ingredients:
           product.product_ingredients?.map((pi: any) => pi.ingredients.name) ||
           [],
@@ -170,6 +191,8 @@ export async function getProductsForAIContext(
         product_code: product.product_code || null,
         category_names: categoryNames,
         main_image_url: mainImage?.image_url || null,
+        image_url: mainImage?.image_url || null,
+        variants: variants,
       };
     }) || []
   );

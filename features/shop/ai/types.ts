@@ -48,14 +48,17 @@ export interface AIProduct {
   name: string;
   slug: string;
   short_description: string | null;
+  description?: string | null;
   brand_name: string | null;
   brand_logo_url?: string | null;
   gender_name: string | null;
+  type?: string | null;
   concentration_name: string | null;
   price: number;
   sale_price: number | null;
   volume_ml: number;
   scents: string[];
+  notes?: string;
   ingredients: string[];
   release_year?: number | null;
   origin_country?: string | null;
@@ -65,4 +68,12 @@ export interface AIProduct {
   product_code?: string | null;
   category_names?: string[];
   main_image_url?: string | null;
+  image_url?: string | null;
+  variants?: {
+    id: number;
+    volume_ml: number;
+    price: number;
+    sale_price: number | null;
+    stock_quantity: number;
+  }[];
 }
