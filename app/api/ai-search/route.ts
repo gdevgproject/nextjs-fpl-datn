@@ -27,11 +27,15 @@ STRICT RULES:
 4. MAXIMUM 5 product suggestions
 5. ONLY suggest products from the provided product list
 6. The "relevance" field must be brief (max 50 chars) and IN VIETNAMESE
+7. If the user asks for a year (e.g., 2025) and NO product in the list matches that year, you MUST return []
+8. DO NOT invent or hallucinate products that do not exist in the provided list
+9. DO NOT suggest products with a release_year different from what the user asked, unless there is a clear match or the user query is ambiguous
 
 PRIORITIZE results based on:
 1. Relevance to search terms (product name, brand, scent profile)
-2. Popularity (if available)
-3. Diversity of brands and perfume types
+2. Manufacturing year when specified in the query
+3. Popularity (if available)
+4. Diversity of brands and perfume types
 
 PRODUCT CATALOG:
 {products_info}
@@ -63,7 +67,13 @@ export async function POST(request: Request) {
         name,
         slug,
         short_description,
-        brands (name),
+        product_code,
+        origin_country,
+        release_year,
+        style,
+        sillage,
+        longevity,
+        brands (name, logo_url),
         perfume_types (name),
         genders (name),
         concentrations (name),
@@ -85,6 +95,9 @@ export async function POST(request: Request) {
         product_ingredients (
           ingredients (name),
           scent_type
+        ),
+        product_categories (
+          categories (name)
         )
       `
       )
@@ -143,10 +156,17 @@ export async function POST(request: Request) {
             ?.map((ps: any) => ps.scents?.name)
             .filter(Boolean) || [];
 
+        // List categories
+        const categoryNames =
+          product.product_categories
+            ?.map((pc: any) => pc.categories?.name)
+            .filter(Boolean) || [];
+
         return {
           id: product.id,
           name: product.name,
           brand: product.brands?.name || "Unknown",
+          brand_logo_url: product.brands?.logo_url || null,
           gender: product.genders?.name || "Unisex",
           type: product.perfume_types?.name || "Unknown",
           concentration: product.concentrations?.name || "Unknown",
@@ -156,6 +176,14 @@ export async function POST(request: Request) {
           description: product.short_description,
           scents: scents.join(", "),
           notes: scentNotes,
+          image_url: mainImage?.image_url || null,
+          product_code: product.product_code || null,
+          origin_country: product.origin_country || null,
+          release_year: product.release_year || null,
+          style: product.style || null,
+          sillage: product.sillage || null,
+          longevity: product.longevity || null,
+          category_names: categoryNames,
         };
       })
       .filter(Boolean);
@@ -187,7 +215,7 @@ export async function POST(request: Request) {
 
       // Sử dụng hàm callGroqAPI từ thư viện tiện ích mới
       const groqResponse = await callGroqAPI(messages, {
-        temperature: 0.2, // Low temperature for consistent results
+        temperature: 0.1, // Low temperature for consistent results
         max_tokens: 1024,
         stream: false,
       });

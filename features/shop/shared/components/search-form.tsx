@@ -326,7 +326,8 @@ export function SearchForm() {
         return {
           icon: <Package className="h-4 w-4 text-amber-500" />,
           label: "Đơn hàng",
-          activeClass: "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/40",
+          activeClass:
+            "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/40",
           loadingIndicator: null,
         };
       default:
@@ -361,7 +362,7 @@ export function SearchForm() {
       }}
       className="w-full relative"
     >
-      <div 
+      <div
         className={cn(
           "flex items-center transition-all duration-300 rounded-lg relative overflow-hidden group h-9",
           isFocused ? "shadow-sm ring-1 ring-primary/20" : ""
@@ -374,7 +375,9 @@ export function SearchForm() {
               type="button"
               className={cn(
                 "flex items-center gap-1.5 h-full px-3 text-sm border-r transition-all duration-300 focus:outline-none",
-                isFocused ? activeClass : "border-border/30 text-muted-foreground hover:bg-muted/50"
+                isFocused
+                  ? activeClass
+                  : "border-border/30 text-muted-foreground hover:bg-muted/50"
               )}
             >
               <div className="flex items-center gap-1.5">
@@ -386,7 +389,7 @@ export function SearchForm() {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-[190px]">
-            <DropdownMenuItem 
+            <DropdownMenuItem
               onClick={() => handleSearchModeChange("ai")}
               className="flex items-center gap-2"
             >
@@ -395,7 +398,7 @@ export function SearchForm() {
                 <span className="font-medium">Chat AI</span>
               </div>
             </DropdownMenuItem>
-            <DropdownMenuItem 
+            <DropdownMenuItem
               onClick={() => handleSearchModeChange("order")}
               className="flex items-center gap-2"
             >
@@ -446,27 +449,25 @@ export function SearchForm() {
           onClick={handleSearchButtonClick}
           className={cn(
             "h-full px-3 flex items-center justify-center transition-all duration-300",
-            searchMode === "ai" 
-              ? "bg-primary/5 text-primary hover:bg-primary/10" 
+            searchMode === "ai"
+              ? "bg-primary/5 text-primary hover:bg-primary/10"
               : "bg-amber-50/50 text-amber-600 hover:bg-amber-50 dark:bg-amber-900/10 dark:text-amber-400 dark:hover:bg-amber-900/20"
           )}
           aria-label={searchMode === "ai" ? "Tìm kiếm AI" : "Tra cứu đơn hàng"}
         >
           {loadingSuggestions ? (
             <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          ) : searchMode === "ai" ? (
+            <div className="relative group/icon">
+              <Sparkles className="h-4 w-4 group-hover/icon:opacity-0 transition-opacity duration-300" />
+              <SearchIcon className="h-4 w-4 absolute inset-0 opacity-0 group-hover/icon:opacity-100 transition-opacity duration-300" />
+            </div>
           ) : (
-            searchMode === "ai" ? (
-              <div className="relative group/icon">
-                <Sparkles className="h-4 w-4 group-hover/icon:opacity-0 transition-opacity duration-300" />
-                <SearchIcon className="h-4 w-4 absolute inset-0 opacity-0 group-hover/icon:opacity-100 transition-opacity duration-300" />
-              </div>
-            ) : (
-              <SearchIcon className="h-4 w-4" />
-            )
+            <SearchIcon className="h-4 w-4" />
           )}
         </button>
       </div>
-      
+
       {/* Error message */}
       {shouldShowError() && (
         <p className="text-xs text-destructive mt-1 ml-2 flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
