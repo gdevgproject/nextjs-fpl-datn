@@ -13,6 +13,7 @@ import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings"
 import { useSelectedCheckoutItems } from "./hooks/use-selected-checkout-items";
 import type { Address } from "@/features/shop/account/types";
 import type { CartItem } from "@/features/shop/cart/types";
+import MomoRedirect from "@/components/ui/momo-redirect";
 
 // Checkout steps
 type CheckoutStep = "address" | "payment" | "review";
@@ -98,6 +99,7 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [justPlacedOrder, setJustPlacedOrder] = useState(false);
+  const [momoPayUrl, setMomoPayUrl] = useState<string | null>(null);
 
   // Discount state
   const [discountCode, setDiscountCode] = useState("");
@@ -326,7 +328,7 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
         });
         const momoData = await momoRes.json();
         if (momoData.payUrl) {
-          window.location.href = momoData.payUrl;
+          setMomoPayUrl(momoData.payUrl);
           return;
         } else {
           throw new Error(
@@ -363,6 +365,10 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
       setJustPlacedOrder(true);
     }
   };
+
+  if (momoPayUrl) {
+    return <MomoRedirect payUrl={momoPayUrl} />;
+  }
 
   return (
     <CheckoutContext.Provider
