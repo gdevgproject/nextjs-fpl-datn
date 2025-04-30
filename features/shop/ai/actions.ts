@@ -86,7 +86,13 @@ export async function getProductsForAIContext(
       name, 
       slug, 
       short_description,
-      brands(name),
+      product_code,
+      origin_country,
+      release_year,
+      style,
+      sillage,
+      longevity,
+      brands(name, logo_url),
       genders(name),
       concentrations(name),
       product_variants(price, sale_price, volume_ml),
@@ -96,6 +102,12 @@ export async function getProductsForAIContext(
       scents:product_ingredients(
         scent_type,
         ingredients(name)
+      ),
+      product_categories(
+        categories(name)
+      ),
+      product_images(
+        image_url, is_main
       )
     `
     )
@@ -107,7 +119,6 @@ export async function getProductsForAIContext(
     throw new Error("Failed to fetch products for AI context");
   }
 
-  // Transform the data to match the AIProduct interface
   return (
     products?.map((product: any) => {
       // Group scents by type (top, middle, base)
@@ -120,10 +131,20 @@ export async function getProductsForAIContext(
         scentsByType[type].push(scent.ingredients.name);
       });
 
-      // Format scents as strings like "top notes: bergamot, lemon; middle notes: jasmine, rose"
       const scentsFormatted = Object.entries(scentsByType)
         .map(([type, notes]) => `${type} notes: ${notes.join(", ")}`)
         .join("; ");
+
+      // Main image
+      const mainImage =
+        product.product_images?.find((img: any) => img.is_main === true) ||
+        product.product_images?.[0];
+
+      // Categories
+      const categoryNames =
+        product.product_categories
+          ?.map((pc: any) => pc.categories?.name)
+          .filter(Boolean) || [];
 
       return {
         id: product.id,
@@ -131,6 +152,7 @@ export async function getProductsForAIContext(
         slug: product.slug,
         short_description: product.short_description,
         brand_name: product.brands?.name || null,
+        brand_logo_url: product.brands?.logo_url || null,
         gender_name: product.genders?.name || null,
         concentration_name: product.concentrations?.name || null,
         price: product.product_variants?.[0]?.price || 0,
@@ -140,6 +162,14 @@ export async function getProductsForAIContext(
         ingredients:
           product.product_ingredients?.map((pi: any) => pi.ingredients.name) ||
           [],
+        release_year: product.release_year || null,
+        origin_country: product.origin_country || null,
+        style: product.style || null,
+        sillage: product.sillage || null,
+        longevity: product.longevity || null,
+        product_code: product.product_code || null,
+        category_names: categoryNames,
+        main_image_url: mainImage?.image_url || null,
       };
     }) || []
   );
