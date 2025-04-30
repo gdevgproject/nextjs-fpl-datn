@@ -6,17 +6,23 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { Search, Package, ChevronDown, Sparkles } from "lucide-react";
+import {
+  Sparkles,
+  Package,
+  ChevronDown,
+  Brain,
+  SearchIcon,
+} from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAISearchSuggestions } from "../hooks/use-ai-search-suggestions";
 import { SearchSuggestions } from "./search-suggestions";
+import { cn } from "@/lib/utils";
 
 const uuidV4Regex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -30,12 +36,11 @@ const searchSchema = z.object({
 });
 
 type SearchFormValues = z.infer<typeof searchSchema>;
+type SearchMode = "ai" | "order";
 
 export function SearchForm() {
   const router = useRouter();
-  const [searchMode, setSearchMode] = useState<"ai" | "product" | "order">(
-    "ai"
-  );
+  const [searchMode, setSearchMode] = useState<SearchMode>("ai");
   const [customError, setCustomError] = useState<string | null>(null);
   const [isFocused, setIsFocused] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -58,9 +63,9 @@ export function SearchForm() {
   } = useAISearchSuggestions("", {
     // Only enable suggestions when in AI mode
     enabled: searchMode === "ai",
-    debounceMs: 700, // Increased from 400ms to reduce API requests
+    debounceMs: 700,
     minQueryLength: 2,
-    requestCooldown: 1000, // Increased cooldown to prevent rate limits
+    requestCooldown: 1000,
     maxRetryAttempts: 3,
     initialBackoff: 2000,
   });
@@ -163,18 +168,6 @@ export function SearchForm() {
         setIsSubmitAttempted(false);
         return;
       }
-      // For product mode, navigate to search page
-      else if (searchMode === "product") {
-        if (value.length > PRODUCT_SEARCH_MAX) {
-          setCustomError(
-            `Từ khóa tìm kiếm không được vượt quá ${PRODUCT_SEARCH_MAX} ký tự`
-          );
-          return;
-        }
-        router.push(`/san-pham?search=${encodeURIComponent(value)}`);
-        reset();
-        setIsSubmitAttempted(false);
-      }
       // For order lookup, validate and navigate
       else {
         if (value.length > ORDER_TOKEN_MAX) {
@@ -197,7 +190,7 @@ export function SearchForm() {
   };
 
   // Handle search mode change
-  const handleSearchModeChange = (mode: "ai" | "product" | "order") => {
+  const handleSearchModeChange = (mode: SearchMode) => {
     if (searchMode !== mode) {
       setSearchMode(mode);
     }
@@ -211,46 +204,14 @@ export function SearchForm() {
     selectedItemRef.current = null;
   };
 
-  const getSearchModeLabel = () => {
-    switch (searchMode) {
-      case "ai":
-        return "AI";
-      case "product":
-        return "Sản phẩm";
-      case "order":
-        return "Đơn hàng";
-      default:
-        return "AI";
-    }
-  };
-
-  const getSearchModeIcon = () => {
-    switch (searchMode) {
-      case "ai":
-        return (
-          <Sparkles
-            className={`h-4 w-4 ${loadingSuggestions ? "animate-pulse" : ""}`}
-          />
-        );
-      case "product":
-        return <Search className="h-4 w-4" />;
-      case "order":
-        return <Package className="h-4 w-4" />;
-      default:
-        return <Sparkles className="h-4 w-4" />;
-    }
-  };
-
   const getSearchPlaceholder = () => {
     switch (searchMode) {
       case "ai":
-        return "Tìm với AI...";
-      case "product":
-        return "Tìm sản phẩm...";
+        return "Hỏi AI về nước hoa, sản phẩm, gợi ý...";
       case "order":
-        return "Mã đơn hàng...";
+        return "Nhập mã đơn hàng để tra cứu...";
       default:
-        return "Tìm với AI...";
+        return "Hỏi AI về nước hoa, sản phẩm, gợi ý...";
     }
   };
 
@@ -258,25 +219,10 @@ export function SearchForm() {
     switch (searchMode) {
       case "ai":
         return AI_QUERY_MAX;
-      case "product":
-        return PRODUCT_SEARCH_MAX;
       case "order":
         return ORDER_TOKEN_MAX;
       default:
         return AI_QUERY_MAX;
-    }
-  };
-
-  const getInputLeftPadding = () => {
-    switch (searchMode) {
-      case "ai":
-        return "pl-[70px]"; // AI có văn bản ngắn nhất
-      case "product":
-        return "pl-[105px]"; // Sản phẩm dài hơn
-      case "order":
-        return "pl-[105px]"; // Đơn hàng cũng tương tự
-      default:
-        return "pl-[70px]";
     }
   };
 
@@ -356,9 +302,44 @@ export function SearchForm() {
       return;
     }
 
-    // Otherwise submit the form (for product search and order lookup)
+    // Otherwise submit the form (for order lookup)
     formRef.current?.requestSubmit();
   };
+
+  // Get search mode attributes
+  const getModeAttributes = () => {
+    switch (searchMode) {
+      case "ai":
+        return {
+          icon: <Brain className="h-4 w-4 text-primary" />,
+          label: "AI",
+          activeClass: "text-primary bg-primary/10 border-primary/40",
+          loadingIndicator: loadingSuggestions ? (
+            <div className="flex items-center space-x-1 ml-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary/80 animate-pulse delay-0"></span>
+              <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse delay-150"></span>
+              <span className="h-1.5 w-1.5 rounded-full bg-primary/40 animate-pulse delay-300"></span>
+            </div>
+          ) : null,
+        };
+      case "order":
+        return {
+          icon: <Package className="h-4 w-4 text-amber-500" />,
+          label: "Đơn hàng",
+          activeClass: "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/40",
+          loadingIndicator: null,
+        };
+      default:
+        return {
+          icon: <Brain className="h-4 w-4 text-primary" />,
+          label: "AI",
+          activeClass: "text-primary bg-primary/10 border-primary/40",
+          loadingIndicator: null,
+        };
+    }
+  };
+
+  const { icon, label, activeClass, loadingIndicator } = getModeAttributes();
 
   return (
     <form
@@ -374,98 +355,139 @@ export function SearchForm() {
             setAiQuery(query);
           }
         } else {
-          // For other modes, let handleSubmit process it
+          // For order mode, let handleSubmit process it
           handleSubmit(onSubmit)(e);
         }
       }}
-      className="w-full"
+      className="w-full relative"
     >
-      <div className="relative flex w-full items-center">
+      <div 
+        className={cn(
+          "flex items-center transition-all duration-300 rounded-lg relative overflow-hidden group h-9",
+          isFocused ? "shadow-sm ring-1 ring-primary/20" : ""
+        )}
+      >
+        {/* Mode selector dropdown */}
         <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
           <DropdownMenuTrigger asChild>
-            <Button
+            <button
               type="button"
-              variant="ghost"
-              size="sm"
-              className="absolute left-0 z-10 h-full px-2 text-muted-foreground hover:text-foreground border-r flex items-center gap-1"
+              className={cn(
+                "flex items-center gap-1.5 h-full px-3 text-sm border-r transition-all duration-300 focus:outline-none",
+                isFocused ? activeClass : "border-border/30 text-muted-foreground hover:bg-muted/50"
+              )}
             >
-              {getSearchModeLabel()}
-              <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-            </Button>
+              <div className="flex items-center gap-1.5">
+                {icon}
+                <span className="text-xs font-medium">{label}</span>
+                {loadingIndicator}
+              </div>
+              <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+            </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-[160px]">
-            <DropdownMenuItem onClick={() => handleSearchModeChange("ai")}>
-              <Sparkles className="mr-2 h-4 w-4 text-primary" />
-              Tìm kiếm AI
+          <DropdownMenuContent align="start" className="w-[190px]">
+            <DropdownMenuItem 
+              onClick={() => handleSearchModeChange("ai")}
+              className="flex items-center gap-2"
+            >
+              <div className="flex items-center gap-2 text-primary">
+                <Brain className="h-4 w-4" />
+                <span className="font-medium">Chat AI</span>
+              </div>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleSearchModeChange("product")}>
-              <Search className="mr-2 h-4 w-4" />
-              Tìm sản phẩm
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleSearchModeChange("order")}>
-              <Package className="mr-2 h-4 w-4" />
-              Tra cứu đơn hàng
+            <DropdownMenuItem 
+              onClick={() => handleSearchModeChange("order")}
+              className="flex items-center gap-2"
+            >
+              <div className="flex items-center gap-2 text-amber-500">
+                <Package className="h-4 w-4" />
+                <span className="font-medium">Tra cứu đơn hàng</span>
+              </div>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Search input */}
         <Controller
           name="query"
           control={control}
           render={({ field }) => (
-            <Input
-              {...field}
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-              ref={(e) => {
-                // Connect ref to both react-hook-form and our local ref
-                field.ref(e);
-                inputRef.current = e;
-              }}
-              type="search"
-              placeholder={getSearchPlaceholder()}
-              maxLength={getMaxLength()}
-              className={`w-full ${getInputLeftPadding()} pr-10 ${
-                shouldShowError() ? "border-destructive" : ""
-              }`}
-              aria-invalid={shouldShowError() ? "true" : "false"}
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-              onChange={(e) => handleInputChange(e, field.onChange)}
-              aria-expanded={showSuggestions}
-            />
+            <div className="flex-1 relative">
+              <Input
+                {...field}
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                ref={(e) => {
+                  // Connect ref to both react-hook-form and our local ref
+                  field.ref(e);
+                  inputRef.current = e;
+                }}
+                type="search"
+                placeholder={getSearchPlaceholder()}
+                maxLength={getMaxLength()}
+                className={cn(
+                  "flex w-full rounded-none border-0 bg-transparent h-9 px-4 text-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 dark:placeholder:text-muted-foreground/70",
+                  shouldShowError() ? "placeholder:text-destructive/70" : ""
+                )}
+                aria-invalid={shouldShowError() ? "true" : "false"}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+                onChange={(e) => handleInputChange(e, field.onChange)}
+                aria-expanded={showSuggestions}
+              />
+            </div>
           )}
         />
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          className="absolute right-0 h-full"
-          onClick={handleSearchButtonClick}
-        >
-          {getSearchModeIcon()}
-        </Button>
 
-        {/* AI Search Suggestions dropdown */}
-        {searchMode === "ai" && (
-          <SearchSuggestions
-            query={currentQuery || ""}
-            suggestions={suggestions}
-            isLoading={loadingSuggestions}
-            error={suggestionsError}
-            isOpen={showSuggestions}
-            isStale={isStaleResults}
-            onSelectSuggestion={handleSelectSuggestion}
-            selectedItemIndex={selectedItemRef.current}
-            rateLimited={rateLimited}
-            usingFallbackModel={usingFallbackModel}
-          />
-        )}
+        {/* Search button */}
+        <button
+          type="button"
+          onClick={handleSearchButtonClick}
+          className={cn(
+            "h-full px-3 flex items-center justify-center transition-all duration-300",
+            searchMode === "ai" 
+              ? "bg-primary/5 text-primary hover:bg-primary/10" 
+              : "bg-amber-50/50 text-amber-600 hover:bg-amber-50 dark:bg-amber-900/10 dark:text-amber-400 dark:hover:bg-amber-900/20"
+          )}
+          aria-label={searchMode === "ai" ? "Tìm kiếm AI" : "Tra cứu đơn hàng"}
+        >
+          {loadingSuggestions ? (
+            <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          ) : (
+            searchMode === "ai" ? (
+              <div className="relative group/icon">
+                <Sparkles className="h-4 w-4 group-hover/icon:opacity-0 transition-opacity duration-300" />
+                <SearchIcon className="h-4 w-4 absolute inset-0 opacity-0 group-hover/icon:opacity-100 transition-opacity duration-300" />
+              </div>
+            ) : (
+              <SearchIcon className="h-4 w-4" />
+            )
+          )}
+        </button>
       </div>
+      
+      {/* Error message */}
       {shouldShowError() && (
-        <p className="text-xs text-destructive mt-1">
+        <p className="text-xs text-destructive mt-1 ml-2 flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
           {customError || errors.query?.message}
         </p>
+      )}
+
+      {/* AI Search Suggestions dropdown */}
+      {searchMode === "ai" && (
+        <SearchSuggestions
+          query={currentQuery || ""}
+          suggestions={suggestions}
+          isLoading={loadingSuggestions}
+          error={suggestionsError}
+          isOpen={showSuggestions}
+          isStale={isStaleResults}
+          onSelectSuggestion={handleSelectSuggestion}
+          selectedItemIndex={selectedItemRef.current}
+          rateLimited={rateLimited}
+          usingFallbackModel={usingFallbackModel}
+        />
       )}
     </form>
   );
