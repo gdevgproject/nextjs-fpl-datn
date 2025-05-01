@@ -8,19 +8,40 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
-import { vi } from "date-fns/locale";
-import { useOrderDetails } from "../hooks/use-order-details";
+import { Skeleton } from "@/components/ui/skeleton";
+import { OrderStatusBadge } from "./order-status-badge";
+import { PaymentStatusBadge } from "./payment-status-badge";
 import { OrderItems } from "./order-items";
 import { OrderStatusUpdate } from "./order-status-update";
 import { OrderShipperAssignment } from "./order-shipper-assignment";
-import { OrderStatusBadge } from "./order-status-badge";
-import { PaymentStatusBadge } from "./payment-status-badge";
-import { formatCurrency, formatPhoneNumber } from "@/lib/utils/format";
-import { ClipboardCheck, CreditCard, ShoppingBasket, User } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useOrderDetails } from "../hooks/use-order-details";
+import { formatCurrency } from "@/lib/utils/format";
+import { format } from "date-fns";
+import { vi } from "date-fns/locale";
+import {
+  Clock,
+  Truck,
+  User,
+  Phone,
+  Mail,
+  MapPin,
+  ClipboardCheck,
+  PackageOpen,
+  ShieldAlert,
+  ReceiptText,
+  ExternalLink,
+  CalendarClock,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 interface OrderDetailsDialogProps {
   orderId: number | null;
@@ -34,6 +55,7 @@ export function OrderDetailsDialog({
   onOpenChange,
 }: OrderDetailsDialogProps) {
   const [activeTab, setActiveTab] = useState("details");
+  const toast = useSonnerToast();
 
   const {
     data: orderData,
@@ -48,21 +70,29 @@ export function OrderDetailsDialog({
     refetch();
   };
 
+  const copyToClipboard = (text: string, message: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(message);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
             {isLoading ? (
               <Skeleton className="h-8 w-60" />
             ) : (
               <>
-                Chi tiết đơn hàng #{order?.id}
-                {order?.order_statuses && (
-                  <span className="ml-3 inline-block">
-                    <OrderStatusBadge status={order.order_statuses} />
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  <span>Chi tiết đơn hàng #{order?.id}</span>
+                  {order?.order_statuses && (
+                    <OrderStatusBadge status={order?.order_statuses} />
+                  )}
+                  {order?.payment_status && (
+                    <PaymentStatusBadge status={order?.payment_status} />
+                  )}
+                </div>
               </>
             )}
           </DialogTitle>
@@ -86,171 +116,396 @@ export function OrderDetailsDialog({
                 Thông tin
               </TabsTrigger>
               <TabsTrigger value="items">
-                <ShoppingBasket className="mr-2 h-4 w-4" />
+                <PackageOpen className="mr-2 h-4 w-4" />
                 Sản phẩm
               </TabsTrigger>
               <TabsTrigger value="management">
-                <CreditCard className="mr-2 h-4 w-4" />
-                Quản lý
+                <ShieldAlert className="mr-2 h-4 w-4" />
+                Quản lý đơn
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="details" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-medium">Thông tin đơn hàng</h3>
-                    <Separator className="my-2" />
-                    <dl className="space-y-2">
-                      <div className="flex justify-between">
-                        <dt className="font-medium">Mã đơn hàng:</dt>
-                        <dd>#{order.id}</dd>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Order Overview */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <ReceiptText className="h-4 w-4" /> Thông tin đơn hàng
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-[120px_1fr] gap-1 text-sm">
+                      <div className="text-muted-foreground">Mã đơn hàng:</div>
+                      <div className="font-medium">#{order.id}</div>
+
+                      <div className="text-muted-foreground">Ngày đặt:</div>
+                      <div className="font-medium">
+                        {format(
+                          new Date(order.order_date),
+                          "HH:mm - dd/MM/yyyy",
+                          { locale: vi }
+                        )}
                       </div>
-                      <div className="flex justify-between">
-                        <dt className="font-medium">Ngày đặt:</dt>
-                        <dd>
-                          {format(
-                            new Date(order.order_date),
-                            "dd/MM/yyyy HH:mm",
-                            { locale: vi }
+
+                      <div className="text-muted-foreground">Trạng thái:</div>
+                      <div>
+                        <OrderStatusBadge status={order.order_statuses} />
+                      </div>
+
+                      <div className="text-muted-foreground">Thanh toán:</div>
+                      <div className="flex items-center gap-2">
+                        <PaymentStatusBadge status={order.payment_status} />
+                        <span className="text-xs">
+                          {order.payment_methods?.name}
+                        </span>
+                      </div>
+
+                      {order.cancellation_reason && (
+                        <>
+                          <div className="text-muted-foreground text-destructive">
+                            Lý do hủy:
+                          </div>
+                          <div className="text-destructive">
+                            {order.cancellation_reason}
+                          </div>
+
+                          <div className="text-muted-foreground text-destructive">
+                            Hủy bởi:
+                          </div>
+                          <div className="text-destructive">
+                            {order.cancelled_by === "user"
+                              ? "Khách hàng"
+                              : "Admin/Staff"}
+                          </div>
+                        </>
+                      )}
+
+                      {order.delivery_failure_reason && (
+                        <>
+                          <div className="text-muted-foreground text-amber-500">
+                            Lỗi giao hàng:
+                          </div>
+                          <div className="text-amber-500">
+                            {order.delivery_failure_reason}
+                          </div>
+
+                          {order.delivery_failure_timestamp && (
+                            <>
+                              <div className="text-muted-foreground text-amber-500">
+                                Thời gian:
+                              </div>
+                              <div className="text-amber-500">
+                                {format(
+                                  new Date(order.delivery_failure_timestamp),
+                                  "HH:mm - dd/MM/yyyy",
+                                  { locale: vi }
+                                )}
+                              </div>
+                            </>
                           )}
-                        </dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="font-medium">Trạng thái:</dt>
-                        <dd>
-                          <OrderStatusBadge status={order.order_statuses} />
-                        </dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="font-medium">Thanh toán:</dt>
-                        <dd>
-                          <PaymentStatusBadge status={order.payment_status} />
-                        </dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="font-medium">Phương thức:</dt>
-                        <dd>
-                          {order.payment_methods?.name || "Không xác định"}
-                        </dd>
-                      </div>
-                    </dl>
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-medium">Chi tiết thanh toán</h3>
-                    <Separator className="my-2" />
-                    <dl className="space-y-2">
-                      <div className="flex justify-between">
-                        <dt className="font-medium">Tạm tính:</dt>
-                        <dd>{formatCurrency(order.subtotal_amount)}</dd>
-                      </div>
-                      {order.discount_amount > 0 && (
-                        <div className="flex justify-between">
-                          <dt className="font-medium">Giảm giá:</dt>
-                          <dd className="text-green-600">
-                            -{formatCurrency(order.discount_amount)}
-                          </dd>
-                        </div>
+                        </>
                       )}
-                      <div className="flex justify-between">
-                        <dt className="font-medium">Phí vận chuyển:</dt>
-                        <dd>{formatCurrency(order.shipping_fee)}</dd>
-                      </div>
-                      <Separator className="my-2" />
-                      <div className="flex justify-between text-lg font-bold">
-                        <dt>Tổng cộng:</dt>
-                        <dd>{formatCurrency(order.total_amount)}</dd>
-                      </div>
-                    </dl>
-                  </div>
-                </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-medium flex items-center">
-                      <User className="mr-2 h-4 w-4" />
-                      Thông tin khách hàng
-                    </h3>
-                    <Separator className="my-2" />
-                    <dl className="space-y-2">
-                      <div className="flex justify-between">
-                        <dt className="font-medium">Tên người nhận:</dt>
-                        <dd>{order.recipient_name}</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="font-medium">Số điện thoại:</dt>
-                        <dd>{formatPhoneNumber(order.recipient_phone)}</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="font-medium">Người đặt:</dt>
-                        <dd>
-                          {order.user_id
-                            ? order.profiles?.display_name || "User"
-                            : order.guest_name || "Khách vãng lai"}
-                        </dd>
-                      </div>
-                      {order.guest_email && (
-                        <div className="flex justify-between">
-                          <dt className="font-medium">Email:</dt>
-                          <dd>{order.guest_email}</dd>
-                        </div>
+                      {order.completed_at && (
+                        <>
+                          <div className="text-muted-foreground text-green-600">
+                            <CalendarClock className="h-3 w-3 inline mr-1" />
+                            Hoàn thành:
+                          </div>
+                          <div className="text-green-600">
+                            {format(
+                              new Date(order.completed_at),
+                              "HH:mm - dd/MM/yyyy",
+                              { locale: vi }
+                            )}
+                          </div>
+                        </>
                       )}
-                      {order.guest_phone && (
-                        <div className="flex justify-between">
-                          <dt className="font-medium">Số điện thoại khách:</dt>
-                          <dd>{formatPhoneNumber(order.guest_phone)}</dd>
-                        </div>
-                      )}
-                    </dl>
-                  </div>
+                    </div>
 
-                  <div>
-                    <h3 className="text-lg font-medium">Địa chỉ giao hàng</h3>
-                    <Separator className="my-2" />
-                    <p>
-                      {order.street_address}, {order.ward}, {order.district},{" "}
-                      {order.province_city}
-                    </p>
-                    {order.delivery_notes && (
-                      <div className="mt-2">
-                        <p className="font-medium">Ghi chú:</p>
-                        <p className="text-sm">{order.delivery_notes}</p>
+                    {/* Order token/access link for guest orders */}
+                    {!order.user_id && order.access_token && (
+                      <div className="pt-3 border-t">
+                        <div className="text-xs text-muted-foreground mb-1">
+                          Liên kết tra cứu đơn hàng (khách vãng lai)
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-xs text-blue-600 truncate max-w-[200px]">
+                            {`${window.location.origin}/tra-cuu-don-hang?token=${order.access_token}`}
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-xs"
+                            onClick={() =>
+                              copyToClipboard(
+                                `${window.location.origin}/tra-cuu-don-hang?token=${order.access_token}`,
+                                "Đã sao chép liên kết tra cứu"
+                              )
+                            }
+                          >
+                            Copy
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-xs"
+                            onClick={() =>
+                              window.open(
+                                `/tra-cuu-don-hang?token=${order.access_token}`,
+                                "_blank"
+                              )
+                            }
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     )}
-                  </div>
+                  </CardContent>
+                </Card>
 
-                  {order.assigned_shipper_id && (
-                    <div>
-                      <h3 className="text-lg font-medium">Người giao hàng</h3>
-                      <Separator className="my-2" />
-                      <p>
-                        {order.profiles?.display_name ||
-                          "Shipper #" + order.assigned_shipper_id}
-                      </p>
-                      {order.profiles?.phone_number && (
-                        <p>
-                          SĐT: {formatPhoneNumber(order.profiles.phone_number)}
-                        </p>
+                {/* Customer & Shipping Info */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <User className="h-4 w-4" /> Thông tin khách hàng
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Customer information */}
+                    <div className="space-y-3">
+                      <div className="flex flex-col">
+                        <div className="text-muted-foreground text-xs">
+                          Loại tài khoản
+                        </div>
+                        <div className="font-medium">
+                          {order.user_id ? (
+                            <Badge variant="outline">Đã đăng ký</Badge>
+                          ) : (
+                            <Badge variant="secondary">Khách vãng lai</Badge>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-2">
+                        <User className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <div>
+                          <div className="text-muted-foreground text-xs">
+                            Người nhận
+                          </div>
+                          <div className="font-medium">
+                            {order.recipient_name}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-2">
+                        <Phone className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <div>
+                          <div className="text-muted-foreground text-xs">
+                            Số điện thoại
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={`tel:${order.recipient_phone}`}
+                              className="text-blue-600 hover:underline"
+                            >
+                              {order.recipient_phone}
+                            </a>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0"
+                              onClick={() =>
+                                copyToClipboard(
+                                  order.recipient_phone,
+                                  "Đã sao chép số điện thoại"
+                                )
+                              }
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {order.guest_email && (
+                        <div className="flex items-start gap-2">
+                          <Mail className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <div>
+                            <div className="text-muted-foreground text-xs">
+                              Email
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={`mailto:${order.guest_email}`}
+                                className="text-blue-600 hover:underline"
+                              >
+                                {order.guest_email}
+                              </a>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0"
+                                onClick={() =>
+                                  copyToClipboard(
+                                    order.guest_email,
+                                    "Đã sao chép email"
+                                  )
+                                }
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
                       )}
                     </div>
-                  )}
 
-                  {order.cancellation_reason && (
-                    <div className="bg-destructive/10 p-3 rounded-md">
-                      <h3 className="font-medium text-destructive">
-                        Lý do hủy đơn
-                      </h3>
-                      <p>{order.cancellation_reason}</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Hủy bởi:{" "}
-                        {order.cancelled_by === "user"
-                          ? "Khách hàng"
-                          : "Admin/Staff"}
-                      </p>
+                    {/* Shipping Address */}
+                    <div className="pt-3 border-t">
+                      <div className="flex items-start gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <div>
+                          <div className="text-muted-foreground text-xs">
+                            Địa chỉ giao hàng
+                          </div>
+                          <div className="space-y-1 text-sm mt-1">
+                            <div>{order.street_address}</div>
+                            <div>
+                              {order.ward}, {order.district}
+                            </div>
+                            <div>{order.province_city}</div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
+
+                    {/* Delivery Notes */}
+                    {order.delivery_notes && (
+                      <div className="pt-3 border-t">
+                        <div className="text-muted-foreground text-xs mb-1">
+                          Ghi chú giao hàng
+                        </div>
+                        <div className="p-2 bg-muted rounded-md text-sm italic">
+                          {order.delivery_notes}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Payment Summary */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Banknote className="h-4 w-4" /> Thông tin thanh toán
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Tạm tính:</span>
+                        <span>{formatCurrency(order.subtotal_amount)}</span>
+                      </div>
+                      {order.discount_amount > 0 && (
+                        <div className="flex justify-between items-center text-sm text-green-600">
+                          <span>Giảm giá:</span>
+                          <span>- {formatCurrency(order.discount_amount)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">
+                          Phí giao hàng:
+                        </span>
+                        <span>{formatCurrency(order.shipping_fee)}</span>
+                      </div>
+                      <div className="border-t pt-2 mt-2">
+                        <div className="flex justify-between items-center font-medium">
+                          <span>Tổng cộng:</span>
+                          <span className="text-lg">
+                            {formatCurrency(order.total_amount)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm mt-1">
+                          <span className="text-muted-foreground">
+                            Phương thức:
+                          </span>
+                          <span>{order.payment_methods?.name || "N/A"}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm mt-1">
+                          <span className="text-muted-foreground">
+                            Trạng thái:
+                          </span>
+                          <PaymentStatusBadge status={order.payment_status} />
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Shipper Info */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Truck className="h-4 w-4" /> Thông tin giao hàng
+                    </CardTitle>
+                    <CardDescription>
+                      {order.assigned_shipper_id
+                        ? "Đã phân công người giao hàng"
+                        : "Chưa phân công người giao hàng"}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {order.assigned_shipper_id && order.shipper_profile ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                            {order.shipper_profile.avatar_url ? (
+                              <img
+                                src={order.shipper_profile.avatar_url}
+                                alt="Shipper avatar"
+                                className="h-10 w-10 rounded-full object-cover"
+                              />
+                            ) : (
+                              <User className="h-6 w-6 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-medium">
+                              {order.shipper_profile.display_name || "Shipper"}
+                            </div>
+                            {order.shipper_profile.phone_number && (
+                              <a
+                                href={`tel:${order.shipper_profile.phone_number}`}
+                                className="text-sm text-blue-600 hover:underline"
+                              >
+                                {order.shipper_profile.phone_number}
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-24 border border-dashed rounded-md">
+                        <Truck className="h-8 w-8 text-muted-foreground mb-2" />
+                        <span className="text-sm text-muted-foreground">
+                          Chưa phân công người giao hàng
+                        </span>
+                      </div>
+                    )}
+
+                    <Button
+                      className="w-full mt-4"
+                      variant="outline"
+                      onClick={() => setActiveTab("management")}
+                    >
+                      Quản lý giao hàng
+                    </Button>
+                  </CardContent>
+                </Card>
               </div>
             </TabsContent>
 
@@ -259,23 +514,32 @@ export function OrderDetailsDialog({
             </TabsContent>
 
             <TabsContent value="management" className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                  <h3 className="text-lg font-medium mb-4">
-                    Cập nhật trạng thái
-                  </h3>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Cập nhật trạng thái đơn hàng</CardTitle>
+                  <CardDescription>
+                    Thay đổi trạng thái xử lý đơn hàng hoặc hủy đơn.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
                   <OrderStatusUpdate order={order} onSuccess={handleSuccess} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-medium mb-4">
-                    Gán người giao hàng
-                  </h3>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Phân công người giao hàng</CardTitle>
+                  <CardDescription>
+                    Gán đơn hàng cho người giao hàng nội bộ.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
                   <OrderShipperAssignment
                     order={order}
                     onSuccess={handleSuccess}
                   />
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         ) : (
