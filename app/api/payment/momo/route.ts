@@ -16,9 +16,10 @@ async function getOrderInfo(orderId: string) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
+  // Lấy cả access_token để phân biệt guest/user
   const { data, error } = await supabase
     .from("orders")
-    .select("id, total_amount, user_id")
+    .select("id, total_amount, user_id, access_token")
     .eq("id", Number(orderId))
     .single();
   if (error || !data) throw new Error("Order not found");
@@ -41,7 +42,11 @@ export async function POST(req: NextRequest) {
     const requestId = partnerCode + Date.now();
     const momoOrderId = requestId;
     const orderInfo = `Thanh toán đơn hàng #${orderId}`;
-    const redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/xac-nhan-don-hang?orderId=${orderId}`;
+    // Lấy access_token nếu có (cho khách vãng lai)
+    let redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/xac-nhan-don-hang-momo?orderId=${orderId}`;
+    if (order.access_token) {
+      redirectUrl += `&token=${order.access_token}`;
+    }
     const ipnUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/momo/callback`;
     const requestType = "captureWallet";
     const extraData = order.id.toString(); // orderId thực của hệ thống bạn
