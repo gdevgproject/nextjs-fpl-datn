@@ -279,39 +279,39 @@ export async function fetchShippersAction() {
     // Get admin client with service role key to bypass RLS
     const supabase = await createServiceRoleClient();
 
-    // Get users with shipper role
-    const { data, error, count } = await supabase
-      .from("profiles")
-      .select(
-        `
-        id, 
-        email, 
-        display_name,
-        avatar_url, 
-        phone_number
-      `,
-        { count: "exact" }
-      )
-      .eq("role", "shipper")
-      .order("display_name", { ascending: true });
+    // Query users with shipper role from auth.users table
+    const { data, error } = await supabase.auth.admin.listUsers();
 
     if (error) {
-      console.error("Error fetching shippers:", error);
-      throw new Error(`Failed to fetch shippers: ${error.message}`);
+      console.error("Error fetching users:", error);
+      throw new Error(`Failed to fetch users: ${error.message}`);
     }
 
-    // Map to the expected format
-    const shippers = data.map((shipper) => ({
-      id: shipper.id,
-      email: shipper.email,
-      name: shipper.display_name || shipper.email?.split("@")[0] || "Unknown",
-      phone_number: shipper.phone_number,
-      avatar_url: shipper.avatar_url,
-    }));
+    // Filter users with shipper role and join with profiles
+    const shippers = [];
+    for (const user of data.users) {
+      // Check if user has shipper role in user metadata
+      if (user.user_metadata?.role === 'shipper') {
+        // Get profile data for this user
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id, display_name, avatar_url, phone_number")
+          .eq("id", user.id)
+          .single();
+        
+        shippers.push({
+          id: user.id,
+          email: user.email,
+          name: profile?.display_name || user.email?.split("@")[0] || "Unknown",
+          phone_number: profile?.phone_number,
+          avatar_url: profile?.avatar_url,
+        });
+      }
+    }
 
     return {
       data: shippers,
-      count: count || shippers.length,
+      count: shippers.length,
     };
   } catch (error) {
     console.error("Error in fetchShippersAction:", error);
