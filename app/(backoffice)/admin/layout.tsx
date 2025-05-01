@@ -1,6 +1,5 @@
 import type React from "react";
 import type { Metadata } from "next";
-import { Providers } from "@/lib/providers/providers";
 
 export const metadata: Metadata = {
   title: "Admin Dashboard | MyBeauty",
@@ -12,5 +11,5 @@ export default function AdminLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <Providers>{children}</Providers>;
+  return children;
 }
