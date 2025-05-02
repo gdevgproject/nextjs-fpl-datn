@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { createServiceRoleClient } from "@/lib/supabase/server";
+import {
+  createServiceRoleClient,
+  getSupabaseServerClient,
+} from "@/lib/supabase/server";
 import {
   orderStatusUpdateSchema,
   cancelOrderSchema,
@@ -320,7 +323,7 @@ export async function fetchShippersAction() {
 }
 
 /**
- * Update the status of an order
+ * Update the status of an order with enhanced validation
  */
 export async function updateOrderStatusAction(
   data: z.infer<typeof orderStatusUpdateSchema>
@@ -329,15 +332,126 @@ export async function updateOrderStatusAction(
     // Input validation
     const validated = orderStatusUpdateSchema.parse(data);
 
-    // Get admin Supabase client with service role to bypass RLS
+    // Get server Supabase client to access user session
+    const supabaseServer = await getSupabaseServerClient();
+
+    // Get current user info for audit purposes - using server-side session
+    const { data: sessionData, error: sessionError } =
+      await supabaseServer.auth.getSession();
+    if (sessionError || !sessionData?.session) {
+      return {
+        success: false,
+        error: `Authentication error: ${
+          sessionError?.message || "No active session found"
+        }`,
+      };
+    }
+
+    // Get admin Supabase client with service role to bypass RLS for DB operations
     const supabase = await createServiceRoleClient();
 
-    // Update the order status
+    // Fetch user data using the session user ID
+    const { data: userData, error: userError } =
+      await supabase.auth.admin.getUserById(sessionData.session.user.id);
+
+    if (userError || !userData?.user) {
+      return {
+        success: false,
+        error: `User authentication error: ${
+          userError?.message || "User not found"
+        }`,
+      };
+    }
+
+    // Fetch the current order to check what status change is happening
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .select(
+        `
+        id, 
+        order_status_id, 
+        payment_status, 
+        payment_method_id, 
+        assigned_shipper_id,
+        order_statuses(id, name)
+      `
+      )
+      .eq("id", validated.id)
+      .single();
+
+    if (orderError) {
+      return {
+        success: false,
+        error: `Error fetching order: ${orderError.message}`,
+      };
+    }
+
+    // Fetch the new status to compare
+    const { data: newStatus, error: statusError } = await supabase
+      .from("order_statuses")
+      .select("id, name")
+      .eq("id", validated.order_status_id)
+      .single();
+
+    if (statusError) {
+      return {
+        success: false,
+        error: `Error fetching status: ${statusError.message}`,
+      };
+    }
+
+    // Server-side validation of status transitions
+    // Check if order is already cancelled
+    if (order.order_statuses.name === "Đã hủy") {
+      return {
+        success: false,
+        error: "Không thể thay đổi trạng thái của đơn hàng đã hủy.",
+      };
+    }
+
+    // Check for transition from "Đã xác nhận" or "Đang xử lý" to "Đang giao"
+    if (newStatus.name === "Đang giao") {
+      // Check for assigned shipper
+      if (!order.assigned_shipper_id) {
+        return {
+          success: false,
+          error:
+            "Không thể chuyển sang trạng thái Đang giao khi chưa gán shipper.",
+        };
+      }
+
+      // Check payment status for non-COD orders
+      if (order.payment_method_id !== 1 && order.payment_status !== "Paid") {
+        return {
+          success: false,
+          error:
+            "Không thể chuyển sang trạng thái Đang giao khi đơn thanh toán online chưa được thanh toán.",
+        };
+      }
+    }
+
+    // Check for transition from "Đã giao" to "Đã hoàn thành"
+    if (newStatus.name === "Đã hoàn thành" && order.payment_status !== "Paid") {
+      return {
+        success: false,
+        error: "Không thể hoàn thành đơn hàng chưa được thanh toán.",
+      };
+    }
+
+    // Update the order status with additional information
+    const updateData: any = {
+      order_status_id: validated.order_status_id,
+    };
+
+    // If moving to "Đã hoàn thành", record the completion timestamp
+    if (newStatus.name === "Đã hoàn thành") {
+      updateData.completed_at = new Date().toISOString();
+    }
+
+    // Perform the update
     const { error, data: updatedOrder } = await supabase
       .from("orders")
-      .update({
-        order_status_id: validated.order_status_id,
-      })
+      .update(updateData)
       .eq("id", validated.id)
       .select()
       .single();
@@ -349,6 +463,15 @@ export async function updateOrderStatusAction(
         error: error.message,
       };
     }
+
+    // Insert an entry into the order status history for auditing
+    await supabase.from("order_status_history").insert({
+      order_id: validated.id,
+      previous_status_id: order.order_status_id,
+      new_status_id: validated.order_status_id,
+      changed_by_user_id: userData.user.id,
+      note: validated.internal_note || null,
+    });
 
     // Revalidate related paths
     revalidatePath("/admin/orders");
@@ -386,16 +509,34 @@ export async function cancelOrderAction(
     // Input validation
     const validated = cancelOrderSchema.parse(data);
 
-    // Get admin Supabase client with service role to bypass RLS
-    const supabase = await createServiceRoleClient();
+    // Get server Supabase client to access user session
+    const supabaseServer = await getSupabaseServerClient();
 
-    // Check for current user info for audit purposes
-    const { data: currentUser, error: userError } =
-      await supabase.auth.getUser();
-    if (userError) {
+    // Get current user info for audit purposes using server-side session
+    const { data: sessionData, error: sessionError } =
+      await supabaseServer.auth.getSession();
+    if (sessionError || !sessionData?.session) {
       return {
         success: false,
-        error: `Authentication error: ${userError.message}`,
+        error: `Authentication error: ${
+          sessionError?.message || "No active session found"
+        }`,
+      };
+    }
+
+    // Get admin Supabase client with service role to bypass RLS for DB operations
+    const supabase = await createServiceRoleClient();
+
+    // Fetch user data using the session user ID
+    const { data: userData, error: userError } =
+      await supabase.auth.admin.getUserById(sessionData.session.user.id);
+
+    if (userError || !userData?.user) {
+      return {
+        success: false,
+        error: `User authentication error: ${
+          userError?.message || "User not found"
+        }`,
       };
     }
 
@@ -403,10 +544,10 @@ export async function cancelOrderAction(
     const { error, data: updatedOrder } = await supabase
       .from("orders")
       .update({
-        order_status_id: 5, // Assuming 5 is "Cancelled" status ID
+        order_status_id: 7, // Based on your schema, "Đã hủy" status ID
         cancellation_reason: validated.reason,
         cancelled_by: "Admin/Staff",
-        cancelled_by_user_id: currentUser.user?.id || null,
+        cancelled_by_user_id: userData.user.id,
       })
       .eq("id", validated.id)
       .select()

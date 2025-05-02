@@ -146,16 +146,20 @@ export function OrderStatusUpdate({
     values: z.infer<typeof statusUpdateFormSchema>
   ) => {
     try {
-      const result = await updateOrderStatusMutation.mutateAsync({
+      // Fix: Pass allStatuses to the mutation function
+      const newStatusId = Number.parseInt(values.order_status_id);
+
+      await updateOrderStatusMutation.updateOrderStatus({
         id: order.id,
         data: {
-          order_status_id: Number.parseInt(values.order_status_id),
+          order_status_id: newStatusId,
           notify_customer: values.notify_customer,
         },
+        order,
+        allStatuses: statuses,
       });
 
       // Tìm trạng thái mới trong danh sách trạng thái
-      const newStatusId = Number.parseInt(values.order_status_id);
       const newStatus = statuses.find((s) => s.id === newStatusId);
 
       toast.success("Cập nhật trạng thái đơn hàng thành công", {
