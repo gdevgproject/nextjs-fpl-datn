@@ -15,9 +15,10 @@ export function useOrderStatuses() {
       const { data, error } = await supabase
         .from("order_statuses")
         .select("*")
-        .order("display_order", { ascending: true });
+        .order("id", { ascending: true }); // Sắp xếp theo id thay vì display_order không tồn tại
 
       if (error) {
+        console.error("Error fetching order statuses:", error);
         throw new Error(`Error fetching order statuses: ${error.message}`);
       }
 

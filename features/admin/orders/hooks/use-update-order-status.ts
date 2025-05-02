@@ -15,11 +15,12 @@ export function useUpdateOrderStatus() {
       data,
     }: {
       id: number;
-      data: { order_status_id: number };
+      data: { order_status_id: number; notify_customer?: boolean };
     }) => {
       const result = await updateOrderStatusAction({
         id,
         order_status_id: data.order_status_id,
+        notify_customer: data.notify_customer,
       });
 
       if (!result.success) {
