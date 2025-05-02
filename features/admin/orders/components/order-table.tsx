@@ -116,6 +116,28 @@ export function OrderTable({
   >(null);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
 
+  // Hệ thống theo dõi những đơn hàng đã cập nhật trong phiên làm việc hiện tại
+  const [updatedOrders, setUpdatedOrders] = useState<
+    Record<
+      number,
+      {
+        prevStatus?: string;
+        newStatus?: string;
+        timestamp: number; // Thời điểm cập nhật
+      }
+    >
+  >({});
+
+  // Lọc những đơn hàng đã cập nhật gần đây (trong vòng 1 giờ)
+  const recentlyUpdatedOrders = useMemo(() => {
+    const currentTime = Date.now();
+    const oneHourInMs = 60 * 60 * 1000;
+
+    return Object.entries(updatedOrders)
+      .filter(([_, data]) => currentTime - data.timestamp < oneHourInMs)
+      .map(([id]) => Number(id));
+  }, [updatedOrders]);
+
   // Simulate refreshing data
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
@@ -124,6 +146,21 @@ export function OrderTable({
       toast.success("Dữ liệu đã được cập nhật");
     }, 800);
   }, [toast]);
+
+  // Đánh dấu một đơn hàng vừa được cập nhật
+  const markOrderAsUpdated = useCallback(
+    (orderId: number, prevStatus?: string, newStatus?: string) => {
+      setUpdatedOrders((prev) => ({
+        ...prev,
+        [orderId]: {
+          prevStatus,
+          newStatus,
+          timestamp: Date.now(),
+        },
+      }));
+    },
+    []
+  );
 
   const handleSort = useCallback(
     (column: string) => {
@@ -235,6 +272,38 @@ export function OrderTable({
       return "hover:bg-muted/40";
     },
     [getOrderAgeInDays]
+  );
+
+  // Tạo lớp CSS cho đơn hàng vừa được cập nhật - tinh tế và cân đối hơn
+  const getUpdatedOrderClass = useCallback(
+    (orderId: number) => {
+      if (recentlyUpdatedOrders.includes(orderId)) {
+        // Thêm border-right đối xứng với border-left của các trạng thái
+        return "border-r-4 border-r-primary/50 dark:border-r-primary/40";
+      }
+      return "";
+    },
+    [recentlyUpdatedOrders]
+  );
+
+  // Tạo badge hiển thị thông tin về cập nhật đơn hàng - Thu gọn và responsive hơn
+  const UpdatedOrderBadge = useCallback(
+    ({ orderId }: { orderId: number }) => {
+      const updateInfo = updatedOrders[orderId];
+      if (!updateInfo || !recentlyUpdatedOrders.includes(orderId)) return null;
+
+      // Chỉ hiển thị một biểu tượng nhỏ thay vì cả text
+      return (
+        <Badge
+          variant="outline"
+          className="bg-primary text-primary-foreground border-primary/30 h-4 w-4 rounded-full p-0 flex items-center justify-center absolute -left-1 top-1/2 -translate-y-1/2"
+          title="Đơn hàng vừa được cập nhật"
+        >
+          <RefreshCw className="h-2 w-2" />
+        </Badge>
+      );
+    },
+    [updatedOrders, recentlyUpdatedOrders]
   );
 
   // Filter displayed orders based on search query
@@ -658,7 +727,8 @@ export function OrderTable({
                             key={order.id}
                             className={cn(
                               "transition-colors",
-                              getRowStyle(order)
+                              getRowStyle(order),
+                              getUpdatedOrderClass(order.id)
                             )}
                           >
                             <TableCell className="align-top">
@@ -666,8 +736,13 @@ export function OrderTable({
                                 <div className="flex items-center">
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <div className="font-medium cursor-default">
-                                        #{order.id}
+                                      <div className="font-medium cursor-default flex items-center">
+                                        <span>#{order.id}</span>
+                                        {recentlyUpdatedOrders.includes(
+                                          order.id
+                                        ) && (
+                                          <span className="ml-1.5 inline-flex h-1.5 w-1.5 rounded-full bg-primary"></span>
+                                        )}
                                       </div>
                                     </TooltipTrigger>
                                     <TooltipContent side="right" align="start">
@@ -678,9 +753,19 @@ export function OrderTable({
                                           "dd/MM/yyyy HH:mm",
                                           { locale: vi }
                                         )}
+                                        {recentlyUpdatedOrders.includes(
+                                          order.id
+                                        ) && (
+                                          <div className="text-primary font-medium mt-1">
+                                            Đơn hàng vừa được cập nhật
+                                          </div>
+                                        )}
                                       </div>
                                     </TooltipContent>
                                   </Tooltip>
+
+                                  <UpdatedOrderBadge orderId={order.id} />
+
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <Button
@@ -875,7 +960,7 @@ export function OrderTable({
                                           </Button>
                                         )}
                                       </div>
-                                    )}
+                                    )}{" "}
                                   </div>
                                 )}
 
@@ -966,8 +1051,18 @@ export function OrderTable({
                                   <OrderStatusUpdate
                                     order={order}
                                     onSuccess={() => {
-                                      setIsStatusDialogOpen(false);
-                                      setSelectedOrderForStatus(null);
+                                      // refresh data
+                                      setIsRefreshing(true);
+
+                                      // Đánh dấu đơn hàng đã được cập nhật
+                                      markOrderAsUpdated(
+                                        order.id,
+                                        order.order_statuses?.name
+                                      );
+
+                                      setTimeout(() => {
+                                        setIsRefreshing(false);
+                                      }, 800);
                                     }}
                                   />
                                 </DialogContent>

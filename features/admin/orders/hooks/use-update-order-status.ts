@@ -29,10 +29,39 @@ export function useUpdateOrderStatus() {
 
       return result.data;
     },
-    onSuccess: () => {
-      // Invalidate related queries to trigger refetches
+    onSuccess: (data, variables) => {
+      // Invalidate các query liên quan để trigger refetch
+
+      // Invalidate danh sách đơn hàng
       queryClient.invalidateQueries({ queryKey: ["orders", "list"] });
-      queryClient.invalidateQueries({ queryKey: ["orders", "details"] });
+
+      // Invalidate chi tiết đơn hàng cụ thể này
+      queryClient.invalidateQueries({
+        queryKey: ["orders", "details", variables.id],
+      });
+
+      // Invalidate tất cả query liên quan đến đơn hàng
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === "orders",
+      });
+
+      // Cập nhật lại cache cho order này
+      const updatedOrder = {
+        id: variables.id,
+        order_status_id: data.order_status_id,
+      };
+
+      // Cập nhật cache một cách thủ công nếu cần
+      queryClient.setQueryData(
+        ["orders", "details", variables.id],
+        (oldData: any) => {
+          if (!oldData) return oldData;
+          return {
+            ...oldData,
+            order_status_id: data.order_status_id,
+          };
+        }
+      );
     },
   });
 }

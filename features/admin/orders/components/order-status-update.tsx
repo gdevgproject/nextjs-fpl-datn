@@ -146,7 +146,7 @@ export function OrderStatusUpdate({
     values: z.infer<typeof statusUpdateFormSchema>
   ) => {
     try {
-      await updateOrderStatusMutation.mutateAsync({
+      const result = await updateOrderStatusMutation.mutateAsync({
         id: order.id,
         data: {
           order_status_id: Number.parseInt(values.order_status_id),
@@ -154,10 +154,23 @@ export function OrderStatusUpdate({
         },
       });
 
+      // Tìm trạng thái mới trong danh sách trạng thái
+      const newStatusId = Number.parseInt(values.order_status_id);
+      const newStatus = statuses.find((s) => s.id === newStatusId);
+
       toast.success("Cập nhật trạng thái đơn hàng thành công", {
-        description: `Đơn hàng #${order.id} đã được cập nhật thành công.`,
+        description: `Đơn hàng #${
+          order.id
+        } đã được cập nhật thành công thành "${
+          newStatus?.name || "trạng thái mới"
+        }"`,
       });
-      onSuccess();
+
+      // Thông báo thành công nhưng KHÔNG đóng dialog
+      if (onSuccess) {
+        // Gọi onSuccess nhưng không đóng dialog
+        onSuccess();
+      }
     } catch (error) {
       toast.error(
         `Lỗi khi cập nhật trạng thái: ${
@@ -179,9 +192,27 @@ export function OrderStatusUpdate({
       });
 
       toast.success("Hủy đơn hàng thành công", {
-        description: `Đơn hàng #${order.id} đã được hủy thành công.`,
+        description: `Đơn hàng #${
+          order.id
+        } đã được hủy thành công với lý do: "${values.reason.substring(0, 30)}${
+          values.reason.length > 30 ? "..." : ""
+        }"`,
       });
-      onSuccess();
+
+      // Thông báo thành công nhưng KHÔNG đóng dialog
+      if (onSuccess) {
+        // Gọi onSuccess nhưng không đóng dialog
+        onSuccess();
+      }
+
+      // Reset form sau khi hủy thành công
+      cancelForm.reset({
+        reason: "",
+        notify_customer: true,
+      });
+
+      // Chuyển về tab cập nhật trạng thái sau khi hủy thành công
+      setActiveTab("update");
     } catch (error) {
       toast.error(
         `Lỗi khi hủy đơn hàng: ${
