@@ -42,6 +42,12 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { OrderStatusUpdate } from "./order-status-update";
 import { OrderShipperAssignment } from "./order-shipper-assignment";
 import {
@@ -105,6 +111,10 @@ export function OrderTable({
     Record<number, boolean>
   >({});
   const [showAllNotes, setShowAllNotes] = useState<Record<number, boolean>>({});
+  const [selectedOrderForStatus, setSelectedOrderForStatus] = useState<
+    number | null
+  >(null);
+  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
 
   // Simulate refreshing data
   const handleRefresh = useCallback(() => {
@@ -916,9 +926,24 @@ export function OrderTable({
                             </TableCell>
 
                             <TableCell className="align-top">
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <div className="cursor-pointer">
+                              <Dialog
+                                open={
+                                  isStatusDialogOpen &&
+                                  selectedOrderForStatus === order.id
+                                }
+                                onOpenChange={(open) => {
+                                  setIsStatusDialogOpen(open);
+                                  if (!open) setSelectedOrderForStatus(null);
+                                }}
+                              >
+                                <DialogTrigger asChild>
+                                  <div
+                                    className="cursor-pointer"
+                                    onClick={() => {
+                                      setSelectedOrderForStatus(order.id);
+                                      setIsStatusDialogOpen(true);
+                                    }}
+                                  >
                                     <OrderStatusBadge
                                       status={order.order_statuses}
                                     />
@@ -933,14 +958,20 @@ export function OrderTable({
                                       </div>
                                     )}
                                   </div>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-80" align="start">
+                                </DialogTrigger>
+                                <DialogContent className="max-w-2xl p-0 overflow-hidden">
+                                  <DialogTitle className="sr-only">
+                                    Cập nhật trạng thái đơn hàng #{order.id}
+                                  </DialogTitle>
                                   <OrderStatusUpdate
                                     order={order}
-                                    onSuccess={() => {}}
+                                    onSuccess={() => {
+                                      setIsStatusDialogOpen(false);
+                                      setSelectedOrderForStatus(null);
+                                    }}
                                   />
-                                </PopoverContent>
-                              </Popover>
+                                </DialogContent>
+                              </Dialog>
                             </TableCell>
 
                             <TableCell className="align-top hidden xl:table-cell">

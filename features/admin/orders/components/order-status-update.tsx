@@ -30,6 +30,14 @@ import {
   Check,
   ClipboardList,
   X,
+  RefreshCw,
+  AlertOctagon,
+  BanIcon,
+  InfoIcon,
+  CircleArrowRight,
+  Loader2,
+  ArrowLeft,
+  Clipboard,
 } from "lucide-react";
 import { useOrderStatuses } from "../hooks/use-order-statuses";
 import { useUpdateOrderStatus } from "../hooks/use-update-order-status";
@@ -52,7 +60,16 @@ import {
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+
+// Để ngăn chặn lỗi "Illegal constructor" khi server-side rendering
+// Chúng ta sẽ thêm kiểm tra để đảm bảo các component UI như Tooltip chỉ chạy ở client
+const isBrowser = typeof window !== "undefined";
 
 // Define form schemas with Zod for client-side validation
 const statusUpdateFormSchema = z.object({
@@ -234,106 +251,130 @@ export function OrderStatusUpdate({
     return statusWorkflow[currentStatus.name]?.includes(statusName) || false;
   };
 
-  // Status visualization component - now more compact
+  // Status workflow visualization - redesigned to match the image example
   const StatusWorkflowVisualization = () => {
     // Define full status flow for visualization
-    const fullStatusFlow = [
-      "Chờ xác nhận",
-      "Đã xác nhận",
-      "Đang xử lý",
-      "Đang giao",
-      "Đã giao",
-      "Đã hoàn thành",
+    const statusFlow = [
+      { id: "pending", name: "Chờ xác nhận" },
+      { id: "confirmed", name: "Đã xác nhận" },
+      { id: "processing", name: "Đang xử lý" },
+      { id: "shipping", name: "Đang giao" },
+      { id: "delivered", name: "Đã giao" },
+      { id: "completed", name: "Đã hoàn thành" },
     ];
 
+    // Find current status in the workflow
+    const currentStatusIndex = currentStatus
+      ? statusFlow.findIndex((s) => s.name === currentStatus.name)
+      : -1;
+
     return (
-      <div className="mb-3">
-        <div className="flex justify-between items-center mb-1.5">
-          <div className="text-xs font-medium">Tiến trình xử lý đơn hàng:</div>
-          <div className="text-xs font-semibold text-primary">
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+          <div className="text-sm font-medium text-foreground/90">
+            Trạng thái hiện tại:
+          </div>
+          <div>
             {currentStatus && (
-              <div className="flex items-center gap-1">
-                <span>Hiện tại:</span>
-                <Badge
-                  variant={getStatusBadgeVariant(currentStatus.name)}
-                  className="px-2 py-0 text-[10px] h-5"
-                >
-                  {currentStatus.name}
-                </Badge>
-              </div>
+              <Badge
+                variant={getStatusBadgeVariant(currentStatus.name)}
+                className="px-3 py-1 h-6 text-xs"
+              >
+                <span className="w-2 h-2 mr-1.5 rounded-full bg-current inline-block animate-pulse" />
+                {currentStatus.name}
+              </Badge>
             )}
           </div>
         </div>
-        <div className="w-full overflow-auto thin-scrollbar pb-2">
-          <div className="flex items-center gap-1.5 min-w-max">
-            {fullStatusFlow.map((statusName, index) => {
-              const isCurrentStatus = currentStatus?.name === statusName;
-              const statusObj = statuses.find((s) => s.name === statusName);
-              const isSelected =
-                selectedStatusId &&
-                statuses.find((s) => s.id.toString() === selectedStatusId)
-                  ?.name === statusName;
 
-              return (
-                <div key={statusName} className="flex items-center">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div>
-                          <Badge
-                            variant={
-                              isSelected
-                                ? "default"
-                                : isCurrentStatus
-                                ? getStatusBadgeVariant(statusName)
-                                : "outline"
-                            }
-                            className={cn(
-                              "cursor-default h-6 px-2 gap-1 whitespace-nowrap text-xs",
-                              isCurrentStatus &&
-                                "border-2 border-primary font-semibold shadow-sm",
-                              isSelected &&
-                                !isCurrentStatus &&
-                                "border-primary/50",
-                              !isValidNextStatus(statusName) &&
-                                !isCurrentStatus &&
-                                "opacity-50"
-                            )}
-                          >
-                            {isCurrentStatus && (
-                              <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
-                            )}
-                            {statusName}
-                            {isSelected && !isCurrentStatus && (
-                              <Check className="h-3 w-3" />
-                            )}
-                          </Badge>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent
-                        side="bottom"
-                        align="center"
-                        className="max-w-[200px] text-center"
-                        sideOffset={2}
-                      >
-                        <p className="text-xs">
-                          {statusObj?.description || statusName}
-                        </p>
-                        {isCurrentStatus && (
-                          <p className="text-xs font-semibold text-primary mt-1">
-                            Trạng thái hiện tại
-                          </p>
+        <div className="bg-muted/10 dark:bg-background/20 rounded-md border relative p-4">
+          <div className="w-full overflow-x-auto scrollbar-thin pb-2">
+            <div className="flex justify-between min-w-[500px]">
+              {statusFlow.map((status, index) => {
+                const isCurrentStatus = currentStatus?.name === status.name;
+                const isCompleted = currentStatusIndex > index;
+                const isDisabled = currentStatusIndex < index - 1;
+
+                return (
+                  <div
+                    key={status.id}
+                    className="relative flex flex-col items-center"
+                  >
+                    {/* Status dot */}
+                    <div
+                      className={cn(
+                        "w-3 h-3 sm:w-4 sm:h-4 rounded-full z-10 mb-1.5",
+                        isCurrentStatus
+                          ? "bg-primary ring-4 ring-primary/20"
+                          : isCompleted
+                          ? "bg-primary"
+                          : isDisabled
+                          ? "bg-muted-foreground/30"
+                          : "bg-muted-foreground/70"
+                      )}
+                    />
+
+                    {/* Status Label */}
+                    <span
+                      className={cn(
+                        "text-[10px] sm:text-xs whitespace-nowrap px-1 text-center",
+                        isCurrentStatus
+                          ? "font-medium text-primary"
+                          : isDisabled
+                          ? "text-muted-foreground/50"
+                          : "text-muted-foreground"
+                      )}
+                    >
+                      {status.name}
+                    </span>
+
+                    {/* Connection line */}
+                    {index < statusFlow.length - 1 && (
+                      <div
+                        className={cn(
+                          "absolute top-1.5 sm:top-2 h-0.5 w-[calc(100%-1rem)]",
+                          "left-[50%] -translate-x-0",
+                          index < currentStatusIndex
+                            ? "bg-primary"
+                            : "bg-muted-foreground/30"
                         )}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
-                  {index < fullStatusFlow.length - 1 && (
-                    <ArrowRight className="h-3 w-3 mx-0.5 text-muted-foreground flex-shrink-0" />
-                  )}
-                </div>
-              );
-            })}
+          {/* Workflow description */}
+          <div className="mt-5 pt-3 border-t border-dashed">
+            <div className="flex items-center text-xs text-muted-foreground gap-1 mb-2">
+              <InfoIcon className="h-3.5 w-3.5" />
+              <span className="font-medium">Quy trình xử lý đơn hàng</span>
+            </div>
+            <div className="flex gap-1 flex-wrap">
+              {currentStatus && (
+                <Badge variant="outline" className="text-[10px] h-5">
+                  {currentStatus.name}
+                </Badge>
+              )}
+              {validNextStatuses.map((status) => (
+                <Badge
+                  key={status.id}
+                  variant="secondary"
+                  className="text-[10px] h-5 bg-secondary/40"
+                  onClick={() => {
+                    statusForm.setValue(
+                      "order_status_id",
+                      status.id.toString()
+                    );
+                    setSelectedStatusId(status.id.toString());
+                  }}
+                >
+                  → {status.name}
+                </Badge>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -343,167 +384,247 @@ export function OrderStatusUpdate({
   // Render for cancelled orders - more compact
   if (isOrderCancelled) {
     return (
-      <Card className="w-full max-w-full border-red-200 dark:border-red-900/40 shadow-sm">
-        <CardContent className="p-3 space-y-3">
-          <Alert variant="destructive" className="py-2 px-3">
-            <AlertCircle className="h-3.5 w-3.5" />
-            <AlertTitle className="text-sm">Đơn hàng đã bị hủy</AlertTitle>
-            <AlertDescription className="text-xs">
-              {order.cancellation_reason && (
-                <div className="mt-1">
-                  <strong>Lý do:</strong> {order.cancellation_reason}
-                </div>
-              )}
-            </AlertDescription>
-          </Alert>
+      <div className="py-6 px-4 sm:px-6 space-y-4 max-w-4xl mx-auto">
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-2">
+          <h3 className="text-lg sm:text-xl font-semibold text-foreground">
+            Thông tin trạng thái đơn hàng #{order.id}
+          </h3>
+          <Badge variant="destructive" className="text-sm h-7 px-3 py-1">
+            Đã hủy
+          </Badge>
+        </div>
 
-          {order.cancelled_by && (
-            <div className="text-xs text-muted-foreground">
-              <p>
-                Hủy bởi:{" "}
+        <Alert variant="destructive" className="py-4 px-5">
+          <AlertCircle className="h-5 w-5" />
+          <AlertTitle className="text-base">Đơn hàng này đã bị hủy</AlertTitle>
+          <AlertDescription>
+            {order.cancellation_reason && (
+              <div className="mt-2 space-y-1">
+                <p className="font-medium">Lý do hủy đơn:</p>
+                <p className="text-sm bg-destructive/10 rounded-md p-2">
+                  {order.cancellation_reason}
+                </p>
+              </div>
+            )}
+
+            {order.cancelled_by && (
+              <div className="mt-3 text-sm flex items-center gap-2">
+                <span>Người hủy đơn:</span>
                 <span className="font-medium">
                   {order.cancelled_by === "user"
                     ? "Khách hàng"
-                    : "Quản trị viên"}
+                    : "Nhân viên quản trị"}
                 </span>
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </div>
+            )}
+          </AlertDescription>
+        </Alert>
+
+        <div className="flex justify-end mt-4">
+          <Button variant="outline" onClick={onSuccess} className="gap-2">
+            <X className="h-4 w-4" /> Đóng
+          </Button>
+        </div>
+      </div>
     );
   }
 
   // Render for completed orders - more compact
   if (isOrderCompleted) {
     return (
-      <Card className="w-full border-green-200 dark:border-green-900/40 shadow-sm">
-        <CardContent className="p-3">
-          <div className="space-y-3 max-h-[60vh] overflow-auto thin-scrollbar pr-1">
-            <Alert className="py-2 px-3">
-              <AlertCircle className="h-3.5 w-3.5 text-green-500" />
-              <AlertTitle className="text-sm">
-                Đơn hàng đã hoàn thành
-              </AlertTitle>
-              <AlertDescription className="text-xs">
-                Đơn hàng này đã hoàn thành vào{" "}
+      <div className="py-6 px-4 sm:px-6 max-w-4xl mx-auto">
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-4">
+          <h3 className="text-lg sm:text-xl font-semibold text-foreground">
+            Thông tin trạng thái đơn hàng #{order.id}
+          </h3>
+          <Badge
+            variant="default"
+            className="bg-green-600 hover:bg-green-700 text-sm h-7 px-3 py-1"
+          >
+            Đã hoàn thành
+          </Badge>
+        </div>
+
+        <Alert className="py-4 px-5 bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900 text-green-800 dark:text-green-300">
+          <AlertCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+          <AlertTitle className="text-base text-green-700 dark:text-green-300">
+            Đơn hàng đã hoàn thành
+          </AlertTitle>
+          <AlertDescription className="text-green-600 dark:text-green-400">
+            <p>
+              Đơn hàng này đã hoàn thành vào{" "}
+              <span className="font-semibold">
                 {order.completed_at
                   ? format(new Date(order.completed_at), "HH:mm, dd/MM/yyyy")
                   : "thời điểm không xác định"}
-                . Bạn chỉ có thể hủy đơn hàng nếu cần thiết.
-              </AlertDescription>
-            </Alert>
+              </span>
+            </p>
 
-            <Form {...cancelForm}>
-              <form
-                onSubmit={cancelForm.handleSubmit(onCancelOrder)}
-                className="space-y-3"
-              >
-                <FormField
-                  control={cancelForm.control}
-                  name="reason"
-                  render={({ field }) => (
-                    <FormItem className="space-y-1">
-                      <FormLabel className="text-xs">Lý do hủy đơn</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Nhập lý do hủy đơn hàng"
-                          className="resize-none text-sm min-h-0"
-                          rows={3}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage className="text-xs" />
-                    </FormItem>
-                  )}
-                />
+            <p className="text-sm mt-2">
+              Bạn chỉ có thể hủy đơn hàng nếu thực sự cần thiết.
+            </p>
+          </AlertDescription>
+        </Alert>
 
-                <FormField
-                  control={cancelForm.control}
-                  name="notify_customer"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-2 space-y-0 rounded-md border p-2.5">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          className="mt-0.5"
-                        />
-                      </FormControl>
-                      <div className="space-y-0.5 leading-none">
-                        <FormLabel className="text-xs">
-                          Thông báo cho khách hàng
-                        </FormLabel>
-                        <FormDescription className="text-[10px]">
-                          Gửi email thông báo về việc hủy đơn hàng
-                        </FormDescription>
+        <div className="mt-6">
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="cancel-options">
+              <AccordionTrigger className="text-destructive hover:text-destructive/90 font-medium">
+                Tùy chọn hủy đơn hàng
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="pt-2 pb-1">
+                  <Alert variant="warning" className="mb-4">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Cảnh báo</AlertTitle>
+                    <AlertDescription>
+                      Hành động này không thể hoàn tác. Hãy cân nhắc kỹ trước
+                      khi hủy đơn hàng đã hoàn thành.
+                    </AlertDescription>
+                  </Alert>
+
+                  <Form {...cancelForm}>
+                    <form
+                      onSubmit={cancelForm.handleSubmit(onCancelOrder)}
+                      className="space-y-4"
+                    >
+                      <FormField
+                        control={cancelForm.control}
+                        name="reason"
+                        render={({ field }) => (
+                          <FormItem className="space-y-1.5">
+                            <FormLabel>
+                              Lý do hủy đơn{" "}
+                              <span className="text-destructive">*</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Nhập lý do hủy đơn hàng (ít nhất 5 ký tự)"
+                                className="resize-none"
+                                rows={3}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={cancelForm.control}
+                        name="notify_customer"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-2 space-y-0 rounded-md border p-3">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                className="mt-0.5"
+                              />
+                            </FormControl>
+                            <div className="space-y-0.5">
+                              <FormLabel>Thông báo cho khách hàng</FormLabel>
+                              <FormDescription className="text-xs">
+                                Gửi email thông báo về việc hủy đơn hàng
+                              </FormDescription>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={onSuccess}
+                        >
+                          Hủy thao tác
+                        </Button>
+                        <Button
+                          type="submit"
+                          variant="destructive"
+                          disabled={cancelOrderMutation.isPending}
+                        >
+                          {cancelOrderMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Đang xử lý
+                            </>
+                          ) : (
+                            "Xác nhận hủy đơn"
+                          )}
+                        </Button>
                       </div>
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex justify-end pt-1">
-                  <Button
-                    type="submit"
-                    variant="destructive"
-                    size="sm"
-                    className="h-8 text-xs"
-                    disabled={cancelOrderMutation.isPending}
-                  >
-                    {cancelOrderMutation.isPending
-                      ? "Đang xử lý..."
-                      : "Xác nhận hủy đơn"}
-                  </Button>
+                    </form>
+                  </Form>
                 </div>
-              </form>
-            </Form>
-          </div>
-        </CardContent>
-      </Card>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+      </div>
     );
   }
 
   // Regular order status update view - optimized layout
   return (
-    <Card className="w-full max-w-full border shadow-sm">
-      <CardContent className="p-0">
-        <div className="max-h-[70vh] overflow-auto thin-scrollbar">
-          <div className="p-3">
-            <Tabs
-              value={activeTab}
-              onValueChange={setActiveTab}
-              className="w-full"
-            >
-              <TabsList className="w-full grid grid-cols-2 h-8">
-                <TabsTrigger value="update" className="text-xs py-1.5">
-                  Cập nhật trạng thái
-                </TabsTrigger>
-                <TabsTrigger value="cancel" className="text-xs py-1.5">
-                  Hủy đơn hàng
-                </TabsTrigger>
-              </TabsList>
+    <div className="relative max-h-[85vh] overflow-hidden flex flex-col">
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-4 px-6 pt-6">
+        <h3 className="text-lg sm:text-xl font-semibold text-foreground flex items-center gap-2">
+          <Clipboard className="h-5 w-5 text-primary" />
+          <span>Quản lý đơn hàng #{order.id}</span>
+        </h3>
+        {currentStatus && (
+          <Badge
+            variant={getStatusBadgeVariant(currentStatus.name)}
+            className="text-sm h-7 px-3 py-1"
+          >
+            {currentStatus.name}
+          </Badge>
+        )}
+      </div>
 
-              <div className="mt-3">
-                <TabsContent value="update" className="space-y-3 mt-0">
-                  <StatusWorkflowVisualization />
+      <ScrollArea className="flex-1 overflow-auto pb-6 px-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="w-full grid grid-cols-2 h-11 sticky top-0 z-10">
+            <TabsTrigger value="update" className="text-sm py-2.5">
+              <RefreshCw className="h-4 w-4 mr-2" /> Cập nhật trạng thái
+            </TabsTrigger>
+            <TabsTrigger value="cancel" className="text-sm py-2.5">
+              <AlertOctagon className="h-4 w-4 mr-2" /> Hủy đơn hàng
+            </TabsTrigger>
+          </TabsList>
 
-                  <Form {...statusForm}>
-                    <form
-                      onSubmit={statusForm.handleSubmit(onStatusUpdate)}
-                      className="space-y-3"
-                    >
+          <div className="mt-6">
+            <TabsContent value="update" className="space-y-6 mt-0">
+              <StatusWorkflowVisualization />
+
+              <Form {...statusForm}>
+                <form
+                  onSubmit={statusForm.handleSubmit(onStatusUpdate)}
+                  className="space-y-5"
+                >
+                  <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                    <div className="lg:col-span-3">
                       <FormField
                         control={statusForm.control}
                         name="order_status_id"
                         render={({ field }) => (
-                          <FormItem className="space-y-1">
+                          <FormItem className="space-y-1.5">
                             <div className="flex justify-between items-center">
-                              <FormLabel className="text-xs">
-                                Trạng thái mới
+                              <FormLabel className="text-base">
+                                Chọn trạng thái mới
                               </FormLabel>
-                              <FormDescription className="text-[10px] m-0">
-                                {validNextStatuses.length} lựa chọn
-                              </FormDescription>
+                              <Badge
+                                variant={
+                                  validNextStatuses.length > 0
+                                    ? "outline"
+                                    : "destructive"
+                                }
+                                className="ml-2"
+                              >
+                                {validNextStatuses.length} lựa chọn hợp lệ
+                              </Badge>
                             </div>
                             <Select
                               value={field.value}
@@ -515,264 +636,302 @@ export function OrderStatusUpdate({
                               }
                             >
                               <FormControl>
-                                <SelectTrigger className="h-8 text-sm">
-                                  <SelectValue placeholder="Chọn trạng thái mới" />
+                                <SelectTrigger className="h-11 text-base">
+                                  <SelectValue placeholder="Chọn trạng thái mới cho đơn hàng" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <ScrollArea className="h-[180px]">
+                                <ScrollArea className="h-[240px]">
                                   {validNextStatuses.map((status) => (
                                     <SelectItem
                                       key={status.id}
                                       value={status.id.toString()}
+                                      className="py-3"
                                     >
-                                      <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-3">
                                         <Badge
                                           variant={getStatusBadgeVariant(
                                             status.name
                                           )}
-                                          className="shrink-0"
+                                          className="shrink-0 px-2.5 py-1"
                                         >
                                           {status.name}
                                         </Badge>
-                                        {status.name === "Đã hủy" ? (
-                                          <span className="text-destructive text-xs">
-                                            (Chuyển đến hủy đơn hàng)
+                                        {status.description && (
+                                          <span className="text-xs text-muted-foreground line-clamp-1">
+                                            {status.description}
                                           </span>
-                                        ) : null}
+                                        )}
                                       </div>
                                     </SelectItem>
                                   ))}
+                                  {validNextStatuses.length === 0 && (
+                                    <div className="p-4 text-center text-muted-foreground">
+                                      <BanIcon className="h-5 w-5 mx-auto mb-2 opacity-50" />
+                                      <p className="text-sm">
+                                        Không có trạng thái hợp lệ tiếp theo
+                                      </p>
+                                    </div>
+                                  )}
                                 </ScrollArea>
                               </SelectContent>
                             </Select>
-                            <FormMessage className="text-xs" />
+                            <FormMessage />
+                            {validNextStatuses.length === 0 && (
+                              <p className="text-xs text-muted-foreground mt-1.5">
+                                Đơn hàng này không thể chuyển sang trạng thái
+                                khác
+                              </p>
+                            )}
                           </FormItem>
                         )}
                       />
+                    </div>
 
-                      {statusForm.watch("order_status_id") &&
-                        statusForm.watch("order_status_id") !==
-                          currentStatusId?.toString() &&
+                    <div className="lg:col-span-2">
+                      <FormField
+                        control={statusForm.control}
+                        name="notify_customer"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 h-full">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                className="mt-1"
+                              />
+                            </FormControl>
+                            <div className="space-y-1">
+                              <FormLabel className="text-base">
+                                Thông báo cho khách hàng
+                              </FormLabel>
+                              <FormDescription>
+                                Gửi email thông báo cho khách hàng khi trạng
+                                thái đơn hàng được cập nhật
+                              </FormDescription>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {statusForm.watch("order_status_id") &&
+                    statusForm.watch("order_status_id") !==
+                      currentStatusId?.toString() &&
+                    statuses.find(
+                      (s) =>
+                        s.id.toString() === statusForm.watch("order_status_id")
+                    )?.name === "Đã hủy" && (
+                      <div className="py-3">
+                        <Alert
+                          variant="warning"
+                          className="py-3 px-4 flex items-start"
+                        >
+                          <AlertTriangle className="h-5 w-5 mt-0.5" />
+                          <div className="ml-3">
+                            <AlertTitle className="text-base font-medium">
+                              Cảnh báo
+                            </AlertTitle>
+                            <AlertDescription className="text-sm">
+                              <p>
+                                Bạn đã chọn hủy đơn hàng. Vui lòng chuyển sang
+                                tab "Hủy đơn hàng" để cung cấp lý do hủy chi
+                                tiết.
+                              </p>
+                              <div className="mt-3">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => setActiveTab("cancel")}
+                                  className="text-sm gap-2"
+                                >
+                                  <ArrowRight className="h-4 w-4" />
+                                  Chuyển đến hủy đơn hàng
+                                </Button>
+                              </div>
+                            </AlertDescription>
+                          </div>
+                        </Alert>
+                      </div>
+                    )}
+
+                  <div className="flex items-center justify-between pt-2 border-t mt-6">
+                    <div className="text-sm text-muted-foreground flex items-center">
+                      <InfoIcon className="h-4 w-4 mr-1.5" />
+                      <span>
+                        Đơn hàng chỉ có thể được chuyển sang các trạng thái hợp
+                        lệ tiếp theo
+                      </span>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      className="gap-2"
+                      disabled={
+                        updateOrderStatusMutation.isPending ||
+                        statusForm.watch("order_status_id") ===
+                          currentStatusId?.toString() ||
+                        validNextStatuses.length === 0 ||
                         statuses.find(
                           (s) =>
                             s.id.toString() ===
                             statusForm.watch("order_status_id")
-                        )?.name === "Đã hủy" && (
-                          <div className="py-1">
-                            <Alert variant="warning" className="py-2 px-3">
-                              <AlertTriangle className="h-3.5 w-3.5" />
-                              <AlertTitle className="text-xs font-medium">
-                                Cảnh báo
-                              </AlertTitle>
-                              <AlertDescription className="text-xs">
-                                Bạn đã chọn hủy đơn hàng. Vui lòng chuyển sang
-                                tab "Hủy đơn hàng" để cung cấp lý do hủy chi
-                                tiết.
-                              </AlertDescription>
-                            </Alert>
-                            <div className="mt-2 text-center">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setActiveTab("cancel")}
-                                size="sm"
-                                className="h-7 text-xs"
-                              >
-                                Chuyển đến hủy đơn hàng
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <FormField
-                          control={statusForm.control}
-                          name="notify_customer"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-start space-x-2 space-y-0 rounded-md border p-2.5">
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                  className="mt-0.5"
-                                />
-                              </FormControl>
-                              <div className="space-y-0.5 leading-none">
-                                <FormLabel className="text-xs">
-                                  Thông báo cho khách
-                                </FormLabel>
-                                <FormDescription className="text-[10px]">
-                                  Gửi email thông báo trạng thái mới
-                                </FormDescription>
-                              </div>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <div className="flex justify-end pt-1">
-                        <Button
-                          type="submit"
-                          size="sm"
-                          className="h-8 text-xs"
-                          disabled={
-                            updateOrderStatusMutation.isPending ||
-                            statusForm.watch("order_status_id") ===
-                              currentStatusId?.toString() ||
-                            statuses.find(
-                              (s) =>
-                                s.id.toString() ===
-                                statusForm.watch("order_status_id")
-                            )?.name === "Đã hủy"
-                          }
-                        >
-                          {updateOrderStatusMutation.isPending
-                            ? "Đang cập nhật..."
-                            : "Cập nhật trạng thái"}
-                        </Button>
-                      </div>
-                    </form>
-                  </Form>
-
-                  {/* Workflow info - now in a more compact horizontal layout */}
-                  <div className="mt-2 pt-2 border-t text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1 mb-1">
-                      <ClipboardList className="h-3 w-3" />
-                      <span className="font-medium">Quy trình đơn hàng:</span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-0.5">
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px]">
-                          • Chỉ được chuyển đến các trạng thái hợp lệ
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px]">
-                          • Đơn hàng đã hủy không thể thay đổi trạng thái
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="cancel" className="space-y-3 mt-0">
-                  <Alert variant="warning" className="py-2 px-3 mb-2">
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                    <AlertTitle className="text-xs font-medium">
-                      Cảnh báo
-                    </AlertTitle>
-                    <AlertDescription className="text-xs">
-                      Hủy đơn hàng là hành động không thể hoàn tác.
-                    </AlertDescription>
-                  </Alert>
-
-                  <Form {...cancelForm}>
-                    <form
-                      onSubmit={cancelForm.handleSubmit(onCancelOrder)}
-                      className="space-y-3"
+                        )?.name === "Đã hủy"
+                      }
                     >
-                      <FormField
-                        control={cancelForm.control}
-                        name="reason"
-                        render={({ field }) => (
-                          <FormItem className="space-y-1">
-                            <FormLabel className="text-xs">
-                              Lý do hủy đơn
-                            </FormLabel>
-                            <FormControl>
-                              <Textarea
-                                placeholder="Nhập lý do hủy đơn hàng"
-                                className="resize-none text-sm min-h-0"
-                                rows={2}
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage className="text-xs" />
-                          </FormItem>
-                        )}
-                      />
+                      {updateOrderStatusMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Đang cập nhật...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4" />
+                          Cập nhật trạng thái
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <FormField
-                          control={cancelForm.control}
-                          name="notify_customer"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-start space-x-2 space-y-0 rounded-md border p-2.5">
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                  className="mt-0.5"
-                                />
-                              </FormControl>
-                              <div className="space-y-0.5 leading-none">
-                                <FormLabel className="text-xs">
-                                  Thông báo cho khách
-                                </FormLabel>
-                                <FormDescription className="text-[10px]">
-                                  Gửi email thông báo về việc hủy đơn
-                                </FormDescription>
-                              </div>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <div className="flex gap-2 justify-end pt-1">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setActiveTab("update")}
-                          size="sm"
-                          className="h-8 text-xs"
-                        >
-                          <X className="h-3 w-3 mr-1" /> Quay lại
-                        </Button>
-                        <Button
-                          type="submit"
-                          variant="destructive"
-                          disabled={cancelOrderMutation.isPending}
-                          size="sm"
-                          className="h-8 text-xs"
-                        >
-                          {cancelOrderMutation.isPending
-                            ? "Đang xử lý..."
-                            : "Xác nhận hủy đơn"}
-                        </Button>
-                      </div>
-                    </form>
-                  </Form>
-                </TabsContent>
+              {/* Status transition info */}
+              <div className="border rounded-md p-4 bg-muted/30 dark:bg-muted/10">
+                <div className="flex items-center gap-2 mb-3">
+                  <ClipboardList className="h-5 w-5 text-primary" />
+                  <span className="font-medium">Quy trình xử lý đơn hàng</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <CircleArrowRight className="h-4 w-4 text-muted-foreground" />
+                    <span>Chờ xác nhận → Đã xác nhận → Đang xử lý</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CircleArrowRight className="h-4 w-4 text-muted-foreground" />
+                    <span>Đang xử lý → Đang giao → Đã giao</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CircleArrowRight className="h-4 w-4 text-muted-foreground" />
+                    <span>Đã giao → Đã hoàn thành</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-destructive" />
+                    <span>Có thể hủy đơn ở bất kỳ trạng thái nào</span>
+                  </div>
+                </div>
               </div>
-            </Tabs>
+            </TabsContent>
+
+            <TabsContent value="cancel" className="space-y-5 mt-0">
+              <Alert variant="warning" className="py-4 px-5 mb-4">
+                <AlertTriangle className="h-5 w-5" />
+                <AlertTitle className="text-base">Cảnh báo</AlertTitle>
+                <AlertDescription className="text-sm">
+                  <p>
+                    Hành động hủy đơn hàng sẽ không thể hoàn tác. Đơn hàng sau
+                    khi hủy sẽ không thể khôi phục lại trạng thái trước đó.
+                  </p>
+
+                  <p className="mt-2 font-medium">
+                    Nếu đơn hàng đã thanh toán, khách hàng sẽ được hoàn tiền
+                    theo chính sách của cửa hàng.
+                  </p>
+                </AlertDescription>
+              </Alert>
+
+              <Form {...cancelForm}>
+                <form
+                  onSubmit={cancelForm.handleSubmit(onCancelOrder)}
+                  className="space-y-5"
+                >
+                  <FormField
+                    control={cancelForm.control}
+                    name="reason"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel className="text-base flex items-center gap-1.5">
+                          Lý do hủy đơn
+                          <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Vui lòng nhập lý do hủy đơn hàng (tối thiểu 5 ký tự)"
+                            className="resize-none min-h-[100px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Lý do hủy đơn sẽ được sử dụng để thống kê và cải thiện
+                          dịch vụ
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <FormField
+                      control={cancelForm.control}
+                      name="notify_customer"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              className="mt-1"
+                            />
+                          </FormControl>
+                          <div className="space-y-1">
+                            <FormLabel className="text-base">
+                              Thông báo cho khách hàng
+                            </FormLabel>
+                            <FormDescription>
+                              Gửi email thông báo về việc hủy đơn hàng và lý do
+                              hủy
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center gap-3 pt-4 border-t mt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setActiveTab("update")}
+                      className="gap-2"
+                    >
+                      <ArrowLeft className="h-4 w-4" /> Quay lại
+                    </Button>
+
+                    <Button
+                      type="submit"
+                      variant="destructive"
+                      disabled={cancelOrderMutation.isPending}
+                      className="gap-2"
+                    >
+                      {cancelOrderMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Đang xử lý...
+                        </>
+                      ) : (
+                        <>
+                          <BanIcon className="h-4 w-4" />
+                          Xác nhận hủy đơn hàng
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </TabsContent>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </Tabs>
+      </ScrollArea>
+    </div>
   );
 }
-
-// Add these styles to your global CSS or a component CSS file
-// for thin scrollbars that look good across browsers
-/* 
-.thin-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(155, 155, 155, 0.5) transparent;
-}
-
-.thin-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-.thin-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.thin-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(155, 155, 155, 0.5);
-  border-radius: 20px;
-  border: transparent;
-}
-*/
