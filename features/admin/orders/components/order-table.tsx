@@ -178,6 +178,55 @@ export function OrderTable({
     return [10, 25, 50, 100];
   }, []);
 
+  // Function to determine row styling based on order status and properties
+  const getRowStyle = useCallback(
+    (order: OrderWithRelations) => {
+      // Cancelled orders
+      if (order.cancellation_reason) {
+        return "bg-red-50/80 hover:bg-red-100/90 border-red-200 dark:bg-red-900/10 dark:hover:bg-red-900/20 dark:border-red-800/30 dark:text-red-100";
+      }
+
+      // Orders with delivery issues
+      if (order.delivery_failure_reason) {
+        return "bg-amber-50/80 hover:bg-amber-100/90 border-amber-200 dark:bg-amber-900/10 dark:hover:bg-amber-900/20 dark:border-amber-800/30";
+      }
+
+      // Define styles based on order status
+      if (order.order_statuses) {
+        switch (order.order_statuses.name) {
+          case "Chờ xác nhận":
+            return "hover:bg-muted/40 border-l-4 border-l-blue-500 dark:border-l-blue-400";
+          case "Đã xác nhận":
+            return "hover:bg-muted/40 border-l-4 border-l-indigo-500 dark:border-l-indigo-400";
+          case "Đang xử lý":
+            return "bg-blue-50/50 hover:bg-blue-50/80 border-l-4 border-l-blue-600 dark:bg-blue-900/10 dark:hover:bg-blue-900/20 dark:border-l-blue-500";
+          case "Đang giao":
+            return "bg-amber-50/40 hover:bg-amber-50/70 border-l-4 border-l-amber-600 dark:bg-amber-900/5 dark:hover:bg-amber-900/10 dark:border-l-amber-500";
+          case "Đã giao":
+            return "bg-emerald-50/40 hover:bg-emerald-50/70 border-l-4 border-l-emerald-600 dark:bg-emerald-900/5 dark:hover:bg-emerald-900/10 dark:border-l-emerald-500";
+          case "Đã hoàn thành":
+            return "bg-green-50/40 hover:bg-green-50/70 border-l-4 border-l-green-600 dark:bg-green-900/5 dark:hover:bg-green-900/10 dark:border-l-green-500";
+          case "Đã hủy":
+            return "bg-red-50/60 hover:bg-red-50/80 border-l-4 border-l-red-600 dark:bg-red-900/10 dark:hover:bg-red-900/20 dark:border-l-red-500";
+          default:
+            return "hover:bg-muted/40";
+        }
+      }
+
+      // Orders older than 7 days that are not completed or cancelled
+      const orderAge = getOrderAgeInDays(order.order_date);
+      if (
+        orderAge > 7 &&
+        !["Đã hoàn thành", "Đã hủy"].includes(order.order_statuses?.name)
+      ) {
+        return "bg-purple-50/40 hover:bg-purple-50/70 dark:bg-purple-900/10 dark:hover:bg-purple-900/20 border-l-4 border-l-purple-600 dark:border-l-purple-500";
+      }
+
+      return "hover:bg-muted/40";
+    },
+    [getOrderAgeInDays]
+  );
+
   // Filter displayed orders based on search query
   const filteredOrders = useMemo(() => {
     if (!searchQuery) return orders;
@@ -205,11 +254,7 @@ export function OrderTable({
           key={order.id}
           className={cn(
             "mb-3 overflow-hidden transition-all",
-            order.cancellation_reason
-              ? "border-red-200 bg-red-50"
-              : hasDeliveryIssue
-              ? "border-amber-200 bg-amber-50"
-              : "border-border hover:border-primary/20"
+            getRowStyle(order)
           )}
         >
           <CardContent className="p-4">
@@ -354,7 +399,13 @@ export function OrderTable({
         </Card>
       );
     },
-    [copyToClipboard, getOrderAgeClass, getOrderAgeInDays, onViewDetails]
+    [
+      copyToClipboard,
+      getOrderAgeClass,
+      getOrderAgeInDays,
+      getRowStyle,
+      onViewDetails,
+    ]
   );
 
   // Page numbers for pagination
@@ -597,11 +648,7 @@ export function OrderTable({
                             key={order.id}
                             className={cn(
                               "transition-colors",
-                              order.cancellation_reason
-                                ? "bg-red-50/70 hover:bg-red-50"
-                                : hasDeliveryIssue
-                                ? "bg-amber-50/70 hover:bg-amber-50"
-                                : "hover:bg-muted/40"
+                              getRowStyle(order)
                             )}
                           >
                             <TableCell className="align-top">

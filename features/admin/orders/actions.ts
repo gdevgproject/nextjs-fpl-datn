@@ -291,14 +291,14 @@ export async function fetchShippersAction() {
     const shippers = [];
     for (const user of data.users) {
       // Check if user has shipper role in user metadata
-      if (user.user_metadata?.role === 'shipper') {
+      if (user.user_metadata?.role === "shipper") {
         // Get profile data for this user
         const { data: profile } = await supabase
           .from("profiles")
           .select("id, display_name, avatar_url, phone_number")
           .eq("id", user.id)
           .single();
-        
+
         shippers.push({
           id: user.id,
           email: user.email,
