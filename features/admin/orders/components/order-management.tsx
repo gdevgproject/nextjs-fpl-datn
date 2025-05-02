@@ -62,7 +62,11 @@ export function OrderManagement() {
 
   return (
     <div className="space-y-4">
-      <OrderFilters onFilterChange={onFilterChange} />
+      <OrderFilters
+        onFilterChange={onFilterChange}
+        activeFilters={filters}
+        isLoading={isLoading}
+      />
 
       {isLoading ? (
         <div className="space-y-3">
