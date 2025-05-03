@@ -94,7 +94,7 @@ function OrderGuestEmailForm({ onSuccess }: { onSuccess?: () => void }) {
 }
 
 export function OrderConfirmationClient() {
-  const { setJustPlacedOrder } = useCheckout();
+  const { setJustPlacedOrder, justPlacedOrder } = useCheckout();
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
   const token = searchParams.get("token");
@@ -110,14 +110,16 @@ export function OrderConfirmationClient() {
   useEffect(() => {
     async function checkAndSendMail() {
       if (!token && !orderId) return;
-      // Chỉ gửi mail khi đã điều hướng về trang xác nhận (tức là payment_status === 'Paid')
+      // Chỉ gửi mail khi vừa đặt hàng thành công (không gửi khi chỉ tra cứu đơn hàng)
       const result = await getOrderDetails(token || orderId, !!token);
+      // Kiểm tra nếu có cờ justPlacedOrder (tức là vừa đặt hàng xong)
       if (
         result?.success &&
         result.data &&
         ((result.data.customer_email && result.data.customer_email !== "") ||
           (result.data.guest_email && result.data.guest_email !== "")) &&
-        result.data.payment_status === "Paid" // Chỉ gửi mail khi đã thanh toán thành công
+        result.data.payment_status === "Paid" &&
+        justPlacedOrder // chỉ gửi mail nếu vừa đặt hàng xong
       ) {
         setSending(true);
         const res = await fetch("/api/order/send-token", {
@@ -146,7 +148,7 @@ export function OrderConfirmationClient() {
       }
     }
     checkAndSendMail();
-  }, [orderId, token]);
+  }, [orderId, token, justPlacedOrder]);
 
   if (mailSent) {
     return (
