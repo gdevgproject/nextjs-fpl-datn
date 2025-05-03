@@ -7,20 +7,34 @@ import {
 } from "@/lib/supabase/server";
 import type { Address } from "@/features/shop/account/types";
 import type { CartItem, GuestCheckoutInfo } from "@/features/shop/cart/types";
+import { Database } from "@/lib/types/database.types"; // Import generated types
 
-/**
- * Type definition for the Place Order response
- */
+// Define specific types for better clarity
+type OrderVariant = Database["public"]["Tables"]["product_variants"]["Row"] & {
+  products: Pick<
+    Database["public"]["Tables"]["products"]["Row"],
+    "id" | "name" | "deleted_at"
+  >;
+};
+
 interface PlaceOrderResponse {
   success: boolean;
   orderId?: number;
-  accessToken?: string;
+  accessToken?: string; // Only for guest users
   error?: string;
 }
 
 /**
  * Secured server action for placing orders that handles both authenticated and guest users.
- * Uses a service role client to bypass RLS for full transaction integrity.
+ * Uses a service role client to bypass RLS for necessary operations, relying on internal validation
+ * and database triggers/constraints for security and data integrity.
+ *
+ * IMPORTANT: This function implements strict pre-commit validation to ensure the prices shown
+ * to users in the UI match exactly what they will pay, rejecting orders if prices have changed.
+ *
+ * NOTE: This action relies HEAVILY on database triggers (`calculate_order_total`, `validate_discount_code`)
+ * defined in schema.txt to correctly calculate final amounts and validate discounts.
+ * Ensure those triggers are active and the data in the `discounts` table is correct.
  */
 export async function securedPlaceOrder({
   shippingAddress,
@@ -28,461 +42,399 @@ export async function securedPlaceOrder({
   deliveryNotes,
   discountId,
   cartItems,
-  subtotal,
-  discountAmount,
-  shippingFee,
-  total,
+  subtotal: clientSubtotal, // Client's calculated subtotal
+  shippingFee, // Shipping fee from client
   guestInfo,
 }: {
   shippingAddress: Address;
   paymentMethodId: number;
   deliveryNotes?: string;
-  discountId?: number;
+  discountId?: number | null; // Allow null explicitly
   cartItems: CartItem[];
-  subtotal: number;
-  discountAmount: number;
+  subtotal: number; // Client's calculated subtotal (will be verified)
   shippingFee: number;
-  total: number;
   guestInfo?: GuestCheckoutInfo | null;
 }): Promise<PlaceOrderResponse> {
-  // Create regular Supabase client for user session check only
-  const regularSupabase = await getSupabaseServerClient();
+  // Input Validation
+  if (!cartItems || cartItems.length === 0) {
+    return { success: false, error: "Giỏ hàng trống." };
+  }
+  if (!shippingAddress) {
+    return { success: false, error: "Thiếu địa chỉ giao hàng." };
+  }
+  if (!paymentMethodId) {
+    return { success: false, error: "Thiếu phương thức thanh toán." };
+  }
 
-  // Create service role client for transaction operations (bypasses RLS)
-  // Fix: Make sure to await the async function to get the actual client instance
-  const supabase = await createServiceRoleClient();
+  const regularSupabase = await getSupabaseServerClient();
+  const supabase = await createServiceRoleClient(); // Use service role for the transaction
 
   console.log(
-    "Starting order placement process with",
-    cartItems.length,
-    "items"
+    `Starting order placement process for ${
+      guestInfo ? "guest" : "user"
+    } with ${cartItems.length} items.`
   );
+  console.log("Client provided subtotal:", clientSubtotal);
+  console.log("Discount ID:", discountId);
 
   try {
-    // Get user session if available
+    // 1. Get User Session (if any)
     const {
       data: { session },
     } = await regularSupabase.auth.getSession();
     const userId = session?.user?.id;
+    console.log("User authenticated:", !!userId);
 
-    console.log("Session check complete. User authenticated:", !!userId);
-
-    // PRE-COMMIT VALIDATION: Verify current product variant data
+    // 2. Pre-Commit Validation: Fetch latest variant data using Service Role
     console.log("Performing pre-commit validation...");
 
-    // Extract variant IDs, supporting both variantId (camelCase) and variant_id (snake_case)
     const variantIds = cartItems
       .map((item) => {
-        // Kiểm tra xem trường nào tồn tại và có giá trị hợp lệ
-        if (typeof item.variantId === "number") return item.variantId;
-        if (typeof (item as any).variant_id === "number")
-          return (item as any).variant_id;
-        console.error("Invalid cart item:", item);
+        // Ensure robust ID extraction
+        const id = item.variantId ?? (item as any).variant_id;
+        if (typeof id === "number" && id > 0) {
+          return id;
+        }
+        console.warn("Invalid variant ID in cart item:", item);
         return null;
       })
-      .filter(Boolean);
+      .filter((id): id is number => id !== null); // Type guard for filtering nulls
 
     if (variantIds.length !== cartItems.length) {
-      console.error(
-        "Some cart items have invalid variant ID format",
-        cartItems
-      );
+      console.error("Cart contains items with invalid variant IDs:", cartItems);
       return {
         success: false,
-        error: "Lỗi định dạng giỏ hàng. Vui lòng làm mới trang và thử lại.",
+        error: "Giỏ hàng chứa sản phẩm không hợp lệ. Vui lòng làm mới.",
       };
     }
 
-    // Fetch the latest data for all variants being ordered
-    const { data: latestVariantsRaw, error: variantsError } = await supabase
+    const { data: latestVariantsData, error: variantsError } = await supabase
       .from("product_variants")
       .select(
         `
-        id, 
+        id,
         volume_ml,
-        price, 
-        sale_price, 
-        stock_quantity, 
+        price,
+        sale_price,
+        stock_quantity,
         deleted_at,
-        products(
-          id, 
-          name, 
-          deleted_at
-        )
+        products ( id, name, deleted_at )
       `
       )
       .in("id", variantIds);
 
-    if (variantsError || !latestVariantsRaw) {
+    if (variantsError || !latestVariantsData) {
       console.error("Error fetching latest variant data:", variantsError);
       return {
         success: false,
-        error: "Không thể xác minh thông tin sản phẩm. Vui lòng thử lại sau.",
+        error: "Lỗi: Không thể xác minh thông tin sản phẩm. Vui lòng thử lại.",
       };
     }
 
-    // Chuyển đổi cấu trúc dữ liệu Supabase trả về sang định dạng an toàn hơn
-    const latestVariants = latestVariantsRaw.map((variant) => ({
-      id: variant.id,
-      volume_ml: variant.volume_ml,
-      price: variant.price,
-      sale_price: variant.sale_price,
-      stock_quantity: variant.stock_quantity,
-      deleted_at: variant.deleted_at,
-      products: variant.products as unknown as {
-        id: number;
-        name: string;
-        deleted_at: string | null;
-      },
-    }));
-
-    // Validate the variants
-    const unavailableVariants: { id: number; reason: string }[] = [];
-    const priceChangedVariants: {
-      id: number;
-      oldPrice: number;
-      newPrice: number;
-    }[] = [];
-
-    for (const item of cartItems) {
-      // Sử dụng variantId hoặc variant_id nếu cái trước không tồn tại
-      const itemVariantId = item.variantId || (item as any).variant_id;
-      const currentVariant = latestVariants.find((v) => v.id === itemVariantId);
-
-      // Check if variant exists and is not deleted
-      if (!currentVariant) {
-        console.error(`Variant ID ${itemVariantId} not found in database`);
-        unavailableVariants.push({
-          id: itemVariantId,
-          reason: "Sản phẩm không còn tồn tại trong hệ thống.",
-        });
-        continue;
-      }
-
-      if (currentVariant.deleted_at) {
-        unavailableVariants.push({
-          id: itemVariantId,
-          reason: "Sản phẩm đã bị xóa khỏi hệ thống.",
-        });
-        continue;
-      }
-
-      // Check if product is deleted
-      if (currentVariant.products.deleted_at) {
-        unavailableVariants.push({
-          id: itemVariantId,
-          reason: `Sản phẩm "${currentVariant.products.name}" không còn kinh doanh.`,
-        });
-        continue;
-      }
-
-      // Check stock quantity
-      if (currentVariant.stock_quantity < item.quantity) {
-        unavailableVariants.push({
-          id: itemVariantId,
-          reason: `Chỉ còn ${currentVariant.stock_quantity} sản phẩm "${currentVariant.products.name}" trong kho.`,
-        });
-        continue;
-      }
-
-      // Check price changes only for product salePrice changes, skip if voucher applied
-      if (!discountId) {
-        const clientPrice = item.product?.salePrice ?? item.product?.price ?? 0;
-        const currentPrice = currentVariant.sale_price ?? currentVariant.price;
-        // Compare prices with tolerance for rounding differences
-        const priceDiff = Math.abs(clientPrice - currentPrice);
-        if (priceDiff > 0.01) {
-          priceChangedVariants.push({
-            id: itemVariantId,
-            oldPrice: clientPrice,
-            newPrice: currentPrice,
-          });
+    // Cast to the specific type, ensure products is not null
+    const latestVariants: OrderVariant[] = latestVariantsData
+      .map((v) => {
+        // Ensure the nested products object is valid before casting
+        if (!v.products || typeof v.products !== "object") {
+          console.error(`Variant ${v.id} is missing valid product data.`);
+          return null; // Mark as invalid
         }
-      }
-    }
+        return v as unknown as OrderVariant;
+      })
+      .filter((v): v is OrderVariant => v !== null); // Filter out invalid ones
 
-    // Handle validation failures
-    if (unavailableVariants.length > 0) {
-      console.error("Unavailable variants detected:", unavailableVariants);
-      return {
-        success: false,
-        error: `Một số sản phẩm không khả dụng: ${unavailableVariants
-          .map((v) => v.reason)
-          .join("; ")}`,
-      };
-    }
-
-    if (priceChangedVariants.length > 0) {
-      console.error("Price changes detected:", priceChangedVariants);
+    if (latestVariants.length !== variantIds.length) {
+      // This means some variants fetched were invalid or missing product data
+      console.error(
+        "Mismatch fetching variant details or missing product data."
+      );
       return {
         success: false,
         error:
-          "Giá của một số sản phẩm đã thay đổi. Vui lòng làm mới trang để cập nhật giỏ hàng.",
+          "Lỗi: Không thể lấy đầy đủ thông tin sản phẩm. Vui lòng thử lại.",
       };
     }
 
-    // Validate discount if provided
+    // 3. Validate Availability & Stock
+    const validationIssues: string[] = [];
+    for (const item of cartItems) {
+      const itemVariantId = item.variantId ?? (item as any).variant_id;
+      const currentVariant = latestVariants.find((v) => v.id === itemVariantId);
+
+      if (!currentVariant) {
+        validationIssues.push(`Sản phẩm ID ${itemVariantId} không tìm thấy.`);
+        continue;
+      }
+      if (currentVariant.deleted_at) {
+        validationIssues.push(
+          `Sản phẩm "${currentVariant.products.name}" (${currentVariant.volume_ml}ml) đã bị xóa.`
+        );
+        continue;
+      }
+      if (currentVariant.products.deleted_at) {
+        validationIssues.push(
+          `Sản phẩm "${currentVariant.products.name}" không còn kinh doanh.`
+        );
+        continue;
+      }
+      if (currentVariant.stock_quantity < item.quantity) {
+        validationIssues.push(
+          `"${currentVariant.products.name}" (${currentVariant.volume_ml}ml): Chỉ còn ${currentVariant.stock_quantity} trong kho.`
+        );
+        continue;
+      }
+
+      // NEW: Validate that item price hasn't changed
+      const clientPrice = item.product?.salePrice ?? item.product?.price;
+      const dbPrice = currentVariant.sale_price ?? currentVariant.price;
+
+      if (clientPrice === undefined) {
+        validationIssues.push(
+          `"${currentVariant.products.name}" (${currentVariant.volume_ml}ml): Thiếu thông tin giá.`
+        );
+        continue;
+      }
+
+      // Allow for small rounding differences but reject if actual price changed
+      const allowedDiscrepancy = 1; // 1 VND tolerance
+      if (Math.abs(clientPrice - dbPrice) > allowedDiscrepancy) {
+        validationIssues.push(
+          `"${currentVariant.products.name}" (${
+            currentVariant.volume_ml
+          }ml): Giá đã thay đổi từ ${clientPrice.toLocaleString(
+            "vi-VN"
+          )}đ thành ${dbPrice.toLocaleString(
+            "vi-VN"
+          )}đ. Vui lòng làm mới giỏ hàng.`
+        );
+        continue;
+      }
+    }
+
+    if (validationIssues.length > 0) {
+      console.error("Validation failures:", validationIssues);
+      return { success: false, error: validationIssues.join("; ") };
+    }
+    console.log("Availability, stock, and price validation passed.");
+
+    // 4. Server-Side Subtotal Verification (Not Recalculation)
+    // Calculate what the subtotal should be based on client-provided prices
+    const verifiedSubtotal = cartItems.reduce((sum, item) => {
+      const price = item.product?.salePrice ?? item.product?.price ?? 0;
+      return sum + price * item.quantity;
+    }, 0);
+
+    // Check if client-provided subtotal matches our calculation from client-provided prices
+    // This checks for math errors on client side, not price changes
+    const subtotalDiscrepancy = Math.abs(verifiedSubtotal - clientSubtotal);
+    if (subtotalDiscrepancy > 1) {
+      // Allow 1 VND tolerance for rounding
+      console.error(
+        `Subtotal calculation mismatch: Client=${clientSubtotal}, Verified=${verifiedSubtotal}. Difference=${subtotalDiscrepancy}`
+      );
+      return {
+        success: false,
+        error: "Tổng giỏ hàng không khớp. Vui lòng làm mới giỏ hàng.",
+      };
+    }
+
+    // Format numbers for insertion (using verified client subtotal)
+    const numericSubtotal = Number(clientSubtotal.toFixed(2));
+    const numericShippingFee = Number(shippingFee.toFixed(2));
+
+    // 5. Pre-Commit Discount Check
+    let dbDiscount: Database["public"]["Tables"]["discounts"]["Row"] | null =
+      null;
     if (discountId) {
-      const { data: discount, error: discountError } = await supabase
+      const { data: discountData, error: discountError } = await supabase
         .from("discounts")
         .select("*")
         .eq("id", discountId)
         .single();
 
-      if (discountError || !discount) {
+      if (discountError || !discountData) {
         console.error("Discount validation error:", discountError);
-        return {
-          success: false,
-          error: "Mã giảm giá không hợp lệ hoặc đã hết hạn.",
-        };
+        return { success: false, error: "Mã giảm giá không hợp lệ." };
       }
+      dbDiscount = discountData; // Store for logging
 
-      // Check discount validity
+      // Check conditions critical for the DB trigger's success
       const now = new Date();
+      if (!dbDiscount || !dbDiscount.is_active)
+        return { success: false, error: "Mã giảm giá không hoạt động." };
+      if (dbDiscount.start_date && new Date(dbDiscount.start_date) > now)
+        return { success: false, error: "Mã giảm giá chưa tới ngày sử dụng." };
+      if (dbDiscount.end_date && new Date(dbDiscount.end_date) < now)
+        return { success: false, error: "Mã giảm giá đã hết hạn." };
+      if (dbDiscount.remaining_uses !== null && dbDiscount.remaining_uses <= 0)
+        return { success: false, error: "Mã giảm giá đã hết lượt sử dụng." };
+      // Check min_order_value against verified client subtotal (not db prices)
       if (
-        !discount.is_active ||
-        (discount.start_date && new Date(discount.start_date) > now) ||
-        (discount.end_date && new Date(discount.end_date) < now) ||
-        (discount.remaining_uses !== null && discount.remaining_uses <= 0) ||
-        (discount.min_order_value && subtotal < discount.min_order_value)
+        dbDiscount.min_order_value &&
+        numericSubtotal < dbDiscount.min_order_value
       ) {
         return {
           success: false,
-          error: "Mã giảm giá không hợp lệ hoặc không thỏa điều kiện áp dụng.",
+          error: `Đơn hàng chưa đủ ${dbDiscount.min_order_value.toLocaleString(
+            "vi-VN"
+          )}đ để dùng mã này.`,
         };
       }
+      console.log("Pre-commit discount validation passed.");
     }
 
-    // Fetch the Pending order status ID
-    const { data: statusList, error: statusError } = await supabase
+    // 6. Get Initial Order Status ID
+    const { data: initialStatus, error: statusError } = await supabase
       .from("order_statuses")
-      .select("id, name");
+      .select("id")
+      .eq("name", "Chờ xác nhận") // Use exact name from seed data
+      .single();
 
-    if (statusError) {
-      console.error("Error fetching order statuses:", statusError);
+    if (statusError || !initialStatus) {
+      console.error("Error fetching 'Chờ xác nhận' order status:", statusError);
       return {
         success: false,
         error: "Lỗi hệ thống: Không thể xác định trạng thái đơn hàng.",
       };
     }
+    const orderStatusId = initialStatus.id;
+    console.log("Using initial order status ID:", orderStatusId);
 
-    // Look for Pending status using various possible names
-    let pendingStatus = statusList.find((status) =>
-      ["Pending", "Chờ xử lý", "Đang chờ", "Mới", "Chờ xác nhận"].includes(
-        status.name
-      )
-    );
+    // 7. Database Operations (Implicit Transaction)
+    console.log("Starting database transaction...");
 
-    if (!pendingStatus) {
-      console.error("Could not find a valid initial order status", statusList);
-      // If no matching status found, use the first available status as fallback
-      if (statusList.length === 0) {
-        return {
-          success: false,
-          error:
-            "Lỗi hệ thống: Không có trạng thái đơn hàng nào được định nghĩa.",
-        };
-      }
-      // Use the first status as fallback
-      pendingStatus = statusList[0];
-    }
-
-    const orderStatusId = pendingStatus.id;
-    console.log(
-      "Using order status ID:",
-      orderStatusId,
-      "Name:",
-      pendingStatus.name
-    );
-
-    // Start transaction - all operations will be atomic
-    // The transaction block guarantees that either ALL operations succeed, or NONE do
-    console.log("Starting transaction...");
-    console.log(
-      "Order details - subtotal:",
-      subtotal,
-      "discountAmount:",
-      discountAmount,
-      "total:",
-      total
-    );
-
-    let orderId: number | undefined;
-
-    // Calculate precise subtotal from actual product data
-    // This ensures we use the most accurate prices directly from the database
-    const preciseSubtotal = latestVariants.reduce((sum, variant) => {
-      const cartItem = cartItems.find((item) => {
-        const itemVariantId = item.variantId || (item as any).variant_id;
-        return itemVariantId === variant.id;
-      });
-
-      if (!cartItem) return sum;
-
-      // Use the same price calculation as in the cart
-      const price = variant.sale_price ?? variant.price;
-      return sum + price * cartItem.quantity;
-    }, 0);
-
-    console.log(
-      "Calculated precise subtotal from DB product prices:",
-      preciseSubtotal
-    );
-    console.log("Client-provided subtotal:", subtotal);
-    console.log("Difference:", Math.abs(preciseSubtotal - subtotal));
-
-    // Calculate numeric values for order details (using the precise subtotal)
-    const numericSubtotal = Number(
-      parseFloat(preciseSubtotal.toString()).toFixed(2)
-    );
-    // Discount will be calculated by the database trigger, we'll just pass a placeholder
-    const numericDiscountAmount = Number(
-      parseFloat((discountAmount || 0).toString()).toFixed(2)
-    );
-    const numericShippingFee = Number(
-      parseFloat(shippingFee.toString()).toFixed(2)
-    );
-    // Let database calculate the final total based on its discount logic
-    const calculatedTotal = Number(
-      (numericSubtotal + numericShippingFee).toFixed(2)
-    );
-
-    // Log chi tiết các giá trị TRƯỚC KHI INSERT vào DATABASE
+    // Log key values JUST before insertion
     console.log("=============================================");
-    console.log("PRE-INSERT DATABASE VALUES (securedPlaceOrder):", {
-      subtotal_amount: numericSubtotal,
-      subtotal_type: typeof numericSubtotal,
-      discount_amount: numericDiscountAmount,
-      discount_type: typeof numericDiscountAmount,
-      discount_id: discountId,
-      discount_id_type: typeof discountId,
+    console.log("PRE-INSERT DATABASE VALUES:", {
+      user_id: userId || null,
+      payment_method_id: paymentMethodId,
+      order_status_id: orderStatusId,
+      discount_id: discountId || null,
+      subtotal_amount: numericSubtotal, // Using verified client subtotal
       shipping_fee: numericShippingFee,
-      shipping_type: typeof numericShippingFee,
-      calculated_total: calculatedTotal,
-      total_type: typeof calculatedTotal,
+      // These will be calculated by the DB trigger:
+      // discount_amount: (Will be set by trigger, defaults to 0)
+      // total_amount: (Will be set by trigger)
     });
-
-    // Double-check discount validity directly from database before insertion
-    if (discountId) {
-      const { data: discount, error: discountError } = await supabase
-        .from("discounts")
-        .select(
-          `
-          id, code, is_active, 
-          start_date, end_date, 
-          remaining_uses, min_order_value, 
-          discount_percentage, max_discount_amount
-        `
-        )
-        .eq("id", discountId)
-        .single();
-
-      if (!discountError && discount) {
-        console.log("DISCOUNT DETAILS FROM DATABASE:", discount);
-        console.log("CHECKING MIN ORDER VALUE:", {
-          "Min required": discount.min_order_value,
-          "Actual subtotal": numericSubtotal,
-          "Is valid": discount.min_order_value <= numericSubtotal,
-        });
-      }
+    if (dbDiscount) {
+      console.log("DISCOUNT DETAILS (for trigger context):", {
+        id: dbDiscount.id,
+        code: dbDiscount.code,
+        is_active: dbDiscount.is_active,
+        percentage: dbDiscount.discount_percentage,
+        max_amount: dbDiscount.max_discount_amount,
+        min_value: dbDiscount.min_order_value,
+      });
     }
     console.log("=============================================");
 
-    // Step 1: Insert order record
+    // Step 7.1: Insert Order Record
+    // Let the database handle default for discount_amount (0)
+    // Provide a temporary total_amount to satisfy NOT NULL, trigger will update it.
+    const temporaryTotal = numericSubtotal + numericShippingFee; // Temporary value
+
     const { data: newOrder, error: orderError } = await supabase
       .from("orders")
       .insert({
         user_id: userId || null,
-        // Guest information (only if user is not authenticated)
         guest_name: !userId && guestInfo ? guestInfo.name : null,
         guest_email: !userId && guestInfo ? guestInfo.email : null,
         guest_phone: !userId && guestInfo ? guestInfo.phone : null,
-        // Address information
         recipient_name: shippingAddress.recipient_name,
-        recipient_phone: shippingAddress.recipient_phone, // Sửa từ phone_number sang recipient_phone
+        recipient_phone: shippingAddress.recipient_phone,
         province_city: shippingAddress.province_city,
         district: shippingAddress.district,
         ward: shippingAddress.ward,
         street_address: shippingAddress.street_address,
-        // Order details
         delivery_notes: deliveryNotes || null,
         payment_method_id: paymentMethodId,
-        payment_status: "Pending",
+        payment_status: "Pending", // Default payment status
         order_status_id: orderStatusId,
         discount_id: discountId || null,
-        subtotal_amount: numericSubtotal, // Dùng subtotal đã tính lại từ giá sản phẩm trong DB
-        // KHÔNG cố gắng đặt discount_amount - để database trigger tính toán
-        // Đặt giá trị 0 (mặc định) để database trigger có thể ghi đè
-        discount_amount: 0,
+        subtotal_amount: numericSubtotal, // Use verified client subtotal
         shipping_fee: numericShippingFee,
-        // Không đặt total_amount - để database trigger tính toán
-        // Đặt giá trị tạm thời để thỏa mãn ràng buộc NOT NULL
-        total_amount: numericSubtotal + numericShippingFee,
+        // discount_amount: OMITTED - Let DB default and trigger handle it
+        total_amount: temporaryTotal, // Provide temporary value, trigger will overwrite
       })
-      .select("id, access_token")
+      .select("id, access_token, discount_amount, total_amount") // Select amounts AFTER trigger
       .single();
 
     if (orderError) {
-      console.error("Error creating order:", orderError);
-      throw new Error(`Không thể tạo đơn hàng: ${orderError.message}`);
+      console.error("DATABASE ERROR creating order:", orderError);
+      // Check for specific errors from triggers (e.g., discount validation)
+      if (orderError.message.includes("Mã giảm giá không hợp lệ")) {
+        return { success: false, error: orderError.message };
+      }
+      if (orderError.message.includes("Đơn hàng chưa đủ giá trị tối thiểu")) {
+        return { success: false, error: orderError.message };
+      }
+      // Add more specific error checks if needed based on trigger messages
+      return {
+        success: false,
+        error: `Không thể tạo đơn hàng: ${orderError.message}`,
+      };
     }
 
-    orderId = newOrder.id;
-    console.log("Created order with ID:", orderId);
+    const orderId = newOrder.id;
+    console.log("Order created successfully with ID:", orderId);
+    // Log the amounts ACTUALLY inserted (after trigger)
+    console.log("--- POST-TRIGGER VALUES ---");
+    console.log("DB discount_amount:", newOrder.discount_amount);
+    console.log("DB total_amount:", newOrder.total_amount);
+    console.log("---------------------------");
 
-    // Step 2: Insert order items
+    // Step 7.2: Insert Order Items
     for (const item of cartItems) {
-      const itemVariantId = item.variantId || (item as any).variant_id;
-      // Fetch variant details from our already validated data
+      const itemVariantId = item.variantId ?? (item as any).variant_id;
       const variant = latestVariants.find((v) => v.id === itemVariantId)!;
 
-      // Sử dụng giá từ item.product thay vì từ database để đảm bảo nhất quán với giá đã hiển thị
-      // cho người dùng tại frontend
-      const unitPrice =
-        item.product?.salePrice ??
-        item.product?.price ??
-        variant.sale_price ??
-        variant.price;
+      // IMPORTANT: Use client-provided price that we already validated
+      const unitPrice = item.product?.salePrice ?? item.product?.price ?? 0;
 
-      // Insert order item
       const { error: itemError } = await supabase.from("order_items").insert({
         order_id: orderId,
         variant_id: itemVariantId,
         product_name: variant.products.name,
         variant_volume_ml: variant.volume_ml,
         quantity: item.quantity,
-        unit_price_at_order: unitPrice,
+        unit_price_at_order: Number(unitPrice.toFixed(2)), // Use validated client price
       });
 
       if (itemError) {
-        console.error("Error creating order item:", itemError);
+        console.error(
+          `DATABASE ERROR creating order item for variant ${itemVariantId}:`,
+          itemError
+        );
+        // Note: In a real transaction, this error should ideally trigger a rollback.
+        // Since we are using implicit transaction, we throw to stop execution.
         throw new Error(
-          `Không thể thêm sản phẩm vào đơn hàng: ${itemError.message}`
+          `Không thể thêm sản phẩm "${variant.products.name}" vào đơn hàng: ${itemError.message}`
         );
       }
     }
+    console.log("Order items created successfully.");
 
-    console.log("Created all order items");
+    // Step 7.3: Create Initial Payment Record
+    // Use the FINAL total_amount returned by the database after the trigger ran.
+    const finalTotalAmount = newOrder.total_amount ?? temporaryTotal; // Fallback just in case
 
-    // Step 3: Create payment record
     const { error: paymentError } = await supabase.from("payments").insert({
       order_id: orderId,
       payment_date: new Date().toISOString(),
       payment_method_id: paymentMethodId,
-      amount: calculatedTotal,
-      status: "Pending",
+      amount: Number(finalTotalAmount.toFixed(2)), // Use final amount
+      status: "Pending", // Initial status
     });
 
     if (paymentError) {
-      console.error("Error creating payment record:", paymentError);
+      console.error("DATABASE ERROR creating payment record:", paymentError);
       throw new Error(
         `Không thể tạo bản ghi thanh toán: ${paymentError.message}`
       );
     }
+    console.log("Initial payment record created.");
 
-    console.log("Created payment record");
-
-    // Step 4: Clear only selected items from user's cart if authenticated
+    // Step 7.4: Clear Cart Items (Only for authenticated users)
     if (userId) {
       const { data: cart, error: cartError } = await supabase
         .from("shopping_carts")
@@ -490,50 +442,57 @@ export async function securedPlaceOrder({
         .eq("user_id", userId)
         .single();
 
-      if (!cartError && cart) {
-        // Chỉ xóa những variant_id có trong danh sách sản phẩm đã chọn để thanh toán
-        const variantIds = cartItems
-          .map((item) =>
-            typeof item.variantId === "number"
-              ? item.variantId
-              : (item as any).variant_id
-          )
-          .filter(Boolean);
+      if (cartError) {
+        console.error("Error fetching user cart for clearing:", cartError);
+        // Don't fail the whole order, just log the warning
+      } else if (cart) {
+        // Use the already validated variantIds
+        const { error: deleteError } = await supabase
+          .from("cart_items")
+          .delete()
+          .eq("cart_id", cart.id)
+          .in("variant_id", variantIds); // variantIds defined earlier
 
-        if (variantIds.length > 0) {
-          await supabase
-            .from("cart_items")
-            .delete()
-            .eq("cart_id", cart.id)
-            .in("variant_id", variantIds);
-          console.log("Cleared selected items from user's cart");
+        if (deleteError) {
+          console.error("Error clearing cart items:", deleteError);
+          // Don't fail the whole order, just log
+        } else {
+          console.log("Cleared ordered items from user's cart.");
         }
       }
     }
 
-    // Transaction complete successfully
-    console.log("Order placement transaction completed successfully");
-
-    // Revalidate relevant paths
+    // 8. Revalidate Paths
+    console.log("Revalidating paths...");
     revalidatePath("/gio-hang");
     revalidatePath("/thanh-toan");
-    revalidatePath(`/xac-nhan-don-hang?id=${orderId}`);
-    revalidatePath("/tai-khoan/don-hang");
-    revalidatePath("/api/cart");
+    // Correct path for confirmation might depend on guest/user
+    if (userId) {
+      revalidatePath(`/tai-khoan/don-hang/${orderId}`);
+      revalidatePath("/tai-khoan/don-hang");
+    } else {
+      // Guest path might use access token in query
+      // Revalidate a generic path or the specific confirmation path if known
+      revalidatePath(`/xac-nhan-don-hang`); // Revalidate the page itself
+    }
+    revalidatePath("/api/cart"); // If you have an API route for cart
 
+    console.log("Order placement successful.");
     return {
       success: true,
       orderId,
-      accessToken: !userId ? newOrder.access_token : undefined, // Only return access_token for guest users
+      accessToken: !userId ? newOrder.access_token : undefined,
     };
-  } catch (error) {
-    console.error("Fatal error during order placement:", error);
+  } catch (error: any) {
+    console.error("FATAL ERROR during order placement:", error);
+    // Try to return a more specific error message if possible
+    const message = error.message || "Đã xảy ra lỗi không mong muốn.";
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Đã xảy ra lỗi khi đặt hàng. Vui lòng thử lại sau.",
+      // Avoid exposing raw SQL errors directly to the client in production
+      error: message.startsWith("Không thể") // Pass our custom errors
+        ? message
+        : "Đã xảy ra lỗi khi đặt hàng. Vui lòng thử lại sau.",
     };
   }
 }
