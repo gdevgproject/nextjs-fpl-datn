@@ -52,6 +52,7 @@ import {
   ArrowRightLeft,
   UserCircle,
   ShoppingCart,
+  ExternalLink as LinkIcon,
 } from "lucide-react";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +66,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { DEFAULT_AVATAR_URL } from "@/lib/constants";
 
 interface OrderDetailsDialogProps {
   orderId: number | null;
@@ -375,32 +377,189 @@ export function OrderDetailsDialog({
                     {/* Thông tin người đặt */}
                     <div className="space-y-3">
                       {order.user_id ? (
-                        <div className="flex items-start gap-2">
-                          <UserCircle className="h-4 w-4 text-muted-foreground mt-0.5" />
-                          <div>
-                            <div className="text-xs text-muted-foreground">
-                              Người đặt hàng (Đã đăng ký)
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-6 w-6">
+                        <div>
+                          <div className="flex items-start gap-3 mb-3">
+                            <Avatar className="h-14 w-14 rounded-full border-2 border-primary/20 shadow-sm">
+                              {order.profiles?.avatar_url ? (
                                 <AvatarImage
-                                  src={order.profiles?.avatar_url || ""}
+                                  src={order.profiles.avatar_url}
+                                  alt={order.profiles?.display_name || "Khách hàng"}
+                                  className="object-cover"
+                                  onError={(e) => {
+                                    console.error("Avatar loading error:", e.currentTarget.src);
+                                    (e.currentTarget as HTMLImageElement).src = "/images/default-avatar.png";
+                                  }}
                                 />
-                                <AvatarFallback className="text-[10px]">
-                                  {order.profiles?.display_name?.[0] || "U"}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <div className="font-medium">
-                                  {order.profiles?.display_name || "N/A"}
-                                </div>
-                                {order.profiles?.email && (
-                                  <div className="text-xs text-muted-foreground">
-                                    {order.profiles.email}
-                                  </div>
+                              ) : (
+                                <AvatarImage 
+                                  src="/images/default-avatar.png" 
+                                  alt="Default avatar" 
+                                  className="object-cover" 
+                                />
+                              )}
+                              <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
+                                {(
+                                  order.profiles?.display_name?.[0] ||
+                                  order.user?.email?.[0] ||
+                                  "K"
+                                ).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-semibold text-lg">
+                                {order.profiles?.display_name ||
+                                  order.profiles?.email?.split("@")[0] ||
+                                  "Khách hàng"}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                ID người dùng: {order.user_id}
+                              </div>
+                              <div className="mt-1.5">
+                                <Badge variant="outline" className="mr-1">
+                                  Đã đăng ký
+                                </Badge>
+                                {order.profiles?.email_confirmed_at && (
+                                  <Badge variant="secondary">
+                                    Email đã xác thực
+                                  </Badge>
                                 )}
                               </div>
                             </div>
+                          </div>
+
+                          <div className="space-y-3 bg-muted/20 p-4 rounded-md">
+                            <div className="flex items-start gap-2">
+                              <Mail className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                              <div>
+                                <div className="text-xs text-muted-foreground">
+                                  Email
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <a
+                                    href={`mailto:${
+                                      order.profiles?.email || order.user?.email
+                                    }`}
+                                    className="text-blue-600 hover:underline"
+                                  >
+                                    {order.profiles?.email ||
+                                      order.user?.email ||
+                                      "Không có email"}
+                                  </a>
+                                  {(order.profiles?.email ||
+                                    order.user?.email) && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 p-0"
+                                      onClick={() =>
+                                        copyToClipboard(
+                                          order.profiles?.email ||
+                                            (order.user?.email as string),
+                                          "Đã sao chép email"
+                                        )
+                                      }
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-start gap-2">
+                              <Phone className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                              <div>
+                                <div className="text-xs text-muted-foreground">
+                                  Số điện thoại
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  {order.profiles?.phone_number ? (
+                                    <>
+                                      <a
+                                        href={`tel:${order.profiles.phone_number}`}
+                                        className="text-blue-600 hover:underline"
+                                      >
+                                        {order.profiles.phone_number}
+                                      </a>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 p-0"
+                                        onClick={() =>
+                                          copyToClipboard(
+                                            order.profiles.phone_number,
+                                            "Đã sao chép số điện thoại"
+                                          )
+                                        }
+                                      >
+                                        <Copy className="h-3 w-3" />
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <span className="text-muted-foreground">
+                                      Chưa cập nhật
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-start gap-2">
+                              <LinkIcon className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                              <div>
+                                <div className="text-xs text-muted-foreground">
+                                  Xem chi tiết
+                                </div>
+                                <Button
+                                  variant="link"
+                                  className="h-auto p-0 text-blue-600"
+                                  onClick={() =>
+                                    window.open(
+                                      `/admin/users/${order.user_id}`,
+                                      "_blank"
+                                    )
+                                  }
+                                >
+                                  Xem trang người dùng
+                                </Button>
+                              </div>
+                            </div>
+
+                            {order.user?.created_at && (
+                              <div className="flex items-start gap-2">
+                                <CalendarClock className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <div className="text-xs text-muted-foreground">
+                                    Ngày đăng ký
+                                  </div>
+                                  <div>
+                                    {format(
+                                      new Date(order.user.created_at),
+                                      "dd/MM/yyyy",
+                                      { locale: vi }
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {order.user?.last_sign_in_at && (
+                              <div className="flex items-start gap-2">
+                                <Clock className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <div className="text-xs text-muted-foreground">
+                                    Đăng nhập gần nhất
+                                  </div>
+                                  <div>
+                                    {format(
+                                      new Date(order.user.last_sign_in_at),
+                                      "dd/MM/yyyy HH:mm",
+                                      { locale: vi }
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       ) : (

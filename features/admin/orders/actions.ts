@@ -227,30 +227,54 @@ export async function fetchOrderDetailsAction(orderId: number | string) {
       throw new Error(`Failed to fetch order details: ${error.message}`);
     }
 
-    // Fetch profile data separately if order has a user_id
-    let profileData = null;
+    // Create enhanced order object with all related data
+    const enhancedOrder = { ...data };
+
+    // Fetch user information if order has a user_id
     if (data?.user_id) {
+      // First, get profile data from profiles table
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("id, display_name, phone_number, avatar_url, email")
+        .select("id, display_name, phone_number, avatar_url, created_at")
         .eq("id", data.user_id)
         .single();
 
-      if (!profileError) {
-        profileData = profile;
-      } else {
+      if (profileError) {
         console.warn(
           `Could not fetch profile for user ${data.user_id}:`,
           profileError
         );
       }
-    }
 
-    // Attach profile data to order
-    const orderWithProfile = {
-      ...data,
-      profiles: profileData,
-    };
+      // Then, get auth user data using admin auth API (requires service role)
+      try {
+        const { data: userData, error: userError } =
+          await supabase.auth.admin.getUserById(data.user_id);
+
+        if (userError) {
+          console.warn(
+            `Could not fetch auth data for user ${data.user_id}:`,
+            userError
+          );
+        }
+
+        // Combine profile and auth data
+        enhancedOrder.user = {
+          id: data.user_id,
+          email: userData?.user?.email || profile?.email || null,
+          phone: userData?.user?.phone || profile?.phone_number || null,
+          created_at: userData?.user?.created_at || profile?.created_at || null,
+          last_sign_in_at: userData?.user?.last_sign_in_at || null,
+          is_anonymous: !userData?.user?.email,
+          user_metadata: userData?.user?.user_metadata || {},
+        };
+      } catch (authError) {
+        console.error("Error fetching auth user data:", authError);
+      }
+
+      // Add profile data to order
+      enhancedOrder.profiles = profile || null;
+    }
 
     // Fetch shipper profile if exists
     if (data?.assigned_shipper_id) {
@@ -261,7 +285,12 @@ export async function fetchOrderDetailsAction(orderId: number | string) {
         .single();
 
       if (!shipperError) {
-        orderWithProfile.shipper_profile = shipperProfile;
+        enhancedOrder.shipper_profile = shipperProfile;
+      } else {
+        console.warn(
+          `Could not fetch shipper profile for user ${data.assigned_shipper_id}:`,
+          shipperError
+        );
       }
     }
 
@@ -302,7 +331,7 @@ export async function fetchOrderDetailsAction(orderId: number | string) {
     }
 
     return {
-      data: orderWithProfile,
+      data: enhancedOrder,
       items: items || [],
     };
   } catch (error) {
