@@ -62,64 +62,89 @@ export function OrderItems({ orderId }: OrderItemsProps) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {items.map((item) => (
-          <TableRow key={item.id}>
-            <TableCell>
-              {item.product_variants?.products?.product_images?.some(
-                (img) => img.is_main
-              ) ? (
-                <Image
-                  src={
-                    item.product_variants.products.product_images.find(
-                      (img) => img.is_main
-                    )?.image_url || "/placeholder.jpg"
-                  }
-                  alt={item.product_variants.products.name}
-                  width={80}
-                  height={80}
-                  className="rounded-md object-cover"
-                />
-              ) : (
-                <div className="w-20 h-20 bg-muted rounded-md flex items-center justify-center text-muted-foreground text-xs">
-                  No image
+        {items.map((item) => {
+          // Safely access nested properties
+          const productVariant = item.product_variants || {};
+          const product = productVariant.products || {};
+          const productImages = product.product_images || [];
+
+          // Tìm hình ảnh chính (is_main = true) hoặc lấy hình đầu tiên nếu không có hình chính
+          const mainImage =
+            productImages.find((img) => img.is_main) || productImages[0];
+          const brandName = product.brands?.name;
+
+          // Sử dụng thông tin snapshot tại thời điểm đặt hàng
+          const productName =
+            item.product_name || product.name || "Sản phẩm không xác định";
+          const volume =
+            item.variant_volume_ml || productVariant.volume_ml || "N/A";
+          const unitPrice = item.unit_price_at_order;
+          const totalPrice = unitPrice * item.quantity;
+
+          // Sử dụng slug từ thông tin hiện tại nếu có, để tạo link đến sản phẩm
+          const productLink = product.slug
+            ? `/san-pham/${product.slug}`
+            : product.id
+            ? `/admin/products/${product.id}`
+            : null;
+
+          return (
+            <TableRow key={item.id}>
+              <TableCell>
+                {mainImage ? (
+                  <Image
+                    src={mainImage.url || "/images/placeholder.jpg"}
+                    alt={productName}
+                    width={80}
+                    height={80}
+                    className="rounded-md object-cover"
+                  />
+                ) : (
+                  <div className="w-20 h-20 bg-muted rounded-md flex items-center justify-center text-muted-foreground text-xs">
+                    No image
+                  </div>
+                )}
+              </TableCell>
+              <TableCell>
+                <div className="font-medium">
+                  {productLink ? (
+                    <Link href={productLink} className="hover:underline">
+                      {productName}
+                    </Link>
+                  ) : (
+                    <span>{productName}</span>
+                  )}
                 </div>
-              )}
-            </TableCell>
-            <TableCell>
-              <div className="font-medium">
-                <Link
-                  href={`/admin/products/${item.product_variants.products.id}`}
-                  className="hover:underline"
-                >
-                  {item.product_variants.products.name}
-                </Link>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                {item.product_variants.volume} ml
-              </div>
-              {item.product_variants.products.brands && (
-                <div className="text-xs text-muted-foreground mt-1">
-                  {item.product_variants.products.brands.name}
-                </div>
-              )}
-            </TableCell>
-            <TableCell className="text-center">
-              {formatCurrency(item.unit_price)}
-            </TableCell>
-            <TableCell className="text-center">{item.quantity}</TableCell>
-            <TableCell className="text-right">
-              {formatCurrency(item.unit_price * item.quantity)}
-            </TableCell>
-          </TableRow>
-        ))}
+                <div className="text-sm text-muted-foreground">{volume} ml</div>
+                {brandName && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {brandName}
+                  </div>
+                )}
+                {productVariant.sku && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    SKU: {productVariant.sku}
+                  </div>
+                )}
+              </TableCell>
+              <TableCell className="text-center">
+                {formatCurrency(unitPrice)}
+              </TableCell>
+              <TableCell className="text-center">{item.quantity}</TableCell>
+              <TableCell className="text-right">
+                {formatCurrency(totalPrice)}
+              </TableCell>
+            </TableRow>
+          );
+        })}
         <TableRow>
           <TableCell colSpan={4} className="text-right font-medium">
-            Tổng cộng
+            Tạm tính
           </TableCell>
           <TableCell className="text-right font-bold">
             {formatCurrency(
               items.reduce(
-                (sum, item) => sum + item.unit_price * item.quantity,
+                (sum, item) => sum + item.unit_price_at_order * item.quantity,
                 0
               )
             )}

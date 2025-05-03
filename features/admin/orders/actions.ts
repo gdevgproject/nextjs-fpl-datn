@@ -303,23 +303,22 @@ export async function fetchOrderDetailsAction(orderId: number | string) {
         order_id, 
         variant_id, 
         product_name, 
-        variant_volume_ml as volume, 
+        variant_volume_ml, 
         quantity, 
-        unit_price_at_order as unit_price,
-        product_variants(
+        unit_price_at_order,
+        product_variants!inner (
           id, 
           product_id, 
           sku, 
-          volume_ml as volume,
+          volume_ml,
           price,
           sale_price,
-          products(
+          products!inner (
             id, 
             name,
             slug,
             brand_id,
-            brands(id, name),
-            product_images(id, url as image_url, is_main)
+            brands (id, name)
           )
         )
         `
@@ -330,9 +329,46 @@ export async function fetchOrderDetailsAction(orderId: number | string) {
       console.error("Error fetching order items:", itemsError);
     }
 
+    // Fetch product images separately to avoid Supabase nested query limitations
+    let itemsWithImages = [];
+
+    if (items && items.length > 0) {
+      // Get all product IDs to fetch images for
+      const productIds = items
+        .map((item) => item.product_variants?.products?.id)
+        .filter(Boolean);
+
+      // Fetch images for these products
+      const { data: productImages } = await supabase
+        .from("product_images")
+        .select("id, product_id, url, is_main")
+        .in("product_id", productIds);
+
+      // Map images to products
+      itemsWithImages = items.map((item) => {
+        const productId = item.product_variants?.products?.id;
+        const images = productId
+          ? productImages?.filter((img) => img.product_id === productId) || []
+          : [];
+
+        return {
+          ...item,
+          product_variants: {
+            ...item.product_variants,
+            products: {
+              ...item.product_variants?.products,
+              product_images: images,
+            },
+          },
+        };
+      });
+    } else {
+      itemsWithImages = items || [];
+    }
+
     return {
       data: enhancedOrder,
-      items: items || [],
+      items: itemsWithImages,
     };
   } catch (error) {
     console.error("Error in fetchOrderDetailsAction:", error);
@@ -403,13 +439,14 @@ export async function updateOrderStatusAction(
     const supabaseServer = await getSupabaseServerClient();
 
     // Get current user info for audit purposes - using server-side session
-    const { data: sessionData, error: sessionError } =
-      await supabaseServer.auth.getSession();
-    if (sessionError || !sessionData?.session) {
+    const { data: userData, error: userError } =
+      await supabaseServer.auth.getUser();
+
+    if (userError || !userData?.user) {
       return {
         success: false,
         error: `Authentication error: ${
-          sessionError?.message || "No active session found"
+          userError?.message || "No authenticated user found"
         }`,
       };
     }
@@ -417,18 +454,8 @@ export async function updateOrderStatusAction(
     // Get admin Supabase client with service role to bypass RLS for DB operations
     const supabase = await createServiceRoleClient();
 
-    // Fetch user data using the session user ID
-    const { data: userData, error: userError } =
-      await supabase.auth.admin.getUserById(sessionData.session.user.id);
-
-    if (userError || !userData?.user) {
-      return {
-        success: false,
-        error: `User authentication error: ${
-          userError?.message || "User not found"
-        }`,
-      };
-    }
+    // No need to fetch user data again, we already have it
+    const userId = userData.user.id;
 
     // Fetch the current order to check what status change is happening
     const { data: order, error: orderError } = await supabase
@@ -580,32 +607,20 @@ export async function cancelOrderAction(
     const supabaseServer = await getSupabaseServerClient();
 
     // Get current user info for audit purposes using server-side session
-    const { data: sessionData, error: sessionError } =
-      await supabaseServer.auth.getSession();
-    if (sessionError || !sessionData?.session) {
+    const { data: userData, error: userError } =
+      await supabaseServer.auth.getUser();
+
+    if (userError || !userData?.user) {
       return {
         success: false,
         error: `Authentication error: ${
-          sessionError?.message || "No active session found"
+          userError?.message || "No authenticated user found"
         }`,
       };
     }
 
     // Get admin Supabase client with service role to bypass RLS for DB operations
     const supabase = await createServiceRoleClient();
-
-    // Fetch user data using the session user ID
-    const { data: userData, error: userError } =
-      await supabase.auth.admin.getUserById(sessionData.session.user.id);
-
-    if (userError || !userData?.user) {
-      return {
-        success: false,
-        error: `User authentication error: ${
-          userError?.message || "User not found"
-        }`,
-      };
-    }
 
     // Update the order to cancelled status
     const { error, data: updatedOrder } = await supabase
