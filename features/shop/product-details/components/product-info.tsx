@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Heart, AlertCircle } from "lucide-react";
 import VariantSelector from "./variant-selector";
 import { toast } from "sonner";
+import { useWishlist } from "@/features/shop/wishlist/hooks/use-wishlist";
 import type { ProductDetail } from "../types";
 
 interface ProductInfoProps {
@@ -21,6 +22,11 @@ export default function ProductInfo({ product }: ProductInfoProps) {
     product.variants[0] || null
   );
   const [quantity, setQuantity] = useState(1);
+  const {
+    isInWishlist,
+    toggleWishlist,
+    isLoading: isWishlistLoading,
+  } = useWishlist();
 
   // Check if the product is on sale
   const isOnSale = selectedVariant && selectedVariant.sale_price !== null;
@@ -89,6 +95,7 @@ export default function ProductInfo({ product }: ProductInfoProps) {
   };
 
   const { brand, gender, concentration, perfumeType } = product;
+  const isWishlisted = isInWishlist(product.id);
 
   return (
     <div className="space-y-4 sm:space-y-6 md:space-y-8">
@@ -203,9 +210,19 @@ export default function ProductInfo({ product }: ProductInfoProps) {
           <ShoppingCart className="mr-2 h-4 w-4" />
           Thêm vào giỏ hàng
         </Button>
-        <Button variant="outline">
-          <Heart className="h-4 w-4" />
-          <span className="sr-only">Add to wishlist</span>
+        <Button
+          variant="outline"
+          aria-label={isWishlisted ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
+          onClick={() => toggleWishlist(product.id)}
+          disabled={isWishlistLoading}
+        >
+          <Heart
+            className={isWishlisted ? "text-red-500 fill-red-500" : ""}
+            fill={isWishlisted ? "currentColor" : "none"}
+          />
+          <span className="sr-only">
+            {isWishlisted ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
+          </span>
         </Button>
       </div>
       {/* SKU */}
