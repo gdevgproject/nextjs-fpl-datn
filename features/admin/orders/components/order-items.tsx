@@ -93,7 +93,7 @@ export function OrderItems({ orderId }: OrderItemsProps) {
               <TableCell>
                 {mainImage ? (
                   <Image
-                    src={mainImage.url || "/images/placeholder.jpg"}
+                    src={mainImage.image_url || "/images/placeholder.jpg"}
                     alt={productName}
                     width={80}
                     height={80}

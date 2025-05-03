@@ -179,7 +179,8 @@ export async function fetchOrderDetailsAction(orderId: number | string) {
     // Get admin client with service role key to bypass RLS
     const supabase = await createServiceRoleClient();
 
-    // Fetch order details without directly joining profiles
+    // Fetch order details with payment method and order status in a single query
+    // Chỉ truy vấn các cột thực sự tồn tại trong bảng
     const { data, error } = await supabase
       .from("orders")
       .select(
@@ -215,8 +216,8 @@ export async function fetchOrderDetailsAction(orderId: number | string) {
         completed_at, 
         created_at, 
         updated_at,
-        order_statuses(id, name),
-        payment_methods(id, name)
+        order_statuses (id, name),
+        payment_methods (id, name)
         `
       )
       .eq("id", orderId)
@@ -230,71 +231,65 @@ export async function fetchOrderDetailsAction(orderId: number | string) {
     // Create enhanced order object with all related data
     const enhancedOrder = { ...data };
 
-    // Fetch user information if order has a user_id
-    if (data?.user_id) {
-      // First, get profile data from profiles table
-      const { data: profile, error: profileError } = await supabase
+    // Optimize: Fetch both user and shipper profiles in a single query if they exist
+    const userIds = [];
+    if (data?.user_id) userIds.push(data.user_id);
+    if (
+      data?.assigned_shipper_id &&
+      data.assigned_shipper_id !== data.user_id
+    ) {
+      userIds.push(data.assigned_shipper_id);
+    }
+
+    if (userIds.length > 0) {
+      // Fetch profiles for user and/or shipper in a single query
+      const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("id, display_name, phone_number, avatar_url, created_at")
-        .eq("id", data.user_id)
-        .single();
+        .in("id", userIds);
 
-      if (profileError) {
-        console.warn(
-          `Could not fetch profile for user ${data.user_id}:`,
-          profileError
-        );
-      }
+      if (!profilesError && profiles) {
+        // Find user profile if it exists
+        if (data.user_id) {
+          const userProfile = profiles.find((p) => p.id === data.user_id);
+          enhancedOrder.profiles = userProfile || null;
 
-      // Then, get auth user data using admin auth API (requires service role)
-      try {
-        const { data: userData, error: userError } =
-          await supabase.auth.admin.getUserById(data.user_id);
+          // Get auth user data for email (only needed for user, not shipper)
+          try {
+            const { data: userData, error: userError } =
+              await supabase.auth.admin.getUserById(data.user_id);
 
-        if (userError) {
-          console.warn(
-            `Could not fetch auth data for user ${data.user_id}:`,
-            userError
-          );
+            if (!userError && userData) {
+              // Combine profile and auth data correctly
+              enhancedOrder.user = {
+                id: data.user_id,
+                email: userData.user?.email || null, // Email from auth.users
+                phone: userProfile?.phone_number || null, // Phone from profiles
+                created_at:
+                  userData.user?.created_at || userProfile?.created_at || null,
+                last_sign_in_at: userData.user?.last_sign_in_at || null,
+                is_anonymous: !userData.user?.email,
+                user_metadata: userData.user?.user_metadata || {},
+              };
+            }
+          } catch (authError) {
+            console.error("Error fetching auth user data:", authError);
+          }
         }
 
-        // Combine profile and auth data
-        enhancedOrder.user = {
-          id: data.user_id,
-          email: userData?.user?.email || profile?.email || null,
-          phone: userData?.user?.phone || profile?.phone_number || null,
-          created_at: userData?.user?.created_at || profile?.created_at || null,
-          last_sign_in_at: userData?.user?.last_sign_in_at || null,
-          is_anonymous: !userData?.user?.email,
-          user_metadata: userData?.user?.user_metadata || {},
-        };
-      } catch (authError) {
-        console.error("Error fetching auth user data:", authError);
-      }
-
-      // Add profile data to order
-      enhancedOrder.profiles = profile || null;
-    }
-
-    // Fetch shipper profile if exists
-    if (data?.assigned_shipper_id) {
-      const { data: shipperProfile, error: shipperError } = await supabase
-        .from("profiles")
-        .select("id, display_name, phone_number, avatar_url")
-        .eq("id", data.assigned_shipper_id)
-        .single();
-
-      if (!shipperError) {
-        enhancedOrder.shipper_profile = shipperProfile;
+        // Find shipper profile if it exists
+        if (data.assigned_shipper_id) {
+          const shipperProfile = profiles.find(
+            (p) => p.id === data.assigned_shipper_id
+          );
+          enhancedOrder.shipper_profile = shipperProfile || null;
+        }
       } else {
-        console.warn(
-          `Could not fetch shipper profile for user ${data.assigned_shipper_id}:`,
-          shipperError
-        );
+        console.warn("Could not fetch profiles:", profilesError);
       }
     }
 
-    // Fetch order items for this order
+    // Fetch order items for this order with optimized query to include images
     const { data: items, error: itemsError } = await supabase
       .from("order_items")
       .select(
@@ -329,41 +324,54 @@ export async function fetchOrderDetailsAction(orderId: number | string) {
       console.error("Error fetching order items:", itemsError);
     }
 
-    // Fetch product images separately to avoid Supabase nested query limitations
-    let itemsWithImages = [];
+    // Optimize: Fetch product images in a single query instead of for each item
+    let itemsWithImages = items || [];
 
     if (items && items.length > 0) {
-      // Get all product IDs to fetch images for
-      const productIds = items
-        .map((item) => item.product_variants?.products?.id)
-        .filter(Boolean);
+      // Get all unique product IDs from the items
+      const productIds = Array.from(
+        new Set(
+          items
+            .map((item) => item.product_variants?.products?.id)
+            .filter(Boolean)
+        )
+      );
 
-      // Fetch images for these products
-      const { data: productImages } = await supabase
-        .from("product_images")
-        .select("id, product_id, url, is_main")
-        .in("product_id", productIds);
+      if (productIds.length > 0) {
+        // Fetch all product images in a single query
+        const { data: productImages, error: imagesError } = await supabase
+          .from("product_images")
+          .select("id, product_id, image_url, is_main") // Correct column name: image_url not url
+          .in("product_id", productIds);
 
-      // Map images to products
-      itemsWithImages = items.map((item) => {
-        const productId = item.product_variants?.products?.id;
-        const images = productId
-          ? productImages?.filter((img) => img.product_id === productId) || []
-          : [];
+        if (!imagesError && productImages) {
+          // Map the images to their respective products
+          itemsWithImages = items.map((item) => {
+            const productId = item.product_variants?.products?.id;
+            if (!productId) return item;
 
-        return {
-          ...item,
-          product_variants: {
-            ...item.product_variants,
-            products: {
-              ...item.product_variants?.products,
-              product_images: images,
-            },
-          },
-        };
-      });
-    } else {
-      itemsWithImages = items || [];
+            // Find all images for this product
+            const images = productImages.filter(
+              (img) => img.product_id === productId
+            );
+
+            return {
+              ...item,
+              product_variants: {
+                ...item.product_variants,
+                product_images: images, // Add images directly to product_variants
+                products: {
+                  ...item.product_variants?.products,
+                  // We also keep images in the original location for backward compatibility
+                  product_images: images,
+                },
+              },
+            };
+          });
+        } else if (imagesError) {
+          console.error("Error fetching product images:", imagesError);
+        }
+      }
     }
 
     return {
