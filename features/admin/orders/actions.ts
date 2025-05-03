@@ -179,7 +179,7 @@ export async function fetchOrderDetailsAction(orderId: number | string) {
     // Get admin client with service role key to bypass RLS
     const supabase = await createServiceRoleClient();
 
-    // Fetch order details
+    // Fetch order details without directly joining profiles
     const { data, error } = await supabase
       .from("orders")
       .select(
@@ -216,8 +216,7 @@ export async function fetchOrderDetailsAction(orderId: number | string) {
         created_at, 
         updated_at,
         order_statuses(id, name),
-        payment_methods(id, name),
-        profiles(id, display_name, phone_number, avatar_url)
+        payment_methods(id, name)
         `
       )
       .eq("id", orderId)
@@ -226,6 +225,44 @@ export async function fetchOrderDetailsAction(orderId: number | string) {
     if (error) {
       console.error("Error fetching order details:", error);
       throw new Error(`Failed to fetch order details: ${error.message}`);
+    }
+
+    // Fetch profile data separately if order has a user_id
+    let profileData = null;
+    if (data?.user_id) {
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, display_name, phone_number, avatar_url, email")
+        .eq("id", data.user_id)
+        .single();
+
+      if (!profileError) {
+        profileData = profile;
+      } else {
+        console.warn(
+          `Could not fetch profile for user ${data.user_id}:`,
+          profileError
+        );
+      }
+    }
+
+    // Attach profile data to order
+    const orderWithProfile = {
+      ...data,
+      profiles: profileData,
+    };
+
+    // Fetch shipper profile if exists
+    if (data?.assigned_shipper_id) {
+      const { data: shipperProfile, error: shipperError } = await supabase
+        .from("profiles")
+        .select("id, display_name, phone_number, avatar_url")
+        .eq("id", data.assigned_shipper_id)
+        .single();
+
+      if (!shipperError) {
+        orderWithProfile.shipper_profile = shipperProfile;
+      }
     }
 
     // Fetch order items for this order
@@ -237,22 +274,23 @@ export async function fetchOrderDetailsAction(orderId: number | string) {
         order_id, 
         variant_id, 
         product_name, 
-        variant_volume_ml, 
+        variant_volume_ml as volume, 
         quantity, 
-        unit_price_at_order,
+        unit_price_at_order as unit_price,
         product_variants(
           id, 
           product_id, 
           sku, 
-          volume,
+          volume_ml as volume,
           price,
+          sale_price,
           products(
             id, 
             name,
             slug,
             brand_id,
             brands(id, name),
-            product_images(id, image_url, is_main)
+            product_images(id, url as image_url, is_main)
           )
         )
         `
@@ -264,7 +302,7 @@ export async function fetchOrderDetailsAction(orderId: number | string) {
     }
 
     return {
-      data,
+      data: orderWithProfile,
       items: items || [],
     };
   } catch (error) {
