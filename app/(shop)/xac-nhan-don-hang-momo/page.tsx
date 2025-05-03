@@ -12,47 +12,55 @@ import { Separator } from "@/components/ui/separator";
 import { CheckCircle, ShoppingBag } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { CopyAccessToken } from "@/features/shop/order-confirmation/components/copy-access-token";
-import OrderConfirmationRedirect from "@/features/shop/order-confirmation/components/order-confirmation-redirect";
+import { OrderConfirmationClient } from "@/features/shop/order-confirmation/components/order-confirmation-client";
 
-export default async function OrderConfirmationPage({
-  searchParams,
-}: {
-  searchParams: Record<string, string>;
-}) {
-  // Lấy orderId và token từ searchParams
-  const orderId = searchParams?.orderId || null;
-  let token = searchParams?.token || null;
-  const resultCode = searchParams?.resultCode || null;
-  const extraData = searchParams?.extraData || null;
-
-  // Ưu tiên lấy thông tin đơn hàng qua token (cho khách vãng lai)
-  // Nếu chưa có token nhưng có orderId, thử lấy token từ DB
-  let orderResult;
-  const { getOrderDetails, getOrderTokenByOrderId } = await import(
+async function getOrderServerSide(
+  orderId: string | null,
+  token: string | null
+) {
+  const { getOrderDetails } = await import(
     "@/features/shop/order-confirmation/actions"
   );
-  if (token) {
-    orderResult = await getOrderDetails(token, true);
-  } else if (orderId) {
-    try {
-      const foundToken = await getOrderTokenByOrderId(orderId);
-      if (foundToken) {
-        orderResult = await getOrderDetails(foundToken, true);
-        token = foundToken;
-      } else {
-        orderResult = await getOrderDetails(orderId);
-      }
-    } catch {
-      orderResult = await getOrderDetails(orderId);
-    }
-  } else {
-    orderResult = { error: "Không tìm thấy thông tin đơn hàng", data: null };
-  }
-  const { data: order, error } = orderResult;
 
+  if (!orderId && !token) {
+    return { error: "Không tìm thấy thông tin đơn hàng", data: null };
+  }
+
+  try {
+    if (token) {
+      // Get order details using access token (for guest users)
+      const result = await getOrderDetails(token, true);
+      return result;
+    } else if (orderId) {
+      // Get order details using orderId (for authenticated users)
+      const result = await getOrderDetails(orderId);
+      return result;
+    } else {
+      return { error: "Không tìm thấy thông tin đơn hàng", data: null };
+    }
+  } catch (err) {
+    console.error("Error fetching order:", err);
+    return {
+      error: "Đã xảy ra lỗi khi lấy thông tin đơn hàng",
+      data: null,
+    };
+  }
+}
+export default async function OrderConfirmationPage(props: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  // Next.js App Router 15+: searchParams là Promise
+  const searchParams = await props.searchParams;
+  const orderId =
+    typeof searchParams.orderId === "string" ? searchParams.orderId : null;
+  const token =
+    typeof searchParams.token === "string" ? searchParams.token : null;
+
+  const { data: order, error } = await getOrderServerSide(orderId, token);
   return (
     <div className="container py-8 max-w-3xl mx-auto">
-      <OrderConfirmationRedirect resultCode={resultCode} />
+      {/* Client component for state management, doesn't render anything */}
+      <OrderConfirmationClient />
 
       {error ? (
         <Card>

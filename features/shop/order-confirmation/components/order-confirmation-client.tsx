@@ -6,7 +6,6 @@ import { useSearchParams } from "next/navigation";
 import { getOrderDetails } from "../actions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { access } from "fs";
 
 function OrderGuestEmailForm({ onSuccess }: { onSuccess?: () => void }) {
   const [email, setEmail] = useState("");
@@ -95,92 +94,75 @@ function OrderGuestEmailForm({ onSuccess }: { onSuccess?: () => void }) {
 }
 
 export function OrderConfirmationClient() {
-  const { setJustPlacedOrder, discountAmount, appliedDiscount } = useCheckout();
+  const { setJustPlacedOrder } = useCheckout();
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
   const token = searchParams.get("token");
   const [showGuestEmailForm, setShowGuestEmailForm] = useState(false);
+  const [mailSent, setMailSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    // Reset the justPlacedOrder flag when navigating to order confirmation page
     setJustPlacedOrder(false);
   }, [setJustPlacedOrder]);
 
   useEffect(() => {
-    async function checkGuestNeedEmail() {
+    async function checkAndSendMail() {
       if (!token && !orderId) return;
+      // Chỉ gửi mail khi đã điều hướng về trang xác nhận (tức là payment_status === 'Paid')
       const result = await getOrderDetails(token || orderId, !!token);
       if (
         result?.success &&
         result.data &&
-        result.data.access_token && // là guest
-        (!result.data.customer_email || result.data.customer_email === "")
+        ((result.data.customer_email && result.data.customer_email !== "") ||
+          (result.data.guest_email && result.data.guest_email !== "")) &&
+        result.data.payment_status === "Paid" // Chỉ gửi mail khi đã thanh toán thành công
+      ) {
+        setSending(true);
+        const res = await fetch("/api/order/send-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: result.data.customer_email || result.data.guest_email,
+            token: result.data.access_token,
+          }),
+        });
+        const data = await res.json();
+        setSending(false);
+        if (data.success) setMailSent(true);
+        else setError(data.error || "Gửi email thất bại");
+        setShowGuestEmailForm(false);
+      } else if (
+        result?.success &&
+        result.data &&
+        result.data.access_token &&
+        (!result.data.customer_email || result.data.customer_email === "") &&
+        (!result.data.guest_email || result.data.guest_email === "")
       ) {
         setShowGuestEmailForm(true);
       } else {
         setShowGuestEmailForm(false);
       }
     }
-    checkGuestNeedEmail();
+    checkAndSendMail();
   }, [orderId, token]);
 
-  useEffect(() => {
-    if (!orderId && !token) return;
-
-    const identifier = orderId || token || "";
-
-    // Log client-side information first
-    console.log("CLIENT-SIDE VALUES (from checkout context):", {
-      discountAmount,
-      appliedDiscountId: appliedDiscount?.id,
-      appliedDiscountCode: appliedDiscount?.code,
-    });
-
-    // Then fetch the actual order from database and compare
-    const fetchOrder = async () => {
-      try {
-        const result = await getOrderDetails(identifier, !orderId);
-        if (result.success && result.data) {
-          console.log("SERVER-SIDE VALUES (from database):", {
-            subtotal: result.data.subtotal,
-            discount: result.data.discount,
-            discount_code: result.data.discount_code,
-            shipping_fee: result.data.shipping_fee,
-            total: result.data.total,
-            discount_id: result.data.discount_id,
-            order_id: result.data.id,
-            access_token: result.data.access_token,
-          });
-
-          // Check for discrepancies
-          if (
-            discountAmount > 0 &&
-            (!result.data.discount || result.data.discount === 0)
-          ) {
-            console.error(
-              "DISCOUNT DISCREPANCY DETECTED: Client shows discount but database doesn't"
-            );
-            console.error(
-              "This suggests the database trigger might be overriding discount_amount"
-            );
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching order details for debugging:", error);
-      }
-    };
-
-    fetchOrder();
-  }, [orderId, token, discountAmount, appliedDiscount]);
-
-  if (showGuestEmailForm) {
+  if (mailSent) {
     return (
-      <OrderGuestEmailForm
-        orderId={orderId || undefined}
-        token={token || undefined}
-      />
+      <div className="my-4 text-green-600">
+        Đã gửi thông tin đơn hàng về email của bạn!
+      </div>
     );
   }
-
+  if (sending) {
+    return <div className="my-4">Đang gửi email xác nhận đơn hàng...</div>;
+  }
+  if (error) {
+    return <div className="my-4 text-red-600">{error}</div>;
+  }
+  if (showGuestEmailForm) {
+    return <OrderGuestEmailForm onSuccess={() => setMailSent(true)} />;
+  }
   return null;
 }
