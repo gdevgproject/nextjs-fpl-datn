@@ -8,9 +8,11 @@ import { fetchOrderItems } from "../services";
  */
 export function useOrderItems(orderId: number | null) {
   return useQuery({
-    queryKey: ["order_items", "list", orderId],
+    queryKey: ["orders", "items", orderId],
     queryFn: () => fetchOrderItems(orderId),
     enabled: !!orderId,
-    staleTime: 1000 * 60, // 1 minute
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    keepPreviousData: false,
+    refetchOnWindowFocus: false,
   });
 }

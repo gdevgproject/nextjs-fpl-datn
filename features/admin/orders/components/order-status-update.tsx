@@ -603,8 +603,8 @@ export function OrderStatusUpdate({
 
   // Regular order status update view - optimized layout
   return (
-    <div className="relative max-h-[85vh] overflow-hidden flex flex-col">
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-4 px-6 pt-6">
+    <div className="relative flex flex-col">
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-4">
         <h3 className="text-lg sm:text-xl font-semibold text-foreground flex items-center gap-2">
           <Clipboard className="h-5 w-5 text-primary" />
           <span>Quản lý đơn hàng #{order.id}</span>
@@ -619,7 +619,8 @@ export function OrderStatusUpdate({
         )}
       </div>
 
-      <ScrollArea className="flex-1 overflow-auto pb-6 px-6">
+      {/* Replace internal ScrollArea with a div to avoid nested scrolling */}
+      <div className="pb-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full grid grid-cols-2 h-11 sticky top-0 z-10">
             <TabsTrigger value="update" className="text-sm py-2.5">
@@ -966,7 +967,7 @@ export function OrderStatusUpdate({
             </TabsContent>
           </div>
         </Tabs>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

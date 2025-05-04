@@ -11,6 +11,9 @@ export function useOrderDetails(orderId: number | null) {
     queryKey: ["orders", "details", orderId],
     queryFn: () => fetchOrderDetails(orderId),
     enabled: !!orderId,
-    staleTime: 1000 * 30, // 30 seconds
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    // Hiển thị trạng thái isLoading khi refetching, nhưng giữ lại data cũ
+    keepPreviousData: false,
+    refetchOnWindowFocus: false,
   });
 }

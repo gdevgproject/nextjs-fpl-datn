@@ -106,22 +106,38 @@ export function OrderDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden p-0">
+      <DialogContent className="flex flex-col h-[90vh] max-w-5xl p-0">
         <VisuallyHidden>
           <DialogTitle>Chi tiết đơn hàng</DialogTitle>
         </VisuallyHidden>
         {isLoading ? (
-          <div className="space-y-4 p-6">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-40 w-full" />
-            <Skeleton className="h-60 w-full" />
+          <div className="flex flex-col justify-center items-center flex-1 p-6 space-y-4">
+            <div className="w-20 h-20 rounded-full border-4 border-primary/30 border-t-primary animate-spin"></div>
+            <div className="text-center space-y-2">
+              <h3 className="font-medium">Đang tải thông tin đơn hàng</h3>
+              <p className="text-sm text-muted-foreground">
+                Vui lòng đợi trong giây lát...
+              </p>
+            </div>
           </div>
         ) : isError ? (
-          <div className="text-center py-8 text-destructive">
-            Có lỗi xảy ra khi tải thông tin đơn hàng
+          <div className="flex flex-col justify-center items-center flex-1 p-6 text-destructive space-y-2">
+            <AlertCircle className="h-10 w-10" />
+            <h3 className="font-medium text-lg">Có lỗi xảy ra</h3>
+            <p className="text-center max-w-md text-muted-foreground">
+              Không thể tải thông tin đơn hàng. Vui lòng thử lại sau.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => refetch()}
+              className="mt-2"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Thử lại
+            </Button>
           </div>
         ) : order ? (
-          <div className="flex flex-col h-full">
+          <div className="flex flex-col flex-1 min-h-0">
             {/* Header sticky với thông tin tóm tắt đơn hàng */}
             <div className="sticky top-0 z-10 bg-background border-b">
               <DialogHeader className="px-6 pt-6 pb-2">
@@ -1007,7 +1023,7 @@ export function OrderDetailsDialog({
 
                   {/* Tab Quản lý - Cải tiến UI */}
                   <TabsContent value="management" className="space-y-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-6">
                       <Card>
                         <CardHeader className="pb-2">
                           <CardTitle className="text-base flex items-center gap-2">
@@ -1018,7 +1034,7 @@ export function OrderDetailsDialog({
                             Thay đổi trạng thái xử lý đơn hàng hoặc hủy đơn
                           </CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="pt-0 px-2 sm:px-6">
                           <OrderStatusUpdate
                             order={order}
                             onSuccess={handleSuccess}
