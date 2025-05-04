@@ -44,12 +44,6 @@ import { useUpdateOrderStatus } from "../hooks/use-update-order-status";
 import { useCancelOrder } from "../hooks/use-cancel-order";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -74,12 +68,10 @@ const isBrowser = typeof window !== "undefined";
 // Define form schemas with Zod for client-side validation
 const statusUpdateFormSchema = z.object({
   order_status_id: z.string().min(1, "Vui lòng chọn trạng thái"),
-  notify_customer: z.boolean().default(true),
 });
 
 const cancelOrderFormSchema = z.object({
   reason: z.string().min(5, "Vui lòng nhập lý do hủy đơn (ít nhất 5 ký tự)"),
-  notify_customer: z.boolean().default(true),
 });
 
 interface OrderStatusUpdateProps {
@@ -111,7 +103,6 @@ export function OrderStatusUpdate({
     resolver: zodResolver(statusUpdateFormSchema),
     defaultValues: {
       order_status_id: currentStatusId?.toString() || "",
-      notify_customer: true,
     },
   });
 
@@ -127,7 +118,6 @@ export function OrderStatusUpdate({
   useEffect(() => {
     statusForm.reset({
       order_status_id: currentStatusId?.toString() || "",
-      notify_customer: true,
     });
     setSelectedStatusId(currentStatusId?.toString());
   }, [currentStatusId, statusForm]);
@@ -137,7 +127,6 @@ export function OrderStatusUpdate({
     resolver: zodResolver(cancelOrderFormSchema),
     defaultValues: {
       reason: "",
-      notify_customer: true,
     },
   });
 
@@ -146,14 +135,12 @@ export function OrderStatusUpdate({
     values: z.infer<typeof statusUpdateFormSchema>
   ) => {
     try {
-      // Fix: Pass allStatuses to the mutation function
       const newStatusId = Number.parseInt(values.order_status_id);
 
       await updateOrderStatusMutation.updateOrderStatus({
         id: order.id,
         data: {
           order_status_id: newStatusId,
-          notify_customer: values.notify_customer,
         },
         order,
         allStatuses: statuses,
@@ -192,7 +179,6 @@ export function OrderStatusUpdate({
       await cancelOrderMutation.mutateAsync({
         id: order.id,
         reason: values.reason,
-        notify_customer: values.notify_customer,
       });
 
       toast.success("Hủy đơn hàng thành công", {
@@ -212,7 +198,6 @@ export function OrderStatusUpdate({
       // Reset form sau khi hủy thành công
       cancelForm.reset({
         reason: "",
-        notify_customer: true,
       });
 
       // Chuyển về tab cập nhật trạng thái sau khi hủy thành công
@@ -454,12 +439,6 @@ export function OrderStatusUpdate({
             )}
           </AlertDescription>
         </Alert>
-
-        <div className="flex justify-end mt-4">
-          <Button variant="outline" onClick={onSuccess} className="gap-2">
-            <X className="h-4 w-4" /> Đóng
-          </Button>
-        </div>
       </div>
     );
   }
@@ -545,28 +524,6 @@ export function OrderStatusUpdate({
                         )}
                       />
 
-                      <FormField
-                        control={cancelForm.control}
-                        name="notify_customer"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-2 space-y-0 rounded-md border p-3">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                className="mt-0.5"
-                              />
-                            </FormControl>
-                            <div className="space-y-0.5">
-                              <FormLabel>Thông báo cho khách hàng</FormLabel>
-                              <FormDescription className="text-xs">
-                                Gửi email thông báo về việc hủy đơn hàng
-                              </FormDescription>
-                            </div>
-                          </FormItem>
-                        )}
-                      />
-
                       <div className="flex justify-end gap-2 pt-2">
                         <Button
                           type="button"
@@ -638,10 +595,18 @@ export function OrderStatusUpdate({
               <Form {...statusForm}>
                 <form
                   onSubmit={statusForm.handleSubmit(onStatusUpdate)}
-                  className="space-y-5"
+                  className="space-y-5 relative"
                 >
-                  <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-                    <div className="lg:col-span-3">
+                  {/* Loading overlay khi cập nhật trạng thái */}
+                  {updateOrderStatusMutation.isUpdating && (
+                    <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/70 dark:bg-black/40 rounded-md">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  )}
+
+                  {/* Căn giữa UI chọn trạng thái mới */}
+                  <div className="flex justify-center">
+                    <div className="w-full max-w-xl">
                       <FormField
                         control={statusForm.control}
                         name="order_status_id"
@@ -667,7 +632,7 @@ export function OrderStatusUpdate({
                               onValueChange={field.onChange}
                               disabled={
                                 isStatusesLoading ||
-                                updateOrderStatusMutation.isPending ||
+                                updateOrderStatusMutation.isUpdating ||
                                 validNextStatuses.length === 0
                               }
                             >
@@ -719,33 +684,6 @@ export function OrderStatusUpdate({
                                 khác
                               </p>
                             )}
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="lg:col-span-2">
-                      <FormField
-                        control={statusForm.control}
-                        name="notify_customer"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 h-full">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                className="mt-1"
-                              />
-                            </FormControl>
-                            <div className="space-y-1">
-                              <FormLabel className="text-base">
-                                Thông báo cho khách hàng
-                              </FormLabel>
-                              <FormDescription>
-                                Gửi email thông báo cho khách hàng khi trạng
-                                thái đơn hàng được cập nhật
-                              </FormDescription>
-                            </div>
                           </FormItem>
                         )}
                       />
@@ -805,7 +743,7 @@ export function OrderStatusUpdate({
                       type="submit"
                       className="gap-2"
                       disabled={
-                        updateOrderStatusMutation.isPending ||
+                        updateOrderStatusMutation.isUpdating ||
                         statusForm.watch("order_status_id") ===
                           currentStatusId?.toString() ||
                         validNextStatuses.length === 0 ||
@@ -816,7 +754,7 @@ export function OrderStatusUpdate({
                         )?.name === "Đã hủy"
                       }
                     >
-                      {updateOrderStatusMutation.isPending ? (
+                      {updateOrderStatusMutation.isUpdating ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin" />
                           Đang cập nhật...
@@ -905,33 +843,6 @@ export function OrderStatusUpdate({
                       </FormItem>
                     )}
                   />
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <FormField
-                      control={cancelForm.control}
-                      name="notify_customer"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              className="mt-1"
-                            />
-                          </FormControl>
-                          <div className="space-y-1">
-                            <FormLabel className="text-base">
-                              Thông báo cho khách hàng
-                            </FormLabel>
-                            <FormDescription>
-                              Gửi email thông báo về việc hủy đơn hàng và lý do
-                              hủy
-                            </FormDescription>
-                          </div>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
 
                   <div className="flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center gap-3 pt-4 border-t mt-2">
                     <Button

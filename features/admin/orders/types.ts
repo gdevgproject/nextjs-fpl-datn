@@ -95,7 +95,6 @@ export interface Shipper {
 export const orderStatusUpdateSchema = z.object({
   id: z.number(),
   order_status_id: z.number(),
-  notify_customer: z.boolean().default(true),
   internal_note: z.string().optional(),
 });
 

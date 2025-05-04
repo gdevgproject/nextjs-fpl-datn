@@ -205,7 +205,7 @@ export function useUpdateOrderStatus() {
       allStatuses,
     }: {
       id: number;
-      data: { order_status_id: number; notify_customer?: boolean };
+      data: { order_status_id: number };
       order: OrderWithRelations;
       allStatuses: OrderStatus[];
     }) => {
@@ -224,7 +224,6 @@ export function useUpdateOrderStatus() {
       const result = await updateOrderStatusAction({
         id,
         order_status_id: data.order_status_id,
-        notify_customer: data.notify_customer,
       });
 
       if (!result.success) {
@@ -275,7 +274,7 @@ export function useUpdateOrderStatus() {
   // Fix: Ensure we're properly wrapping the mutation function to prevent "is not a function" errors
   const updateOrderStatus = async (params: {
     id: number;
-    data: { order_status_id: number; notify_customer?: boolean };
+    data: { order_status_id: number };
     order: OrderWithRelations;
     allStatuses: OrderStatus[];
   }) => {
@@ -287,13 +286,11 @@ export function useUpdateOrderStatus() {
   };
 
   return {
-    // Fix: Return our wrapped function instead of directly returning mutateAsync
     updateOrderStatus,
     isUpdating: mutation.isPending,
     error: mutation.error,
     isError: mutation.isError,
     validationResult,
-    // Use this function directly for validation without triggering a mutation
     checkValidation: validateStatusTransition,
     resetValidation: () => setValidationResult({ isValid: true }),
   };

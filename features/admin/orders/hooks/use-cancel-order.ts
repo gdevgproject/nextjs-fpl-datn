@@ -8,7 +8,6 @@ import { useState } from "react";
 type CancelOrderParams = {
   id: number;
   reason: string;
-  notify_customer?: boolean;
 };
 
 type ValidationResult = {
@@ -90,7 +89,6 @@ export function useCancelOrder() {
       const result = await cancelOrderAction({
         id: params.id,
         reason: params.reason,
-        notify_customer: params.notify_customer,
       });
 
       if (!result.success) {
