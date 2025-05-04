@@ -15,8 +15,6 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const { data: session, isLoading } = useAuthQuery();
-  const user = session?.user;
-  const isAdmin = user?.app_metadata?.role === "admin";
   const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
 
@@ -29,18 +27,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // Check if user is admin
-  if (!isAdmin) {
-    return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center p-4 text-center">
-        <h1 className="text-2xl font-bold mb-2">Quyền truy cập bị từ chối</h1>
-        <p className="text-muted-foreground mb-4">
-          Bạn không có quyền truy cập vào trang quản trị.
-        </p>
       </div>
     );
   }
