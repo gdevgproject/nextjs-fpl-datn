@@ -42,6 +42,7 @@ import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useEffect, useState } from "react";
 
 // Define the form schema with Zod for client-side validation
 const shipperAssignmentFormSchema = z.object({
@@ -74,6 +75,18 @@ export function OrderShipperAssignment({
 
   const shippers = shippersData?.data || [];
   const currentShipperId = order?.assigned_shipper_id;
+
+  // Khai báo thêm state để lưu shipper đã chọn
+  const [selectedShipper, setSelectedShipper] = useState<any>(
+    shippers.find((s) => s.id === currentShipperId)
+  );
+
+  // Cập nhật selectedShipper khi danh sách shippers thay đổi
+  useEffect(() => {
+    if (currentShipperId && shippers.length > 0) {
+      setSelectedShipper(shippers.find((s) => s.id === currentShipperId));
+    }
+  }, [currentShipperId, shippers]);
 
   // Shipper assignment form
   const form = useForm<z.infer<typeof shipperAssignmentFormSchema>>({
@@ -311,21 +324,44 @@ export function OrderShipperAssignment({
                   <FormItem>
                     <FormLabel className="text-base">Chọn shipper</FormLabel>
                     <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      disabled={
-                        isShippersLoading || assignShipperMutation.isPending
-                      }
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        // Cập nhật selectedShipper khi chọn
+                        if (value === "none") {
+                          setSelectedShipper(null);
+                        } else {
+                          setSelectedShipper(shippers.find((s) => s.id === value));
+                        }
+                      }}
+                      value={field.value}
+                      disabled={isShippersLoading || assignShipperMutation.isPending}
                     >
                       <FormControl>
                         <SelectTrigger className="h-10">
-                          <SelectValue placeholder="Chọn người giao hàng" />
+                          <SelectValue placeholder="Chọn người giao hàng">
+                            {field.value && field.value !== "none" && selectedShipper && (
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-6 w-6 flex-shrink-0">
+                                  <AvatarImage
+                                    src={selectedShipper.avatar_url || ""}
+                                    alt={selectedShipper.name}
+                                    className="object-cover"
+                                  />
+                                  <AvatarFallback className="text-xs">
+                                    {selectedShipper.name?.[0] || "S"}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="truncate">{selectedShipper.name}</span>
+                              </div>
+                            )}
+                            {field.value === "none" && "Không gán shipper"}
+                          </SelectValue>
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="none" className="py-3">
                           <div className="flex items-center gap-2">
-                            <UserX className="h-4 w-4 text-muted-foreground" />
+                            <UserX className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                             <span>Không gán shipper</span>
                           </div>
                         </SelectItem>
@@ -355,29 +391,27 @@ export function OrderShipperAssignment({
                                 className="py-3"
                               >
                                 <div className="flex items-center gap-3">
-                                  <Avatar className="h-8 w-8">
+                                  <Avatar className="h-8 w-8 flex-shrink-0">
                                     <AvatarImage
                                       src={shipper.avatar_url || ""}
+                                      alt={shipper.name}
+                                      className="object-cover"
                                     />
-                                    <AvatarFallback>
-                                      {shipper.name[0]}
-                                    </AvatarFallback>
+                                    <AvatarFallback>{shipper.name[0]}</AvatarFallback>
                                   </Avatar>
-                                  <div className="space-y-1">
-                                    <div className="font-medium">
-                                      {shipper.name}
-                                    </div>
+                                  <div className="space-y-1 min-w-0 flex-1">
+                                    <div className="font-medium truncate">{shipper.name}</div>
                                     <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
                                       {shipper.email && (
                                         <div className="flex items-center gap-1">
-                                          <Mail className="h-3 w-3" />
-                                          <span>{shipper.email}</span>
+                                          <Mail className="h-3 w-3 flex-shrink-0" />
+                                          <span className="truncate">{shipper.email}</span>
                                         </div>
                                       )}
                                       {shipper.phone_number && (
                                         <div className="flex items-center gap-1">
-                                          <Phone className="h-3 w-3" />
-                                          <span>{shipper.phone_number}</span>
+                                          <Phone className="h-3 w-3 flex-shrink-0" />
+                                          <span className="truncate">{shipper.phone_number}</span>
                                         </div>
                                       )}
                                     </div>
