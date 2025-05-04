@@ -47,8 +47,11 @@ export function DashboardOverview() {
   }, [timeFilter, dateRange]);
 
   // Handle time filter change
-  const handleFilterChange = (filterType: string, dateRange?: DateRange) => {
-    setTimeFilter(filterType as TimeFilterOption);
+  const handleFilterChange = (
+    filterType: TimeFilterOption,
+    dateRange?: DateRange
+  ) => {
+    setTimeFilter(filterType);
     if (dateRange) {
       setDateRange(dateRange);
     }
@@ -61,6 +64,7 @@ export function DashboardOverview() {
         <TimeFilter
           onFilterChange={handleFilterChange}
           currentFilter={timeFilter}
+          currentDateRange={dateRange}
         />
       </div>
 

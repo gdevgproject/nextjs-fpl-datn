@@ -133,8 +133,7 @@ export async function getDashboardOrdersMetrics(
     count: number;
   }
 
-  // 1. Order distribution by status (for pie chart)
-  // Fetch all orders and group them in JavaScript with proper typing
+  // 1. Order distribution by status (for pie chart) - FILTERED BY TIME RANGE
   const { data: allOrders } = await supabase
     .from("orders")
     .select("order_status_id")
@@ -187,20 +186,20 @@ export async function getDashboardOrdersMetrics(
   );
 
   // 2. Pending Orders Count (Chờ xác nhận, Đã xác nhận)
-  // Current status (not filtered by time)
+  // Get current pending orders (as of now)
   const { count: pendingOrders } = await supabase
     .from("orders")
     .select("id", { count: "exact", head: true })
     .in("order_status_id", pendingStatusIds);
 
   // 3. Orders in delivery (Đang giao)
-  // Current status (not filtered by time)
+  // Get current shipping orders (as of now)
   const { count: shippingOrders } = await supabase
     .from("orders")
     .select("id", { count: "exact", head: true })
     .in("order_status_id", shippingStatusIds);
 
-  // 4. Cancelled Orders in period
+  // 4. Cancelled Orders in period - FILTERED BY TIME RANGE
   const { count: cancelledOrders } = await supabase
     .from("orders")
     .select("id", { count: "exact", head: true })
@@ -208,7 +207,7 @@ export async function getDashboardOrdersMetrics(
     .gte("updated_at", timeFilter.startDate.toISOString())
     .lte("updated_at", timeFilter.endDate.toISOString());
 
-  // 5. Total Orders in period (for cancellation rate)
+  // 5. Total Orders in period (for cancellation rate) - FILTERED BY TIME RANGE
   const { count: totalOrdersInPeriod } = await supabase
     .from("orders")
     .select("id", { count: "exact", head: true })
@@ -220,7 +219,7 @@ export async function getDashboardOrdersMetrics(
     ? Math.round(((cancelledOrders || 0) / totalOrdersInPeriod) * 100)
     : 0;
 
-  // 6. Revenue by Payment Method
+  // 6. Revenue by Payment Method - FILTERED BY TIME RANGE
   const { data: paymentMethods } = await supabase
     .from("payment_methods")
     .select("id, name");
@@ -235,7 +234,7 @@ export async function getDashboardOrdersMetrics(
     sum: number;
   }
 
-  // For payment method revenue, use strongly-typed approach
+  // For payment method revenue, use strongly-typed approach and filter by completed orders in the time range
   const { data: completedOrders } = await supabase
     .from("orders")
     .select("payment_method_id, total_amount")
@@ -272,6 +271,9 @@ export async function getDashboardOrdersMetrics(
     VNPay: "#10B981", // Green
     "Chuyển khoản": "#6366F1", // Indigo
     "Ví điện tử": "#8B5CF6", // Violet
+    ZaloPay: "#06B6D4", // Cyan
+    "Thẻ tín dụng": "#F59E0B", // Amber
+    "Thẻ ATM": "#10B981", // Emerald
   };
 
   const paymentMethodRevenue: PaymentMethodRevenue[] =
@@ -287,7 +289,7 @@ export async function getDashboardOrdersMetrics(
       };
     });
 
-  // 7. Recent Orders - include payment method
+  // 7. Recent Orders - FILTERED BY TIME RANGE
   const { data: recentOrdersRaw } = await supabase
     .from("orders")
     .select(
@@ -301,6 +303,8 @@ export async function getDashboardOrdersMetrics(
       payment_method_id
     `
     )
+    .gte("created_at", timeFilter.startDate.toISOString())
+    .lte("created_at", timeFilter.endDate.toISOString())
     .order("order_date", { ascending: false })
     .limit(10);
 
@@ -375,6 +379,15 @@ export function generateTimeFilter(
         endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1),
       };
 
+    case "yesterday": {
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      return {
+        startDate: yesterday,
+        endDate: new Date(yesterday.getTime() + 24 * 60 * 60 * 1000 - 1),
+      };
+    }
+
     case "thisWeek": {
       const startOfWeek = new Date(today);
       startOfWeek.setDate(
@@ -389,6 +402,20 @@ export function generateTimeFilter(
       };
     }
 
+    case "lastWeek": {
+      const startOfLastWeek = new Date(today);
+      startOfLastWeek.setDate(
+        today.getDate() - today.getDay() - 6 + (today.getDay() === 0 ? -7 : 0)
+      );
+      const endOfLastWeek = new Date(startOfLastWeek);
+      endOfLastWeek.setDate(startOfLastWeek.getDate() + 6);
+      endOfLastWeek.setHours(23, 59, 59, 999);
+      return {
+        startDate: startOfLastWeek,
+        endDate: endOfLastWeek,
+      };
+    }
+
     case "thisMonth": {
       const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
       const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
@@ -396,6 +423,20 @@ export function generateTimeFilter(
       return {
         startDate: startOfMonth,
         endDate: endOfMonth,
+      };
+    }
+
+    case "lastMonth": {
+      const startOfLastMonth = new Date(
+        today.getFullYear(),
+        today.getMonth() - 1,
+        1
+      );
+      const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+      endOfLastMonth.setHours(23, 59, 59, 999);
+      return {
+        startDate: startOfLastMonth,
+        endDate: endOfLastMonth,
       };
     }
 
