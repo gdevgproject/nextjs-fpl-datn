@@ -445,9 +445,12 @@ export function OrderTable({
                     <Avatar className="h-4 w-4">
                       <AvatarImage
                         src={order.shipper_profile?.avatar_url || ""}
+                        alt={order.shipper_profile?.display_name || "Shipper"}
                       />
                       <AvatarFallback className="text-[10px]">
-                        {(order.shipper_profile?.display_name || "?")[0]}
+                        {order.shipper_profile?.display_name
+                          ? order.shipper_profile.display_name.charAt(0)
+                          : "S"}
                       </AvatarFallback>
                     </Avatar>
                     <span className="truncate max-w-[150px]">
@@ -1105,12 +1108,17 @@ export function OrderTable({
                                               order.shipper_profile
                                                 ?.avatar_url || ""
                                             }
+                                            alt={
+                                              order.shipper_profile
+                                                ?.display_name || "Shipper"
+                                            }
                                           />
                                           <AvatarFallback className="text-xs">
-                                            {
-                                              (order.shipper_profile
-                                                ?.display_name || "?")[0]
-                                            }
+                                            {order.shipper_profile?.display_name
+                                              ? order.shipper_profile.display_name.charAt(
+                                                  0
+                                                )
+                                              : "S"}
                                           </AvatarFallback>
                                         </Avatar>
                                         <span className="text-xs line-clamp-1 max-w-[100px] text-left">

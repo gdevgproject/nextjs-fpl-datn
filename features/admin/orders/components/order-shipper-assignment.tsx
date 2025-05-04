@@ -254,12 +254,15 @@ export function OrderShipperAssignment({
                     }
                     alt={
                       currentShipper?.name ||
-                      order.shipper_profile?.display_name
+                      order.shipper_profile?.display_name ||
+                      "Shipper"
                     }
+                    className="object-cover"
                   />
                   <AvatarFallback>
-                    {currentShipper?.name?.[0] ||
-                      order.shipper_profile?.display_name?.[0] ||
+                    {(currentShipper?.name && currentShipper.name.charAt(0)) ||
+                      (order.shipper_profile?.display_name &&
+                        order.shipper_profile.display_name.charAt(0)) ||
                       "S"}
                   </AvatarFallback>
                 </Avatar>
@@ -364,15 +367,17 @@ export function OrderShipperAssignment({
                                   <Avatar className="h-6 w-6 flex-shrink-0">
                                     <AvatarImage
                                       src={selectedShipper.avatar_url || ""}
-                                      alt={selectedShipper.name}
+                                      alt={selectedShipper.name || "Shipper"}
                                       className="object-cover"
                                     />
                                     <AvatarFallback className="text-xs">
-                                      {selectedShipper.name?.[0] || "S"}
+                                      {selectedShipper.name
+                                        ? selectedShipper.name.charAt(0)
+                                        : "S"}
                                     </AvatarFallback>
                                   </Avatar>
                                   <span className="truncate">
-                                    {selectedShipper.name}
+                                    {selectedShipper.name || "Shipper"}
                                   </span>
                                 </div>
                               )}
@@ -416,11 +421,13 @@ export function OrderShipperAssignment({
                                   <Avatar className="h-8 w-8 flex-shrink-0">
                                     <AvatarImage
                                       src={shipper.avatar_url || ""}
-                                      alt={shipper.name}
+                                      alt={shipper.name || "Shipper"}
                                       className="object-cover"
                                     />
                                     <AvatarFallback>
-                                      {shipper.name[0]}
+                                      {shipper.name
+                                        ? shipper.name.charAt(0)
+                                        : "S"}
                                     </AvatarFallback>
                                   </Avatar>
                                   <div className="space-y-1 min-w-0 flex-1">
