@@ -261,6 +261,15 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
               </DropdownMenuLabel>
               <DropdownMenuItem asChild>
                 <Link
+                  href="/admin"
+                  className="flex cursor-pointer items-center gap-2.5 rounded-md py-2 px-3 hover:bg-muted transition-colors"
+                >
+                  <Settings className="w-4 h-4 text-muted-foreground" />
+                  <span>Dashboard</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link
                   href="/admin/orders"
                   className="flex cursor-pointer items-center gap-2.5 rounded-md py-2 px-3 hover:bg-muted transition-colors"
                 >
