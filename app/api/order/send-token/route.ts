@@ -19,7 +19,9 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
     // Ưu tiên tìm theo accessToken (token guest), nếu không có thì theo orderId
-    let query = supabase.from("orders").select("id, access_token, guest_email");
+    let query = supabase
+      .from("orders")
+      .select("id, access_token, guest_email, user_id, payment_status");
     if (accessToken) {
       query = query.eq("access_token", accessToken);
     } else if (orderId) {
@@ -32,18 +34,58 @@ export async function POST(req: NextRequest) {
         { status: 404 }
       );
     }
-    // Nếu đơn chưa có email, cập nhật guest_email
-    if (!order.guest_email) {
-      await supabase
-        .from("orders")
-        .update({ guest_email: email })
-        .eq("id", order.id);
+    // Check trạng thái đơn hàng trước
+    if (order.payment_status !== "Paid") {
+      return NextResponse.json(
+        {
+          error:
+            "Đơn hàng chưa thanh toán thành công. Chỉ gửi mail khi đã thanh toán thành công.",
+        },
+        { status: 400 }
+      );
     }
-    // Gửi mail access_token
+    // Sau đó mới check email
+    let finalEmail = email;
+    if (order.user_id) {
+      // Lấy email từ bảng profiles hoặc auth.users
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id, display_name")
+        .eq("id", order.user_id)
+        .single();
+      const { data: user } = await supabase.auth.admin.getUserById(
+        order.user_id
+      );
+      finalEmail = user?.user?.email || profile?.email || email;
+    } else {
+      // Nếu là guest, lấy guest_email nếu đã có
+      if (!order.guest_email && email) {
+        await supabase
+          .from("orders")
+          .update({ guest_email: email })
+          .eq("id", order.id);
+      } else if (order.guest_email) {
+        finalEmail = order.guest_email;
+      }
+    }
+    if (!finalEmail) {
+      return NextResponse.json(
+        { error: "Không có email để gửi thông tin đơn hàng." },
+        { status: 400 }
+      );
+    }
+    // Gửi mail xác nhận đơn hàng với nội dung mới
+    const orderLink = `http://localhost:3000/tra-cuu-don-hang?token=${order.access_token}`;
+    let htmlContent = `<p><b>Thông tin đơn hàng của bạn:</b></p>`;
+    if (order.id) {
+      htmlContent += `<p>Mã đơn hàng: <b>${order.id}</b></p>`;
+    }
+    htmlContent += `<p>Mã tra cứu đơn hàng: <b>${order.access_token}</b></p>`;
+    htmlContent += `<p>Bạn có thể tra cứu đơn hàng tại: <a href='${orderLink}'>${orderLink}</a></p>`;
     await sendOrderEmail({
-      to: email,
-      subject: "Mã tra cứu đơn hàng của bạn",
-      html: `<p>Mã tra cứu đơn hàng của bạn là: <b>${order.access_token}</b></p>`,
+      to: finalEmail,
+      subject: "Thông tin đơn hàng của bạn",
+      html: htmlContent,
     });
     return NextResponse.json({ success: true });
   } catch (e: any) {
