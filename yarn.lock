@@ -3716,10 +3716,15 @@ nodemailer@6.9.16:
   resolved "https://registry.yarnpkg.com/nodemailer/-/nodemailer-6.9.16.tgz#3ebdf6c6f477c571c0facb0727b33892635e0b8b"
   integrity sha512-psAuZdTIRN08HKVd/E8ObdV6NO7NTBY3KsC30F7M4H1OnmLCUNaS56FpYxyb26zWLSyYF9Ozch9KYHhHegsiOQ==
 
-nodemailer@^6.10.1, nodemailer@^6.9.13:
+nodemailer@^6.9.13:
   version "6.10.1"
   resolved "https://registry.yarnpkg.com/nodemailer/-/nodemailer-6.10.1.tgz#cbc434c54238f83a51c07eabd04e2b3e832da623"
   integrity sha512-Z+iLaBGVaSjbIzQ4pX6XV41HrooLsQ10ZWPUehGmuantvzWoDVBnmsdUcOIDM1t+yPor5pDhVlDESgOMEGxhHA==
+
+nodemailer@^7.0.0:
+  version "7.0.0"
+  resolved "https://registry.yarnpkg.com/nodemailer/-/nodemailer-7.0.0.tgz#3dda775f202d279e1abaa9422428ff3ff35a8830"
+  integrity sha512-9QyEp969UmUWVDB2gVQvxHm1bqkyuC5YZIyX/ySJUpIVyXpuEFyBAuoFFs+G5/C2ZaUp9F5A65DPfxedfVHXXQ==
 
 nopt@^7.2.1:
   version "7.2.1"
