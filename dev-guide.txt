@@ -157,3 +157,5 @@ XỬ LÝ CÁC KỊCH BẢN PHỨC TẠP (TÓM TẮT)
 
 KẾT LUẬN:
 Cấu trúc và cách tiếp cận này cung cấp nền tảng vững chắc, có tổ chức, khả năng mở rộng. Tuân thủ vai trò các file và tận dụng đúng công nghệ giúp phát triển hiệu quả, tạo sản phẩm chất lượng, hiệu suất tốt. Ưu tiên sự rõ ràng, bảo mật (validation server-side, RLS) và trải nghiệm người dùng.
+
+Lệnh chạy ngrok: ngrok http 3000
