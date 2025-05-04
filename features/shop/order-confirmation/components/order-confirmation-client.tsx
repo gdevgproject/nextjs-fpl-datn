@@ -80,7 +80,14 @@ function OrderGuestEmailForm({
   );
 }
 
-export function OrderConfirmationClient() {
+export function OrderConfirmationClient(
+  props: {
+    orderPaymentMethod?: string;
+    orderUserId?: string;
+    orderCustomerEmail?: string;
+    orderGuestEmail?: string;
+  } = {}
+) {
   const { setJustPlacedOrder, justPlacedOrder } = useCheckout();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -124,15 +131,25 @@ export function OrderConfirmationClient() {
 
   useEffect(() => {
     async function checkAndSendMail() {
-      if (!token && !orderId) return;
+      // Kiểm tra truyền đủ thông tin orderId hoặc token
+      if (!token && !orderId) {
+        setError("Thiếu orderId hoặc token để tra cứu đơn hàng.");
+        return;
+      }
       const result = await getOrderDetails(token || orderId, !!token);
       setOrderDetails(result?.data || null);
 
-      // Nếu là khách đã đăng nhập, KHÔNG bao giờ hiện form nhập email (kể cả trang xác nhận momo)
-      if (result?.success && result.data && result.data.user_id) {
+      // Kiểm tra dữ liệu trả về từ API đã đủ chưa
+      if (!result?.data) {
+        setError("Không lấy được thông tin đơn hàng từ server.");
         setShowGuestEmailForm(false);
+        return;
+      }
 
-        // Chỉ gửi mail nếu vừa đặt hàng xong, đã thanh toán thành công và trạng thái đơn hàng đã được cập nhật bởi callback Momo
+      // 1. Khách đã đăng nhập (COD hoặc Momo): KHÔNG hiện form nhập email, chỉ gửi mail khi vừa đặt hàng xong, đã thanh toán thành công và trạng thái hợp lệ
+      if (result?.success && result.data && result.data.user_id) {
+        setShowGuestEmailForm(false); // <-- LUÔN ẨN FORM nếu là khách đã đăng nhập
+
         const paidStatuses = [
           "Đã xác nhận",
           "Đang xử lý",
@@ -143,7 +160,8 @@ export function OrderConfirmationClient() {
         if (
           result.data.customer_email &&
           result.data.customer_email !== "" &&
-          result.data.payment_status === "Paid" &&
+          (result.data.payment_status === "Paid" ||
+            result.data.payment_status === "Pending") &&
           justPlacedOrder &&
           !mailSent &&
           paidStatuses.includes(result.data.status)
@@ -169,24 +187,120 @@ export function OrderConfirmationClient() {
         return;
       }
 
-      // 2. Khách vãng lai: hiện form nhập email nếu ở trang xác nhận, đã thanh toán, chưa có email, chưa gửi mail
+      // 2. Khách vãng lai - Momo: gửi mail khi vừa đặt hàng xong, đã thanh toán thành công (Paid), đã có guest_email
+      if (
+        result?.success &&
+        result.data &&
+        !result.data.user_id &&
+        result.data.guest_email &&
+        result.data.guest_email !== "" &&
+        result.data.payment_method === "Momo QR" &&
+        result.data.payment_status === "Paid" &&
+        justPlacedOrder &&
+        !mailSent
+      ) {
+        setSending(true);
+        const lookupUrl = `http://localhost:3000/tra-cuu-don-hang?orderId=${result.data.id}&token=${result.data.access_token}`;
+        const res = await fetch("/api/order/send-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: result.data.guest_email,
+            token: result.data.access_token,
+            orderId: result.data.id,
+            orderNumber: result.data.order_number,
+            lookupUrl,
+          }),
+        });
+        const data = await res.json();
+        setSending(false);
+        if (data.success) setMailSent(true);
+        else setError(data.error || "Gửi email thất bại");
+        setShowGuestEmailForm(false);
+        return;
+      }
+
+      // 3. Khách vãng lai - COD: gửi mail khi vừa đặt hàng xong, trạng thái thanh toán là Pending, đã có guest_email
+      if (
+        result?.success &&
+        result.data &&
+        !result.data.user_id &&
+        result.data.guest_email &&
+        result.data.guest_email !== "" &&
+        result.data.payment_method === "COD" &&
+        result.data.payment_status === "Pending" &&
+        justPlacedOrder &&
+        !mailSent
+      ) {
+        setSending(true);
+        const lookupUrl = `http://localhost:3000/tra-cuu-don-hang?orderId=${result.data.id}&token=${result.data.access_token}`;
+        const res = await fetch("/api/order/send-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: result.data.guest_email,
+            token: result.data.access_token,
+            orderId: result.data.id,
+            orderNumber: result.data.order_number,
+            lookupUrl,
+          }),
+        });
+        const data = await res.json();
+        setSending(false);
+        if (data.success) setMailSent(true);
+        else setError(data.error || "Gửi email thất bại");
+        setShowGuestEmailForm(false);
+        return;
+      }
+
+      // GỬI EMAIL TỰ ĐỘNG CHO KHÁCH VÃNG LAI (COD/MOMO) nếu đã có guest_email, vừa đặt hàng xong, trạng thái thanh toán là 'Paid' HOẶC 'Pending'
+      if (
+        result?.success &&
+        result.data &&
+        !result.data.user_id &&
+        result.data.guest_email &&
+        result.data.guest_email !== "" &&
+        (result.data.payment_status === "Paid" ||
+          result.data.payment_status === "Pending") &&
+        justPlacedOrder &&
+        !mailSent
+      ) {
+        setSending(true);
+        const lookupUrl = `http://localhost:3000/tra-cuu-don-hang?orderId=${result.data.id}&token=${result.data.access_token}`;
+        const res = await fetch("/api/order/send-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: result.data.guest_email,
+            token: result.data.access_token,
+            orderId: result.data.id,
+            orderNumber: result.data.order_number,
+            lookupUrl,
+          }),
+        });
+        const data = await res.json();
+        setSending(false);
+        if (data.success) setMailSent(true);
+        else setError(data.error || "Gửi email thất bại");
+        setShowGuestEmailForm(false);
+        return;
+      }
+
+      // 4. Khách vãng lai: hiện form nhập email nếu ở trang xác nhận, đã thanh toán (Paid với Momo, Pending với COD), chưa có email, chưa gửi mail
       if (
         isOrderConfirmationPage &&
-        !isMomoConfirmationPage && // Không hiện form ở trang xác nhận đơn hàng momo
+        !isMomoConfirmationPage &&
         result?.success &&
         result.data &&
         !result.data.user_id &&
         !result.data.customer_email &&
         !result.data.guest_email &&
-        result.data.payment_status === "Paid"
+        ((result.data.payment_method === "Momo QR" &&
+          result.data.payment_status === "Paid") ||
+          (result.data.payment_method === "COD" &&
+            result.data.payment_status === "Pending"))
       ) {
-        // Nếu đã gửi mail rồi (mailSent) hoặc order đã có email, không hiện form nữa
-        if (
-          !mailSent &&
-          !result.data.guest_email &&
-          !result.data.customer_email
-        )
-          setShowGuestEmailForm(true);
+        if (!mailSent) setShowGuestEmailForm(true);
         else setShowGuestEmailForm(false);
       } else {
         setShowGuestEmailForm(false);
