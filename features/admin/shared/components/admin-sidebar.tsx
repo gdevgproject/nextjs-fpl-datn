@@ -9,7 +9,12 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { UserNav } from "@/features/shop/shared/components/user-nav";
 import { useAuthQuery } from "@/features/auth/hooks";
 import {
@@ -103,7 +108,10 @@ function SidebarGroup({
   );
 }
 
-export function AdminSidebar({ onNavClick, isMobile = false }: AdminSidebarProps) {
+export function AdminSidebar({
+  onNavClick,
+  isMobile = false,
+}: AdminSidebarProps) {
   const pathname = usePathname();
   const isActive = (path: string) =>
     pathname === path || pathname?.startsWith(`${path}/`);
@@ -138,14 +146,16 @@ export function AdminSidebar({ onNavClick, isMobile = false }: AdminSidebarProps
           <UserNav />
           <div className="hidden sm:block flex-1 min-w-0">
             <p className="text-sm font-medium truncate">
-              {session?.user?.user_metadata?.display_name || session?.user?.email?.split('@')[0] || 'Người dùng'}
+              {session?.user?.user_metadata?.display_name ||
+                session?.user?.email?.split("@")[0] ||
+                "Người dùng"}
             </p>
             <p className="text-xs text-muted-foreground truncate">
-              {session?.user?.app_metadata?.role === 'admin'
-                ? 'Quản trị viên'
-                : session?.user?.app_metadata?.role === 'staff'
-                ? 'Nhân viên'
-                : 'Người dùng'}
+              {session?.user?.app_metadata?.role === "admin"
+                ? "Quản trị viên"
+                : session?.user?.app_metadata?.role === "staff"
+                ? "Nhân viên"
+                : "Người dùng"}
             </p>
           </div>
         </div>
@@ -157,7 +167,7 @@ export function AdminSidebar({ onNavClick, isMobile = false }: AdminSidebarProps
   const sidebarContent = (
     <div className="flex h-full w-full flex-col bg-background">
       <SidebarHeader />
-      
+
       <ScrollArea className="flex-1 px-3 py-2">
         <div className="space-y-2 py-2">
           <SidebarItem
@@ -340,6 +350,11 @@ export function MobileAdminSidebar() {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="p-0 w-[280px] sm:w-[350px]">
+          {/* SheetTitle must be the first direct child */}
+          <SheetTitle asChild>
+            <span className="sr-only">Admin menu</span>
+          </SheetTitle>
+          {/* Do not wrap SheetTitle in a fragment or any other element */}
           <AdminSidebar onNavClick={() => setOpen(false)} isMobile={true} />
         </SheetContent>
       </Sheet>
