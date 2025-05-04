@@ -137,19 +137,6 @@ export function OrderItems({ orderId }: OrderItemsProps) {
             </TableRow>
           );
         })}
-        <TableRow>
-          <TableCell colSpan={4} className="text-right font-medium">
-            Tạm tính
-          </TableCell>
-          <TableCell className="text-right font-bold">
-            {formatCurrency(
-              items.reduce(
-                (sum, item) => sum + item.unit_price_at_order * item.quantity,
-                0
-              )
-            )}
-          </TableCell>
-        </TableRow>
       </TableBody>
     </Table>
   );
