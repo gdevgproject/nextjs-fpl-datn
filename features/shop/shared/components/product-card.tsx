@@ -187,7 +187,7 @@ export function ProductCard({
                   toast("Bạn cần đăng nhập để sử dụng tính năng yêu thích!", {
                     action: {
                       label: "Đăng nhập",
-                      onClick: () => (window.location.href = "/auth/dang-nhap"),
+                      onClick: () => (window.location.href = "dang-nhap"),
                     },
                   });
                   return;

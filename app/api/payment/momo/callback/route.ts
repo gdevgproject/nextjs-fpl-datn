@@ -89,6 +89,43 @@ export async function POST(req: NextRequest) {
         payment_status: "Paid",
       })
       .eq("id", realOrderId);
+
+    // Gửi email xác nhận đơn hàng sau khi thanh toán thành công qua Momo
+    try {
+      // Lấy thông tin đơn hàng để lấy email khách hàng
+      const { data: orderInfo } = await supabase
+        .from("orders")
+        .select(
+          "id, user_id, guest_email, recipient_name, recipient_phone, province_city, district, ward, street_address, access_token"
+        )
+        .eq("id", realOrderId)
+        .single();
+      let customerEmail = orderInfo?.guest_email;
+      // Nếu là user đăng nhập, lấy email từ auth.users
+      if (!customerEmail && orderInfo?.user_id) {
+        const { data: user } = await supabase.auth.admin.getUserById(
+          orderInfo.user_id
+        );
+        customerEmail = user?.user?.email;
+      }
+      if (customerEmail) {
+        // Chuẩn bị nội dung mail
+        let subject = `Xác nhận đơn hàng #${realOrderId}`;
+        let html = `<p>Cảm ơn bạn đã thanh toán thành công đơn hàng tại shop!</p>`;
+        html += `<p>Mã đơn hàng: <b>${realOrderId}</b></p>`;
+        if (orderInfo?.access_token) {
+          const orderLink = `http://localhost:3000/tra-cuu-don-hang?token=${orderInfo.access_token}`;
+          html += `<p>Mã tra cứu đơn hàng: <b>${orderInfo.access_token}</b></p>`;
+          html += `<p>Bạn có thể tra cứu đơn hàng tại: <a href='${orderLink}'>${orderLink}</a></p>`;
+        }
+        // Import động để tránh lỗi khi build edge
+        const { sendOrderEmail } = await import("@/lib/utils/send-mail");
+        await sendOrderEmail({ to: customerEmail, subject, html });
+      }
+    } catch (e) {
+      // Không throw lỗi gửi mail, chỉ log
+      console.error("Gửi email xác nhận đơn hàng (Momo) thất bại:", e);
+    }
     return NextResponse.json({ success: true });
   } catch (e: any) {
     return NextResponse.json(

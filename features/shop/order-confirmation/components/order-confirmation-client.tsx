@@ -2,52 +2,39 @@
 
 import { useEffect, useState } from "react";
 import { useCheckout } from "@/features/shop/checkout/checkout-provider";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, usePathname } from "next/navigation";
 import { getOrderDetails } from "../actions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-function OrderGuestEmailForm({ onSuccess }: { onSuccess?: () => void }) {
+function OrderGuestEmailForm({
+  orderId,
+  accessToken,
+  onSuccess,
+}: {
+  orderId: string | number;
+  accessToken: string;
+  onSuccess?: () => void;
+}) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
-  // Lấy orderId và token từ URL mỗi lần submit (chắc chắn luôn lấy đúng giá trị mới nhất)
-  const getOrderParams = () => {
-    if (typeof window === "undefined")
-      return { orderId: undefined, token: undefined };
-    const params = new URLSearchParams(window.location.search);
-    return {
-      orderId: params.get("orderId") || undefined,
-      token: params.get("token") || undefined,
-    };
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
-    // Lấy lại token và orderId từ URL mỗi lần submit, log ra để debug
-    let token, orderId;
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      token = params.get("token");
-      orderId = params.get("orderId");
-      console.log("DEBUG token:", token, "orderId:", orderId);
-    }
-    if (!email || (!token && !orderId)) {
-      setError("Vui lòng nhập email và đảm bảo có mã tra cứu đơn hàng.");
+    if (!email) {
+      setError("Vui lòng nhập email hợp lệ.");
       setLoading(false);
       return;
     }
     try {
-      // DEBUG: log params gửi lên API
-      console.log("GỬI API /api/order/send-token", { email, token, orderId });
       const res = await fetch("/api/order/send-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, token, orderId }),
+        body: JSON.stringify({ email, token: accessToken, orderId }),
       });
       const data = await res.json();
       if (data.success) {
@@ -96,59 +83,118 @@ function OrderGuestEmailForm({ onSuccess }: { onSuccess?: () => void }) {
 export function OrderConfirmationClient() {
   const { setJustPlacedOrder, justPlacedOrder } = useCheckout();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const orderId = searchParams.get("orderId");
   const token = searchParams.get("token");
   const [showGuestEmailForm, setShowGuestEmailForm] = useState(false);
   const [mailSent, setMailSent] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [orderDetails, setOrderDetails] = useState<any>(null);
+
+  // Helper: unique key for this order (orderId hoặc accessToken)
+  const orderKey =
+    orderId || token ? `order_mail_sent_${orderId || token}` : null;
+
+  // Khi mount, kiểm tra localStorage xem đã gửi mail cho order này chưa
+  useEffect(() => {
+    if (!orderKey) return;
+    if (typeof window !== "undefined") {
+      const sent = localStorage.getItem(orderKey);
+      if (sent === "1") setMailSent(true);
+    }
+  }, [orderKey]);
+
+  // Khi gửi mail thành công, lưu vào localStorage
+  useEffect(() => {
+    if (mailSent && orderKey && typeof window !== "undefined") {
+      localStorage.setItem(orderKey, "1");
+    }
+  }, [mailSent, orderKey]);
 
   useEffect(() => {
     setJustPlacedOrder(false);
   }, [setJustPlacedOrder]);
 
+  // Xác định có phải trang xác nhận đơn hàng (KHÔNG phải tra cứu)
+  const isOrderConfirmationPage = pathname?.startsWith("/xac-nhan-don-hang");
+  const isMomoConfirmationPage = pathname?.startsWith(
+    "/xac-nhan-don-hang-momo"
+  );
+
   useEffect(() => {
     async function checkAndSendMail() {
       if (!token && !orderId) return;
-      // Chỉ gửi mail khi vừa đặt hàng thành công (không gửi khi chỉ tra cứu đơn hàng)
       const result = await getOrderDetails(token || orderId, !!token);
-      // Kiểm tra nếu có cờ justPlacedOrder (tức là vừa đặt hàng xong)
-      if (
-        result?.success &&
-        result.data &&
-        ((result.data.customer_email && result.data.customer_email !== "") ||
-          (result.data.guest_email && result.data.guest_email !== "")) &&
-        result.data.payment_status === "Paid" &&
-        justPlacedOrder // chỉ gửi mail nếu vừa đặt hàng xong
-      ) {
-        setSending(true);
-        const res = await fetch("/api/order/send-token", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: result.data.customer_email || result.data.guest_email,
-            token: result.data.access_token,
-          }),
-        });
-        const data = await res.json();
-        setSending(false);
-        if (data.success) setMailSent(true);
-        else setError(data.error || "Gửi email thất bại");
+      setOrderDetails(result?.data || null);
+
+      // Nếu là khách đã đăng nhập, KHÔNG bao giờ hiện form nhập email (kể cả trang xác nhận momo)
+      if (result?.success && result.data && result.data.user_id) {
         setShowGuestEmailForm(false);
-      } else if (
+
+        // Chỉ gửi mail nếu vừa đặt hàng xong, đã thanh toán thành công và trạng thái đơn hàng đã được cập nhật bởi callback Momo
+        const paidStatuses = [
+          "Đã xác nhận",
+          "Đang xử lý",
+          "Đang giao",
+          "Đã giao",
+          "Đã hoàn thành",
+        ];
+        if (
+          result.data.customer_email &&
+          result.data.customer_email !== "" &&
+          result.data.payment_status === "Paid" &&
+          justPlacedOrder &&
+          !mailSent &&
+          paidStatuses.includes(result.data.status)
+        ) {
+          setSending(true);
+          const lookupUrl = `http://localhost:3000/tra-cuu-don-hang?orderId=${result.data.id}&token=${result.data.access_token}`;
+          const res = await fetch("/api/order/send-token", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: result.data.customer_email,
+              token: result.data.access_token,
+              orderId: result.data.id,
+              orderNumber: result.data.order_number,
+              lookupUrl,
+            }),
+          });
+          const data = await res.json();
+          setSending(false);
+          if (data.success) setMailSent(true);
+          else setError(data.error || "Gửi email thất bại");
+        }
+        return;
+      }
+
+      // 2. Khách vãng lai: hiện form nhập email nếu ở trang xác nhận, đã thanh toán, chưa có email, chưa gửi mail
+      if (
+        isOrderConfirmationPage &&
+        !isMomoConfirmationPage && // Không hiện form ở trang xác nhận đơn hàng momo
         result?.success &&
         result.data &&
-        result.data.access_token &&
-        (!result.data.customer_email || result.data.customer_email === "") &&
-        (!result.data.guest_email || result.data.guest_email === "")
+        !result.data.user_id &&
+        !result.data.customer_email &&
+        !result.data.guest_email &&
+        result.data.payment_status === "Paid"
       ) {
-        setShowGuestEmailForm(true);
+        // Nếu đã gửi mail rồi (mailSent) hoặc order đã có email, không hiện form nữa
+        if (
+          !mailSent &&
+          !result.data.guest_email &&
+          !result.data.customer_email
+        )
+          setShowGuestEmailForm(true);
+        else setShowGuestEmailForm(false);
       } else {
         setShowGuestEmailForm(false);
       }
     }
     checkAndSendMail();
-  }, [orderId, token, justPlacedOrder]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId, token, justPlacedOrder, mailSent, pathname]);
 
   if (mailSent) {
     return (
@@ -163,8 +209,15 @@ export function OrderConfirmationClient() {
   if (error) {
     return <div className="my-4 text-red-600">{error}</div>;
   }
-  if (showGuestEmailForm) {
-    return <OrderGuestEmailForm onSuccess={() => setMailSent(true)} />;
+  // Chỉ hiện form nếu là guest, ở trang xác nhận, đã thanh toán, chưa có email, chưa gửi mail
+  if (showGuestEmailForm && orderDetails && !mailSent) {
+    return (
+      <OrderGuestEmailForm
+        orderId={orderDetails.id}
+        accessToken={orderDetails.access_token}
+        onSuccess={() => setMailSent(true)}
+      />
+    );
   }
   return null;
 }
