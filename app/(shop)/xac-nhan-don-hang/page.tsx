@@ -63,7 +63,13 @@ export default async function OrderConfirmationPage(props: {
   return (
     <div className="container py-8 max-w-3xl mx-auto">
       {/* Client component for state management, doesn't render anything */}
-      <OrderConfirmationClient />
+      <OrderConfirmationClient
+        // Truyền thêm order/payment_method xuống để client biết là COD
+        orderPaymentMethod={order?.payment_method}
+        orderUserId={order?.user_id}
+        orderCustomerEmail={order?.customer_email}
+        orderGuestEmail={order?.guest_email}
+      />
 
       {error ? (
         <Card>
@@ -120,18 +126,28 @@ export default async function OrderConfirmationPage(props: {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <p className="text-muted-foreground">Họ tên:</p>
-                      <p>{order.customer_name}</p>
+                      <p>
+                        {order.customer_name ||
+                          order.guest_name ||
+                          order.recipient_name}
+                      </p>
                     </div>
-                    {order.customer_email && (
+                    {(order.customer_email || order.guest_email) && (
                       <div>
                         <p className="text-muted-foreground">Email:</p>
-                        <p>{order.customer_email}</p>
+                        <p>{order.customer_email || order.guest_email}</p>
                       </div>
                     )}
-                    {order.customer_phone && (
+                    {(order.customer_phone ||
+                      order.guest_phone ||
+                      order.recipient_phone) && (
                       <div>
                         <p className="text-muted-foreground">Số điện thoại:</p>
-                        <p>{order.customer_phone}</p>
+                        <p>
+                          {order.customer_phone ||
+                            order.guest_phone ||
+                            order.recipient_phone}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -143,7 +159,17 @@ export default async function OrderConfirmationPage(props: {
                 <div>
                   <h3 className="font-medium mb-2">Địa chỉ giao hàng</h3>
                   <div className="bg-muted p-3 rounded-md text-sm">
-                    <p>{order.shipping_address}</p>
+                    <p>
+                      {order.shipping_address ||
+                        [
+                          order.street_address,
+                          order.ward,
+                          order.district,
+                          order.province_city,
+                        ]
+                          .filter(Boolean)
+                          .join(", ")}
+                    </p>
                   </div>
                 </div>
                 <div>

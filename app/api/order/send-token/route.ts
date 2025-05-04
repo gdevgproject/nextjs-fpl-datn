@@ -35,11 +35,11 @@ export async function POST(req: NextRequest) {
       );
     }
     // Check trạng thái đơn hàng trước
-    if (order.payment_status !== "Paid") {
+    if (order.payment_status !== "Paid" && order.payment_status !== "Pending") {
       return NextResponse.json(
         {
           error:
-            "Đơn hàng chưa thanh toán thành công. Chỉ gửi mail khi đã thanh toán thành công.",
+            "Đơn hàng chưa thanh toán hoặc đã bị huỷ. Chỉ gửi mail khi đơn hàng đang chờ thanh toán hoặc đã thanh toán thành công.",
         },
         { status: 400 }
       );
