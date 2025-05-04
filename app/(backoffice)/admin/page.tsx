@@ -33,7 +33,6 @@ import {
   CreditCard,
   TrendingUp,
   Clock,
-  AlertCircle,
 } from "lucide-react";
 
 // Sample data for charts
@@ -103,7 +102,6 @@ export default function AdminDashboardPage() {
               <TabsTrigger value="overview">Tổng quan</TabsTrigger>
               <TabsTrigger value="analytics">Phân tích</TabsTrigger>
               <TabsTrigger value="reports">Báo cáo</TabsTrigger>
-              <TabsTrigger value="notifications">Thông báo</TabsTrigger>
             </TabsList>
             <div className="flex items-center gap-2">
               <Button
@@ -365,48 +363,6 @@ export default function AdminDashboardPage() {
                 </CardContent>
               </Card>
             </div>
-
-            {/* Alerts */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Cảnh báo</CardTitle>
-                <CardDescription>Các vấn đề cần chú ý</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 rounded-lg border p-3">
-                    <AlertCircle className="h-5 w-5 text-orange-500" />
-                    <div className="flex-1">
-                      <p className="font-medium">Sản phẩm sắp hết hàng</p>
-                      <p className="text-sm text-muted-foreground">
-                        12 sản phẩm có số lượng tồn kho dưới 5
-                      </p>
-                    </div>
-                    <Button size="sm">Xem chi tiết</Button>
-                  </div>
-                  <div className="flex items-center gap-3 rounded-lg border p-3">
-                    <AlertCircle className="h-5 w-5 text-red-500" />
-                    <div className="flex-1">
-                      <p className="font-medium">Đơn hàng chưa xử lý</p>
-                      <p className="text-sm text-muted-foreground">
-                        15 đơn hàng đang chờ xác nhận quá 24 giờ
-                      </p>
-                    </div>
-                    <Button size="sm">Xem chi tiết</Button>
-                  </div>
-                  <div className="flex items-center gap-3 rounded-lg border p-3">
-                    <AlertCircle className="h-5 w-5 text-blue-500" />
-                    <div className="flex-1">
-                      <p className="font-medium">Đánh giá mới cần duyệt</p>
-                      <p className="text-sm text-muted-foreground">
-                        8 đánh giá mới đang chờ duyệt
-                      </p>
-                    </div>
-                    <Button size="sm">Xem chi tiết</Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-4">
@@ -438,23 +394,6 @@ export default function AdminDashboardPage() {
                 <p className="text-sm text-muted-foreground">
                   Tính năng báo cáo đang được phát triển và sẽ sớm được cập
                   nhật.
-                </p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="notifications" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Thông báo</CardTitle>
-                <CardDescription>
-                  Quản lý thông báo và cảnh báo hệ thống
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Tính năng quản lý thông báo đang được phát triển và sẽ sớm
-                  được cập nhật.
                 </p>
               </CardContent>
             </Card>
