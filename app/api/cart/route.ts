@@ -69,15 +69,18 @@ export async function GET() {
     if (itemsRes.error) throw itemsRes.error;
     const cartItems = itemsRes.data.map((item) => ({
       id: item.id,
-      variant_id: item.variant_id,
+      variantId: item.variant_id,
+      variant_id: item.variant_id, // Giữ lại để tương thích ngược
       quantity: item.quantity,
       product: {
         id: item.product_variants.products.id,
         name: item.product_variants.products.name,
         slug: item.product_variants.products.slug,
         price: item.product_variants.price,
-        sale_price: item.product_variants.sale_price,
-        volume_ml: item.product_variants.volume_ml,
+        salePrice: item.product_variants.sale_price, // camelCase
+        sale_price: item.product_variants.sale_price, // Giữ lại snake_case để tương thích ngược
+        volumeMl: item.product_variants.volume_ml,
+        volume_ml: item.product_variants.volume_ml, // Giữ lại để tương thích ngược
         images: item.product_variants.products.images,
       },
     }));
