@@ -180,6 +180,18 @@ export function ProductCard({
             <button
               onClick={(e) => {
                 e.preventDefault();
+                const isLoggedIn =
+                  typeof window !== "undefined" &&
+                  localStorage.getItem("sb-access-token");
+                if (!isLoggedIn) {
+                  toast("Bạn cần đăng nhập để sử dụng tính năng yêu thích!", {
+                    action: {
+                      label: "Đăng nhập",
+                      onClick: () => (window.location.href = "/auth/dang-nhap"),
+                    },
+                  });
+                  return;
+                }
                 onToggleWishlist
                   ? onToggleWishlist()
                   : toggleWishlist(productId!);

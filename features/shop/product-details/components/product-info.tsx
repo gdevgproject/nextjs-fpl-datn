@@ -213,7 +213,21 @@ export default function ProductInfo({ product }: ProductInfoProps) {
         <Button
           variant="outline"
           aria-label={isWishlisted ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
-          onClick={() => toggleWishlist(product.id)}
+          onClick={async () => {
+            const isLoggedIn =
+              typeof window !== "undefined" &&
+              localStorage.getItem("sb-access-token");
+            if (!isLoggedIn) {
+              toast("Bạn cần đăng nhập để sử dụng tính năng yêu thích!", {
+                action: {
+                  label: "Đăng nhập",
+                  onClick: () => (window.location.href = "/dang-nhap"),
+                },
+              });
+              return;
+            }
+            toggleWishlist(product.id);
+          }}
           disabled={isWishlistLoading}
         >
           <Heart
