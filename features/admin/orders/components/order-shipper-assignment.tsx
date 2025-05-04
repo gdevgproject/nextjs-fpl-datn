@@ -147,6 +147,20 @@ export function OrderShipperAssignment({
   // Special case: Đang giao - can't change shipper but can view current
   const isShipping = order?.order_statuses?.name === "Đang giao";
 
+  // Render loading state if still loading data
+  if (isShippersLoading && !shippersData) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center space-y-4">
+        <div className="w-full flex justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+        <p className="text-center text-muted-foreground">
+          Đang tải danh sách người giao hàng...
+        </p>
+      </div>
+    );
+  }
+
   if (isOrderCancelled) {
     return (
       <Alert variant="destructive">
@@ -259,14 +273,14 @@ export function OrderShipperAssignment({
                     {(currentShipper?.email ||
                       order.shipper_profile?.email) && (
                       <div className="flex items-center gap-1">
-                        <Mail className="h-3 w-3" />
+                        <Mail className="h-3 w-3 flex-shrink-0" />
                         {currentShipper?.email || order.shipper_profile?.email}
                       </div>
                     )}
                     {(currentShipper?.phone_number ||
                       order.shipper_profile?.phone_number) && (
                       <div className="flex items-center gap-1">
-                        <Phone className="h-3 w-3" />
+                        <Phone className="h-3 w-3 flex-shrink-0" />
                         {currentShipper?.phone_number ||
                           order.shipper_profile?.phone_number}
                       </div>
@@ -330,30 +344,38 @@ export function OrderShipperAssignment({
                         if (value === "none") {
                           setSelectedShipper(null);
                         } else {
-                          setSelectedShipper(shippers.find((s) => s.id === value));
+                          setSelectedShipper(
+                            shippers.find((s) => s.id === value)
+                          );
                         }
                       }}
                       value={field.value}
-                      disabled={isShippersLoading || assignShipperMutation.isPending}
+                      disabled={
+                        isShippersLoading || assignShipperMutation.isPending
+                      }
                     >
                       <FormControl>
                         <SelectTrigger className="h-10">
                           <SelectValue placeholder="Chọn người giao hàng">
-                            {field.value && field.value !== "none" && selectedShipper && (
-                              <div className="flex items-center gap-2">
-                                <Avatar className="h-6 w-6 flex-shrink-0">
-                                  <AvatarImage
-                                    src={selectedShipper.avatar_url || ""}
-                                    alt={selectedShipper.name}
-                                    className="object-cover"
-                                  />
-                                  <AvatarFallback className="text-xs">
-                                    {selectedShipper.name?.[0] || "S"}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span className="truncate">{selectedShipper.name}</span>
-                              </div>
-                            )}
+                            {field.value &&
+                              field.value !== "none" &&
+                              selectedShipper && (
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-6 w-6 flex-shrink-0">
+                                    <AvatarImage
+                                      src={selectedShipper.avatar_url || ""}
+                                      alt={selectedShipper.name}
+                                      className="object-cover"
+                                    />
+                                    <AvatarFallback className="text-xs">
+                                      {selectedShipper.name?.[0] || "S"}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="truncate">
+                                    {selectedShipper.name}
+                                  </span>
+                                </div>
+                              )}
                             {field.value === "none" && "Không gán shipper"}
                           </SelectValue>
                         </SelectTrigger>
@@ -397,21 +419,29 @@ export function OrderShipperAssignment({
                                       alt={shipper.name}
                                       className="object-cover"
                                     />
-                                    <AvatarFallback>{shipper.name[0]}</AvatarFallback>
+                                    <AvatarFallback>
+                                      {shipper.name[0]}
+                                    </AvatarFallback>
                                   </Avatar>
                                   <div className="space-y-1 min-w-0 flex-1">
-                                    <div className="font-medium truncate">{shipper.name}</div>
+                                    <div className="font-medium truncate">
+                                      {shipper.name}
+                                    </div>
                                     <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
                                       {shipper.email && (
                                         <div className="flex items-center gap-1">
                                           <Mail className="h-3 w-3 flex-shrink-0" />
-                                          <span className="truncate">{shipper.email}</span>
+                                          <span className="truncate">
+                                            {shipper.email}
+                                          </span>
                                         </div>
                                       )}
                                       {shipper.phone_number && (
                                         <div className="flex items-center gap-1">
                                           <Phone className="h-3 w-3 flex-shrink-0" />
-                                          <span className="truncate">{shipper.phone_number}</span>
+                                          <span className="truncate">
+                                            {shipper.phone_number}
+                                          </span>
                                         </div>
                                       )}
                                     </div>
