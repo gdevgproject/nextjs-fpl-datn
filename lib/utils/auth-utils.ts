@@ -55,7 +55,7 @@ export function canAccessPage(role: UserRole, page: string): boolean {
 
     // Staff chỉ có quyền truy cập trang quản lý đơn hàng
     if (role === "staff") {
-      return page.startsWith("/admin/orders") || page === "/admin";
+      return page.startsWith("/admin/orders");
     }
 
     // Các role khác không có quyền

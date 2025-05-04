@@ -63,18 +63,33 @@ interface SidebarGroupProps {
 }
 
 function SidebarItem({ href, icon, label, active, onClick }: SidebarItemProps) {
+  // Lấy context từ Admin Sidebar
+  const { data: session } = useAuthQuery();
+  const userRole = session?.user?.app_metadata?.role || "authenticated";
+  const isStaff = userRole === "staff";
+  const canAccess =
+    userRole === "admin" || (isStaff && href.startsWith("/admin/orders"));
+
   return (
     <Button
-      asChild
+      asChild={canAccess}
       variant={active ? "secondary" : "ghost"}
       size="sm"
       className="w-full justify-start h-10 px-3"
       onClick={onClick}
+      disabled={isStaff && !canAccess}
     >
-      <Link href={href} className="relative">
-        {icon}
-        <span className="ml-2 truncate">{label}</span>
-      </Link>
+      {canAccess ? (
+        <Link href={href} className="relative">
+          {icon}
+          <span className="ml-2 truncate">{label}</span>
+        </Link>
+      ) : (
+        <div className="relative">
+          {icon}
+          <span className="ml-2 truncate">{label}</span>
+        </div>
+      )}
     </Button>
   );
 }
@@ -86,6 +101,12 @@ function SidebarGroup({
   defaultOpen = false,
 }: SidebarGroupProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  const { data: session } = useAuthQuery();
+  const userRole = session?.user?.app_metadata?.role || "authenticated";
+  const isStaff = userRole === "staff";
+
+  // Staff chỉ có thể mở menu "Đơn hàng"
+  const canOpen = !isStaff || label === "Đơn hàng";
 
   return (
     <div className="space-y-1">
@@ -93,7 +114,8 @@ function SidebarGroup({
         variant="ghost"
         size="sm"
         className="w-full justify-start font-medium h-10 px-3"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => canOpen && setIsOpen(!isOpen)}
+        disabled={isStaff && !canOpen}
       >
         {icon}
         <span className="ml-2 truncate">{label}</span>
@@ -122,10 +144,16 @@ export function AdminSidebar({
 
   // Lấy thông tin session để hiển thị tên và quyền người dùng
   const { data: session } = useAuthQuery();
+  // Kiểm tra role người dùng
+  const userRole = session?.user?.app_metadata?.role || "authenticated";
+  const isStaff = userRole === "staff";
 
   const SidebarHeader = () => (
     <div className="sticky top-0 z-20 flex items-center justify-between p-4 border-b bg-background backdrop-blur-sm">
-      <Link href="/admin" className="flex items-center gap-2 font-semibold">
+      <Link
+        href={isStaff ? "/admin/orders" : "/admin"}
+        className="flex items-center gap-2 font-semibold"
+      >
         <Store className="h-5 w-5 text-primary" />
         <span className="text-lg">MyBeauty Admin</span>
       </Link>
