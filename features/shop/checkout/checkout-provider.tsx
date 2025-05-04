@@ -110,23 +110,32 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
   const shippingFee = settings?.default_shipping_fee ?? 0;
   const subtotal = useMemo((): number => {
     return cartItems.reduce((sum: number, item: CartItem) => {
-      const price = item.product?.salePrice ?? item.product?.price ?? 0;
-      return sum + price * item.quantity;
+      // Xử lý nhất quán với cả hai kiểu đặt tên thuộc tính (camelCase và snake_case)
+      // Ưu tiên salePrice/sale_price nếu có và nhỏ hơn price
+      const price = item.product?.price ?? 0;
+      const salePrice =
+        item.product?.salePrice ?? item.product?.sale_price ?? price;
+
+      // Chọn giá thấp hơn giữa giá gốc và giá khuyến mãi
+      const finalPrice = salePrice < price ? salePrice : price;
+
+      return sum + finalPrice * item.quantity;
     }, 0);
   }, [cartItems]);
 
   const saleDiscount = useMemo((): number => {
     return cartItems.reduce((sum: number, item: CartItem) => {
       const full = item.product?.price ?? 0;
-      const sale = item.product?.salePrice ?? full;
-      return sum + (full - sale) * item.quantity;
+      // Xử lý nhất quán với cả hai kiểu đặt tên thuộc tính
+      const sale = item.product?.salePrice ?? item.product?.sale_price ?? full;
+      return sum + (full - sale > 0 ? (full - sale) * item.quantity : 0);
     }, 0);
   }, [cartItems]);
 
   const discountAmount = discountInfo?.discountAmount ?? 0;
   const appliedDiscount = discountInfo?.discount ?? null;
 
-  // Fix: Không trừ saleDiscount vì subtotal đã tính dựa trên salePrice
+  // Fix: Không trừ saleDiscount vì subtotal đã tính dựa trên giá thấp nhất
   const cartTotal = Math.max(0, subtotal - discountAmount) + shippingFee;
 
   // Initialize discount from URL
