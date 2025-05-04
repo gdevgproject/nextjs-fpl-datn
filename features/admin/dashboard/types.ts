@@ -4,11 +4,11 @@ export interface TimeFilter {
   endDate: Date;
 }
 
-export type TimeFilterOption = 
-  | "today" 
-  | "thisWeek" 
-  | "thisMonth" 
-  | "thisYear" 
+export type TimeFilterOption =
+  | "today"
+  | "thisWeek"
+  | "thisMonth"
+  | "thisYear"
   | "custom";
 
 export interface DashboardOverviewMetrics {
@@ -24,4 +24,37 @@ export interface DashboardOverviewMetrics {
 export interface DateRange {
   from: Date | undefined;
   to: Date | undefined;
+}
+
+// Dashboard metrics for Orders tab
+export interface OrderStatusDistribution {
+  name: string;
+  count: number;
+  color?: string;
+}
+
+export interface PaymentMethodRevenue {
+  name: string;
+  value: number;
+  color?: string;
+}
+
+export interface RecentOrder {
+  id: number;
+  orderNumber: string;
+  customerName: string;
+  orderDate: string;
+  totalAmount: number;
+  status: string;
+  statusColor?: string;
+}
+
+export interface DashboardOrdersMetrics {
+  ordersByStatus: OrderStatusDistribution[];
+  pendingOrders: number;
+  shippingOrders: number;
+  cancelledOrders: number;
+  cancellationRate: number;
+  paymentMethodRevenue: PaymentMethodRevenue[];
+  recentOrders: RecentOrder[];
 }
