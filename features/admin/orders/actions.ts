@@ -393,35 +393,103 @@ export async function fetchShippersAction() {
     // Get admin client with service role key to bypass RLS
     const supabase = await createServiceRoleClient();
 
-    // Query users with shipper role from auth.users table
-    const { data, error } = await supabase.auth.admin.listUsers();
+    // BƯỚC 1: Lấy danh sách users từ auth.users
+    const { data: authUsers, error: authError } = await supabase
+      .from("auth.users")
+      .select("id, email, raw_app_meta_data")
+      .eq("raw_app_meta_data->>role", "shipper");
 
-    if (error) {
-      console.error("Error fetching users:", error);
-      throw new Error(`Failed to fetch users: ${error.message}`);
-    }
+    // Nếu cách trên không hoạt động do cấu trúc bảng, thử cách thứ 2 sử dụng admin API
+    if (authError || !authUsers || authUsers.length === 0) {
+      console.log("Fallback to admin API to fetch shippers");
 
-    // Filter users with shipper role and join with profiles
-    const shippers = [];
-    for (const user of data.users) {
-      // Check if user has shipper role in user metadata
-      if (user.user_metadata?.role === "shipper") {
-        // Get profile data for this user
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id, display_name, avatar_url, phone_number")
-          .eq("id", user.id)
-          .single();
+      // Dùng admin API để lấy tất cả users
+      const { data: usersData, error: usersError } =
+        await supabase.auth.admin.listUsers();
 
-        shippers.push({
-          id: user.id,
-          email: user.email,
-          name: profile?.display_name || user.email?.split("@")[0] || "Unknown",
-          phone_number: profile?.phone_number,
-          avatar_url: profile?.avatar_url,
-        });
+      if (usersError) {
+        console.error("Error fetching users through admin API:", usersError);
+        throw new Error(`Failed to fetch users: ${usersError.message}`);
       }
+
+      // Lọc users có role là shipper từ metadata
+      const shipperUsers = usersData.users.filter(
+        (user) =>
+          user.user_metadata?.role === "shipper" ||
+          user.raw_app_meta_data?.role === "shipper" ||
+          user.app_metadata?.role === "shipper"
+      );
+
+      if (shipperUsers.length === 0) {
+        return {
+          data: [],
+          count: 0,
+        };
+      }
+
+      // Lấy danh sách IDs của shippers
+      const shipperIds = shipperUsers.map((user) => user.id);
+
+      // BƯỚC 2: Truy vấn profiles của shipper
+      const { data: shipperProfiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, display_name, phone_number, avatar_url")
+        .in("id", shipperIds);
+
+      if (profilesError) {
+        console.error("Error fetching shipper profiles:", profilesError);
+        throw new Error(`Failed to fetch profiles: ${profilesError.message}`);
+      }
+
+      // BƯỚC 3: Kết hợp thông tin từ cả hai nguồn
+      const shippers = shipperUsers
+        .map((user) => {
+          const profile = shipperProfiles?.find((p) => p.id === user.id);
+          return {
+            id: user.id,
+            email: user.email || "",
+            name:
+              profile?.display_name || user.email?.split("@")[0] || "Shipper",
+            phone_number: profile?.phone_number || "",
+            avatar_url: profile?.avatar_url || "",
+            last_active: user.last_sign_in_at || null,
+          };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      return {
+        data: shippers,
+        count: shippers.length,
+      };
     }
+
+    // Nếu cách 1 thành công, xử lý dữ liệu
+    const shipperIds = authUsers.map((user) => user.id);
+
+    // Truy vấn profiles của shipper
+    const { data: shipperProfiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, display_name, phone_number, avatar_url")
+      .in("id", shipperIds);
+
+    if (profilesError) {
+      console.error("Error fetching shipper profiles:", profilesError);
+      throw new Error(`Failed to fetch profiles: ${profilesError.message}`);
+    }
+
+    // Kết hợp thông tin từ cả hai nguồn
+    const shippers = authUsers
+      .map((user) => {
+        const profile = shipperProfiles?.find((p) => p.id === user.id);
+        return {
+          id: user.id,
+          email: user.email || "",
+          name: profile?.display_name || user.email?.split("@")[0] || "Shipper",
+          phone_number: profile?.phone_number || "",
+          avatar_url: profile?.avatar_url || "",
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
 
     return {
       data: shippers,
@@ -690,11 +758,105 @@ export async function assignShipperAction(
     // Get admin Supabase client with service role to bypass RLS
     const supabase = await createServiceRoleClient();
 
+    // Get server Supabase client to access user session
+    const supabaseServer = await getSupabaseServerClient();
+
+    // Verify current user is admin or staff
+    const { data: userData, error: userError } =
+      await supabaseServer.auth.getUser();
+    if (userError || !userData?.user) {
+      return {
+        success: false,
+        error: `Authentication error: ${
+          userError?.message || "No authenticated user found"
+        }`,
+      };
+    }
+
+    // Lấy role của người dùng hiện tại
+    const userRole = userData.user.app_metadata.role;
+    if (userRole !== "admin" && userRole !== "staff") {
+      return {
+        success: false,
+        error: "Unauthorized: Only admin or staff can assign shippers",
+      };
+    }
+
+    // Fetch the order to verify its status
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .select(
+        `
+        id,
+        order_status_id,
+        assigned_shipper_id,
+        order_statuses (id, name)
+      `
+      )
+      .eq("id", validated.id)
+      .single();
+
+    if (orderError || !order) {
+      return {
+        success: false,
+        error: `Error fetching order: ${
+          orderError?.message || "Order not found"
+        }`,
+      };
+    }
+
+    // Kiểm tra trạng thái đơn hàng có hợp lệ để gán shipper
+    const validStatuses = ["Đã xác nhận", "Đang xử lý"];
+    if (!validStatuses.includes(order.order_statuses.name)) {
+      return {
+        success: false,
+        error: `Cannot assign shipper to order with status "${
+          order.order_statuses.name
+        }". Valid statuses are: ${validStatuses.join(", ")}`,
+      };
+    }
+
+    // Nếu đơn đã có shipper và muốn thay đổi, kiểm tra thêm điều kiện
+    if (
+      order.assigned_shipper_id &&
+      order.assigned_shipper_id !== validated.assigned_shipper_id &&
+      order.order_statuses.name === "Đang giao"
+    ) {
+      return {
+        success: false,
+        error: 'Cannot change shipper when order status is "Đang giao"',
+      };
+    }
+
+    // Nếu muốn gán shipper (không phải hủy gán), kiểm tra người được gán có phải shipper không
+    if (validated.assigned_shipper_id) {
+      const { data: shipperData, error: shipperError } =
+        await supabase.auth.admin.getUserById(validated.assigned_shipper_id);
+
+      if (shipperError || !shipperData) {
+        return {
+          success: false,
+          error: `Invalid shipper ID: ${
+            shipperError?.message || "Shipper not found"
+          }`,
+        };
+      }
+
+      const shipperRole = shipperData.user?.app_metadata?.role;
+      if (shipperRole !== "shipper") {
+        return {
+          success: false,
+          error: "The selected user is not a shipper",
+        };
+      }
+    }
+
     // Update the order with assigned shipper
     const { error, data: updatedOrder } = await supabase
       .from("orders")
       .update({
         assigned_shipper_id: validated.assigned_shipper_id,
+        updated_at: new Date().toISOString(), // Đảm bảo cập nhật thời gian
       })
       .eq("id", validated.id)
       .select()
@@ -708,8 +870,36 @@ export async function assignShipperAction(
       };
     }
 
+    // Log activity sau khi gán shipper thành công
+    await supabase.from("admin_activity_log").insert({
+      user_id: userData.user.id,
+      action_type: validated.assigned_shipper_id
+        ? "ASSIGN_SHIPPER"
+        : "UNASSIGN_SHIPPER",
+      action_details: validated.assigned_shipper_id
+        ? `Assigned shipper ID ${validated.assigned_shipper_id} to order #${validated.id}`
+        : `Removed shipper assignment from order #${validated.id}`,
+      entity_type: "order",
+      entity_id: validated.id.toString(),
+      metadata: {
+        order_id: validated.id,
+        shipper_id: validated.assigned_shipper_id,
+        previous_shipper_id: order.assigned_shipper_id,
+        order_status: order.order_statuses.name,
+        note: validated.internal_note || null,
+      },
+    });
+
     // Revalidate related paths
     revalidatePath("/admin/orders");
+
+    // Nếu chuyển từ không có shipper sang có shipper, có thể gửi thông báo ở đây
+    if (!order.assigned_shipper_id && validated.assigned_shipper_id) {
+      // TODO: Implement notification to shipper (outside scope of this function)
+      console.log(
+        `Notification for shipper ${validated.assigned_shipper_id} about new order ${validated.id} should be sent`
+      );
+    }
 
     return {
       success: true,

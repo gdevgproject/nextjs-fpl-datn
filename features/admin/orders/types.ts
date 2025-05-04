@@ -86,6 +86,9 @@ export interface Shipper {
   id: string;
   email: string;
   name: string;
+  phone_number?: string;
+  avatar_url?: string;
+  last_active?: string | null;
 }
 
 // Schema for order status update
