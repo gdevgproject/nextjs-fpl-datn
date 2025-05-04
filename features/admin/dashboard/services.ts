@@ -127,44 +127,36 @@ export async function getDashboardOrdersMetrics(
     .filter((status) => ["Đã hủy"].includes(status.name))
     .map((status) => status.id);
 
+  // Define proper interfaces for our data
+  interface OrderStatusCount {
+    order_status_id: number;
+    count: number;
+  }
+
   // 1. Order distribution by status (for pie chart)
-  // Using proper PostgreSQL aggregation syntax for Supabase
-  const { data: ordersByStatusRaw } = await supabase
+  // Fetch all orders and group them in JavaScript with proper typing
+  const { data: allOrders } = await supabase
     .from("orders")
-    .select("order_status_id, count", { count: "exact" })
+    .select("order_status_id")
     .gte("created_at", timeFilter.startDate.toISOString())
-    .lte("created_at", timeFilter.endDate.toISOString())
-    .csv();
+    .lte("created_at", timeFilter.endDate.toISOString());
 
-  // If the above approach doesn't work, we need to fetch all orders and group them in JavaScript
-  let ordersByStatusData = [];
+  // Group by order_status_id and count with proper typing
+  const ordersByStatusData: OrderStatusCount[] = [];
 
-  if (!ordersByStatusRaw || ordersByStatusRaw.length === 0) {
-    // Fallback approach: Fetch all orders and group them in JS
-    const { data: allOrders } = await supabase
-      .from("orders")
-      .select("order_status_id")
-      .gte("created_at", timeFilter.startDate.toISOString())
-      .lte("created_at", timeFilter.endDate.toISOString());
+  if (allOrders && allOrders.length > 0) {
+    // Using a Map for grouping by order_status_id
+    const statusCounts = new Map<number, number>();
 
-    if (allOrders && allOrders.length > 0) {
-      // Group by order_status_id and count
-      const statusCounts = new Map<number, number>();
-      allOrders.forEach((order) => {
-        const statusId = order.order_status_id;
-        statusCounts.set(statusId, (statusCounts.get(statusId) || 0) + 1);
-      });
+    allOrders.forEach((order) => {
+      const statusId = order.order_status_id;
+      statusCounts.set(statusId, (statusCounts.get(statusId) || 0) + 1);
+    });
 
-      // Convert to array format
-      ordersByStatusData = Array.from(statusCounts.entries()).map(
-        ([statusId, count]) => ({
-          order_status_id: statusId,
-          count,
-        })
-      );
-    }
-  } else {
-    ordersByStatusData = ordersByStatusRaw;
+    // Convert Map to array of OrderStatusCount objects
+    statusCounts.forEach((count, order_status_id) => {
+      ordersByStatusData.push({ order_status_id, count });
+    });
   }
 
   // Transform and assign colors based on status
@@ -179,18 +171,20 @@ export async function getDashboardOrdersMetrics(
     "Đổi trả": "#8B5CF6", // Violet
   };
 
-  const ordersByStatus: OrderStatusDistribution[] = (
-    ordersByStatusData || []
-  ).map((item) => {
-    const statusName =
-      statusMap.get(item.order_status_id) || `Status ${item.order_status_id}`;
-    return {
-      name: statusName,
-      count:
-        typeof item.count === "string" ? parseInt(item.count) : item.count || 0,
-      color: statusColors[statusName] || "#6B7280", // Gray fallback color
-    };
-  });
+  const ordersByStatus: OrderStatusDistribution[] = ordersByStatusData.map(
+    (item) => {
+      const statusName =
+        statusMap.get(item.order_status_id) || `Status ${item.order_status_id}`;
+      return {
+        name: statusName,
+        count:
+          typeof item.count === "string"
+            ? parseInt(item.count)
+            : item.count || 0,
+        color: statusColors[statusName] || "#6B7280", // Gray fallback color
+      };
+    }
+  );
 
   // 2. Pending Orders Count (Chờ xác nhận, Đã xác nhận)
   // Current status (not filtered by time)
@@ -235,8 +229,13 @@ export async function getDashboardOrdersMetrics(
     paymentMethods?.map((pm) => [pm.id, pm.name]) || []
   );
 
-  // For payment method revenue, we'll use the same approach as above
-  // First try to get completed orders in the period
+  // Define proper interface for payment method revenue data
+  interface PaymentMethodSum {
+    payment_method_id: number;
+    sum: number;
+  }
+
+  // For payment method revenue, use strongly-typed approach
   const { data: completedOrders } = await supabase
     .from("orders")
     .select("payment_method_id, total_amount")
@@ -244,22 +243,27 @@ export async function getDashboardOrdersMetrics(
     .gte("completed_at", timeFilter.startDate.toISOString())
     .lte("completed_at", timeFilter.endDate.toISOString());
 
-  // Calculate sums in JavaScript
-  const paymentSums = new Map<number, number>();
+  // Calculate sums in JavaScript with proper typing
+  const paymentMethodRevenueData: PaymentMethodSum[] = [];
+
   if (completedOrders && completedOrders.length > 0) {
+    const paymentSums = new Map<number, number>();
+
     completedOrders.forEach((order) => {
-      const methodId = order.payment_method_id;
-      paymentSums.set(
-        methodId,
-        (paymentSums.get(methodId) || 0) + (order.total_amount || 0)
-      );
+      if (order.payment_method_id) {
+        const methodId = order.payment_method_id;
+        paymentSums.set(
+          methodId,
+          (paymentSums.get(methodId) || 0) + (order.total_amount || 0)
+        );
+      }
+    });
+
+    // Convert Map to array of PaymentMethodSum objects
+    paymentSums.forEach((sum, payment_method_id) => {
+      paymentMethodRevenueData.push({ payment_method_id, sum });
     });
   }
-
-  // Convert to array format needed by the component
-  const paymentMethodRevenueData = Array.from(paymentSums.entries()).map(
-    ([methodId, sum]) => ({ payment_method_id: methodId, sum })
-  );
 
   // Payment method colors
   const paymentMethodColors: Record<string, string> = {
