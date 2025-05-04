@@ -290,6 +290,46 @@ export const UserNav = memo(function UserNav({ settings }: UserNavProps) {
           </>
         )}
 
+        {role === "staff" && (
+          <>
+            <DropdownMenuSeparator className="mx-1.5" />
+            <div className="p-1.5">
+              <DropdownMenuLabel className="px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+                Nhân viên
+              </DropdownMenuLabel>
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/admin/orders"
+                  className="flex cursor-pointer items-center gap-2.5 rounded-md py-2 px-3 hover:bg-muted transition-colors"
+                >
+                  <ShoppingBag className="w-4 h-4 text-muted-foreground" />
+                  <span>Quản lý đơn hàng</span>
+                </Link>
+              </DropdownMenuItem>
+            </div>
+          </>
+        )}
+
+        {role === "shipper" && (
+          <>
+            <DropdownMenuSeparator className="mx-1.5" />
+            <div className="p-1.5">
+              <DropdownMenuLabel className="px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+                Giao hàng
+              </DropdownMenuLabel>
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/shipper"
+                  className="flex cursor-pointer items-center gap-2.5 rounded-md py-2 px-3 hover:bg-muted transition-colors"
+                >
+                  <ShoppingBag className="w-4 h-4 text-muted-foreground" />
+                  <span>Khu vực shipper</span>
+                </Link>
+              </DropdownMenuItem>
+            </div>
+          </>
+        )}
+
         <DropdownMenuSeparator className="mx-1.5" />
         <div className="p-1.5">
           <DropdownMenuItem

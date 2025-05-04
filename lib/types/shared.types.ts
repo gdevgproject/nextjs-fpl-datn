@@ -21,4 +21,4 @@ export interface ShopSettings {
   updated_at?: string;
 }
 
-export type UserRole = "admin" | "staff" | "authenticated" | "anon";
+export type UserRole = "admin" | "staff" | "shipper" | "authenticated" | "anon";
