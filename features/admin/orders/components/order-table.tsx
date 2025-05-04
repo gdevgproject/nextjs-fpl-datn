@@ -116,6 +116,12 @@ export function OrderTable({
   >(null);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
 
+  // Thêm state để quản lý Dialog gán shipper
+  const [shipperDialogOrderId, setShipperDialogOrderId] = useState<
+    number | null
+  >(null);
+  const [isShipperDialogOpen, setIsShipperDialogOpen] = useState(false);
+
   // Hệ thống theo dõi những đơn hàng đã cập nhật trong phiên làm việc hiện tại
   const [updatedOrders, setUpdatedOrders] = useState<
     Record<
@@ -1070,12 +1076,26 @@ export function OrderTable({
                             </TableCell>
 
                             <TableCell className="align-top hidden xl:table-cell">
-                              <Popover>
-                                <PopoverTrigger asChild>
+                              {/* Thay Popover bằng Dialog */}
+                              <Dialog
+                                open={
+                                  isShipperDialogOpen &&
+                                  shipperDialogOrderId === order.id
+                                }
+                                onOpenChange={(open) => {
+                                  setIsShipperDialogOpen(open);
+                                  if (!open) setShipperDialogOrderId(null);
+                                }}
+                              >
+                                <DialogTrigger asChild>
                                   <Button
                                     variant="ghost"
                                     size="sm"
                                     className="flex items-center gap-2 h-8 px-2"
+                                    onClick={() => {
+                                      setShipperDialogOrderId(order.id);
+                                      setIsShipperDialogOpen(true);
+                                    }}
                                   >
                                     {order.assigned_shipper_id ? (
                                       <div className="flex items-center gap-2">
@@ -1107,14 +1127,20 @@ export function OrderTable({
                                       </span>
                                     )}
                                   </Button>
-                                </PopoverTrigger>
-                                <PopoverContent align="end">
+                                </DialogTrigger>
+                                <DialogContent className="max-w-md">
+                                  <DialogTitle>
+                                    Gán người giao hàng cho đơn #{order.id}
+                                  </DialogTitle>
                                   <OrderShipperAssignment
                                     order={order}
-                                    onSuccess={() => {}}
+                                    onSuccess={() => {
+                                      setIsShipperDialogOpen(false);
+                                      setShipperDialogOrderId(null);
+                                    }}
                                   />
-                                </PopoverContent>
-                              </Popover>
+                                </DialogContent>
+                              </Dialog>
                             </TableCell>
 
                             <TableCell className="text-right align-top">
@@ -1130,67 +1156,46 @@ export function OrderTable({
                                 </Button>
 
                                 <div className="xl:hidden">
-                                  <Popover>
-                                    <PopoverTrigger asChild>
+                                  {/* Thay Popover bằng Dialog cho mobile/tablet */}
+                                  <Dialog
+                                    open={
+                                      isShipperDialogOpen &&
+                                      shipperDialogOrderId === order.id
+                                    }
+                                    onOpenChange={(open) => {
+                                      setIsShipperDialogOpen(open);
+                                      if (!open) setShipperDialogOrderId(null);
+                                    }}
+                                  >
+                                    <DialogTrigger asChild>
                                       <Button
                                         variant="ghost"
                                         size="icon"
                                         className="h-8 w-8"
+                                        onClick={() => {
+                                          setShipperDialogOrderId(order.id);
+                                          setIsShipperDialogOpen(true);
+                                        }}
                                       >
                                         <Truck className="h-4 w-4" />
                                         <span className="sr-only">
                                           Quản lý shipper
                                         </span>
                                       </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent
-                                      align="end"
-                                      className="w-64"
-                                    >
-                                      <div className="space-y-2">
-                                        <h4 className="text-sm font-medium">
-                                          Thông tin shipper
-                                        </h4>
-                                        {order.assigned_shipper_id ? (
-                                          <div className="flex items-center gap-2 mb-2">
-                                            <Avatar>
-                                              <AvatarImage
-                                                src={
-                                                  order.shipper_profile
-                                                    ?.avatar_url || ""
-                                                }
-                                              />
-                                              <AvatarFallback>
-                                                {
-                                                  (order.shipper_profile
-                                                    ?.display_name || "?")[0]
-                                                }
-                                              </AvatarFallback>
-                                            </Avatar>
-                                            <div>
-                                              <div className="font-medium">
-                                                {order.shipper_profile
-                                                  ?.display_name || "Shipper"}
-                                              </div>
-                                              <div className="text-sm text-muted-foreground">
-                                                {order.shipper_profile
-                                                  ?.phone_number || "N/A"}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        ) : (
-                                          <p className="text-sm text-muted-foreground">
-                                            Chưa phân công shipper
-                                          </p>
-                                        )}
-                                        <Separator />
-                                        <OrderShipperAssignment
-                                          order={order}
-                                          onSuccess={() => {}}
-                                        />
-                                      </div>
-                                    </PopoverContent>
-                                  </Popover>
+                                    </DialogTrigger>
+                                    <DialogContent className="max-w-md">
+                                      <DialogTitle>
+                                        Gán người giao hàng cho đơn #{order.id}
+                                      </DialogTitle>
+                                      <OrderShipperAssignment
+                                        order={order}
+                                        onSuccess={() => {
+                                          setIsShipperDialogOpen(false);
+                                          setShipperDialogOrderId(null);
+                                        }}
+                                      />
+                                    </DialogContent>
+                                  </Dialog>
                                 </div>
                               </div>
                             </TableCell>
