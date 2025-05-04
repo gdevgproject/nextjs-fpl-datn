@@ -67,10 +67,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
         </div>
       </div>
       <Separator className="my-8" />
-      <div className="mb-12">
+      {/* <div className="mb-12">
         <h2 className="text-2xl font-semibold mb-4">Đánh giá từ khách hàng</h2>
         <ProductReviews reviews={product.reviews} productId={product.id} />
-      </div>
+      </div> */}
     </div>
   );
 }

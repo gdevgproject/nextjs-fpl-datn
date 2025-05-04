@@ -13,6 +13,7 @@ import { useShopSettings } from "@/features/shop/shared/hooks/use-shop-settings"
 import { useSelectedCheckoutItems } from "./hooks/use-selected-checkout-items";
 import type { Address } from "@/features/shop/account/types";
 import type { CartItem } from "@/features/shop/cart/types";
+import MomoRedirect from "@/components/ui/momo-redirect";
 
 // Checkout steps
 type CheckoutStep = "address" | "payment" | "review";
@@ -98,6 +99,7 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [justPlacedOrder, setJustPlacedOrder] = useState(false);
+  const [momoPayUrl, setMomoPayUrl] = useState<string | null>(null);
 
   // Discount state
   const [discountCode, setDiscountCode] = useState("");
@@ -317,23 +319,37 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
         throw new Error(result.error);
       }
 
+      // Nếu chọn MoMo (id = 2), gọi API lấy payUrl và redirect sang MoMo
+      if (formData.paymentMethodId === 2 && result.orderId) {
+        const momoRes = await fetch("/api/payment/momo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId: result.orderId }),
+        });
+        const momoData = await momoRes.json();
+        if (momoData.payUrl) {
+          setMomoPayUrl(momoData.payUrl);
+          return;
+        } else {
+          throw new Error(
+            momoData.error || "Không lấy được link thanh toán MoMo"
+          );
+        }
+      }
+
       toast("Đặt hàng thành công", {
         description: "Đơn hàng của bạn đã được tiếp nhận!",
       });
 
       // Clear cart after successful order
-      // For authenticated users, this was already done in the server action
-      // For guest users, clear localStorage
       if (!isAuthenticated) {
         await clearCart();
       }
 
       // Redirect to order confirmation page
       if (!isAuthenticated && result.accessToken) {
-        // For guest users, use the access token for security
         router.push(`/xac-nhan-don-hang?token=${result.accessToken}`);
       } else {
-        // For authenticated users, the orderId is sufficient due to RLS
         router.push(`/xac-nhan-don-hang?orderId=${result.orderId}`);
       }
     } catch (error) {
@@ -349,6 +365,10 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
       setJustPlacedOrder(true);
     }
   };
+
+  if (momoPayUrl) {
+    return <MomoRedirect payUrl={momoPayUrl} />;
+  }
 
   return (
     <CheckoutContext.Provider

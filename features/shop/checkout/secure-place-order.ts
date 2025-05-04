@@ -7,6 +7,7 @@ import {
 } from "@/lib/supabase/server";
 import type { Address } from "@/features/shop/account/types";
 import type { CartItem, GuestCheckoutInfo } from "@/features/shop/cart/types";
+import { sendOrderEmail } from "@/lib/utils/send-mail";
 import { Database } from "@/lib/types/database.types"; // Import generated types
 
 // Define specific types for better clarity
@@ -601,6 +602,26 @@ export async function securedPlaceOrder({
 
     // 10. Revalidate Paths
     console.log("Revalidating paths...");
+    // Transaction complete successfully
+    console.log("Order placement transaction completed successfully");
+
+    // Gửi email xác nhận đơn hàng cho khách
+    try {
+      let customerEmail = userId ? session.user.email : guestInfo?.email;
+      if (customerEmail) {
+        let subject = `Xác nhận đơn hàng #${orderId}`;
+        let html = `<p>Cảm ơn bạn đã đặt hàng tại shop!</p>`;
+        html += `<p>Mã đơn hàng: <b>${orderId}</b></p>`;
+        if (!userId && newOrder.access_token) {
+          html += `<p>Mã tra cứu đơn hàng (token): <b>${newOrder.access_token}</b></p>`;
+        }
+        await sendOrderEmail({ to: customerEmail, subject, html });
+      }
+    } catch (e) {
+      console.error("Gửi email xác nhận đơn hàng thất bại:", e);
+    }
+
+    // Revalidate relevant paths
     revalidatePath("/gio-hang");
     revalidatePath("/thanh-toan");
 
