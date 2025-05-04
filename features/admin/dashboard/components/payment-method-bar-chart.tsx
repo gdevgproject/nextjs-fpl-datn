@@ -21,18 +21,21 @@ import {
 } from "@/components/ui/card";
 import { PaymentMethodRevenue } from "../types";
 import { formatPrice } from "@/lib/utils";
+import { useTheme } from "next-themes";
 
 interface PaymentMethodBarChartProps {
   data: PaymentMethodRevenue[];
 }
 
-// Custom tooltip component
+// Custom tooltip component with dark mode support
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-background p-3 border rounded-md shadow-md">
-        <p className="font-medium text-sm">{label}</p>
-        <p className="text-sm font-semibold">{formatPrice(payload[0].value)}</p>
+      <div className="bg-card p-3 border rounded-md shadow-md">
+        <p className="font-medium text-card-foreground">{label}</p>
+        <p className="text-sm font-semibold text-card-foreground">
+          {formatPrice(payload[0].value)}
+        </p>
       </div>
     );
   }
@@ -40,6 +43,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export function PaymentMethodBarChart({ data }: PaymentMethodBarChartProps) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
   // Don't render if no data or empty data
   if (!data || data.length === 0) {
     return (
@@ -63,10 +69,31 @@ export function PaymentMethodBarChart({ data }: PaymentMethodBarChartProps) {
   // Sort data by value in descending order for better visualization
   const sortedData = [...data].sort((a, b) => b.value - a.value);
 
-  // Add percentage to data
+  // Add percentage to data and assign vibrant colors based on payment method name
+  const paymentMethodColors: Record<string, { light: string; dark: string }> = {
+    COD: { light: "#2563EB", dark: "#3B82F6" }, // Blue
+    MoMo: { light: "#DB2777", dark: "#EC4899" }, // Pink
+    VNPay: { light: "#059669", dark: "#10B981" }, // Green
+    ZaloPay: { light: "#0891B2", dark: "#06B6D4" }, // Cyan
+    "Chuyển khoản": { light: "#4F46E5", dark: "#6366F1" }, // Indigo
+    "Ví điện tử": { light: "#7C3AED", dark: "#8B5CF6" }, // Violet
+    "Thẻ tín dụng": { light: "#D97706", dark: "#F59E0B" }, // Amber
+    "Thẻ ATM": { light: "#15803D", dark: "#22C55E" }, // Emerald
+  };
+
+  // Default color for unknown payment methods
+  const defaultColors = { light: "#6B7280", dark: "#9CA3AF" }; // Gray
+
   const dataWithPercentage = sortedData.map((item) => ({
     ...item,
     percentage: totalRevenue > 0 ? (item.value / totalRevenue) * 100 : 0,
+    color: paymentMethodColors[item.name]
+      ? isDark
+        ? paymentMethodColors[item.name].dark
+        : paymentMethodColors[item.name].light
+      : isDark
+      ? defaultColors.dark
+      : defaultColors.light,
   }));
 
   return (
@@ -89,7 +116,11 @@ export function PaymentMethodBarChart({ data }: PaymentMethodBarChartProps) {
                 bottom: 50,
               }}
             >
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                className="stroke-muted"
+              />
               <XAxis
                 dataKey="name"
                 axisLine={false}
@@ -98,6 +129,7 @@ export function PaymentMethodBarChart({ data }: PaymentMethodBarChartProps) {
                 angle={-45}
                 textAnchor="end"
                 height={60}
+                className="fill-foreground"
               />
               <YAxis
                 tickFormatter={(value) => formatPrice(value)}
@@ -105,10 +137,13 @@ export function PaymentMethodBarChart({ data }: PaymentMethodBarChartProps) {
                 tickLine={false}
                 tick={{ fontSize: 12 }}
                 width={80}
+                className="fill-foreground"
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend
-                formatter={(value) => <span className="text-sm">{value}</span>}
+                formatter={(value) => (
+                  <span className="text-sm text-foreground">{value}</span>
+                )}
               />
               <Bar
                 dataKey="value"
@@ -123,7 +158,8 @@ export function PaymentMethodBarChart({ data }: PaymentMethodBarChartProps) {
                   dataKey="percentage"
                   position="top"
                   formatter={(value: number) => `${value.toFixed(1)}%`}
-                  style={{ fontSize: "11px", fill: "#6B7280" }}
+                  className="fill-foreground text-[11px]"
+                  style={{ fontSize: "11px" }}
                 />
               </Bar>
             </BarChart>

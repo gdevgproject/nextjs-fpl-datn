@@ -55,8 +55,8 @@ export function RecentOrdersList({ orders }: RecentOrdersListProps) {
                 <TableHead>Khách hàng</TableHead>
                 <TableHead>Ngày đặt</TableHead>
                 <TableHead>Tổng tiền</TableHead>
+                <TableHead>Thanh toán</TableHead>
                 <TableHead>Trạng thái</TableHead>
-                <TableHead className="text-right">Chi tiết</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -68,6 +68,7 @@ export function RecentOrdersList({ orders }: RecentOrdersListProps) {
                   <TableCell>{order.customerName}</TableCell>
                   <TableCell>{formatDate(order.orderDate)}</TableCell>
                   <TableCell>{formatPrice(order.totalAmount)}</TableCell>
+                  <TableCell>{order.paymentMethod || "N/A"}</TableCell>
                   <TableCell>
                     <Badge
                       style={{
@@ -78,14 +79,6 @@ export function RecentOrdersList({ orders }: RecentOrdersListProps) {
                     >
                       {order.status}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Link
-                      href={`/admin/orders/${order.id}`}
-                      className="inline-flex items-center text-blue-500 hover:text-blue-700"
-                    >
-                      Xem <ExternalLink className="ml-1 h-3 w-3" />
-                    </Link>
                   </TableCell>
                 </TableRow>
               ))}

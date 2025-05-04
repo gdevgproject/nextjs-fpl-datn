@@ -287,7 +287,7 @@ export async function getDashboardOrdersMetrics(
       };
     });
 
-  // 7. Recent Orders
+  // 7. Recent Orders - include payment method
   const { data: recentOrdersRaw } = await supabase
     .from("orders")
     .select(
@@ -297,7 +297,8 @@ export async function getDashboardOrdersMetrics(
       guest_name,
       order_date,
       total_amount, 
-      order_status_id
+      order_status_id,
+      payment_method_id
     `
     )
     .order("order_date", { ascending: false })
@@ -329,6 +330,9 @@ export async function getDashboardOrdersMetrics(
     // Process the orders - generating order number from ID
     recentOrders = recentOrdersRaw.map((order) => {
       const statusName = statusMap.get(order.order_status_id) || "Unknown";
+      const paymentMethod = order.payment_method_id
+        ? paymentMethodMap.get(order.payment_method_id) || "Unknown"
+        : undefined;
 
       return {
         id: order.id,
@@ -340,6 +344,7 @@ export async function getDashboardOrdersMetrics(
         totalAmount: order.total_amount,
         status: statusName,
         statusColor: statusColors[statusName] || "#6B7280",
+        paymentMethod: paymentMethod,
       };
     });
   }

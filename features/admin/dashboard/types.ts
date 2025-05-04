@@ -47,6 +47,7 @@ export interface RecentOrder {
   totalAmount: number;
   status: string;
   statusColor?: string;
+  paymentMethod?: string; // Add payment method field
 }
 
 export interface DashboardOrdersMetrics {
