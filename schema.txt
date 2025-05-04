@@ -839,26 +839,61 @@ CREATE TRIGGER trigger_validate_discount_code
 BEFORE INSERT OR UPDATE ON public.orders
 FOR EACH ROW EXECUTE PROCEDURE public.validate_discount_code();
 
--- FUNCTION: Ngăn chặn thay đổi trạng thái đơn hàng không hợp lệ
--- DROP FUNCTION IF EXISTS public.prevent_invalid_status_transitions();
+-- FUNCTION: Ngăn chặn thay đổi trạng thái đơn hàng không hợp lệ (PHIÊN BẢN SỬA LỖI ĐƠN GIẢN, NGẮN GỌN)
 CREATE OR REPLACE FUNCTION public.prevent_invalid_status_transitions()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE old_status_name text; new_status_name text; processing_statuses text[] := ARRAY['Đang xử lý', 'Đang giao', 'Đã giao', 'Đã hoàn thành'];
+DECLARE
+  old_status_name text;
+  new_status_name text;
 BEGIN
-  IF TG_OP = 'INSERT' THEN RETURN NEW; END IF;
+  IF OLD.order_status_id = NEW.order_status_id THEN
+    RETURN NEW;
+  END IF;
+
   SELECT name INTO old_status_name FROM public.order_statuses WHERE id = OLD.order_status_id;
   SELECT name INTO new_status_name FROM public.order_statuses WHERE id = NEW.order_status_id;
-  IF OLD.order_status_id = NEW.order_status_id THEN RETURN NEW; END IF;
+
+  -- Cannot change from terminal states
   IF old_status_name = 'Đã hủy' THEN RAISE EXCEPTION 'Không thể thay đổi trạng thái của đơn hàng đã hủy.'; END IF;
   IF old_status_name = 'Đã hoàn thành' AND new_status_name != 'Đã hủy' THEN RAISE EXCEPTION 'Không thể thay đổi trạng thái của đơn hàng đã hoàn thành (trừ khi Admin hủy).'; END IF;
-  IF new_status_name = ANY(processing_statuses) AND OLD.payment_status = 'Failed' AND NEW.payment_status IS DISTINCT FROM 'Paid' THEN RAISE EXCEPTION 'Không thể xử lý/giao/hoàn thành đơn hàng có thanh toán thất bại (Trạng thái hiện tại: %).', OLD.payment_status; END IF;
-  IF old_status_name IN ('Đang giao', 'Đã giao') AND new_status_name NOT IN ('Đã hoàn thành', 'Đã hủy', 'Đang giao') THEN RAISE EXCEPTION 'Không thể chuyển trạng thái từ "%" về "%".', old_status_name, new_status_name; END IF;
+
+  -- Cannot move forward if payment failed (and not paid in the new state)
+  -- (Assuming processing/delivery/completed statuses have IDs 2,3,4,5,6)
+  IF NEW.order_status_id IN (2,3,4,5,6) AND OLD.payment_status = 'Failed' AND NEW.payment_status IS DISTINCT FROM 'Paid' THEN
+      RAISE EXCEPTION 'Không thể xử lý/giao/hoàn thành đơn hàng có thanh toán thất bại.';
+  END IF;
+
+  -- Cannot skip states from 'Chờ xác nhận' (Assuming ID 1)
   IF old_status_name = 'Chờ xác nhận' AND new_status_name IN ('Đã giao', 'Đã hoàn thành') THEN RAISE EXCEPTION 'Phải chuyển sang "Đã xác nhận" hoặc "Đang xử lý" trước.'; END IF;
+
+  -- Cannot complete unpaid order
   IF new_status_name = 'Đã hoàn thành' AND OLD.payment_status != 'Paid' AND NEW.payment_status != 'Paid' THEN RAISE EXCEPTION 'Không thể hoàn thành đơn hàng chưa được thanh toán.'; END IF;
+
+  -- --- Bugfix Logic ---
+  -- From 'Đang giao', only allowed transitions are to 'Đã giao' or 'Đã hủy'
+  IF old_status_name = 'Đang giao' AND new_status_name NOT IN ('Đã giao', 'Đã hủy') THEN
+       RAISE EXCEPTION 'ACTION_NOT_ALLOWED: Chỉ có thể chuyển từ "Đang giao" sang "Đã giao" hoặc "Đã hủy".';
+  END IF;
+
+  -- From 'Đã giao', only allowed transitions are to 'Đã hoàn thành' or 'Đã hủy'
+  IF old_status_name = 'Đã giao' AND new_status_name NOT IN ('Đã hoàn thành', 'Đã hủy') THEN
+       RAISE EXCEPTION 'ACTION_NOT_ALLOWED: Chỉ có thể chuyển từ "Đã giao" sang "Đã hoàn thành" hoặc "Đã hủy".';
+  END IF;
+  -- --- End Bugfix Logic ---
+
+  -- If none of the above conditions were met, the transition is allowed by this trigger.
   RETURN NEW;
+
 END;
 $$;
-comment on function public.prevent_invalid_status_transitions() is '[V3.2] Ngăn chặn các thay đổi trạng thái đơn hàng không hợp logic.';
+
+comment on function public.prevent_invalid_status_transitions() is '[V3.2 Bugfix] Prevent invalid order status transitions based on basic flow logic, including fix for "Đang giao".';
+
+-- TRIGGERS: Attach the function to the orders table
+DROP TRIGGER IF EXISTS trigger_prevent_invalid_status_transitions ON public.orders;
+CREATE TRIGGER trigger_prevent_invalid_status_transitions
+BEFORE UPDATE OF order_status_id ON public.orders
+FOR EACH ROW EXECUTE PROCEDURE public.prevent_invalid_status_transitions();
 
 -- TRIGGER: Gọi hàm prevent_invalid_status_transitions
 DROP TRIGGER IF EXISTS trigger_prevent_invalid_status_transitions ON public.orders;
