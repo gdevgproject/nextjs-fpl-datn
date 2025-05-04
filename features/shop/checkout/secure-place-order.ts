@@ -43,7 +43,9 @@ export async function securedPlaceOrder({
   discountId,
   cartItems,
   subtotal: clientSubtotal, // Client's calculated subtotal
-  shippingFee, // Shipping fee from client
+  discountAmount: clientDiscountAmount, // Client's discount amount
+  shippingFee: clientShippingFee, // Client's shipping fee
+  total: clientTotal, // Client's total
   guestInfo,
 }: {
   shippingAddress: Address;
@@ -52,7 +54,9 @@ export async function securedPlaceOrder({
   discountId?: number | null; // Allow null explicitly
   cartItems: CartItem[];
   subtotal: number; // Client's calculated subtotal (will be verified)
-  shippingFee: number;
+  discountAmount: number; // Client's discount amount
+  shippingFee: number; // Client's shipping fee
+  total: number; // Client's total
   guestInfo?: GuestCheckoutInfo | null;
 }): Promise<PlaceOrderResponse> {
   // Input Validation
@@ -75,6 +79,9 @@ export async function securedPlaceOrder({
     } with ${cartItems.length} items.`
   );
   console.log("Client provided subtotal:", clientSubtotal);
+  console.log("Client provided discount amount:", clientDiscountAmount);
+  console.log("Client provided shipping fee:", clientShippingFee);
+  console.log("Client provided total:", clientTotal);
   console.log("Discount ID:", discountId);
 
   try {
@@ -84,6 +91,18 @@ export async function securedPlaceOrder({
     } = await regularSupabase.auth.getSession();
     const userId = session?.user?.id;
     console.log("User authenticated:", !!userId);
+
+    // 1.1 Get shop settings for default shipping fee
+    const { data: shopSettings, error: shopSettingsError } = await supabase
+      .from("shop_settings")
+      .select("default_shipping_fee")
+      .eq("id", 1)
+      .single();
+
+    if (shopSettingsError) {
+      console.error("Error fetching shop settings:", shopSettingsError);
+      // Continue with default values if shop settings can't be fetched
+    }
 
     // 2. Pre-Commit Validation: Fetch latest variant data using Service Role
     console.log("Performing pre-commit validation...");
@@ -184,11 +203,16 @@ export async function securedPlaceOrder({
         continue;
       }
 
-      // NEW: Validate that item price hasn't changed
-      const clientPrice = item.product?.salePrice ?? item.product?.price;
+      // Validate that item price hasn't changed
+      // Lấy giá từ client, xem xét cả camelCase và snake_case
+      const clientPrice =
+        item.product?.salePrice ??
+        item.product?.sale_price ??
+        item.product?.price ??
+        0;
       const dbPrice = currentVariant.sale_price ?? currentVariant.price;
 
-      if (clientPrice === undefined) {
+      if (clientPrice === 0) {
         validationIssues.push(
           `"${currentVariant.products.name}" (${currentVariant.volume_ml}ml): Thiếu thông tin giá.`
         );
@@ -217,34 +241,67 @@ export async function securedPlaceOrder({
     }
     console.log("Availability, stock, and price validation passed.");
 
-    // 4. Server-Side Subtotal Verification (Not Recalculation)
-    // Calculate what the subtotal should be based on client-provided prices
-    const verifiedSubtotal = cartItems.reduce((sum, item) => {
-      const price = item.product?.salePrice ?? item.product?.price ?? 0;
-      return sum + price * item.quantity;
-    }, 0);
+    // 4. Server-Side Subtotal and Price Verification
+    // Calculate subtotal based on actual DB prices (not client prices)
+    let serverSubtotal = 0;
+    let saleDiscount = 0;
 
-    // Check if client-provided subtotal matches our calculation from client-provided prices
-    // This checks for math errors on client side, not price changes
-    const subtotalDiscrepancy = Math.abs(verifiedSubtotal - clientSubtotal);
+    for (const item of cartItems) {
+      const itemVariantId = item.variantId ?? (item as any).variant_id;
+      const variant = latestVariants.find((v) => v.id === itemVariantId)!;
+
+      // Calculate original price and sale discount
+      const originalPrice = variant.price;
+      const salePrice = variant.sale_price ?? originalPrice;
+
+      // Add to total sale discount
+      if (salePrice < originalPrice) {
+        saleDiscount += (originalPrice - salePrice) * item.quantity;
+      }
+
+      // Add to server subtotal (based on actual sale prices)
+      serverSubtotal += salePrice * item.quantity;
+    }
+
+    // Format numbers consistently
+    const numericSubtotal = Number(
+      parseFloat(serverSubtotal.toString()).toFixed(2)
+    );
+
+    // Verify that client's subtotal matches our calculation (with tolerance)
+    const subtotalDiscrepancy = Math.abs(numericSubtotal - clientSubtotal);
     if (subtotalDiscrepancy > 1) {
       // Allow 1 VND tolerance for rounding
       console.error(
-        `Subtotal calculation mismatch: Client=${clientSubtotal}, Verified=${verifiedSubtotal}. Difference=${subtotalDiscrepancy}`
+        `Subtotal calculation mismatch: Client=${clientSubtotal}, Server=${numericSubtotal}. Difference=${subtotalDiscrepancy}`
       );
       return {
         success: false,
-        error: "Tổng giỏ hàng không khớp. Vui lòng làm mới giỏ hàng.",
+        error:
+          "Tổng giỏ hàng không khớp với giá hiện tại. Vui lòng làm mới giỏ hàng.",
       };
     }
 
-    // Format numbers for insertion (using verified client subtotal)
-    const numericSubtotal = Number(clientSubtotal.toFixed(2));
-    const numericShippingFee = Number(shippingFee.toFixed(2));
+    // 5. Determine shipping fee (server-side)
+    // Use shop settings default_shipping_fee instead of relying on client's value
+    const serverShippingFee = shopSettings?.default_shipping_fee ?? 0;
+    const numericShippingFee = Number(
+      parseFloat(serverShippingFee.toString()).toFixed(2)
+    );
 
-    // 5. Pre-Commit Discount Check
+    console.log("Server determined shipping fee:", numericShippingFee);
+    console.log(
+      "Original price (before sale discount):",
+      numericSubtotal + saleDiscount
+    );
+    console.log("Sale discount (product discounts):", saleDiscount);
+    console.log("Subtotal after sale discount:", numericSubtotal);
+
+    // 6. Discount Validation and Calculation
     let dbDiscount: Database["public"]["Tables"]["discounts"]["Row"] | null =
       null;
+    let calculatedDiscountAmount = 0;
+
     if (discountId) {
       const { data: discountData, error: discountError } = await supabase
         .from("discounts")
@@ -258,7 +315,7 @@ export async function securedPlaceOrder({
       }
       dbDiscount = discountData; // Store for logging
 
-      // Check conditions critical for the DB trigger's success
+      // Check conditions critical for the discount
       const now = new Date();
       if (!dbDiscount || !dbDiscount.is_active)
         return { success: false, error: "Mã giảm giá không hoạt động." };
@@ -268,7 +325,7 @@ export async function securedPlaceOrder({
         return { success: false, error: "Mã giảm giá đã hết hạn." };
       if (dbDiscount.remaining_uses !== null && dbDiscount.remaining_uses <= 0)
         return { success: false, error: "Mã giảm giá đã hết lượt sử dụng." };
-      // Check min_order_value against verified client subtotal (not db prices)
+      // Check min_order_value against verified server subtotal
       if (
         dbDiscount.min_order_value &&
         numericSubtotal < dbDiscount.min_order_value
@@ -280,10 +337,58 @@ export async function securedPlaceOrder({
           )}đ để dùng mã này.`,
         };
       }
+
+      // Tính toán giá trị giảm giá (logic tương tự như trigger)
+      if (dbDiscount.discount_percentage) {
+        // Mã giảm giá theo phần trăm
+        calculatedDiscountAmount =
+          numericSubtotal * (dbDiscount.discount_percentage / 100);
+
+        // Áp dụng giới hạn max_discount_amount nếu có
+        if (
+          dbDiscount.max_discount_amount &&
+          calculatedDiscountAmount > dbDiscount.max_discount_amount
+        ) {
+          calculatedDiscountAmount = dbDiscount.max_discount_amount;
+        }
+      } else if (dbDiscount.max_discount_amount) {
+        // Mã giảm giá cố định
+        calculatedDiscountAmount = dbDiscount.max_discount_amount;
+
+        // Đảm bảo số tiền giảm giá không vượt quá subtotal
+        if (calculatedDiscountAmount > numericSubtotal) {
+          calculatedDiscountAmount = numericSubtotal;
+        }
+      }
+
+      // Format discount amount consistently
+      calculatedDiscountAmount = Number(
+        parseFloat(calculatedDiscountAmount.toString()).toFixed(2)
+      );
+
+      // Kiểm tra xem giá trị giảm giá tính toán có gần bằng giá trị client gửi lên không
+      const discountDiscrepancy = Math.abs(
+        calculatedDiscountAmount - clientDiscountAmount
+      );
+      if (discountDiscrepancy > 1) {
+        // Cho phép sai số 1 VND
+        console.error(
+          `DISCOUNT DISCREPANCY DETECTED: Server=${calculatedDiscountAmount}, Client=${clientDiscountAmount}, Difference=${discountDiscrepancy}`
+        );
+        return {
+          success: false,
+          error: `Số tiền giảm giá không hợp lệ. Vui lòng làm mới giỏ hàng.`,
+        };
+      }
+
       console.log("Pre-commit discount validation passed.");
+      console.log(
+        "Server calculated discount amount:",
+        calculatedDiscountAmount
+      );
     }
 
-    // 6. Get Initial Order Status ID
+    // 7. Get Initial Order Status ID
     const { data: initialStatus, error: statusError } = await supabase
       .from("order_statuses")
       .select("id")
@@ -300,24 +405,45 @@ export async function securedPlaceOrder({
     const orderStatusId = initialStatus.id;
     console.log("Using initial order status ID:", orderStatusId);
 
-    // 7. Database Operations (Implicit Transaction)
-    console.log("Starting database transaction...");
+    // 8. Calculate Final Total
+    // Tổng tiền = subtotal - discount + shipping_fee
+    const numericTotal =
+      Math.max(0, numericSubtotal - calculatedDiscountAmount) +
+      numericShippingFee;
 
-    // Log key values JUST before insertion
+    console.log("Voucher discount amount:", calculatedDiscountAmount);
+    console.log("Server calculated total:", numericTotal);
+    console.log("Client total:", clientTotal);
+
+    // Compare with client total for validation
+    const totalDiscrepancy = Math.abs(numericTotal - clientTotal);
+    if (totalDiscrepancy > 500) {
+      // Allow larger tolerance (500đ) for differences in calculation
+      console.error(
+        `TOTAL DISCREPANCY DETECTED: Server=${numericTotal}, Client=${clientTotal}, Difference=${totalDiscrepancy}`
+      );
+      return {
+        success: false,
+        error: `Tổng tiền đơn hàng không chính xác. Vui lòng làm mới giỏ hàng và thử lại.`,
+      };
+    }
+
+    // 9. Database Operations
+    console.log("Starting database transaction...");
     console.log("=============================================");
     console.log("PRE-INSERT DATABASE VALUES:", {
       user_id: userId || null,
       payment_method_id: paymentMethodId,
       order_status_id: orderStatusId,
       discount_id: discountId || null,
-      subtotal_amount: numericSubtotal, // Using verified client subtotal
+      subtotal_amount: numericSubtotal,
+      discount_amount: calculatedDiscountAmount,
       shipping_fee: numericShippingFee,
-      // These will be calculated by the DB trigger:
-      // discount_amount: (Will be set by trigger, defaults to 0)
-      // total_amount: (Will be set by trigger)
+      total_amount: numericTotal,
     });
+
     if (dbDiscount) {
-      console.log("DISCOUNT DETAILS (for trigger context):", {
+      console.log("DISCOUNT DETAILS:", {
         id: dbDiscount.id,
         code: dbDiscount.code,
         is_active: dbDiscount.is_active,
@@ -328,11 +454,7 @@ export async function securedPlaceOrder({
     }
     console.log("=============================================");
 
-    // Step 7.1: Insert Order Record
-    // Let the database handle default for discount_amount (0)
-    // Provide a temporary total_amount to satisfy NOT NULL, trigger will update it.
-    const temporaryTotal = numericSubtotal + numericShippingFee; // Temporary value
-
+    // Step 9.1: Insert Order Record with pre-calculated values
     const { data: newOrder, error: orderError } = await supabase
       .from("orders")
       .insert({
@@ -351,24 +473,16 @@ export async function securedPlaceOrder({
         payment_status: "Pending", // Default payment status
         order_status_id: orderStatusId,
         discount_id: discountId || null,
-        subtotal_amount: numericSubtotal, // Use verified client subtotal
+        subtotal_amount: numericSubtotal,
+        discount_amount: calculatedDiscountAmount,
         shipping_fee: numericShippingFee,
-        // discount_amount: OMITTED - Let DB default and trigger handle it
-        total_amount: temporaryTotal, // Provide temporary value, trigger will overwrite
+        total_amount: numericTotal,
       })
-      .select("id, access_token, discount_amount, total_amount") // Select amounts AFTER trigger
+      .select("id, access_token, discount_amount, total_amount")
       .single();
 
     if (orderError) {
       console.error("DATABASE ERROR creating order:", orderError);
-      // Check for specific errors from triggers (e.g., discount validation)
-      if (orderError.message.includes("Mã giảm giá không hợp lệ")) {
-        return { success: false, error: orderError.message };
-      }
-      if (orderError.message.includes("Đơn hàng chưa đủ giá trị tối thiểu")) {
-        return { success: false, error: orderError.message };
-      }
-      // Add more specific error checks if needed based on trigger messages
       return {
         success: false,
         error: `Không thể tạo đơn hàng: ${orderError.message}`,
@@ -377,19 +491,41 @@ export async function securedPlaceOrder({
 
     const orderId = newOrder.id;
     console.log("Order created successfully with ID:", orderId);
-    // Log the amounts ACTUALLY inserted (after trigger)
-    console.log("--- POST-TRIGGER VALUES ---");
+    console.log("--- POST-INSERT VALUES ---");
     console.log("DB discount_amount:", newOrder.discount_amount);
     console.log("DB total_amount:", newOrder.total_amount);
     console.log("---------------------------");
 
-    // Step 7.2: Insert Order Items
+    // Step 9.2: Update remaining uses for discount if applicable
+    if (discountId && dbDiscount && dbDiscount.remaining_uses !== null) {
+      const { error: discountUpdateError } = await supabase
+        .from("discounts")
+        .update({ remaining_uses: dbDiscount.remaining_uses - 1 })
+        .eq("id", discountId);
+
+      if (discountUpdateError) {
+        console.error(
+          "Error updating discount remaining uses:",
+          discountUpdateError
+        );
+        // Don't fail the order just because of discount update error
+        // But log it for monitoring
+      } else {
+        console.log(
+          `Updated discount ID ${discountId} remaining uses: ${
+            dbDiscount.remaining_uses
+          } -> ${dbDiscount.remaining_uses - 1}`
+        );
+      }
+    }
+
+    // Step 9.3: Insert Order Items
     for (const item of cartItems) {
       const itemVariantId = item.variantId ?? (item as any).variant_id;
       const variant = latestVariants.find((v) => v.id === itemVariantId)!;
 
-      // IMPORTANT: Use client-provided price that we already validated
-      const unitPrice = item.product?.salePrice ?? item.product?.price ?? 0;
+      // Use variant price from database (already validated matches client price)
+      const unitPrice = variant.sale_price ?? variant.price;
 
       const { error: itemError } = await supabase.from("order_items").insert({
         order_id: orderId,
@@ -397,7 +533,7 @@ export async function securedPlaceOrder({
         product_name: variant.products.name,
         variant_volume_ml: variant.volume_ml,
         quantity: item.quantity,
-        unit_price_at_order: Number(unitPrice.toFixed(2)), // Use validated client price
+        unit_price_at_order: Number(unitPrice.toFixed(2)),
       });
 
       if (itemError) {
@@ -405,8 +541,15 @@ export async function securedPlaceOrder({
           `DATABASE ERROR creating order item for variant ${itemVariantId}:`,
           itemError
         );
-        // Note: In a real transaction, this error should ideally trigger a rollback.
-        // Since we are using implicit transaction, we throw to stop execution.
+        // Since we can't easily rollback without transactions, at least try to update order status to indicate problem
+        await supabase
+          .from("orders")
+          .update({
+            order_status_id: 9999,
+            notes: "Order creation error: Items not fully added",
+          })
+          .eq("id", orderId);
+
         throw new Error(
           `Không thể thêm sản phẩm "${variant.products.name}" vào đơn hàng: ${itemError.message}`
         );
@@ -414,15 +557,12 @@ export async function securedPlaceOrder({
     }
     console.log("Order items created successfully.");
 
-    // Step 7.3: Create Initial Payment Record
-    // Use the FINAL total_amount returned by the database after the trigger ran.
-    const finalTotalAmount = newOrder.total_amount ?? temporaryTotal; // Fallback just in case
-
+    // Step 9.4: Create Initial Payment Record
     const { error: paymentError } = await supabase.from("payments").insert({
       order_id: orderId,
       payment_date: new Date().toISOString(),
       payment_method_id: paymentMethodId,
-      amount: Number(finalTotalAmount.toFixed(2)), // Use final amount
+      amount: Number(numericTotal.toFixed(2)), // Use calculated total
       status: "Pending", // Initial status
     });
 
@@ -434,7 +574,7 @@ export async function securedPlaceOrder({
     }
     console.log("Initial payment record created.");
 
-    // Step 7.4: Clear Cart Items (Only for authenticated users)
+    // Step 9.5: Clear Cart Items (Only for authenticated users)
     if (userId) {
       const { data: cart, error: cartError } = await supabase
         .from("shopping_carts")
@@ -444,38 +584,33 @@ export async function securedPlaceOrder({
 
       if (cartError) {
         console.error("Error fetching user cart for clearing:", cartError);
-        // Don't fail the whole order, just log the warning
       } else if (cart) {
-        // Use the already validated variantIds
         const { error: deleteError } = await supabase
           .from("cart_items")
           .delete()
           .eq("cart_id", cart.id)
-          .in("variant_id", variantIds); // variantIds defined earlier
+          .in("variant_id", variantIds);
 
         if (deleteError) {
           console.error("Error clearing cart items:", deleteError);
-          // Don't fail the whole order, just log
         } else {
           console.log("Cleared ordered items from user's cart.");
         }
       }
     }
 
-    // 8. Revalidate Paths
+    // 10. Revalidate Paths
     console.log("Revalidating paths...");
     revalidatePath("/gio-hang");
     revalidatePath("/thanh-toan");
-    // Correct path for confirmation might depend on guest/user
+
     if (userId) {
       revalidatePath(`/tai-khoan/don-hang/${orderId}`);
       revalidatePath("/tai-khoan/don-hang");
     } else {
-      // Guest path might use access token in query
-      // Revalidate a generic path or the specific confirmation path if known
-      revalidatePath(`/xac-nhan-don-hang`); // Revalidate the page itself
+      revalidatePath(`/xac-nhan-don-hang`);
     }
-    revalidatePath("/api/cart"); // If you have an API route for cart
+    revalidatePath("/api/cart");
 
     console.log("Order placement successful.");
     return {
@@ -485,12 +620,10 @@ export async function securedPlaceOrder({
     };
   } catch (error: any) {
     console.error("FATAL ERROR during order placement:", error);
-    // Try to return a more specific error message if possible
     const message = error.message || "Đã xảy ra lỗi không mong muốn.";
     return {
       success: false,
-      // Avoid exposing raw SQL errors directly to the client in production
-      error: message.startsWith("Không thể") // Pass our custom errors
+      error: message.startsWith("Không thể")
         ? message
         : "Đã xảy ra lỗi khi đặt hàng. Vui lòng thử lại sau.",
     };

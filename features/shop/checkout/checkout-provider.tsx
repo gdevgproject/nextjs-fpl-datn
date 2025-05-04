@@ -126,8 +126,8 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
   const discountAmount = discountInfo?.discountAmount ?? 0;
   const appliedDiscount = discountInfo?.discount ?? null;
 
-  const cartTotal =
-    Math.max(0, subtotal - saleDiscount - discountAmount) + shippingFee;
+  // Fix: Không trừ saleDiscount vì subtotal đã tính dựa trên salePrice
+  const cartTotal = Math.max(0, subtotal - discountAmount) + shippingFee;
 
   // Initialize discount from URL
   useEffect(() => {
