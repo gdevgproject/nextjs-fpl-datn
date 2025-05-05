@@ -234,32 +234,91 @@ export function useUpdateOrderStatus() {
 
       return result.data;
     },
-    onSuccess: (data, variables) => {
+    onMutate: async (variables) => {
+      // Lưu trữ trước khi thực hiện optimistic update
+      const previousOrderDetails = queryClient.getQueryData([
+        "orders",
+        "details",
+        variables.id,
+      ]);
+
+      // Tìm status mới từ danh sách statuses
+      const newStatus = variables.allStatuses.find(
+        (s) => s.id === variables.data.order_status_id
+      );
+
+      // Optimistically update order details trong cache
+      if (previousOrderDetails) {
+        // Tạo bản update mới cho order
+        queryClient.setQueryData(
+          ["orders", "details", variables.id],
+          (oldData: any) => {
+            if (!oldData || !oldData.data) return oldData;
+
+            // Cập nhật optimistic với đầy đủ thông tin status
+            return {
+              ...oldData,
+              data: {
+                ...oldData.data,
+                order_status_id: variables.data.order_status_id,
+                order_statuses: newStatus || oldData.data.order_statuses,
+                updated_at: new Date().toISOString(),
+              },
+            };
+          }
+        );
+      }
+
+      // Quan trọng: Tạm dừng các refetch tự động trong quá trình mutation
+      await queryClient.cancelQueries({
+        queryKey: ["orders", "details", variables.id],
+      });
+
+      return { previousOrderDetails };
+    },
+    onSuccess: (data, variables, context) => {
       // Clear previous validation results on success
       setValidationResult({ isValid: true });
 
+      // Cập nhật cache với dữ liệu chính xác nhất từ server response
+      if (data) {
+        queryClient.setQueryData(
+          ["orders", "details", variables.id],
+          (oldData: any) => {
+            if (!oldData) return oldData;
+
+            // Tìm status mới từ allStatuses
+            const newStatus = variables.allStatuses.find(
+              (s) => s.id === data.order_status_id
+            );
+
+            return {
+              ...oldData,
+              data: {
+                ...oldData.data,
+                ...data,
+                order_statuses: newStatus || oldData.data.order_statuses,
+              },
+            };
+          }
+        );
+      }
+
       // Invalidate các query liên quan để trigger refetch
-      queryClient.invalidateQueries({ queryKey: ["orders", "list"] });
+      // Ưu tiên invalidate chi tiết đơn hàng hiện tại trước
       queryClient.invalidateQueries({
         queryKey: ["orders", "details", variables.id],
-      });
-      queryClient.invalidateQueries({
-        predicate: (query) => query.queryKey[0] === "orders",
+        exact: true,
+        refetchType: "active",
       });
 
-      // Cập nhật cache một cách thủ công nếu cần
-      queryClient.setQueryData(
-        ["orders", "details", variables.id],
-        (oldData: any) => {
-          if (!oldData) return oldData;
-          return {
-            ...oldData,
-            order_status_id: data.order_status_id,
-          };
-        }
-      );
+      // Sau đó invalidate các queries khác liên quan đến orders
+      queryClient.invalidateQueries({
+        queryKey: ["orders", "list"],
+        refetchType: "active",
+      });
     },
-    onError: (error) => {
+    onError: (error, variables, context) => {
       // If there's no validation result set yet, this is a server error
       if (validationResult.isValid) {
         setValidationResult({
@@ -268,6 +327,22 @@ export function useUpdateOrderStatus() {
           warningLevel: "error",
         });
       }
+
+      // Khôi phục lại state trước khi optimistic update nếu có lỗi
+      if (context?.previousOrderDetails) {
+        queryClient.setQueryData(
+          ["orders", "details", variables.id],
+          context.previousOrderDetails
+        );
+      }
+    },
+    onSettled: (data, error, variables) => {
+      // Đảm bảo refresh dữ liệu sau khi hoàn thành,
+      // bất kể thành công hay thất bại
+      queryClient.invalidateQueries({
+        queryKey: ["orders", "details", variables.id],
+        exact: true,
+      });
     },
   });
 

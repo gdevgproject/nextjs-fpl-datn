@@ -136,7 +136,10 @@ export function OrderStatusUpdate({
   ) => {
     try {
       const newStatusId = Number.parseInt(values.order_status_id);
+      // Tìm trạng thái mới trong danh sách trạng thái
+      const newStatus = statuses.find((s) => s.id === newStatusId);
 
+      // Hiển thị trạng thái đang xử lý trực tiếp trong UI thay vì dùng toast loading
       await updateOrderStatusMutation.updateOrderStatus({
         id: order.id,
         data: {
@@ -146,20 +149,14 @@ export function OrderStatusUpdate({
         allStatuses: statuses,
       });
 
-      // Tìm trạng thái mới trong danh sách trạng thái
-      const newStatus = statuses.find((s) => s.id === newStatusId);
-
+      // Hiển thị thông báo thành công
       toast.success("Cập nhật trạng thái đơn hàng thành công", {
-        description: `Đơn hàng #${
-          order.id
-        } đã được cập nhật thành công thành "${
-          newStatus?.name || "trạng thái mới"
-        }"`,
+        description: `Đơn hàng #${order.id} đã được cập nhật thành công thành "${newStatus?.name || "trạng thái mới"}"`,
       });
 
-      // Thông báo thành công nhưng KHÔNG đóng dialog
+      // Thực hiện ngay callback onSuccess để cập nhật UI ngay lập tức
+      // mà không đợi re-render từ parent component
       if (onSuccess) {
-        // Gọi onSuccess nhưng không đóng dialog
         onSuccess();
       }
     } catch (error) {

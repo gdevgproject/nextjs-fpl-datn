@@ -95,8 +95,19 @@ export function OrderDetailsDialog({
   const orderItems = orderData?.items || [];
 
   const handleSuccess = () => {
-    refetch();
-    toast.success("Cập nhật đơn hàng thành công");
+    // Thực hiện fetch ngay lập tức không chờ refetch tự động để giảm độ trễ
+    refetch({ throwOnError: false })
+      .then(() => {
+        // Không cần hiển thị toast do component con đã xử lý
+        // toast.success("Cập nhật đơn hàng thành công");
+      })
+      .catch((error) => {
+        console.error("Error refetching order details:", error);
+        // Nếu refetch thất bại, thông báo cho người dùng
+        toast.error(
+          "Cập nhật dữ liệu không thành công, vui lòng làm mới trang"
+        );
+      });
   };
 
   const copyToClipboard = (text: string, message: string) => {
