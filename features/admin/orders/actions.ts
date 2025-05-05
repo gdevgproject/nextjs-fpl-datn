@@ -355,14 +355,13 @@ export async function fetchOrderDetailsAction(orderId: number | string) {
               (img) => img.product_id === productId
             );
 
+            // Simplified structure - only add images to products
             return {
               ...item,
               product_variants: {
                 ...item.product_variants,
-                product_images: images, // Add images directly to product_variants
                 products: {
                   ...item.product_variants?.products,
-                  // We also keep images in the original location for backward compatibility
                   product_images: images,
                 },
               },

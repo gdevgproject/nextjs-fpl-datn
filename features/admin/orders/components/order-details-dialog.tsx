@@ -1082,33 +1082,6 @@ export function OrderDetailsDialog({
                         </CardContent>
                       </Card>
                     </div>
-
-                    {/* Lịch sử vận đơn */}
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <History className="h-4 w-4" /> Lịch sử trạng thái
-                        </CardTitle>
-                        <CardDescription>
-                          Lịch sử các thay đổi trạng thái của đơn hàng
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="border rounded-md p-6">
-                          <div className="flex flex-col items-center justify-center text-center">
-                            <History className="h-10 w-10 text-muted-foreground/30 mb-2" />
-                            <h4 className="font-medium mb-1">
-                              Chưa có dữ liệu lịch sử
-                            </h4>
-                            <p className="text-sm text-muted-foreground max-w-md">
-                              Tính năng này sẽ hiển thị lịch sử đầy đủ các thay
-                              đổi trạng thái đơn hàng sau khi được kết nối với
-                              bảng order_status_history.
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
                   </TabsContent>
                 </Tabs>
               </div>

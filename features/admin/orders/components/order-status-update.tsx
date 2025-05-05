@@ -735,7 +735,7 @@ export function OrderStatusUpdate({
                   </div>
                   <div className="flex items-center gap-2">
                     <AlertCircle className="h-4 w-4 text-destructive" />
-                    <span>Có thể hủy đơn ở bất kỳ trạng thái nào</span>
+                    <span>Có thể hủy đơn ở 3 trạng thái đầu tiên</span>
                   </div>
                 </div>
               </div>

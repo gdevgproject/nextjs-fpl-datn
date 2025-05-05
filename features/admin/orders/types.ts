@@ -149,7 +149,6 @@ export interface OrdersResponse {
 export interface OrderDetailsResponse {
   data: OrderWithRelations | null;
   items: OrderItemWithRelations[];
-  history: OrderStatusHistory[];
   notes: OrderNote[];
 }
 

@@ -39,11 +39,11 @@ export async function fetchOrders(
 export async function fetchOrderDetails(
   orderId: number | null
 ): Promise<OrderDetailsResponse> {
-  if (!orderId) return { data: null, count: null };
+  if (!orderId) return { data: null, items: [], notes: [] };
 
   try {
     const { data, items } = await fetchOrderDetailsAction(orderId);
-    return { data, items, count: 1 };
+    return { data, items, notes: [] };
   } catch (error) {
     console.error("Error fetching order details:", error);
     throw error;
