@@ -960,3 +960,168 @@ export async function assignShipperAction(
     };
   }
 }
+
+/**
+ * Update order payment status (especially for COD orders)
+ * This action should only work for COD orders in "Delivered" status
+ */
+export async function updatePaymentStatusAction(data: {
+  id: number;
+  payment_status: string;
+}): Promise<ActionResponse> {
+  try {
+    // Validate input
+    if (!data.id) {
+      return {
+        success: false,
+        error: "Order ID is required",
+      };
+    }
+
+    if (
+      !data.payment_status ||
+      !["Pending", "Paid"].includes(data.payment_status)
+    ) {
+      return {
+        success: false,
+        error: "Invalid payment status. Only 'Pending' or 'Paid' are allowed.",
+      };
+    }
+
+    // Get admin Supabase client with service role to bypass RLS
+    const supabase = await createServiceRoleClient();
+
+    // Get server Supabase client to access user session
+    const supabaseServer = await getSupabaseServerClient();
+
+    // Verify current user is admin or staff
+    const { data: userData, error: userError } =
+      await supabaseServer.auth.getUser();
+    if (userError || !userData?.user) {
+      return {
+        success: false,
+        error: `Authentication error: ${
+          userError?.message || "No authenticated user found"
+        }`,
+      };
+    }
+
+    // Lấy thông tin đơn hàng hiện tại
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .select(
+        `
+        id, 
+        payment_method_id,
+        payment_status,
+        order_status_id,
+        total_amount,
+        order_statuses (id, name),
+        payment_methods (id, name)
+      `
+      )
+      .eq("id", data.id)
+      .single();
+
+    if (orderError || !order) {
+      return {
+        success: false,
+        error: `Order not found: ${orderError?.message || "Unknown error"}`,
+      };
+    }
+
+    // Kiểm tra nếu đơn hàng không phải COD (kiểm tra bằng tên phương thức thanh toán)
+    const isCodPayment = order.payment_methods?.name
+      ?.toLowerCase()
+      .includes("cod");
+    if (!isCodPayment) {
+      return {
+        success: false,
+        error:
+          "Chỉ đơn hàng COD mới có thể được cập nhật trạng thái thanh toán thủ công.",
+      };
+    }
+
+    // Kiểm tra nếu đơn hàng chưa ở trạng thái "Đã giao"
+    if (order.order_statuses?.name !== "Đã giao") {
+      return {
+        success: false,
+        error: `Không thể cập nhật trạng thái thanh toán khi đơn hàng ở trạng thái "${order.order_statuses?.name}". Đơn hàng phải ở trạng thái "Đã giao".`,
+      };
+    }
+
+    // Nếu đơn hàng đã được thanh toán và đang cố đặt lại thành chưa thanh toán
+    if (order.payment_status === "Paid" && data.payment_status === "Pending") {
+      return {
+        success: false,
+        error:
+          "Không thể đặt lại trạng thái thanh toán từ đã thanh toán thành chưa thanh toán.",
+      };
+    }
+
+    // Cập nhật trạng thái thanh toán
+    const { error, data: updatedOrder } = await supabase
+      .from("orders")
+      .update({
+        payment_status: data.payment_status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error updating payment status:", error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+
+    // Thêm bản ghi thanh toán nếu chuyển thành "Paid"
+    if (data.payment_status === "Paid") {
+      await supabase.from("payments").insert({
+        order_id: data.id,
+        amount: order.total_amount,
+        payment_method_id: order.payment_method_id,
+        payment_status: "Paid",
+        transaction_id: `COD-${data.id}-${Date.now()}`,
+        confirmed_by_user_id: userData.user.id,
+        transaction_date: new Date().toISOString(),
+        notes: "Đã thu tiền COD",
+      });
+    }
+
+    // Ghi log hoạt động
+    await supabase.from("admin_activity_log").insert({
+      user_id: userData.user.id,
+      action_type:
+        data.payment_status === "Paid"
+          ? "CONFIRM_COD_PAYMENT"
+          : "UPDATE_PAYMENT_STATUS",
+      action_details: `Updated order #${data.id} payment status to ${data.payment_status}`,
+      entity_type: "order",
+      entity_id: data.id.toString(),
+      metadata: {
+        order_id: data.id,
+        previous_status: order.payment_status,
+        new_status: data.payment_status,
+        payment_method: order.payment_methods?.name,
+      },
+    });
+
+    // Revalidate related paths
+    revalidatePath("/admin/orders");
+
+    return {
+      success: true,
+      data: updatedOrder,
+    };
+  } catch (error) {
+    console.error("Error in updatePaymentStatusAction:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    };
+  }
+}

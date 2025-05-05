@@ -69,6 +69,7 @@ import {
 import { DEFAULT_AVATAR_URL } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { OrderPaymentConfirmation } from "./order-payment-confirmation";
 
 interface OrderDetailsDialogProps {
   orderId: number | null;
@@ -963,6 +964,16 @@ export function OrderDetailsDialog({
                               </div>
                             </CardContent>
                           </Card>
+
+                          {/* Thêm component OrderPaymentConfirmation vào đây */}
+                          {order.payment_methods?.name
+                            ?.toLowerCase()
+                            .includes("cod") && (
+                            <OrderPaymentConfirmation
+                              order={order}
+                              onSuccess={handleSuccess}
+                            />
+                          )}
                         </CardContent>
                       </Card>
 
