@@ -153,3 +153,28 @@ export interface DashboardCustomersMetrics {
   customersByLocation: CustomerLocationDistribution[];
   guestToRegisteredConversion: number; // Percentage
 }
+
+// Dashboard metrics for Promotions & Discounts tab
+export interface TopUsedDiscount {
+  id: number;
+  code: string;
+  description?: string;
+  usageCount: number;
+  totalRevenue: number;
+  totalDiscountValue: number;
+  isActive: boolean;
+}
+
+export interface DashboardPromotionsMetrics {
+  totalDiscountValue: number;
+  topUsedDiscounts: TopUsedDiscount[];
+  topRevenueDiscounts: TopUsedDiscount[];
+  activeDiscountsCount: number;
+  expiredDiscountsCount?: number;
+  upcomingDiscountsCount?: number;
+  averageDiscountPerOrder: number;
+  discountUsageOverTime?: {
+    date: string;
+    count: number;
+  }[];
+}

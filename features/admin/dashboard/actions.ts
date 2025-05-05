@@ -6,6 +6,7 @@ import {
   getDashboardOrdersMetrics,
   getDashboardProductsMetrics,
   getDashboardCustomersMetrics,
+  getDashboardPromotionsMetrics,
   generateTimeFilter,
 } from "./services";
 
@@ -136,6 +137,40 @@ export async function getCustomersMetricsAction(
     return {
       success: false,
       error: "Failed to fetch customers metrics",
+      timeFilter: generateTimeFilter("thisMonth"), // Fallback
+    };
+  }
+}
+
+export async function getPromotionsMetricsAction(
+  timeFilterOption: TimeFilterOption,
+  customDateRange?: DateRange
+) {
+  try {
+    // Convert the custom date range if provided and needed
+    const customRange =
+      timeFilterOption === "custom" &&
+      customDateRange?.from &&
+      customDateRange?.to
+        ? { from: customDateRange.from, to: customDateRange.to }
+        : undefined;
+
+    // Generate appropriate time filter
+    const timeFilter = generateTimeFilter(timeFilterOption, customRange);
+
+    // Fetch the promotions dashboard metrics
+    const metrics = await getDashboardPromotionsMetrics(timeFilter);
+
+    return {
+      success: true,
+      data: metrics,
+      timeFilter,
+    };
+  } catch (error) {
+    console.error("Error fetching promotions metrics:", error);
+    return {
+      success: false,
+      error: "Failed to fetch promotions metrics",
       timeFilter: generateTimeFilter("thisMonth"), // Fallback
     };
   }

@@ -13,6 +13,8 @@ import {
   BrandRevenue,
   WishlistedProduct,
   DashboardCustomersMetrics,
+  DashboardPromotionsMetrics,
+  TopUsedDiscount,
 } from "./types";
 
 // Helper interfaces for Supabase results
@@ -1458,6 +1460,232 @@ export async function getDashboardCustomersMetrics(
       topCustomers: [],
       customersByLocation: [],
       guestToRegisteredConversion: 0,
+    };
+  }
+}
+
+// Get dashboard promotions & discounts metrics (Tab 5)
+export async function getDashboardPromotionsMetrics(
+  timeFilter: TimeFilter
+): Promise<DashboardPromotionsMetrics> {
+  // Use service role client to bypass RLS
+  const supabase = await createServiceRoleClient();
+
+  try {
+    // Get completed order status IDs (Đã giao, Đã hoàn thành)
+    const { data: completedStatuses } = await supabase
+      .from("order_statuses")
+      .select("id")
+      .in("name", ["Đã giao", "Đã hoàn thành"]);
+
+    const completedStatusIds = Array.isArray(completedStatuses)
+      ? (completedStatuses as CompletedStatusRow[]).map((status) => status.id)
+      : [];
+
+    if (completedStatusIds.length === 0) {
+      throw new Error("Failed to fetch completed order status IDs");
+    }
+
+    // 1. Total discount value (for completed orders in the time period)
+    const { data: discountValueData } = await supabase
+      .from("orders")
+      .select("discount_amount")
+      .in("order_status_id", completedStatusIds)
+      .gte("completed_at", timeFilter.startDate.toISOString())
+      .lte("completed_at", timeFilter.endDate.toISOString())
+      .not("discount_amount", "is", null);
+
+    const totalDiscountValue =
+      discountValueData?.reduce(
+        (sum, order) => sum + (order.discount_amount || 0),
+        0
+      ) || 0;
+
+    // 2. Most used discount codes (frequency of use on completed orders)
+    const { data: discountUsageData } = await supabase
+      .from("orders")
+      .select(
+        `
+        discount_id,
+        discounts (
+          id,
+          code,
+          description,
+          is_active,
+          start_date,
+          end_date
+        ),
+        total_amount,
+        discount_amount
+      `
+      )
+      .in("order_status_id", completedStatusIds)
+      .gte("completed_at", timeFilter.startDate.toISOString())
+      .lte("completed_at", timeFilter.endDate.toISOString())
+      .not("discount_id", "is", null);
+
+    // Process discount usage data to count occurrences and sum revenues
+    const discountMap = new Map<
+      number,
+      {
+        code: string;
+        description?: string;
+        count: number;
+        revenue: number;
+        discountValue: number;
+        isActive: boolean;
+      }
+    >();
+
+    // Current date for checking if discount is active
+    const now = new Date();
+
+    if (discountUsageData && discountUsageData.length > 0) {
+      discountUsageData.forEach((order) => {
+        if (!order.discount_id || !order.discounts) return;
+
+        const discount = order.discounts;
+        const id = discount.id;
+
+        // Check if this is an object (not an array)
+        if (typeof discount === "object" && !Array.isArray(discount)) {
+          // Check if discount is currently active
+          const isActive =
+            discount.is_active &&
+            (!discount.start_date || new Date(discount.start_date) <= now) &&
+            (!discount.end_date || new Date(discount.end_date) >= now);
+
+          const existing = discountMap.get(id) || {
+            code: discount.code || `Discount #${id}`,
+            description: discount.description,
+            count: 0,
+            revenue: 0,
+            discountValue: 0,
+            isActive,
+          };
+
+          existing.count += 1;
+          existing.revenue += order.total_amount || 0;
+          existing.discountValue += order.discount_amount || 0;
+
+          discountMap.set(id, existing);
+        }
+      });
+    }
+
+    // Convert Map to array of TopUsedDiscount objects
+    const discounts: TopUsedDiscount[] = Array.from(discountMap.entries()).map(
+      ([id, data]) => ({
+        id,
+        code: data.code,
+        description: data.description,
+        usageCount: data.count,
+        totalRevenue: data.revenue,
+        totalDiscountValue: data.discountValue,
+        isActive: data.isActive,
+      })
+    );
+
+    // Sort by most used for top used discounts
+    const topUsedDiscounts = [...discounts]
+      .sort((a, b) => b.usageCount - a.usageCount)
+      .slice(0, 10);
+
+    // Sort by most revenue for top revenue discounts
+    const topRevenueDiscounts = [...discounts]
+      .sort((a, b) => b.totalRevenue - a.totalRevenue)
+      .slice(0, 10);
+
+    // 3. Count of active discounts
+    const { count: activeDiscountsCount } = await supabase
+      .from("discounts")
+      .select("id", { count: "exact", head: true })
+      .eq("is_active", true)
+      .or(`start_date.is.null,start_date.lte.${now.toISOString()}`)
+      .or(`end_date.is.null,end_date.gte.${now.toISOString()}`);
+
+    // 4. Count of expired discounts
+    const { count: expiredDiscountsCount } = await supabase
+      .from("discounts")
+      .select("id", { count: "exact", head: true })
+      .not("end_date", "is", null)
+      .lt("end_date", now.toISOString());
+
+    // 5. Count of upcoming discounts (not started yet)
+    const { count: upcomingDiscountsCount } = await supabase
+      .from("discounts")
+      .select("id", { count: "exact", head: true })
+      .not("start_date", "is", null)
+      .gt("start_date", now.toISOString())
+      .eq("is_active", true);
+
+    // 6. Average discount per order
+    let averageDiscountPerOrder = 0;
+    const { data: ordersWithDiscount } = await supabase
+      .from("orders")
+      .select("discount_amount")
+      .in("order_status_id", completedStatusIds)
+      .gte("completed_at", timeFilter.startDate.toISOString())
+      .lte("completed_at", timeFilter.endDate.toISOString())
+      .not("discount_amount", "is", null)
+      .gt("discount_amount", 0);
+
+    if (ordersWithDiscount && ordersWithDiscount.length > 0) {
+      const totalDiscount = ordersWithDiscount.reduce(
+        (sum, order) => sum + (order.discount_amount || 0),
+        0
+      );
+      averageDiscountPerOrder = totalDiscount / ordersWithDiscount.length;
+    }
+
+    // 7. Optional: Discount usage over time (for a chart)
+    const { data: usageOverTimeData } = await supabase
+      .from("orders")
+      .select("completed_at, discount_id")
+      .in("order_status_id", completedStatusIds)
+      .gte("completed_at", timeFilter.startDate.toISOString())
+      .lte("completed_at", timeFilter.endDate.toISOString())
+      .not("discount_id", "is", null)
+      .order("completed_at", { ascending: true });
+
+    // Group by date for a time series chart
+    const usageByDate = new Map<string, number>();
+
+    if (usageOverTimeData && usageOverTimeData.length > 0) {
+      usageOverTimeData.forEach((order) => {
+        if (!order.completed_at) return;
+
+        // Format date as YYYY-MM-DD
+        const date = new Date(order.completed_at).toISOString().split("T")[0];
+        const count = usageByDate.get(date) || 0;
+        usageByDate.set(date, count + 1);
+      });
+    }
+
+    // Convert to array of {date, count} objects
+    const discountUsageOverTime = Array.from(usageByDate.entries())
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    return {
+      totalDiscountValue,
+      topUsedDiscounts,
+      topRevenueDiscounts,
+      activeDiscountsCount: activeDiscountsCount || 0,
+      expiredDiscountsCount: expiredDiscountsCount || 0,
+      upcomingDiscountsCount: upcomingDiscountsCount || 0,
+      averageDiscountPerOrder,
+      discountUsageOverTime,
+    };
+  } catch (error) {
+    console.error("Error in getDashboardPromotionsMetrics:", error);
+    // Return empty data on error
+    return {
+      totalDiscountValue: 0,
+      topUsedDiscounts: [],
+      topRevenueDiscounts: [],
+      activeDiscountsCount: 0,
+      averageDiscountPerOrder: 0,
     };
   }
 }

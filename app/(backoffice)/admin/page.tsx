@@ -3,6 +3,7 @@ import { DashboardOverview } from "@/features/admin/dashboard/components/dashboa
 import { DashboardOrders } from "@/features/admin/dashboard/components/dashboard-orders";
 import { DashboardProducts } from "@/features/admin/dashboard/components/dashboard-products";
 import { DashboardCustomers } from "@/features/admin/dashboard/components/dashboard-customers";
+import { DashboardPromotions } from "@/features/admin/dashboard/components/dashboard-promotions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function AdminPage() {
@@ -19,9 +20,7 @@ export default function AdminPage() {
             <TabsTrigger value="orders">Đơn hàng</TabsTrigger>
             <TabsTrigger value="products">Sản phẩm & Tồn kho</TabsTrigger>
             <TabsTrigger value="customers">Khách hàng</TabsTrigger>
-            <TabsTrigger value="promotions" disabled>
-              Khuyến mãi
-            </TabsTrigger>
+            <TabsTrigger value="promotions">Khuyến mãi</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
@@ -40,8 +39,8 @@ export default function AdminPage() {
             <DashboardCustomers />
           </TabsContent>
 
-          <TabsContent value="promotions">
-            <p className="text-muted-foreground">Chức năng đang phát triển</p>
+          <TabsContent value="promotions" className="space-y-4">
+            <DashboardPromotions />
           </TabsContent>
         </Tabs>
       </div>
