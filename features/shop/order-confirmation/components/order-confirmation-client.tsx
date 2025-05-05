@@ -288,8 +288,7 @@ export function OrderConfirmationClient(
 
       // 4. Khách vãng lai: hiện form nhập email nếu ở trang xác nhận, đã thanh toán (Paid với Momo, Pending với COD), chưa có email, chưa gửi mail
       if (
-        isOrderConfirmationPage &&
-        !isMomoConfirmationPage &&
+        (isOrderConfirmationPage || isMomoConfirmationPage) &&
         result?.success &&
         result.data &&
         !result.data.user_id &&
@@ -298,10 +297,10 @@ export function OrderConfirmationClient(
         ((result.data.payment_method === "Momo QR" &&
           result.data.payment_status === "Paid") ||
           (result.data.payment_method === "COD" &&
-            result.data.payment_status === "Pending"))
+            result.data.payment_status === "Pending")) &&
+        !mailSent
       ) {
-        if (!mailSent) setShowGuestEmailForm(true);
-        else setShowGuestEmailForm(false);
+        setShowGuestEmailForm(true);
       } else {
         setShowGuestEmailForm(false);
       }
