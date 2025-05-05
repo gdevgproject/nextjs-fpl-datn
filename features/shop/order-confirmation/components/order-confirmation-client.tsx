@@ -146,44 +146,42 @@ export function OrderConfirmationClient(
         return;
       }
 
-      // 1. Khách đã đăng nhập (COD hoặc Momo): KHÔNG hiện form nhập email, chỉ gửi mail khi vừa đặt hàng xong, đã thanh toán thành công và trạng thái hợp lệ
-      if (result?.success && result.data && result.data.user_id) {
-        setShowGuestEmailForm(false); // <-- LUÔN ẨN FORM nếu là khách đã đăng nhập
-
-        const paidStatuses = [
+      // 1. Khách đã đăng nhập: CHỈ gửi mail khi đã có access_token (mã tra cứu) và các điều kiện hợp lệ
+      if (
+        result?.success &&
+        result.data &&
+        result.data.user_id &&
+        result.data.customer_email &&
+        result.data.access_token &&
+        (result.data.payment_status === "Paid" ||
+          result.data.payment_status === "Pending") &&
+        justPlacedOrder &&
+        !mailSent &&
+        [
           "Đã xác nhận",
           "Đang xử lý",
           "Đang giao",
           "Đã giao",
           "Đã hoàn thành",
-        ];
-        if (
-          result.data.customer_email &&
-          result.data.customer_email !== "" &&
-          (result.data.payment_status === "Paid" ||
-            result.data.payment_status === "Pending") &&
-          justPlacedOrder &&
-          !mailSent &&
-          paidStatuses.includes(result.data.status)
-        ) {
-          setSending(true);
-          const lookupUrl = `http://localhost:3000/tra-cuu-don-hang?orderId=${result.data.id}&token=${result.data.access_token}`;
-          const res = await fetch("/api/order/send-token", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email: result.data.customer_email,
-              token: result.data.access_token,
-              orderId: result.data.id,
-              orderNumber: result.data.order_number,
-              lookupUrl,
-            }),
-          });
-          const data = await res.json();
-          setSending(false);
-          if (data.success) setMailSent(true);
-          else setError(data.error || "Gửi email thất bại");
-        }
+        ].includes(result.data.status)
+      ) {
+        setSending(true);
+        const lookupUrl = `http://localhost:3000/tra-cuu-don-hang?orderId=${result.data.id}&token=${result.data.access_token}`;
+        const res = await fetch("/api/order/send-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: result.data.customer_email,
+            token: result.data.access_token,
+            orderId: result.data.id,
+            orderNumber: result.data.order_number,
+            lookupUrl,
+          }),
+        });
+        const data = await res.json();
+        setSending(false);
+        if (data.success) setMailSent(true);
+        else setError(data.error || "Gửi email thất bại");
         return;
       }
 
@@ -194,7 +192,7 @@ export function OrderConfirmationClient(
         !result.data.user_id &&
         result.data.guest_email &&
         result.data.guest_email !== "" &&
-        result.data.payment_method === "Momo QR" &&
+        result.data.payment_method === "Momo" &&
         result.data.payment_status === "Paid" &&
         justPlacedOrder &&
         !mailSent
@@ -294,7 +292,7 @@ export function OrderConfirmationClient(
         !result.data.user_id &&
         !result.data.customer_email &&
         !result.data.guest_email &&
-        ((result.data.payment_method === "Momo QR" &&
+        ((result.data.payment_method === "Momo" &&
           result.data.payment_status === "Paid") ||
           (result.data.payment_method === "COD" &&
             result.data.payment_status === "Pending")) &&
