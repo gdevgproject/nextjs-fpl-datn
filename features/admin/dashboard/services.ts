@@ -12,6 +12,7 @@ import {
   NonMovingProduct,
   BrandRevenue,
   WishlistedProduct,
+  DashboardCustomersMetrics,
 } from "./types";
 
 // Helper interfaces for Supabase results
@@ -992,6 +993,473 @@ export async function getDashboardProductsMetrics(
     outOfStockCount: outOfStockCount || 0,
     lowStockCount: lowStockCount || 0,
   };
+}
+
+// Get dashboard customers metrics (Tab 4)
+export async function getDashboardCustomersMetrics(
+  timeFilter: TimeFilter
+): Promise<DashboardCustomersMetrics> {
+  // Use service role client to bypass RLS
+  const supabase = await createServiceRoleClient();
+
+  try {
+    // ------ Lấy ID các trạng thái đơn hàng hoàn thành (Cần thiết cho nhiều query) ------
+    const { data: completedStatusesData, error: statusError } = await supabase
+      .from("order_statuses")
+      .select("id") // Chỉ cần ID
+      .in("name", ["Đã giao", "Đã hoàn thành"]);
+
+    if (statusError) {
+      console.error("Error fetching order status IDs:", statusError);
+      throw new Error(`Failed to get order status IDs: ${statusError.message}`);
+    }
+    if (!completedStatusesData || completedStatusesData.length === 0) {
+      console.error("No completed order statuses found in database.");
+      throw new Error("Critical error: No completed order statuses found.");
+    }
+    const completedStatusIds = completedStatusesData.map((status) => status.id);
+
+    // ------ 1. Total Registered Customers (Sửa: Dùng auth.admin) ------
+    // Cách chính xác nhất để lấy tổng số user đăng ký
+    const { data: usersListResponse, error: usersError } =
+      await supabase.auth.admin.listUsers({
+        perPage: 1, // Chỉ cần thông tin phân trang để lấy tổng số
+      });
+
+    if (usersError) {
+      console.error("Error fetching total registered users:", usersError);
+      // Có thể không throw mà trả về 0 nếu lỗi không nghiêm trọng
+    }
+    const totalRegisteredCustomers = usersListResponse?.total || 0;
+
+    // ------ 2. New Customers in Period (Registered - Dùng profiles là chấp nhận được) ------
+    const { count: newRegisteredCustomersCount, error: newUsersError } =
+      await supabase
+        .from("profiles") // Dùng profiles vì auth API khó lọc theo thời gian tạo
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", timeFilter.startDate.toISOString())
+        .lte("created_at", timeFilter.endDate.toISOString());
+
+    if (newUsersError) {
+      console.error("Error fetching new registered customers:", newUsersError);
+    }
+    const newCustomers = newRegisteredCustomersCount || 0;
+
+    // ------ 3. Get Guest vs Registered *Order* Ratio (Sửa lại logic hoàn toàn) ------
+    // Đếm số lượng đơn hàng hoàn thành *trong kỳ* của khách đăng ký
+    const { count: registeredOrdersCount, error: regOrdersError } =
+      await supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .not("user_id", "is", null) // Khách đăng ký
+        .in("order_status_id", completedStatusIds)
+        // Lọc theo ngày hoàn thành đơn hàng trong kỳ
+        .gte("completed_at", timeFilter.startDate.toISOString())
+        .lte("completed_at", timeFilter.endDate.toISOString());
+
+    if (regOrdersError) {
+      console.error("Error fetching registered orders count:", regOrdersError);
+    }
+
+    // Đếm số lượng đơn hàng hoàn thành *trong kỳ* của khách vãng lai
+    const { count: guestOrdersCount, error: guestOrdersError } = await supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .is("user_id", null) // Khách vãng lai
+      .in("order_status_id", completedStatusIds)
+      // Lọc theo ngày hoàn thành đơn hàng trong kỳ
+      .gte("completed_at", timeFilter.startDate.toISOString())
+      .lte("completed_at", timeFilter.endDate.toISOString());
+
+    if (guestOrdersError) {
+      console.error("Error fetching guest orders count:", guestOrdersError);
+    }
+
+    // Tính tỷ lệ phần trăm đơn hàng của khách đăng ký
+    const totalCompletedOrdersInPeriod =
+      (registeredOrdersCount || 0) + (guestOrdersCount || 0);
+    const registeredOrderPercentage =
+      totalCompletedOrdersInPeriod > 0
+        ? Math.round(
+            ((registeredOrdersCount || 0) / totalCompletedOrdersInPeriod) * 100
+          )
+        : 0;
+
+    const registeredVsGuestRatio = {
+      registered: registeredOrdersCount || 0, // Số đơn đăng ký
+      guest: guestOrdersCount || 0, // Số đơn guest
+      registeredPercentage: registeredOrderPercentage, // Tỷ lệ % đơn đăng ký
+    };
+
+    // ------ 4. Top Spending Customers (Cải tiến: lấy thông tin chính xác từ profiles cho registered users) ------
+    let topCustomers: any[] = []; // Khởi tạo mảng rỗng
+
+    try {
+      // A. LẤY DỮ LIỆU CHI TIÊU KHÁCH ĐĂNG KÝ (Chỉ đơn hàng đã hoàn thành)
+      const { data: registeredSpendingData, error: regSpendingError } =
+        await supabase
+          .from("orders")
+          .select(
+            `
+            user_id,
+            total_amount,
+            payment_status
+          `
+          )
+          .not("user_id", "is", null)
+          .in("order_status_id", completedStatusIds)
+          .eq("payment_status", "Paid") // Chỉ tính đơn đã thanh toán
+          .gte("completed_at", timeFilter.startDate.toISOString())
+          .lte("completed_at", timeFilter.endDate.toISOString());
+
+      if (regSpendingError) {
+        console.error(
+          "Error fetching registered spending data:",
+          regSpendingError
+        );
+      }
+
+      // Tổng hợp chi tiêu và đếm đơn hàng theo user_id
+      const registeredSpendingMap = new Map<
+        string,
+        { totalSpent: number; orderCount: number }
+      >();
+
+      if (registeredSpendingData) {
+        registeredSpendingData.forEach((order) => {
+          if (!order.user_id) return;
+          const current = registeredSpendingMap.get(order.user_id) || {
+            totalSpent: 0,
+            orderCount: 0,
+          };
+          current.totalSpent += order.total_amount || 0;
+          current.orderCount += 1;
+          registeredSpendingMap.set(order.user_id, current);
+        });
+      }
+
+      // B. LẤY DỮ LIỆU CHI TIÊU KHÁCH VÃNG LAI (Chỉ đơn hàng đã hoàn thành)
+      const { data: guestSpendingData, error: guestSpendingError } =
+        await supabase
+          .from("orders")
+          .select(
+            `
+            guest_email,
+            guest_name,
+            guest_phone,
+            total_amount,
+            payment_status
+          `
+          )
+          .is("user_id", null)
+          .not("guest_email", "is", null)
+          .in("order_status_id", completedStatusIds)
+          .eq("payment_status", "Paid") // Chỉ tính đơn đã thanh toán
+          .gte("completed_at", timeFilter.startDate.toISOString())
+          .lte("completed_at", timeFilter.endDate.toISOString());
+
+      if (guestSpendingError) {
+        console.error(
+          "Error fetching guest spending data:",
+          guestSpendingError
+        );
+      }
+
+      // Tổng hợp chi tiêu theo khách vãng lai, nhận diện trùng lặp bằng cả email và số điện thoại
+      // Dùng Map để theo dõi khách hàng đã xử lý để tránh trùng lặp
+      const processedGuestMap = new Map<string, boolean>(); // Theo dõi email đã xử lý
+      const guestPhoneMap = new Map<string, string>(); // Map phone -> email để kiểm tra trùng
+      const guestData: Record<
+        string,
+        {
+          name: string;
+          email: string;
+          phone?: string;
+          totalSpent: number;
+          orderCount: number;
+        }
+      > = {};
+
+      if (guestSpendingData) {
+        // Bước 1: Quét qua tất cả dữ liệu để xây dựng mối quan hệ email-phone
+        guestSpendingData.forEach((order) => {
+          if (!order.guest_email) return;
+          const email = order.guest_email.toLowerCase().trim();
+          const phone = order.guest_phone?.trim();
+
+          if (phone) {
+            // Nếu đã có email khác liên kết với số điện thoại này, ghi nhận mối quan hệ
+            const existingEmail = guestPhoneMap.get(phone);
+            if (existingEmail && existingEmail !== email) {
+              // Đánh dấu rằng email này và existingEmail là của cùng một người
+              guestPhoneMap.set(`${email}_linked_to`, existingEmail);
+            } else {
+              guestPhoneMap.set(phone, email);
+            }
+          }
+        });
+
+        // Bước 2: Xử lý từng đơn hàng và tổng hợp theo khách hàng thực
+        guestSpendingData.forEach((order) => {
+          if (!order.guest_email) return;
+          const email = order.guest_email.toLowerCase().trim();
+
+          // Kiểm tra xem email này có phải là alias của email khác không
+          const primaryEmail = guestPhoneMap.get(`${email}_linked_to`) || email;
+
+          // Kiểm tra xem đã xử lý email/khách hàng này chưa
+          if (processedGuestMap.has(email)) {
+            return; // Bỏ qua nếu đã xử lý
+          }
+
+          // Đánh dấu đã xử lý
+          processedGuestMap.set(email, true);
+
+          if (!guestData[primaryEmail]) {
+            guestData[primaryEmail] = {
+              name: order.guest_name || primaryEmail,
+              email: primaryEmail,
+              phone: order.guest_phone,
+              totalSpent: 0,
+              orderCount: 0,
+            };
+          }
+
+          // Cập nhật thông tin tên nếu order hiện tại có tên rõ ràng hơn
+          if (
+            order.guest_name &&
+            guestData[primaryEmail].name === primaryEmail
+          ) {
+            guestData[primaryEmail].name = order.guest_name;
+          }
+
+          // Cập nhật phone nếu chưa có
+          if (order.guest_phone && !guestData[primaryEmail].phone) {
+            guestData[primaryEmail].phone = order.guest_phone;
+          }
+
+          // Cộng dồn chi tiêu và số đơn hàng
+          guestData[primaryEmail].totalSpent += order.total_amount || 0;
+          guestData[primaryEmail].orderCount += 1;
+        });
+      }
+
+      // C. LẤY THÔNG TIN CHI TIẾT CỦA REGISTERED USERS TỪ PROFILES VÀ AUTH.USERS
+      const registeredUserIds = Array.from(registeredSpendingMap.keys());
+      const userDetailMap = new Map<
+        string,
+        { name: string; email?: string; phone?: string; avatarUrl?: string }
+      >();
+
+      if (registeredUserIds.length > 0) {
+        // 1. Lấy thông tin cơ bản từ profiles trước
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, display_name, phone, avatar_url")
+          .in("id", registeredUserIds);
+
+        if (profilesError) {
+          console.error("Error fetching profiles:", profilesError);
+        } else if (profiles) {
+          // Thêm thông tin profiles vào map
+          profiles.forEach((p) =>
+            userDetailMap.set(p.id, {
+              name: p.display_name || "Người dùng",
+              phone: p.phone,
+              avatarUrl: p.avatar_url,
+            })
+          );
+        }
+
+        // 2. Lặp và lấy email từ auth.admin.getUserById cho từng người dùng cụ thể
+        for (const userId of registeredUserIds) {
+          try {
+            const { data: userData, error: userError } =
+              await supabase.auth.admin.getUserById(userId);
+
+            if (userError) {
+              console.error(
+                `Error fetching auth user ${userId}:`,
+                userError.message
+              );
+            } else if (userData && userData.user) {
+              // Tạo hoặc cập nhật thông tin người dùng
+              const existingDetail = userDetailMap.get(userId);
+              const userDetail = existingDetail || { name: "Người dùng" };
+
+              // Cập nhật email
+              userDetail.email = userData.user.email;
+
+              // Cập nhật tên nếu profile không có tên hoặc tên mặc định
+              if (!userDetail.name || userDetail.name === "Người dùng") {
+                userDetail.name =
+                  userData.user.email || "Người dùng không xác định";
+              }
+
+              userDetailMap.set(userId, userDetail);
+            }
+          } catch (err: any) {
+            console.error(
+              `Exception fetching auth user ${userId}:`,
+              err.message
+            );
+          }
+        }
+      }
+
+      // D. TẠO DỮ LIỆU KẾT QUẢ VÀ KẾT HỢP
+      const combinedCustomers: any[] = [];
+
+      // Thêm khách đăng ký vào kết quả
+      registeredUserIds.forEach((userId) => {
+        const spending = registeredSpendingMap.get(userId);
+        const userDetail = userDetailMap.get(userId);
+
+        if (spending) {
+          combinedCustomers.push({
+            id: userId,
+            name: userDetail?.name || "Người dùng không xác định",
+            email: userDetail?.email,
+            phone: userDetail?.phone,
+            avatarUrl: userDetail?.avatarUrl,
+            totalSpent: spending.totalSpent,
+            orderCount: spending.orderCount,
+            type: "registered", // Đánh dấu là khách hàng đã đăng ký
+          });
+        }
+      });
+
+      // Thêm khách vãng lai vào kết quả
+      Object.values(guestData).forEach((guest) => {
+        combinedCustomers.push({
+          id: guest.email, // Sử dụng email làm ID
+          name: guest.name,
+          email: guest.email,
+          phone: guest.phone,
+          totalSpent: guest.totalSpent,
+          orderCount: guest.orderCount,
+          type: "guest", // Đánh dấu là khách vãng lai
+        });
+      });
+
+      // E. SẮP XẾP VÀ LẤY TOP 10
+      topCustomers = combinedCustomers
+        .sort((a, b) => b.totalSpent - a.totalSpent)
+        .slice(0, 10);
+    } catch (err) {
+      console.error("Error processing top customers:", err);
+      topCustomers = []; // Trả về mảng rỗng nếu có lỗi
+    }
+
+    // ------ 5. Customer Distribution by Location (Cải thiện hiệu quả bằng RPC hoặc giữ JS Aggregation) ------
+    let customersByLocation: any[] = [];
+    try {
+      const { data: locationsData, error: locationError } = await supabase
+        .from("orders")
+        .select("province_city") // Chỉ cần tỉnh/thành
+        .in("order_status_id", completedStatusIds)
+        .gte("completed_at", timeFilter.startDate.toISOString()) // Lọc theo ngày hoàn thành
+        .lte("completed_at", timeFilter.endDate.toISOString())
+        .not("province_city", "is", null);
+
+      if (locationError) {
+        console.error("Error fetching location data:", locationError);
+      } else if (locationsData) {
+        const locationMap: { [key: string]: number } = {};
+        locationsData.forEach((order) => {
+          if (order.province_city) {
+            const location = order.province_city.trim();
+            locationMap[location] = (locationMap[location] || 0) + 1;
+          }
+        });
+        customersByLocation = Object.entries(locationMap)
+          .map(([province, count]) => ({ province, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 10); // Lấy top 10 tỉnh/thành
+      }
+    } catch (err) {
+      console.error("Error processing location distribution:", err);
+      customersByLocation = [];
+    }
+
+    // ------ 6. Guest Customer Count (Cải tiến: Phát hiện trùng lặp qua email/phone) ------
+    // Lấy tổng số khách vãng lai (đếm email duy nhất kết hợp với số điện thoại)
+    const { data: distinctGuests, error: guestDataError } = await supabase
+      .from("orders")
+      .select("guest_email, guest_phone")
+      .is("user_id", null)
+      .not("guest_email", "is", null);
+
+    if (guestDataError) {
+      console.error("Error fetching guest data:", guestDataError);
+    }
+
+    // Filter out duplicates using Maps to track relationships
+    const uniqueGuestEmails = new Set<string>();
+    const phoneToEmail = new Map<string, string>();
+    const emailLinks = new Map<string, string>(); // Track email relationships
+
+    if (distinctGuests) {
+      // First pass: build phone -> email relationships
+      distinctGuests.forEach((item) => {
+        if (item.guest_email) {
+          const email = item.guest_email.toLowerCase().trim();
+          const phone = item.guest_phone?.trim();
+
+          if (phone) {
+            const existingEmail = phoneToEmail.get(phone);
+            if (existingEmail && existingEmail !== email) {
+              // This phone links two different emails, remember this relationship
+              emailLinks.set(email, existingEmail);
+            } else {
+              phoneToEmail.set(phone, email);
+            }
+          }
+        }
+      });
+
+      // Second pass: count unique guests considering relationships
+      distinctGuests.forEach((item) => {
+        if (item.guest_email) {
+          const email = item.guest_email.toLowerCase().trim();
+          // Check if this email is an alias for another
+          const primaryEmail = emailLinks.get(email) || email;
+          uniqueGuestEmails.add(primaryEmail);
+        }
+      });
+    }
+
+    const guestCustomerCount = uniqueGuestEmails.size;
+    const totalCustomers = totalRegisteredCustomers + guestCustomerCount;
+
+    // ------ 7. Guest to Registered Conversion Rate (Placeholder) ------
+    const guestToRegisteredConversion = 10; // Giữ placeholder
+
+    // ------ Trả về kết quả ------
+    return {
+      totalCustomers, // Tổng số user đăng ký + guest duy nhất
+      newCustomers, // Khách đăng ký mới trong kỳ
+      registeredVsGuestRatio, // Tỷ lệ *đơn hàng* hoàn thành trong kỳ
+      topCustomers, // Top 10 khách chi tiêu (cả đăng ký và guest)
+      customersByLocation, // Phân bổ địa lý theo đơn hàng hoàn thành
+      guestToRegisteredConversion, // Placeholder
+    };
+  } catch (error) {
+    console.error("Unhandled error in getDashboardCustomersMetrics:", error);
+    // Trả về giá trị mặc định an toàn nếu có lỗi tổng thể
+    return {
+      totalCustomers: 0,
+      newCustomers: 0,
+      registeredVsGuestRatio: {
+        registered: 0,
+        guest: 0,
+        registeredPercentage: 0,
+      },
+      topCustomers: [],
+      customersByLocation: [],
+      guestToRegisteredConversion: 0,
+    };
+  }
 }
 
 // Generate time filter based on predefined options

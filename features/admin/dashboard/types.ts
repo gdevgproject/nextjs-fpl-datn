@@ -118,3 +118,38 @@ export interface DashboardProductsMetrics {
   outOfStockCount: number;
   lowStockCount: number;
 }
+
+// Dashboard metrics for Customers tab
+export interface CustomerDistribution {
+  name: string;
+  count: number;
+  color?: string;
+}
+
+export interface TopCustomer {
+  id: string;
+  name: string;
+  email?: string;
+  totalSpent: number;
+  orderCount: number;
+  avatarUrl?: string;
+  type: "registered" | "guest"; // Thay thế isRegistered bằng type để rõ ràng hơn
+}
+
+export interface CustomerLocationDistribution {
+  province: string;
+  count: number;
+}
+
+export interface DashboardCustomersMetrics {
+  totalCustomers: number;
+  newCustomers: number; // In time period
+  registeredVsGuestRatio: {
+    registered: number;
+    guest: number;
+    registeredPercentage: number;
+  };
+  topCustomers: TopCustomer[];
+  customersByLocation: CustomerLocationDistribution[];
+  guestToRegisteredConversion: number; // Percentage
+}
