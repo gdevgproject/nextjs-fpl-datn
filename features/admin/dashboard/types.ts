@@ -6,8 +6,11 @@ export interface TimeFilter {
 
 export type TimeFilterOption =
   | "today"
+  | "yesterday"
   | "thisWeek"
+  | "lastWeek"
   | "thisMonth"
+  | "lastMonth"
   | "thisYear"
   | "custom";
 
@@ -47,7 +50,7 @@ export interface RecentOrder {
   totalAmount: number;
   status: string;
   statusColor?: string;
-  paymentMethod?: string; // Add payment method field
+  paymentMethod?: string;
 }
 
 export interface DashboardOrdersMetrics {
@@ -58,4 +61,60 @@ export interface DashboardOrdersMetrics {
   cancellationRate: number;
   paymentMethodRevenue: PaymentMethodRevenue[];
   recentOrders: RecentOrder[];
+}
+
+// Dashboard metrics for Products & Inventory tab
+export interface TopSellingProduct {
+  id: number;
+  name: string;
+  brand: string;
+  quantity: number;
+  revenue: number;
+  imageUrl?: string;
+}
+
+export interface LowStockProduct {
+  id: number;
+  name: string;
+  variant: string;
+  sku: string;
+  stockQuantity: number;
+  threshold?: number;
+}
+
+export interface NonMovingProduct {
+  id: number;
+  name: string;
+  variant: string;
+  sku: string;
+  stockQuantity: number;
+  lastOrderDate?: string;
+  daysSinceLastOrder?: number;
+}
+
+export interface BrandRevenue {
+  name: string;
+  revenue: number;
+  color?: string;
+}
+
+export interface WishlistedProduct {
+  id: number;
+  name: string;
+  brand: string;
+  count: number;
+  inStock: boolean;
+}
+
+export interface DashboardProductsMetrics {
+  topSellingByQuantity: TopSellingProduct[];
+  topSellingByRevenue: TopSellingProduct[];
+  lowStockProducts: LowStockProduct[];
+  nonMovingProducts: NonMovingProduct[];
+  brandRevenue: BrandRevenue[];
+  mostWishlisted: WishlistedProduct[];
+  totalInventoryValue: number;
+  productCount: number;
+  outOfStockCount: number;
+  lowStockCount: number;
 }

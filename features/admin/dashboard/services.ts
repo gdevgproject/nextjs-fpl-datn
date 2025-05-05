@@ -6,7 +6,39 @@ import {
   OrderStatusDistribution,
   PaymentMethodRevenue,
   RecentOrder,
+  DashboardProductsMetrics,
+  TopSellingProduct,
+  LowStockProduct,
+  NonMovingProduct,
+  BrandRevenue,
+  WishlistedProduct,
 } from "./types";
+
+// Helper interfaces for Supabase results
+interface OrderStatusRow {
+  id: number;
+  name: string;
+}
+interface PaymentMethodRow {
+  id: number;
+  name: string;
+}
+interface CompletedStatusRow {
+  id: number;
+}
+interface ProductVariantRow {
+  id: number;
+  volume_ml: number;
+  sku: string;
+  stock_quantity: number;
+  product_id?: number;
+  products?: { id: number; name: string };
+}
+interface HighStockProductRow extends ProductVariantRow {}
+interface LastOrderDataRow {
+  order_id: number;
+  orders: { order_date: string };
+}
 
 // Get dashboard overview metrics
 export async function getDashboardOverviewMetrics(
@@ -21,8 +53,9 @@ export async function getDashboardOverviewMetrics(
     .select("id")
     .in("name", ["Đã giao", "Đã hoàn thành"]);
 
-  const completedStatusIds =
-    completedStatuses?.map((status) => status.id) || [];
+  const completedStatusIds = Array.isArray(completedStatuses)
+    ? (completedStatuses as CompletedStatusRow[]).map((status) => status.id)
+    : [];
 
   // Total revenue from completed orders - Using completed_at instead of created_at
   const { data: revenueData } = await supabase
@@ -106,26 +139,32 @@ export async function getDashboardOrdersMetrics(
     .from("order_statuses")
     .select("id, name");
 
-  if (!orderStatuses || orderStatuses.length === 0) {
+  const orderStatusesTyped = (orderStatuses || []) as OrderStatusRow[];
+
+  if (!orderStatusesTyped || orderStatusesTyped.length === 0) {
     throw new Error("Failed to fetch order statuses");
   }
 
   // Status ID mappings
   const statusMap = new Map(
-    orderStatuses.map((status) => [status.id, status.name])
+    orderStatusesTyped.map((status: OrderStatusRow) => [status.id, status.name])
   );
-  const completedStatusIds = orderStatuses
-    .filter((status) => ["Đã giao", "Đã hoàn thành"].includes(status.name))
-    .map((status) => status.id);
-  const pendingStatusIds = orderStatuses
-    .filter((status) => ["Chờ xác nhận", "Đã xác nhận"].includes(status.name))
-    .map((status) => status.id);
-  const shippingStatusIds = orderStatuses
-    .filter((status) => ["Đang giao"].includes(status.name))
-    .map((status) => status.id);
-  const cancelledStatusIds = orderStatuses
-    .filter((status) => ["Đã hủy"].includes(status.name))
-    .map((status) => status.id);
+  const completedStatusIds = orderStatusesTyped
+    .filter((status: OrderStatusRow) =>
+      ["Đã giao", "Đã hoàn thành"].includes(status.name)
+    )
+    .map((status: OrderStatusRow) => status.id);
+  const pendingStatusIds = orderStatusesTyped
+    .filter((status: OrderStatusRow) =>
+      ["Chờ xác nhận", "Đã xác nhận"].includes(status.name)
+    )
+    .map((status: OrderStatusRow) => status.id);
+  const shippingStatusIds = orderStatusesTyped
+    .filter((status: OrderStatusRow) => ["Đang giao"].includes(status.name))
+    .map((status: OrderStatusRow) => status.id);
+  const cancelledStatusIds = orderStatusesTyped
+    .filter((status: OrderStatusRow) => ["Đã hủy"].includes(status.name))
+    .map((status: OrderStatusRow) => status.id);
 
   // Define proper interfaces for our data
   interface OrderStatusCount {
@@ -147,7 +186,7 @@ export async function getDashboardOrdersMetrics(
     // Using a Map for grouping by order_status_id
     const statusCounts = new Map<number, number>();
 
-    allOrders.forEach((order) => {
+    (allOrders as { order_status_id: number }[]).forEach((order) => {
       const statusId = order.order_status_id;
       statusCounts.set(statusId, (statusCounts.get(statusId) || 0) + 1);
     });
@@ -171,7 +210,7 @@ export async function getDashboardOrdersMetrics(
   };
 
   const ordersByStatus: OrderStatusDistribution[] = ordersByStatusData.map(
-    (item) => {
+    (item: OrderStatusCount) => {
       const statusName =
         statusMap.get(item.order_status_id) || `Status ${item.order_status_id}`;
       return {
@@ -224,8 +263,9 @@ export async function getDashboardOrdersMetrics(
     .from("payment_methods")
     .select("id, name");
 
+  const paymentMethodsTyped = (paymentMethods || []) as PaymentMethodRow[];
   const paymentMethodMap = new Map(
-    paymentMethods?.map((pm) => [pm.id, pm.name]) || []
+    paymentMethodsTyped.map((pm: PaymentMethodRow) => [pm.id, pm.name]) || []
   );
 
   // Define proper interface for payment method revenue data
@@ -277,7 +317,7 @@ export async function getDashboardOrdersMetrics(
   };
 
   const paymentMethodRevenue: PaymentMethodRevenue[] =
-    paymentMethodRevenueData.map((item) => {
+    paymentMethodRevenueData.map((item: PaymentMethodSum) => {
       const methodName =
         paymentMethodMap.get(item.payment_method_id) ||
         `Method ${item.payment_method_id}`;
@@ -332,7 +372,7 @@ export async function getDashboardOrdersMetrics(
     }
 
     // Process the orders - generating order number from ID
-    recentOrders = recentOrdersRaw.map((order) => {
+    recentOrders = recentOrdersRaw.map((order: any) => {
       const statusName = statusMap.get(order.order_status_id) || "Unknown";
       const paymentMethod = order.payment_method_id
         ? paymentMethodMap.get(order.payment_method_id) || "Unknown"
@@ -361,6 +401,596 @@ export async function getDashboardOrdersMetrics(
     cancellationRate,
     paymentMethodRevenue,
     recentOrders,
+  };
+}
+
+// Get dashboard products & inventory metrics (Tab 3)
+export async function getDashboardProductsMetrics(
+  timeFilter: TimeFilter
+): Promise<DashboardProductsMetrics> {
+  // Use service role client to bypass RLS
+  const supabase = await createServiceRoleClient();
+
+  // Get completed order status IDs (Đã giao, Đã hoàn thành)
+  const { data: completedStatuses } = await supabase
+    .from("order_statuses")
+    .select("id")
+    .in("name", ["Đã giao", "Đã hoàn thành"]);
+
+  const completedStatusIds = Array.isArray(completedStatuses)
+    ? (completedStatuses as CompletedStatusRow[]).map((status) => status.id)
+    : [];
+
+  // ================== 1. Top Selling Products (Quantity) ==================
+  // Sửa lỗi: Thay trường url thành image_url cho phù hợp với schema thật
+  const { data: topSellingByQuantityData } = await supabase
+    .from("order_items")
+    .select(
+      `
+      quantity,
+      product_variants!inner(
+        product_id,
+        products!inner(
+          id,
+          name,
+          brands(
+            name
+          ),
+          product_images(
+            image_url,
+            is_main
+          )
+        )
+      ),
+      orders!inner(
+        id,
+        order_status_id,
+        completed_at
+      )
+    `
+    )
+    .in("orders.order_status_id", completedStatusIds)
+    .gte("orders.completed_at", timeFilter.startDate.toISOString())
+    .lte("orders.completed_at", timeFilter.endDate.toISOString());
+
+  // Xử lý kết quả thô để tính tổng số lượng cho mỗi sản phẩm
+  const productQuantityMap = new Map<number, number>();
+  const productInfoMap = new Map<
+    number,
+    { name: string; brand: string; imageUrl?: string }
+  >();
+
+  if (topSellingByQuantityData) {
+    for (const item of topSellingByQuantityData) {
+      if (!item.product_variants || !item.product_variants.product_id) continue;
+
+      const productId = item.product_variants.product_id;
+      const currentQuantity = productQuantityMap.get(productId) || 0;
+      productQuantityMap.set(productId, currentQuantity + (item.quantity || 0));
+
+      if (!productInfoMap.has(productId) && item.product_variants.products) {
+        const product = item.product_variants.products;
+        const brandName =
+          product.brands && product.brands.name
+            ? product.brands.name
+            : "Unknown";
+
+        // Lấy URL ảnh chính (is_main = true) nếu có - Sửa thành image_url
+        let imageUrl: string | undefined = undefined;
+        if (product.product_images && Array.isArray(product.product_images)) {
+          const mainImage = product.product_images.find(
+            (img) => img.is_main === true
+          );
+          if (mainImage) {
+            imageUrl = mainImage.image_url;
+          } else if (product.product_images.length > 0) {
+            // Nếu không có ảnh chính, lấy ảnh đầu tiên
+            imageUrl = product.product_images[0].image_url;
+          }
+        }
+
+        productInfoMap.set(productId, {
+          name: product.name || "Unknown Product",
+          brand: brandName,
+          imageUrl,
+        });
+      }
+    }
+  }
+
+  // Tạo danh sách các sản phẩm bán chạy theo số lượng
+  const topSellingByQuantity = Array.from(productQuantityMap.entries())
+    .map(([id, quantity]) => {
+      const info = productInfoMap.get(id) || {
+        name: "Unknown",
+        brand: "Unknown",
+      };
+      return {
+        id,
+        name: info.name,
+        brand: info.brand,
+        quantity,
+        revenue: 0, // Chưa tính được doanh thu ở đây
+        imageUrl: info.imageUrl,
+      };
+    })
+    .sort((a, b) => b.quantity - a.quantity)
+    .slice(0, 10);
+
+  // ================== 2. Top Selling Products (Revenue) ==================
+  // Sửa lỗi: Thay trường url thành image_url cho phù hợp với schema thật
+  const { data: topSellingByRevenueData } = await supabase
+    .from("order_items")
+    .select(
+      `
+      quantity,
+      unit_price_at_order,
+      product_variants!inner(
+        product_id,
+        products!inner(
+          id,
+          name,
+          brands(
+            name
+          ),
+          product_images(
+            image_url,
+            is_main
+          )
+        )
+      ),
+      orders!inner(
+        id,
+        order_status_id,
+        completed_at
+      )
+    `
+    )
+    .in("orders.order_status_id", completedStatusIds)
+    .gte("orders.completed_at", timeFilter.startDate.toISOString())
+    .lte("orders.completed_at", timeFilter.endDate.toISOString());
+
+  // Xử lý kết quả để tính tổng doanh thu cho mỗi sản phẩm
+  const productRevenueMap = new Map<number, number>();
+
+  if (topSellingByRevenueData) {
+    for (const item of topSellingByRevenueData) {
+      if (!item.product_variants || !item.product_variants.product_id) continue;
+
+      const productId = item.product_variants.product_id;
+      const currentRevenue = productRevenueMap.get(productId) || 0;
+      const itemRevenue =
+        (item.quantity || 0) * (item.unit_price_at_order || 0);
+      productRevenueMap.set(productId, currentRevenue + itemRevenue);
+
+      // Thông tin sản phẩm và ảnh đã được lưu trong productInfoMap từ bước trước
+      // Chỉ cập nhật nếu chưa có trong productInfoMap
+      if (!productInfoMap.has(productId) && item.product_variants.products) {
+        const product = item.product_variants.products;
+        const brandName =
+          product.brands && product.brands.name
+            ? product.brands.name
+            : "Unknown";
+
+        // Lấy URL ảnh chính (is_main = true) nếu có - Sửa thành image_url
+        let imageUrl: string | undefined = undefined;
+        if (product.product_images && Array.isArray(product.product_images)) {
+          const mainImage = product.product_images.find(
+            (img) => img.is_main === true
+          );
+          if (mainImage) {
+            imageUrl = mainImage.image_url;
+          } else if (product.product_images.length > 0) {
+            // Nếu không có ảnh chính, lấy ảnh đầu tiên
+            imageUrl = product.product_images[0].image_url;
+          }
+        }
+
+        productInfoMap.set(productId, {
+          name: product.name || "Unknown Product",
+          brand: brandName,
+          imageUrl,
+        });
+      }
+    }
+  }
+
+  const topSellingByRevenue = Array.from(productRevenueMap.entries())
+    .map(([id, revenue]) => {
+      const info = productInfoMap.get(id) || {
+        name: "Unknown",
+        brand: "Unknown",
+      };
+      return {
+        id,
+        name: info.name,
+        brand: info.brand,
+        quantity: productQuantityMap.get(id) || 0, // Lấy thông tin số lượng từ map trước
+        revenue,
+        imageUrl: info.imageUrl,
+      };
+    })
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 10);
+
+  // ================== 3. Low Stock Products ==================
+  const lowStockThreshold = 15;
+  const { data: lowStockProductsData } = await supabase
+    .from("product_variants")
+    .select(
+      `
+      id,
+      volume_ml,
+      sku,
+      stock_quantity,
+      products (
+        id,
+        name
+      )
+    `
+    )
+    .is("deleted_at", null)
+    .lt("stock_quantity", lowStockThreshold)
+    .gt("stock_quantity", 0)
+    .order("stock_quantity")
+    .limit(20);
+
+  // Process low stock products data
+  const lowStockProducts: LowStockProduct[] = Array.isArray(
+    lowStockProductsData
+  )
+    ? lowStockProductsData.map((item: any) => ({
+        id: item.id,
+        name:
+          item.products && !Array.isArray(item.products)
+            ? item.products.name || "Unknown Product"
+            : Array.isArray(item.products) && item.products[0]
+            ? item.products[0].name || "Unknown Product"
+            : "Unknown Product",
+        variant: `${item.volume_ml || 0}ml`,
+        sku: item.sku || "",
+        stockQuantity: item.stock_quantity || 0,
+        threshold: lowStockThreshold,
+      }))
+    : [];
+
+  // ================== 4. Non-Moving Products ==================
+  // Tối ưu hóa: Query hiệu quả hơn với ORDER BY và LIMIT trong mỗi lồng nhau
+  const highStockThreshold = 50;
+  const dayThreshold = 30; // Consider non-moving if not sold in 30 days
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - dayThreshold);
+
+  const { data: nonMovingProductsData } = await supabase
+    .from("product_variants")
+    .select(
+      `
+      id,
+      product_id,
+      volume_ml,
+      sku,
+      stock_quantity,
+      products(
+        name
+      ),
+      latest_order:order_items(
+        created_at,
+        orders(
+          order_date
+        )
+      )
+    `
+    )
+    .is("deleted_at", null)
+    .gte("stock_quantity", highStockThreshold)
+    .order("stock_quantity", { ascending: false })
+    .limit(100);
+
+  // Xử lý kết quả để tìm sản phẩm không bán chạy
+  const nonMovingProducts: NonMovingProduct[] = [];
+  const currentDate = new Date();
+
+  if (nonMovingProductsData && Array.isArray(nonMovingProductsData)) {
+    for (const product of nonMovingProductsData) {
+      // Tối ưu hóa: Tìm ngày order gần nhất một cách hiệu quả hơn
+      let latestOrderDate: string | undefined = undefined;
+      let orderDates: Date[] = [];
+
+      // Thu thập tất cả các ngày đơn hàng vào một mảng
+      if (product.latest_order && Array.isArray(product.latest_order)) {
+        product.latest_order.forEach((orderItem) => {
+          if (
+            orderItem.orders &&
+            typeof orderItem.orders === "object" &&
+            orderItem.orders !== null &&
+            "order_date" in orderItem.orders
+          ) {
+            const orderDateStr = orderItem.orders.order_date;
+            if (orderDateStr) {
+              orderDates.push(new Date(orderDateStr));
+            }
+          }
+        });
+      }
+
+      // Tìm ngày gần đây nhất
+      if (orderDates.length > 0) {
+        const mostRecentDate = new Date(
+          Math.max(...orderDates.map((date) => date.getTime()))
+        );
+        latestOrderDate = mostRecentDate.toISOString();
+      }
+
+      // Tính số ngày từ đơn hàng cuối cùng đến nay
+      let daysSinceLastOrder: number;
+      if (!latestOrderDate) {
+        daysSinceLastOrder = 9999; // Chưa từng bán
+      } else {
+        daysSinceLastOrder = Math.floor(
+          (currentDate.getTime() - new Date(latestOrderDate).getTime()) /
+            (1000 * 60 * 60 * 24)
+        );
+      }
+
+      // Thêm vào danh sách nếu không bán được trong thời gian dài
+      if (daysSinceLastOrder >= dayThreshold) {
+        nonMovingProducts.push({
+          id: product.id,
+          name:
+            typeof product.products === "object" &&
+            product.products !== null &&
+            !Array.isArray(product.products) &&
+            "name" in product.products
+              ? String(product.products.name)
+              : "Unknown Product",
+          variant: `${product.volume_ml || 0}ml`,
+          sku: product.sku || "",
+          stockQuantity: product.stock_quantity || 0,
+          lastOrderDate: latestOrderDate,
+          daysSinceLastOrder,
+        });
+
+        // Giới hạn 20 sản phẩm
+        if (nonMovingProducts.length >= 20) break;
+      }
+    }
+  }
+
+  // ================== 5. Revenue by Brand ==================
+  const { data: brandRevenueRawData } = await supabase
+    .from("order_items")
+    .select(
+      `
+      quantity,
+      unit_price_at_order,
+      product_variants!inner(
+        products!inner(
+          brands(
+            id, 
+            name
+          )
+        )
+      ),
+      orders!inner(
+        order_status_id
+      )
+    `
+    )
+    .in("orders.order_status_id", completedStatusIds)
+    .gte("orders.completed_at", timeFilter.startDate.toISOString())
+    .lte("orders.completed_at", timeFilter.endDate.toISOString());
+
+  // Xử lý dữ liệu để tính doanh thu theo thương hiệu
+  const brandRevenueMap = new Map<string, number>();
+
+  if (brandRevenueRawData && Array.isArray(brandRevenueRawData)) {
+    for (const item of brandRevenueRawData) {
+      // Đảm bảo có đủ dữ liệu lồng nhau
+      if (
+        !item.product_variants ||
+        !item.product_variants.products ||
+        !item.product_variants.products.brands
+      ) {
+        continue;
+      }
+
+      const brand = item.product_variants.products.brands;
+      const brandName = brand.name || "Unknown";
+      const itemRevenue =
+        (item.quantity || 0) * (item.unit_price_at_order || 0);
+
+      const currentRevenue = brandRevenueMap.get(brandName) || 0;
+      brandRevenueMap.set(brandName, currentRevenue + itemRevenue);
+    }
+  }
+
+  // Brand colors for consistent color scheme
+  const brandColors: Record<string, string> = {
+    Chanel: "#000000", // Black
+    Dior: "#E0BFB8", // Light pink
+    Gucci: "#006F51", // Green
+    Versace: "#FFD700", // Gold
+    Burberry: "#C19A6B", // Tan
+    "Dolce & Gabbana": "#B80000", // Red
+    Hermès: "#FF8000", // Orange
+    Prada: "#000080", // Navy blue
+    "Tom Ford": "#4B0082", // Indigo
+    "Yves Saint Laurent": "#000000", // Black
+    "Jo Malone": "#F5F5DC", // Beige
+    Creed: "#C0C0C0", // Silver
+    "Acqua di Parma": "#FFFF00", // Yellow
+    Byredo: "#FFFFFF", // White
+    Diptyque: "#000000", // Black
+    "Le Labo": "#8B4513", // Brown
+    "Maison Francis Kurkdjian": "#FFD700", // Gold
+    "Frederic Malle": "#800000", // Maroon
+    Kilian: "#000000", // Black
+  };
+
+  // Default color palette for brands without specific colors
+  const defaultColors = [
+    "#1E88E5",
+    "#13B2C4",
+    "#7E57C2",
+    "#43A047",
+    "#FF7043",
+    "#FFB300",
+    "#00ACC1",
+    "#26A69A",
+    "#5C6BC0",
+    "#EC407A",
+    "#AB47BC",
+    "#66BB6A",
+  ];
+
+  let colorIndex = 0;
+
+  // Tạo đối tượng BrandRevenue từ dữ liệu đã tính
+  const brandRevenue: BrandRevenue[] = Array.from(brandRevenueMap.entries())
+    .map(([brandName, revenue]) => {
+      const color =
+        brandColors[brandName] ||
+        defaultColors[colorIndex++ % defaultColors.length];
+      return {
+        name: brandName,
+        revenue: revenue,
+        color,
+      };
+    })
+    .sort((a, b) => b.revenue - a.revenue);
+
+  // ================== 6. Most Wishlisted Products ==================
+  // Sửa lỗi: Xóa bỏ filter deleted_at không tồn tại trên bảng wishlists
+  const { data: wishlistRawData } = await supabase.from("wishlists").select(
+    `
+      products!inner(
+        id,
+        name,
+        brands!inner(
+          name
+        ),
+        product_variants(
+          stock_quantity
+        )
+      )
+    `
+  );
+
+  // Xử lý dữ liệu để đếm số lượng sản phẩm trong wishlist
+  const productWishlistCountMap = new Map<number, number>();
+  const wishlistProductInfoMap = new Map<
+    number,
+    { name: string; brand: string; inStock: boolean }
+  >();
+
+  if (wishlistRawData && Array.isArray(wishlistRawData)) {
+    for (const item of wishlistRawData) {
+      if (!item.products || !item.products.id) continue;
+
+      const productId = item.products.id;
+      const currentCount = productWishlistCountMap.get(productId) || 0;
+      productWishlistCountMap.set(productId, currentCount + 1);
+
+      // Lưu thông tin sản phẩm và trạng thái còn hàng
+      if (!wishlistProductInfoMap.has(productId)) {
+        let inStock = false;
+
+        // Kiểm tra nếu có variant nào còn hàng
+        if (
+          item.products.product_variants &&
+          Array.isArray(item.products.product_variants)
+        ) {
+          inStock = item.products.product_variants.some(
+            (variant) => (variant.stock_quantity || 0) > 0
+          );
+        }
+
+        wishlistProductInfoMap.set(productId, {
+          name: item.products.name || "Unknown Product",
+          brand: item.products.brands?.name || "Unknown",
+          inStock,
+        });
+      }
+    }
+  }
+
+  // Tạo danh sách sản phẩm được yêu thích nhiều nhất
+  const mostWishlisted: WishlistedProduct[] = Array.from(
+    productWishlistCountMap.entries()
+  )
+    .map(([id, count]) => {
+      const info = wishlistProductInfoMap.get(id) || {
+        name: "Unknown",
+        brand: "Unknown",
+        inStock: false,
+      };
+      return {
+        id,
+        name: info.name,
+        brand: info.brand,
+        count,
+        inStock: info.inStock,
+      };
+    })
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+
+  // ================== 7. Calculate Total Inventory Value ==================
+  const { data: inventoryValueData } = await supabase
+    .from("product_variants")
+    .select(
+      `
+      id,
+      stock_quantity,
+      price,
+      sale_price
+    `
+    )
+    .is("deleted_at", null);
+
+  // Tính tổng giá trị tồn kho
+  let totalInventoryValue = 0;
+
+  if (inventoryValueData && Array.isArray(inventoryValueData)) {
+    totalInventoryValue = inventoryValueData.reduce((total, variant) => {
+      const price = variant.sale_price || variant.price || 0;
+      return total + (variant.stock_quantity || 0) * price;
+    }, 0);
+  }
+
+  // ================== 8. Product Counts ==================
+  // Total active products
+  const { count: productCount } = await supabase
+    .from("products")
+    .select("*", { count: "exact", head: true })
+    .is("deleted_at", null);
+
+  // Out of stock products
+  const { count: outOfStockCount } = await supabase
+    .from("product_variants")
+    .select("*", { count: "exact", head: true })
+    .is("deleted_at", null)
+    .eq("stock_quantity", 0);
+
+  // Low stock products count
+  const { count: lowStockCount } = await supabase
+    .from("product_variants")
+    .select("*", { count: "exact", head: true })
+    .is("deleted_at", null)
+    .gt("stock_quantity", 0)
+    .lt("stock_quantity", lowStockThreshold);
+
+  return {
+    topSellingByQuantity,
+    topSellingByRevenue,
+    lowStockProducts,
+    nonMovingProducts,
+    brandRevenue,
+    mostWishlisted,
+    totalInventoryValue,
+    productCount: productCount || 0,
+    outOfStockCount: outOfStockCount || 0,
+    lowStockCount: lowStockCount || 0,
   };
 }
 

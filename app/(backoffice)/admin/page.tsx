@@ -1,6 +1,7 @@
 import { AdminLayout } from "@/features/admin/shared/components/admin-layout";
 import { DashboardOverview } from "@/features/admin/dashboard/components/dashboard-overview";
 import { DashboardOrders } from "@/features/admin/dashboard/components/dashboard-orders";
+import { DashboardProducts } from "@/features/admin/dashboard/components/dashboard-products";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function AdminPage() {
@@ -15,9 +16,7 @@ export default function AdminPage() {
           <TabsList>
             <TabsTrigger value="overview">Tổng quan</TabsTrigger>
             <TabsTrigger value="orders">Đơn hàng</TabsTrigger>
-            <TabsTrigger value="products" disabled>
-              Sản phẩm & Tồn kho
-            </TabsTrigger>
+            <TabsTrigger value="products">Sản phẩm & Tồn kho</TabsTrigger>
             <TabsTrigger value="customers" disabled>
               Khách hàng
             </TabsTrigger>
@@ -34,8 +33,8 @@ export default function AdminPage() {
             <DashboardOrders />
           </TabsContent>
 
-          <TabsContent value="products">
-            <p className="text-muted-foreground">Chức năng đang phát triển</p>
+          <TabsContent value="products" className="space-y-4">
+            <DashboardProducts />
           </TabsContent>
 
           <TabsContent value="customers">
