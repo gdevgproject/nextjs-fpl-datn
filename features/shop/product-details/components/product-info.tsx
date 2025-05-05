@@ -9,6 +9,7 @@ import { ShoppingCart, Heart, AlertCircle } from "lucide-react";
 import VariantSelector from "./variant-selector";
 import { toast } from "sonner";
 import { useWishlist } from "@/features/shop/wishlist/hooks/use-wishlist";
+import { useAuthQuery } from "@/features/auth/hooks";
 import type { ProductDetail } from "../types";
 
 interface ProductInfoProps {
@@ -27,6 +28,8 @@ export default function ProductInfo({ product }: ProductInfoProps) {
     toggleWishlist,
     isLoading: isWishlistLoading,
   } = useWishlist();
+  const { data: session } = useAuthQuery();
+  const isAuthenticated = !!session?.user;
 
   // Check if the product is on sale
   const isOnSale = selectedVariant && selectedVariant.sale_price !== null;
@@ -214,10 +217,7 @@ export default function ProductInfo({ product }: ProductInfoProps) {
           variant="outline"
           aria-label={isWishlisted ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
           onClick={async () => {
-            const isLoggedIn =
-              typeof window !== "undefined" &&
-              localStorage.getItem("sb-access-token");
-            if (!isLoggedIn) {
+            if (!isAuthenticated) {
               toast("Bạn cần đăng nhập để sử dụng tính năng yêu thích!", {
                 action: {
                   label: "Đăng nhập",
