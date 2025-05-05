@@ -172,8 +172,10 @@ export function useUpdateOrderStatus() {
 
       // 5. Any status to "Đã hủy" (Cancel order)
       if (newStatus.name === "Đã hủy") {
-        // Admin can cancel orders at various stages, but not after delivery
-        if (["Đã giao", "Đã hoàn thành"].includes(currentStatus.name)) {
+        // Không cho phép hủy đơn hàng ở các trạng thái sau: "Đang giao", "Đã giao", "Đã hoàn thành"
+        if (
+          ["Đang giao", "Đã giao", "Đã hoàn thành"].includes(currentStatus.name)
+        ) {
           return {
             isValid: false,
             error: `Không thể hủy đơn hàng ở trạng thái "${currentStatus.name}".`,
@@ -181,7 +183,7 @@ export function useUpdateOrderStatus() {
           };
         }
 
-        // If payment was already made, show a warning
+        // Nếu đơn hàng đã thanh toán, hiển thị cảnh báo (nhưng vẫn cho phép hủy)
         if (order.payment_status === "Paid") {
           return {
             isValid: true,

@@ -151,7 +151,11 @@ export function OrderStatusUpdate({
 
       // Hiển thị thông báo thành công
       toast.success("Cập nhật trạng thái đơn hàng thành công", {
-        description: `Đơn hàng #${order.id} đã được cập nhật thành công thành "${newStatus?.name || "trạng thái mới"}"`,
+        description: `Đơn hàng #${
+          order.id
+        } đã được cập nhật thành công thành "${
+          newStatus?.name || "trạng thái mới"
+        }"`,
       });
 
       // Thực hiện ngay callback onSuccess để cập nhật UI ngay lập tức
@@ -173,6 +177,23 @@ export function OrderStatusUpdate({
     values: z.infer<typeof cancelOrderFormSchema>
   ) => {
     try {
+      // Kiểm tra trạng thái đơn hàng hiện tại có cho phép hủy hay không
+      const nonCancellableStatuses = [
+        "Đang giao",
+        "Đã giao",
+        "Đã hoàn thành",
+        "Đã hủy",
+      ];
+      if (
+        currentStatus &&
+        nonCancellableStatuses.includes(currentStatus.name)
+      ) {
+        toast.error(
+          `Không thể hủy đơn hàng ở trạng thái "${currentStatus.name}".`
+        );
+        return;
+      }
+
       await cancelOrderMutation.mutateAsync({
         id: order.id,
         reason: values.reason,
