@@ -475,85 +475,11 @@ export function OrderStatusUpdate({
             </p>
 
             <p className="text-sm mt-2">
-              Bạn chỉ có thể hủy đơn hàng nếu thực sự cần thiết.
+              Đơn hàng đã hoàn thành không thể thay đổi trạng thái hoặc hủy. Nếu
+              có vấn đề, vui lòng liên hệ với quản trị viên hệ thống.
             </p>
           </AlertDescription>
         </Alert>
-
-        <div className="mt-6">
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="cancel-options">
-              <AccordionTrigger className="text-destructive hover:text-destructive/90 font-medium">
-                Tùy chọn hủy đơn hàng
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="pt-2 pb-1">
-                  <Alert variant="warning" className="mb-4">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Cảnh báo</AlertTitle>
-                    <AlertDescription>
-                      Hành động này không thể hoàn tác. Hãy cân nhắc kỹ trước
-                      khi hủy đơn hàng đã hoàn thành.
-                    </AlertDescription>
-                  </Alert>
-
-                  <Form {...cancelForm}>
-                    <form
-                      onSubmit={cancelForm.handleSubmit(onCancelOrder)}
-                      className="space-y-4"
-                    >
-                      <FormField
-                        control={cancelForm.control}
-                        name="reason"
-                        render={({ field }) => (
-                          <FormItem className="space-y-1.5">
-                            <FormLabel>
-                              Lý do hủy đơn{" "}
-                              <span className="text-destructive">*</span>
-                            </FormLabel>
-                            <FormControl>
-                              <Textarea
-                                placeholder="Nhập lý do hủy đơn hàng (ít nhất 5 ký tự)"
-                                className="resize-none"
-                                rows={3}
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="flex justify-end gap-2 pt-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={onSuccess}
-                        >
-                          Hủy thao tác
-                        </Button>
-                        <Button
-                          type="submit"
-                          variant="destructive"
-                          disabled={cancelOrderMutation.isPending}
-                        >
-                          {cancelOrderMutation.isPending ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Đang xử lý
-                            </>
-                          ) : (
-                            "Xác nhận hủy đơn"
-                          )}
-                        </Button>
-                      </div>
-                    </form>
-                  </Form>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </div>
       </div>
     );
   }

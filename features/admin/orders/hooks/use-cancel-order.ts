@@ -50,9 +50,25 @@ export function useCancelOrder() {
       };
     }
 
-    // Check current status - Cannot cancel orders that are already delivered or completed
+    // Check current status - Cannot cancel orders that are already delivered, completed, or being delivered
     const currentOrderStatus = order.order_statuses?.name;
-    if (["Đã giao", "Đã hoàn thành"].includes(currentOrderStatus)) {
+
+    // This is our main enhanced validation - restrict cancellation for specific statuses
+    const nonCancellableStatuses = [
+      "Đang giao",
+      "Đã giao",
+      "Đã hoàn thành",
+      "Đã hủy",
+    ];
+
+    if (currentOrderStatus === "Đã hoàn thành") {
+      return {
+        isValid: false,
+        error:
+          "Đơn hàng đã hoàn thành không thể hủy. Đây là trạng thái cuối của quy trình.",
+        warningLevel: "error",
+      };
+    } else if (nonCancellableStatuses.includes(currentOrderStatus)) {
       return {
         isValid: false,
         error: `Không thể hủy đơn hàng ở trạng thái "${currentOrderStatus}".`,
@@ -66,16 +82,6 @@ export function useCancelOrder() {
         isValid: true,
         error:
           "Đơn hàng đã thanh toán. Hủy đơn sẽ yêu cầu hoàn tiền cho khách hàng.",
-        warningLevel: "warning",
-      };
-    }
-
-    // If order is in shipping status, add a warning
-    if (currentOrderStatus === "Đang giao") {
-      return {
-        isValid: true,
-        error:
-          "Đơn hàng đang trong quá trình giao. Hãy liên hệ với shipper trước khi hủy.",
         warningLevel: "warning",
       };
     }
@@ -120,10 +126,9 @@ export function useCancelOrder() {
   });
 
   return {
-    cancelOrder: mutation.mutateAsync,
-    isPending: mutation.isPending,
-    error: mutation.error,
-    isError: mutation.isError,
+    // Return the mutation object itself, not just mutateAsync
+    // This ensures all properties like mutateAsync are properly exposed
+    ...mutation,
     validationResult,
     validateCancellation,
   };

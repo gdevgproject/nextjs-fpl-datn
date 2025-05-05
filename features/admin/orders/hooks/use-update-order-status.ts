@@ -13,9 +13,9 @@ export const ORDER_STATUS_TRANSITION_RULES = {
   "Chờ xác nhận": ["Đã xác nhận", "Đã hủy"],
   "Đã xác nhận": ["Đang xử lý", "Đang giao", "Đã hủy"],
   "Đang xử lý": ["Đang giao", "Đã hủy"],
-  "Đang giao": ["Đã giao", "Đã hủy"],
-  "Đã giao": ["Đã hoàn thành", "Đã hủy"],
-  "Đã hoàn thành": ["Đã hủy"],
+  "Đang giao": ["Đã giao"], // Removed "Đã hủy" - can no longer cancel orders in shipping
+  "Đã giao": ["Đã hoàn thành"], // Removed "Đã hủy" - can no longer cancel delivered orders
+  "Đã hoàn thành": [], // Removed "Đã hủy" - can no longer cancel completed orders
   "Đã hủy": [],
 } as const;
 

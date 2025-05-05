@@ -201,10 +201,13 @@ export async function cancelOrderByUser(orderId: number, reason: string) {
             return createErrorResponse("Đơn hàng không tồn tại hoặc không thuộc về bạn", "not_found");
         }
 
-        // Kiểm tra xem đơn hàng có thể hủy không
-        if (orderData.order_status_id !== 1 && orderData.order_status_id !== 2) {
+        // Kiểm tra xem đơn hàng có thể hủy không - Chỉ có thể hủy đơn ở trạng thái "Chờ xác nhận" hoặc "Đã xác nhận"
+        // Không thể hủy đơn hàng ở trạng thái: Đang giao, Đã giao, Đã hoàn thành, Đã hủy
+        const nonCancellableStatuses = ["Đang giao", "Đã giao", "Đã hoàn thành", "Đã hủy"];
+
+        if (nonCancellableStatuses.includes(orderData.order_status?.name)) {
             return createErrorResponse(
-                `Không thể hủy đơn hàng ở trạng thái ${orderData.order_status?.name}. Chỉ có thể hủy đơn hàng ở trạng thái Chờ xác nhận hoặc Đã xác nhận.`,
+                `Không thể hủy đơn hàng ở trạng thái ${orderData.order_status?.name}.`,
                 "invalid_status"
             );
         }
@@ -572,7 +575,7 @@ export async function getOrderDetails(orderIdOrToken: string, isToken = false) {
             // Lấy thông tin mã giảm giá nếu có
             let discount_code = null;
             if (order.discount_id) {
-                const { data: discountData } = await supabase.from("discounts").select("code").eq("id", order.discount_id).single();
+                const { data: discountData } = await supabase from("discounts").select("code").eq("id", order.discount_id).single();
                 if (discountData) {
                     discount_code = discountData.code;
                 }

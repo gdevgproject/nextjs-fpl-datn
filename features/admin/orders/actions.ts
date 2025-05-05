@@ -672,12 +672,18 @@ export async function updateOrderStatusAction(
 /**
  * Cancel an order by admin/staff
  */
-export async function cancelOrderAction(
-  data: z.infer<typeof cancelOrderSchema>
-): Promise<ActionResponse> {
+export async function cancelOrderAction(data: any): Promise<ActionResponse> {
   try {
+    // Map the incoming fields to match the schema if needed
+    const schemaData = {
+      id: data.id,
+      cancellation_reason: data.reason || data.cancellation_reason, // Accept either format
+      refund_amount: data.refund_amount,
+      internal_note: data.internal_note,
+    };
+
     // Input validation
-    const validated = cancelOrderSchema.parse(data);
+    const validated = cancelOrderSchema.parse(schemaData);
 
     // Get server Supabase client to access user session
     const supabaseServer = await getSupabaseServerClient();
@@ -698,13 +704,44 @@ export async function cancelOrderAction(
     // Get admin Supabase client with service role to bypass RLS for DB operations
     const supabase = await createServiceRoleClient();
 
+    // Fetch order with its current status before updating
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .select("id, order_status_id, order_statuses(name)")
+      .eq("id", validated.id)
+      .single();
+
+    if (orderError || !order) {
+      return {
+        success: false,
+        error: `Order not found: ${orderError?.message || "Unknown error"}`,
+      };
+    }
+
+    // Check if order is in a status that cannot be cancelled
+    const nonCancellableStatuses = [
+      "Đang giao",
+      "Đã giao",
+      "Đã hoàn thành",
+      "Đã hủy",
+    ];
+    if (
+      order.order_statuses &&
+      nonCancellableStatuses.includes(order.order_statuses.name)
+    ) {
+      return {
+        success: false,
+        error: `Không thể hủy đơn hàng ở trạng thái "${order.order_statuses.name}".`,
+      };
+    }
+
     // Update the order to cancelled status
     const { error, data: updatedOrder } = await supabase
       .from("orders")
       .update({
         order_status_id: 7, // Based on your schema, "Đã hủy" status ID
-        cancellation_reason: validated.reason,
-        cancelled_by: "Admin/Staff",
+        cancellation_reason: validated.cancellation_reason,
+        cancelled_by: "admin", // FIXED: Must use 'admin' as it's one of the allowed values in the DB constraint
         cancelled_by_user_id: userData.user.id,
       })
       .eq("id", validated.id)
