@@ -14,6 +14,8 @@ import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { OrderConfirmationClient } from "@/features/shop/order-confirmation/components/order-confirmation-client";
 import { CopyAccessToken } from "@/features/shop/order-confirmation/components/copy-access-token";
 import { OrderLookupClient } from "@/features/shop/order-confirmation/components/order-lookup-client";
+import { PaymentPendingCountdown } from "@/features/shop/order-confirmation/components/payment-pending-countdown";
+// import { useToast } from "sonner"; // Removed as 'useToast' is not exported
 
 // Server-side fetch for order details
 async function getOrderServerSide(
@@ -79,7 +81,51 @@ export default async function OrderLookupPage(props: {
         </Card>
       ) : order ? (
         <div className="space-y-6">
-          {/* KHÔNG có phần "Đặt hàng thành công!" ở đây */}
+          {/* Cảnh báo chờ thanh toán nổi bật trên cùng, tách thành 1 Card riêng */}
+          {order.payment_status === "Failed" && (
+            <Card className="border-yellow-300 bg-yellow-50 mb-6">
+              <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="rounded-full bg-yellow-100 p-3 mb-4">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-8 w-8 text-yellow-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      fill="none"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 8v4m0 4h.01"
+                    />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold mb-2">Chờ thanh toán</h2>
+                <div className="text-yellow-700 font-semibold text-lg mb-2">
+                  <PaymentPendingCountdown
+                    orderId={order.id}
+                    createdAt={order.created_at}
+                    token={order.access_token}
+                    showCancelButton={false}
+                    onlyCountdown={true}
+                  />
+                </div>
+                <p className="text-yellow-700">
+                  Vui lòng thanh toán trong thời gian quy định để tránh bị hủy
+                  đơn hàng.
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>
