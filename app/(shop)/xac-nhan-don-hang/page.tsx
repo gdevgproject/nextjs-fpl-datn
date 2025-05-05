@@ -305,9 +305,23 @@ export default async function OrderConfirmationPage(props: {
           </Card>
 
           <div className="flex justify-center gap-4">
-            <Button asChild variant="outline">
-              <Link href="/tai-khoan/don-hang">Xem đơn hàng của tôi</Link>
-            </Button>
+            {/* Nút xem đơn hàng của tôi: điều hướng động theo orderId/token */}
+            {order &&
+              (() => {
+                let viewOrderHref = "/tai-khoan/don-hang";
+                if (order.id && order.access_token) {
+                  // Khách vãng lai: tra cứu bằng token
+                  viewOrderHref = `/tra-cuu-don-hang?orderId=${order.id}&token=${order.access_token}`;
+                } else if (order.id) {
+                  // Khách đã đăng nhập: xem chi tiết đơn hàng
+                  viewOrderHref = `/tai-khoan/don-hang/${order.id}`;
+                }
+                return (
+                  <Button asChild variant="outline">
+                    <Link href={viewOrderHref}>Xem đơn hàng của tôi</Link>
+                  </Button>
+                );
+              })()}
             <Button asChild>
               <Link href="/san-pham">Tiếp tục mua sắm</Link>
             </Button>
