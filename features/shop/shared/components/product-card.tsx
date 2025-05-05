@@ -9,6 +9,7 @@ import { formatPrice } from "@/lib/utils";
 import { useAddCartItem } from "@/features/shop/cart/use-cart";
 import { useSonnerToast } from "@/lib/hooks/use-sonner-toast";
 import { useWishlist } from "@/features/shop/wishlist/hooks/use-wishlist";
+import { useAuthQuery } from "@/features/auth/hooks";
 
 export interface ProductImageType {
   image_url: string;
@@ -76,6 +77,8 @@ export function ProductCard({
     toggleWishlist,
     isLoading: hookLoading,
   } = useWishlist();
+  const { data: session } = useAuthQuery();
+  const isAuthenticated = !!session?.user;
 
   const productId = product?.id || id;
   const productSlug = product?.slug || slug || `product-${productId}`;
@@ -180,21 +183,20 @@ export function ProductCard({
             <button
               onClick={(e) => {
                 e.preventDefault();
-                const isLoggedIn =
-                  typeof window !== "undefined" &&
-                  localStorage.getItem("sb-access-token");
-                if (!isLoggedIn) {
+                if (!isAuthenticated) {
                   toast("Bạn cần đăng nhập để sử dụng tính năng yêu thích!", {
                     action: {
                       label: "Đăng nhập",
-                      onClick: () => (window.location.href = "dang-nhap"),
+                      onClick: () => (window.location.href = "/dang-nhap"),
                     },
                   });
                   return;
                 }
-                onToggleWishlist
-                  ? onToggleWishlist()
-                  : toggleWishlist(productId!);
+                if (onToggleWishlist) {
+                  onToggleWishlist();
+                } else {
+                  toggleWishlist(productId!);
+                }
               }}
               disabled={heartLoading}
               className="p-3 bg-white/90 dark:bg-gray-900/90 rounded-full shadow-lg hover:bg-pink-500 hover:text-white dark:hover:bg-pink-500 dark:hover:text-white transition-all disabled:opacity-50 scale-90 group-hover:scale-100"
