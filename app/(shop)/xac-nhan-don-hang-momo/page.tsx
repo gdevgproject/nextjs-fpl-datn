@@ -9,10 +9,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, ShoppingBag } from "lucide-react";
+import { Ban, CheckCircle, ShoppingBag } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { CopyAccessToken } from "@/features/shop/order-confirmation/components/copy-access-token";
 import { OrderConfirmationClient } from "@/features/shop/order-confirmation/components/order-confirmation-client";
+import { PaymentPendingCountdown } from "@/features/shop/order-confirmation/components/payment-pending-countdown";
 
 async function getOrderServerSide(
   orderId: string | null,
@@ -77,13 +78,49 @@ export default async function OrderConfirmationPage(props: {
         <div className="space-y-6">
           <Card className="border-primary/20 bg-primary/5">
             <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-              <div className="rounded-full bg-primary/10 p-3 mb-4">
-                <CheckCircle className="h-8 w-8 text-primary" />
+              <div
+                className={`rounded-full p-3 mb-4 ${
+                  order.payment_status === "Failed"
+                    ? "bg-yellow-100"
+                    : "bg-primary/10"
+                }`}
+              >
+                {order.payment_status === "Failed" ? (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-8 w-8 text-yellow-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      fill="none"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 8v4m0 4h.01"
+                    />
+                  </svg>
+                ) : (
+                  <CheckCircle className="h-8 w-8 text-primary" />
+                )}
               </div>
-              <h2 className="text-2xl font-bold mb-2">Đặt hàng thành công!</h2>
+              <h2 className="text-2xl font-bold mb-2">
+                {order.payment_status === "Failed"
+                  ? "Chờ thanh toán"
+                  : "Đặt hàng thành công!"}
+              </h2>
               <p className="text-muted-foreground">
-                Cảm ơn bạn đã đặt hàng. Chúng tôi đã gửi email xác nhận đơn
-                hàng.
+                {order.payment_status === "Failed"
+                  ? "Chờ thanh toán lại hoặc chọn phương thức thanh toán khác."
+                  : "Cảm ơn bạn đã đặt hàng. Chúng tôi đã gửi email xác nhận đơn hàng."}
               </p>
 
               {/* Display order access token for guests with copy functionality */}
@@ -91,6 +128,14 @@ export default async function OrderConfirmationPage(props: {
                 <div className="mt-4 w-full max-w-md">
                   <CopyAccessToken accessToken={order.access_token} />
                 </div>
+              )}
+              {order.payment_status === "Failed" && (
+                <PaymentPendingCountdown
+                  orderId={order.id}
+                  createdAt={order.created_at}
+                  token={order.access_token}
+                  showCancelButton={false}
+                />
               )}
             </CardContent>
           </Card>
