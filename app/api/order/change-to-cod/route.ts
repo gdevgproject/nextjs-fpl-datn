@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceRoleClient } from "@/lib/supabase/serviceRoleClient";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 export async function POST(req: NextRequest) {
   try {
     const { orderId, token } = await req.json();
