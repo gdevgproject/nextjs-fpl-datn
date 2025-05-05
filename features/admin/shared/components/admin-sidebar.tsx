@@ -67,8 +67,11 @@ function SidebarItem({ href, icon, label, active, onClick }: SidebarItemProps) {
   const { data: session } = useAuthQuery();
   const userRole = session?.user?.app_metadata?.role || "authenticated";
   const isStaff = userRole === "staff";
+  const isShipper = userRole === "shipper";
   const canAccess =
-    userRole === "admin" || (isStaff && href.startsWith("/admin/orders"));
+    userRole === "admin" ||
+    (isStaff && href.startsWith("/admin/orders")) ||
+    (isShipper && href.startsWith("/admin/orders"));
 
   return (
     <Button
@@ -77,7 +80,7 @@ function SidebarItem({ href, icon, label, active, onClick }: SidebarItemProps) {
       size="sm"
       className="w-full justify-start h-10 px-3"
       onClick={onClick}
-      disabled={isStaff && !canAccess}
+      disabled={!(isStaff || isShipper) ? false : !canAccess}
     >
       {canAccess ? (
         <Link href={href} className="relative">
@@ -104,9 +107,10 @@ function SidebarGroup({
   const { data: session } = useAuthQuery();
   const userRole = session?.user?.app_metadata?.role || "authenticated";
   const isStaff = userRole === "staff";
+  const isShipper = userRole === "shipper";
 
-  // Staff chỉ có thể mở menu "Đơn hàng"
-  const canOpen = !isStaff || label === "Đơn hàng";
+  // Staff và Shipper chỉ có thể mở menu "Đơn hàng"
+  const canOpen = !(isStaff || isShipper) || label === "Đơn hàng";
 
   return (
     <div className="space-y-1">
@@ -115,7 +119,7 @@ function SidebarGroup({
         size="sm"
         className="w-full justify-start font-medium h-10 px-3"
         onClick={() => canOpen && setIsOpen(!isOpen)}
-        disabled={isStaff && !canOpen}
+        disabled={(isStaff || isShipper) && !canOpen}
       >
         {icon}
         <span className="ml-2 truncate">{label}</span>

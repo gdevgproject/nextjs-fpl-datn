@@ -35,6 +35,18 @@ export async function fetchOrdersAction(
     // Get admin client with service role key to bypass RLS
     const supabase = await createServiceRoleClient();
 
+    // Get server Supabase client to access user session
+    const supabaseServer = await getSupabaseServerClient();
+
+    // Get current user info to check role
+    const { data: userData, error: userError } =
+      await supabaseServer.auth.getUser();
+    const userRole = userData?.user?.app_metadata?.role || "authenticated";
+    const userId = userData?.user?.id;
+
+    // Nếu là shipper, chỉ hiển thị đơn hàng được gán cho họ
+    const isShipper = userRole === "shipper";
+
     let query = supabase.from("orders").select(
       `
         id, 
@@ -73,6 +85,11 @@ export async function fetchOrdersAction(
       `,
       { count: "exact" }
     );
+
+    // Nếu là shipper, chỉ hiển thị đơn hàng được gán cho họ
+    if (isShipper && userId) {
+      query = query.eq("assigned_shipper_id", userId);
+    }
 
     // Apply filters
     if (filters) {
@@ -113,8 +130,8 @@ export async function fetchOrdersAction(
         query = query.lt("order_date", nextDay.toISOString());
       }
 
-      // Assigned shipper filter
-      if (filters.assigned_shipper_id) {
+      // Assigned shipper filter - chỉ áp dụng nếu không phải là shipper
+      if (filters.assigned_shipper_id && !isShipper) {
         if (filters.assigned_shipper_id === "unassigned") {
           query = query.is("assigned_shipper_id", null);
         } else {
@@ -179,9 +196,20 @@ export async function fetchOrderDetailsAction(orderId: number | string) {
     // Get admin client with service role key to bypass RLS
     const supabase = await createServiceRoleClient();
 
+    // Get server Supabase client to access user session
+    const supabaseServer = await getSupabaseServerClient();
+
+    // Get current user info to check role
+    const { data: userData, error: userError } =
+      await supabaseServer.auth.getUser();
+    const userRole = userData?.user?.app_metadata?.role || "authenticated";
+    const userId = userData?.user?.id;
+
+    // Nếu là shipper, chỉ hiển thị đơn hàng được gán cho họ
+    const isShipper = userRole === "shipper";
+
     // Fetch order details with payment method and order status in a single query
-    // Chỉ truy vấn các cột thực sự tồn tại trong bảng
-    const { data, error } = await supabase
+    let query = supabase
       .from("orders")
       .select(
         `
@@ -220,10 +248,20 @@ export async function fetchOrderDetailsAction(orderId: number | string) {
         payment_methods (id, name)
         `
       )
-      .eq("id", orderId)
-      .single();
+      .eq("id", orderId);
+
+    // Nếu là shipper, chỉ cho phép xem đơn hàng được gán cho họ
+    if (isShipper && userId) {
+      query = query.eq("assigned_shipper_id", userId);
+    }
+
+    const { data, error } = await query.single();
 
     if (error) {
+      // Nếu là shipper và không tìm thấy đơn hàng, có thể là do không có quyền
+      if (isShipper && error.code === "PGRST116") {
+        throw new Error("Bạn không có quyền xem đơn hàng này");
+      }
       console.error("Error fetching order details:", error);
       throw new Error(`Failed to fetch order details: ${error.message}`);
     }

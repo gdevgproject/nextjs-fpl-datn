@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cancelOrderAction } from "../actions";
 import { OrderWithRelations } from "../types";
 import { useState } from "react";
+import { useAuthQuery } from "@/features/auth/hooks";
 
 type CancelOrderParams = {
   id: number;
@@ -25,6 +26,11 @@ export function useCancelOrder() {
   const [validationResult, setValidationResult] = useState<ValidationResult>({
     isValid: true,
   });
+  
+  // Get authentication session to determine user role
+  const { data: session } = useAuthQuery();
+  const userRole = session?.user?.app_metadata?.role || "authenticated";
+  const isShipper = userRole === "shipper";
 
   /**
    * Validate if the order can be cancelled based on business rules
@@ -33,6 +39,15 @@ export function useCancelOrder() {
   const validateCancellation = (
     order: OrderWithRelations
   ): ValidationResult => {
+    // Shipper không được phép hủy đơn hàng trong mọi trường hợp
+    if (isShipper) {
+      return {
+        isValid: false,
+        error: "Shipper không được phép hủy đơn hàng",
+        warningLevel: "error",
+      };
+    }
+
     if (!order) {
       return {
         isValid: false,
@@ -92,6 +107,11 @@ export function useCancelOrder() {
 
   const mutation = useMutation({
     mutationFn: async (params: CancelOrderParams) => {
+      // Shipper không được phép hủy đơn hàng trong mọi trường hợp
+      if (isShipper) {
+        throw new Error("Shipper không được phép hủy đơn hàng");
+      }
+
       const result = await cancelOrderAction({
         id: params.id,
         reason: params.reason,

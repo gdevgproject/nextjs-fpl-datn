@@ -58,6 +58,11 @@ export function canAccessPage(role: UserRole, page: string): boolean {
       return page.startsWith("/admin/orders");
     }
 
+    // Shipper chỉ có quyền truy cập trang quản lý đơn hàng
+    if (role === "shipper") {
+      return page.startsWith("/admin/orders");
+    }
+
     // Các role khác không có quyền
     return false;
   }
@@ -80,9 +85,9 @@ export function getRedirectUrl(role: UserRole, requestedPath?: string): string {
     return requestedPath;
   }
 
-  // Mặc định: admin -> trang admin, staff -> trang quản lý đơn hàng, shipper -> trang shipper, user -> trang chủ
+  // Mặc định: admin -> trang admin, staff -> trang quản lý đơn hàng, shipper -> trang quản lý đơn hàng, user -> trang chủ
   if (isAdmin(role)) return "/admin";
   if (role === "staff") return "/admin/orders";
-  if (isShipper(role)) return "/shipper";
+  if (isShipper(role)) return "/admin/orders";
   return "/";
 }
