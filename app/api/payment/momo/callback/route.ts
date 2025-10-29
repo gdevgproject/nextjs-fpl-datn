@@ -109,8 +109,7 @@ export async function POST(req: NextRequest) {
         customerEmail = user?.user?.email;
       }
       if (customerEmail) {
-        const siteUrl =
-          process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+        const siteUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
 
         // Chuẩn bị nội dung mail
         let subject = `Xác nhận đơn hàng #${realOrderId}`;

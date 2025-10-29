@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const siteUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
 
     // Gửi mail xác nhận đơn hàng với nội dung mới
     const orderLink = `${siteUrl}/tra-cuu-don-hang?token=${order.access_token}`;
