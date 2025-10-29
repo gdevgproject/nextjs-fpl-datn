@@ -1,6 +1,9 @@
+// File: app/layout.tsx
+
 import type React from "react";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { Suspense } from "react"; // <-- IMPORT THÊM SUSPENSE
 import "./globals.css";
 import { Providers } from "@/lib/providers/providers";
 import { AuthToastHandler } from "@/components/auth-toast-handler";
@@ -26,7 +29,17 @@ export default function RootLayout({
     <html lang="vi" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers>
-          <AuthToastHandler>{children}</AuthToastHandler>
+          {/* 
+            Bọc AuthToastHandler trong Suspense.
+            - AuthToastHandler sử dụng useSearchParams, là một Client-side hook động.
+            - Trang 404 (not-found.tsx) cần được render tĩnh tại thời điểm build.
+            - Bọc trong Suspense báo cho Next.js: "Hãy render tĩnh phần còn lại,
+              còn phần này sẽ được xử lý ở client sau".
+            - fallback={null} vì chúng ta không cần hiển thị gì trong lúc chờ.
+          */}
+          <Suspense fallback={null}>
+            <AuthToastHandler>{children}</AuthToastHandler>
+          </Suspense>
         </Providers>
       </body>
     </html>

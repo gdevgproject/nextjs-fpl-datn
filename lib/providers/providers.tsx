@@ -1,9 +1,10 @@
+// File: lib/providers/providers.tsx
+
 "use client";
 
 import type React from "react";
 import { ThemeProvider } from "next-themes";
 import { QueryProvider } from "./query-provider";
-import { CheckoutProvider } from "@/features/shop/checkout/checkout-provider";
 import { Toaster } from "@/components/ui/sonner";
 
 /**
@@ -14,11 +15,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryProvider>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        {/* CartProvider removed: Cart state is managed by TanStack Query and guest-cart context if needed */}
-        <CheckoutProvider>
-          {children}
-          <Toaster richColors closeButton position="bottom-left" />
-        </CheckoutProvider>
+        {/* CheckoutProvider đã được di chuyển vào layout riêng để tránh lỗi build */}
+        {children}
+        <Toaster richColors closeButton position="bottom-left" />
       </ThemeProvider>
     </QueryProvider>
   );
