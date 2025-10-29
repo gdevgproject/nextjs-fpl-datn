@@ -24,6 +24,8 @@
 
 // Danh sách model theo thứ tự ưu tiên
 const DEFAULT_MODEL_PRIORITY = [
+  "openai/gpt-oss-120b",
+  "openai/gpt-oss-20b",
   "meta-llama/llama-4-maverick-17b-128e-instruct", // Ưu tiên 1
   "meta-llama/llama-4-scout-17b-16e-instruct", // Ưu tiên 2
   "llama-3.3-70b-versatile", // Ưu tiên 3
