@@ -47,7 +47,6 @@ export async function POST(req: NextRequest) {
     // Sau đó mới check email
     let finalEmail = email;
     if (order.user_id) {
-      // Lấy email từ bảng profiles hoặc auth.users
       const { data: profile } = await supabase
         .from("profiles")
         .select("id, display_name")
@@ -74,19 +73,24 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
     // Gửi mail xác nhận đơn hàng với nội dung mới
-    const orderLink = `http://localhost:3000/tra-cuu-don-hang?token=${order.access_token}`;
+    const orderLink = `${siteUrl}/tra-cuu-don-hang?token=${order.access_token}`;
     let htmlContent = `<p><b>Thông tin đơn hàng của bạn:</b></p>`;
     if (order.id) {
       htmlContent += `<p>Mã đơn hàng: <b>${order.id}</b></p>`;
     }
     htmlContent += `<p>Mã tra cứu đơn hàng: <b>${order.access_token}</b></p>`;
     htmlContent += `<p>Bạn có thể tra cứu đơn hàng tại: <a href='${orderLink}'>${orderLink}</a></p>`;
+
     await sendOrderEmail({
       to: finalEmail,
       subject: "Thông tin đơn hàng của bạn",
       html: htmlContent,
     });
+
     return NextResponse.json({ success: true });
   } catch (e: any) {
     return NextResponse.json(

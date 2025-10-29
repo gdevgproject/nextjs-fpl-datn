@@ -109,12 +109,15 @@ export async function POST(req: NextRequest) {
         customerEmail = user?.user?.email;
       }
       if (customerEmail) {
+        const siteUrl =
+          process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
         // Chuẩn bị nội dung mail
         let subject = `Xác nhận đơn hàng #${realOrderId}`;
         let html = `<p>Cảm ơn bạn đã thanh toán thành công đơn hàng tại shop!</p>`;
         html += `<p>Mã đơn hàng: <b>${realOrderId}</b></p>`;
         if (orderInfo?.access_token) {
-          const orderLink = `http://localhost:3000/tra-cuu-don-hang?token=${orderInfo.access_token}`;
+          const orderLink = `${siteUrl}/tra-cuu-don-hang?token=${orderInfo.access_token}`;
           html += `<p>Mã tra cứu đơn hàng: <b>${orderInfo.access_token}</b></p>`;
           html += `<p>Bạn có thể tra cứu đơn hàng tại: <a href='${orderLink}'>${orderLink}</a></p>`;
         }

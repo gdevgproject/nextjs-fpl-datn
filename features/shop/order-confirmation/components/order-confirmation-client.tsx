@@ -131,6 +131,10 @@ export function OrderConfirmationClient(
 
   useEffect(() => {
     async function checkAndSendMail() {
+      // Đọc biến môi trường. Cung cấp giá trị fallback cho môi trường dev.
+      const siteUrl =
+        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
       // Kiểm tra truyền đủ thông tin orderId hoặc token
       if (!token && !orderId) {
         setError("Thiếu orderId hoặc token để tra cứu đơn hàng.");
@@ -166,7 +170,8 @@ export function OrderConfirmationClient(
         ].includes(result.data.status)
       ) {
         setSending(true);
-        const lookupUrl = `http://localhost:3000/tra-cuu-don-hang?orderId=${result.data.id}&token=${result.data.access_token}`;
+        // ⭐ SỬA Ở ĐÂY: Thay thế URL hardcode bằng biến môi trường
+        const lookupUrl = `${siteUrl}/tra-cuu-don-hang?orderId=${result.data.id}&token=${result.data.access_token}`;
         const res = await fetch("/api/order/send-token", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -198,7 +203,8 @@ export function OrderConfirmationClient(
         !mailSent
       ) {
         setSending(true);
-        const lookupUrl = `http://localhost:3000/tra-cuu-don-hang?orderId=${result.data.id}&token=${result.data.access_token}`;
+        // ⭐ SỬA Ở ĐÂY: Thay thế URL hardcode bằng biến môi trường
+        const lookupUrl = `${siteUrl}/tra-cuu-don-hang?orderId=${result.data.id}&token=${result.data.access_token}`;
         const res = await fetch("/api/order/send-token", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -231,7 +237,8 @@ export function OrderConfirmationClient(
         !mailSent
       ) {
         setSending(true);
-        const lookupUrl = `http://localhost:3000/tra-cuu-don-hang?orderId=${result.data.id}&token=${result.data.access_token}`;
+        // ⭐ SỬA Ở ĐÂY: Thay thế URL hardcode bằng biến môi trường
+        const lookupUrl = `${siteUrl}/tra-cuu-don-hang?orderId=${result.data.id}&token=${result.data.access_token}`;
         const res = await fetch("/api/order/send-token", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -264,7 +271,8 @@ export function OrderConfirmationClient(
         !mailSent
       ) {
         setSending(true);
-        const lookupUrl = `http://localhost:3000/tra-cuu-don-hang?orderId=${result.data.id}&token=${result.data.access_token}`;
+        // ⭐ SỬA Ở ĐÂY: Thay thế URL hardcode bằng biến môi trường
+        const lookupUrl = `${siteUrl}/tra-cuu-don-hang?orderId=${result.data.id}&token=${result.data.access_token}`;
         const res = await fetch("/api/order/send-token", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
