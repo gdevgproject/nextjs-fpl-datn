@@ -1,6 +1,6 @@
 # MyBeauty - AI-Powered Fragrance E-Commerce Platform
 
-![MyBeauty Homepage](https://nextjs-fpl-datn.vercel.app/captureUI/trang-chu.png)
+![MyBeauty Homepage](./captureUI/trang-chu.png)
 
 **Live Demo:** [https://nextjs-fpl-datn.vercel.app/](https://nextjs-fpl-datn.vercel.app/)
 
@@ -21,8 +21,8 @@ While the platform includes all standard e-commerce functionalities, here are so
 - **AI Smart Search:** Goes beyond simple keyword matching. Users can describe a mood, occasion, or scent profile in natural language (e.g., _"a fresh scent for summer evenings"_) and receive intelligent, relevant product recommendations.
 - **AI Conversational Chatbot:** An interactive assistant trained on the store's product catalog. It can answer detailed product questions, provide personalized suggestions, and guide users through their fragrance discovery journey, creating a boutique-like consultative experience online.
 
-![AI Chatbot Feature](https://nextjs-fpl-datn.vercel.app/captureUI/AI-chat.png)
-![AI Chatbot Feature](https://nextjs-fpl-datn.vercel.app/captureUI/AI-search.png)
+![AI Chatbot Feature](./captureUI/AI-chat.png)
+![AI Chatbot Feature](./captureUI/AI-search.png)
 
 ### 💳 **Modern & Secure Payments**
 
@@ -35,7 +35,7 @@ While the platform includes all standard e-commerce functionalities, here are so
 - **User & Role Management:** Control access and permissions for different user roles (Admin, Staff, etc.).
 - **Activity Logging:** A detailed logging system tracks important actions within the admin panel for accountability and debugging.
 
-![Admin Dashboard](https://nextjs-fpl-datn.vercel.app/captureUI/dashboard.png)
+![Admin Dashboard](./captureUI/dashboard.png)
 
 ## Tech Stack
 
