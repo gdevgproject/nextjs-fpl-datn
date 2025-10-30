@@ -2,92 +2,147 @@
 
 ![MyBeauty Homepage](./captureUI/trang-chu.png)
 
-**Live Demo:** [https://nextjs-fpl-datn.vercel.app/](https://nextjs-fpl-datn.vercel.app/)
+**🌐 Live Demo:** [https://nextjs-fpl-datn.vercel.app/](https://nextjs-fpl-datn.vercel.app/)
 
-## About The Project
+---
 
-MyBeauty is a modern, full-stack e-commerce web application designed for a seamless fragrance shopping experience. Built from the ground up as a final graduation project, it showcases a blend of robust back-end functionality with a sleek, responsive user interface.
+## 🧴 About The Project
 
-The core mission of this project was to explore and implement cutting-edge web technologies to solve real-world e-commerce challenges. This includes creating an intuitive shopping flow, managing complex product data, and integrating intelligent features to enhance user engagement and discovery.
+**MyBeauty** is a full-stack, AI-powered e-commerce web application specializing in fragrances.
+It’s designed to deliver a **premium, intelligent, and seamless shopping experience** — built from scratch as a graduation project to showcase **real-world software engineering capability**.
 
-This repository serves as a comprehensive portfolio piece, demonstrating proficiency in modern full-stack development practices.
+This project demonstrates mastery across **frontend, backend, database, AI integration, and payment systems** within a clean, scalable architecture.
+It represents not just an e-commerce site, but a foundation for future **AI-driven retail innovation**.
 
-## Key Features
+---
 
-While the platform includes all standard e-commerce functionalities, here are some of the standout features we're proud of:
+## ✨ Key Features
 
 ### 🤖 **AI-Powered Discovery**
 
-- **AI Smart Search:** Goes beyond simple keyword matching. Users can describe a mood, occasion, or scent profile in natural language (e.g., _"a fresh scent for summer evenings"_) and receive intelligent, relevant product recommendations.
-- **AI Conversational Chatbot:** An interactive assistant trained on the store's product catalog. It can answer detailed product questions, provide personalized suggestions, and guide users through their fragrance discovery journey, creating a boutique-like consultative experience online.
+- **AI Smart Search:** Users can search fragrances by describing moods or contexts (e.g., _"a gentle floral scent for a spring wedding"_) instead of relying on keywords.
+- **AI Conversational Chatbot:** A virtual fragrance consultant that assists users, recommends perfumes, and answers detailed product questions.
 
-![AI Chatbot Feature](./captureUI/AI-chat.png)
-![AI Chatbot Feature](./captureUI/AI-search.png)
+![AI Smart Search](./captureUI/AI-search.png)
+![AI Chatbot Interaction](./captureUI/AI-chat.png)
+
+---
 
 ### 💳 **Modern & Secure Payments**
 
-- **MoMo Payment Gateway:** Integrated one of Vietnam's most popular digital wallets, offering users a fast, secure, and familiar checkout option.
-- **Guest & Authenticated Checkout:** A flexible system that supports both registered users and guest checkouts, complete with order tracking capabilities for both.
+- Integrated **MoMo Wallet** for one-tap digital payments.
+- Supports **guest checkout** and **authenticated checkout** with order tracking.
+
+![QR Payment](./captureUI/qr-momo.png)
+
+---
 
 ### ⚙️ **Comprehensive Admin Dashboard**
 
-- **Full Store Management:** A feature-rich dashboard allows administrators to manage products, categories, brands, discounts, and orders.
-- **User & Role Management:** Control access and permissions for different user roles (Admin, Staff, etc.).
-- **Activity Logging:** A detailed logging system tracks important actions within the admin panel for accountability and debugging.
+A powerful and intuitive admin system for complete store management:
 
-![Admin Dashboard](./captureUI/dashboard.png)
+- 🧩 **Product Management:** Add, edit, delete, and organize products by brand, category, and variants.
+- 🛒 **Order Management:** Real-time tracking and control of all customer orders.
+- 👥 **User & Role Management:** Fine-grained control of admin, staff, and customer permissions.
+- 💸 **Discount Management:** Create and monitor promotional codes and campaigns.
+- 📜 **Activity Log:** Tracks system-level actions for traceability and debugging.
 
-## Tech Stack
+#### 📸 Admin UI Showcase
 
-This project was built with a focus on performance, scalability, and developer experience, using a modern, type-safe technology stack.
+> _A few sample screenshots below (not the entire set)._
 
-- **Framework:** [Next.js](https://nextjs.org/) 14+ (App Router)
-- **Language:** [TypeScript](https://www.typescriptlang.org/)
-- **Styling:** [Tailwind CSS](https://tailwindcss.com/) & [Shadcn UI](https://ui.shadcn.com/)
-- **Database & Backend:** [Supabase](https://supabase.io/) (PostgreSQL, Auth, Storage)
-- **State Management:** [TanStack Query (React Query)](https://tanstack.com/query/latest)
-- **AI Integration:** [Groq API](https://groq.com/) for fast LLM inference
-- **Payment Gateway:** [MoMo API](https://developers.momo.vn/)
-- **Deployment:** [Vercel](https://vercel.com/)
+| Feature                    | Preview                                                |
+| -------------------------- | ------------------------------------------------------ |
+| Dashboard Overview         | ![Dashboard Overview](./captureUI/dashboard.png)       |
+| Product Management         | ![Manage Products](./captureUI/admin-products.png)     |
+| Add New Product            | ![Add Product](./captureUI/admin-add-product.png)      |
+| Order Management           | ![Order Management](./captureUI/admin-orders.png)      |
+| User Management            | ![User Management](./captureUI/admin-users.png)        |
+| Discount Management        | ![Discount Management](./captureUI/admin-discount.png) |
+| Activity Log / Audit Trail | ![Activity Log](./captureUI/admin-activity-log.png)    |
 
-## Getting Started
+---
 
-To get a local copy up and running, follow these simple steps.
+### 🛍️ **User Experience Highlights**
+
+#### 🏠 Homepage & Product Discovery
+
+- Modern, responsive design built with **TailwindCSS** and **ShadCN UI**.
+- Personalized recommendations powered by AI.
+
+| Page         | Preview                                    |
+| ------------ | ------------------------------------------ |
+| Homepage (1) | ![Homepage](./captureUI/trang-chu.png)     |
+| Homepage (2) | ![Homepage 2](./captureUI/trang-chu-2.png) |
+
+#### 🧴 Product & Shopping Flow
+
+| Page                        | Preview                                              |
+| --------------------------- | ---------------------------------------------------- |
+| Product Detail              | ![Product Detail](./captureUI/chi-tiet-san-pham.png) |
+| Shopping Cart               | ![Cart](./captureUI/gio-hang.png)                    |
+| Checkout                    | ![Checkout](./captureUI/thanh-toan.png)              |
+| MoMo QR Payment             | ![QR Payment](./captureUI/qr-momo.png)               |
+| User Order History          | ![User Orders](./captureUI/user-orders.png)          |
+| Shipping Address Management | ![Address Management](./captureUI/dia-chi.png)       |
+| Favorite Products           | ![Favorite](./captureUI/yeu-thich.png)               |
+| Account Information         | ![Account Info](./captureUI/thong-tin-tai-khoan.png) |
+
+> 🖼️ _Note: These are representative captures, not the complete UI set._
+
+---
+
+## 🧠 Tech Stack
+
+| Category             | Technologies                                                                   |
+| -------------------- | ------------------------------------------------------------------------------ |
+| **Framework**        | [Next.js 14+ (App Router)](https://nextjs.org/)                                |
+| **Language**         | [TypeScript](https://www.typescriptlang.org/)                                  |
+| **Styling**          | [Tailwind CSS](https://tailwindcss.com/) + [Shadcn UI](https://ui.shadcn.com/) |
+| **Database & Auth**  | [Supabase (PostgreSQL)](https://supabase.io/)                                  |
+| **State Management** | [TanStack Query (React Query)](https://tanstack.com/query/latest)              |
+| **AI Integration**   | [Groq API](https://groq.com/)                                                  |
+| **Payment Gateway**  | [MoMo API](https://developers.momo.vn/)                                        |
+| **Deployment**       | [Vercel](https://vercel.com/)                                                  |
+
+---
+
+## ⚡ Getting Started
 
 ### Prerequisites
 
-- Node.js (v18 or later)
+- Node.js v18+
 - Yarn (or npm/pnpm)
-- A Supabase account for your database, auth, and storage.
+- Supabase account for your database, auth, and storage
 
 ### Installation
 
-1.  **Clone the repo**
+```bash
+git clone https://github.com/gdevgproject/nextjs-fpl-datn.git
+cd nextjs-fpl-datn
+yarn install
+```
 
-    ```sh
-    git clone https://github.com/your-username/mybeauty-project.git
-    cd mybeauty-project
-    ```
+### Environment Setup
 
-2.  **Install dependencies**
+Create `.env.local` in the project root and configure your keys:
 
-    ```sh
-    yarn install
-    ```
+```env
+NEXT_PUBLIC_SUPABASE_URL=YOUR_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+```
 
-3.  **Set up environment variables**
+### Run Development Server
 
-    - Create a `.env.local` file in the root of the project.
-    - Copy the contents of `.env.example` (if available) or add your Supabase project URL and Anon Key.
+```bash
+yarn dev
+```
 
-    ```env
-    NEXT_PUBLIC_SUPABASE_URL=YOUR_SUPABASE_URL
-    NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
-    # ... other keys for AI, payments, etc.
-    ```
+Visit **[http://localhost:3000](http://localhost:3000)** to view the app.
 
-4.  **Run the development server**
-    ```sh
-    yarn dev
-    ```
-    Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+---
+
+## 🏁 Conclusion
+
+MyBeauty demonstrates a **holistic understanding of full-stack web development**, with emphasis on **clean architecture, user experience, and AI integration**.
+This project reflects the commitment to building scalable, maintainable, and production-ready systems — a standard expected from top-tier engineers.
